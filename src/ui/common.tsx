@@ -3,7 +3,7 @@ import { CATEGORY_META, CATEGORY_ORDER, type Category } from '../core/attribute'
 
 export function Chip(props: { color?: string; title?: string; children: ComponentChildren; class?: string }) {
   return (
-    <span class={`rbt-chip ${props.class ?? ''}`} title={props.title} style={props.color ? { '--chip': props.color } : undefined}>
+    <span class={`rbt-chip ${props.color ? 'has-color' : ''} ${props.class ?? ''}`} title={props.title} style={props.color ? { '--chip': props.color } : undefined}>
       {props.children}
     </span>
   );
@@ -63,5 +63,18 @@ export function Toggle({ checked, onChange, title }: { checked: boolean; onChang
       <input type="checkbox" checked={checked} onChange={(e) => onChange((e.currentTarget as HTMLInputElement).checked)} />
       <span />
     </label>
+  );
+}
+
+/** 设置行：左边名字（下面一行灰色说明），右边开关。 */
+export function SwitchRow({ label, detail, checked, onChange }: { label: ComponentChildren; detail?: ComponentChildren; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div class="rbt-switch-row">
+      <div class="rbt-switch-text">
+        <span>{label}</span>
+        {detail && <small>{detail}</small>}
+      </div>
+      <Toggle checked={checked} onChange={onChange} />
+    </div>
   );
 }

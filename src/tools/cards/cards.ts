@@ -309,7 +309,7 @@ export async function importCardWorld(avatar: string, { overwrite = false, quiet
     try { ctx().accountStorage?.setItem(`AlertWI_${avatar}`, 'true'); } catch { /* ignore */ }
     if (!quiet) {
       toast('success', exists
-        ? `已用卡里的版本覆盖世界书「${name}」。旧文件备份在 user/files/${backup}`
+        ? `已用卡里的版本覆盖世界书「${name}」，旧版本已备份。`
         : `已从卡里导入世界书「${name}」并绑定到「${f.char.name}」`, '角色档案');
     }
     refreshEnv();
@@ -462,7 +462,7 @@ export function installCardsWatch(openPanel: (tab: string) => void): void {
       const installed = installedExtensions();
       const bad = requiredExtensions(info).map((r) => ({ ...r, ...extStatus(r.req, installed) })).filter((r) => r.status !== 'enabled');
       if (bad.length) {
-        const text = bad.map((b) => `${b.match?.name ?? b.req.name}${b.status === 'missing' ? '（没装）' : '（没启用）'}`).join('、');
+        const text = bad.map((b) => `${b.match?.name ?? b.req.name}${b.status === 'missing' ? '（未安装）' : '（未启用）'}`).join('、');
         toast('warning', `「${info.name}」需要的插件：${text}。点这里查看。`, '角色档案', { onclick: () => openPanel('cards'), timeOut: 8000 });
       }
     }, 300);

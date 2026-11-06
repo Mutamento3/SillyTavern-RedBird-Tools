@@ -80,8 +80,8 @@ export function Section({ title, hint, children }: { title: string; hint?: strin
 
 export const STATUS_CHIP: Record<ExtStatus, { color: string; text: string }> = {
   enabled: { color: OK, text: '已启用' },
-  disabled: { color: WARN, text: '已装但没启用' },
-  missing: { color: BAD, text: '没装' },
+  disabled: { color: WARN, text: '已装，未启用' },
+  missing: { color: BAD, text: '未安装' },
 };
 
 const CONTACT_LABEL = { discord: 'Discord', qq: 'QQ', qqgroup: 'QQ 群', url: '链接' } as const;
@@ -140,24 +140,24 @@ export function SourceSection({ info }: { info: CardInfo }) {
     <Section title="来源与作者说明">
       {(info.contacts.length > 0 || info.autoSource) && (
         <div class="rbt-card-sub">
-          <small class="rbt-muted">卡里写的联系方式 / 来源：</small>
+          <small class="rbt-muted">卡里写的来源和联系方式：</small>
           <div class="rbt-chips">
             {info.contacts.map((c, i) => (c.kind === 'url'
               ? <a key={i} href={c.value} target="_blank" rel="noopener noreferrer">{c.value}</a>
-              : <Chip key={i} title="从卡的作者字段里识别出来的">{CONTACT_LABEL[c.kind]} {c.value}</Chip>))}
+              : <Chip key={i} title="从卡的作者信息里找到的">{CONTACT_LABEL[c.kind]} {c.value}</Chip>))}
             {info.autoSource && <a href={info.autoSource} target="_blank" rel="noopener noreferrer">{info.autoSource}</a>}
           </div>
         </div>
       )}
       {info.creatorNotes.trim() && (
         <div class="rbt-card-sub">
-          <small class="rbt-muted">卡里的作者备注（creator_notes）：</small>
+          <small class="rbt-muted">作者写在卡里的备注：</small>
           <LongText text={info.creatorNotes} />
         </div>
       )}
 
       <div class="rbt-card-sub">
-        <small class="rbt-muted">链接（DC 发布帖、更新帖、教程…）：</small>
+        <small class="rbt-muted">相关链接，比如发布帖、更新帖、教程：</small>
         {links.map((l, i) => (
           <div key={i} class="rbt-link-row">
             <a href={l.url} target="_blank" rel="noopener noreferrer" title={l.url}>{l.label}</a>
@@ -166,7 +166,7 @@ export function SourceSection({ info }: { info: CardInfo }) {
           </div>
         ))}
         <div class="rbt-form-row">
-          <input class="text_pole rbt-input rbt-w-label" placeholder="名字，如 DC 发布帖" value={label} onInput={(e) => setLabel(inputValue(e))} />
+          <input class="text_pole rbt-input rbt-w-label" placeholder="名称，如：发布帖" value={label} onInput={(e) => setLabel(inputValue(e))} />
           <input class="text_pole rbt-input" placeholder="https://…" value={url} onInput={(e) => setUrl(inputValue(e))} onKeyDown={(e) => { if (e.key === 'Enter') addLink(); }} />
           <button class="rbt-btn" disabled={!urlOk} onClick={addLink}>添加</button>
         </div>
@@ -174,18 +174,18 @@ export function SourceSection({ info }: { info: CardInfo }) {
 
       <div class="rbt-card-sub">
         <div class="rbt-row-between">
-          <small class="rbt-muted">作者说明（发布帖里的推荐设置、玩法、注意事项）：</small>
+          <small class="rbt-muted">作者说明：</small>
           {!editing && <button class="rbt-btn rbt-btn-small" onClick={() => { setDraft(rec?.notes ?? ''); setEditing(true); }}>{rec?.notes ? '编辑' : '填写'}</button>}
         </div>
         {editing ? (
           <>
-            <textarea class="text_pole rbt-textarea" rows={10} value={draft} placeholder="把发布帖里的说明整段粘进来，网址会自动变成可以点的链接。" onInput={(e) => setDraft((e.currentTarget as HTMLTextAreaElement).value)} />
+            <textarea class="text_pole rbt-textarea" rows={10} value={draft} placeholder="把发布帖里的推荐设置、玩法和注意事项粘进来。网址会自动变成链接。" onInput={(e) => setDraft((e.currentTarget as HTMLTextAreaElement).value)} />
             <div class="rbt-row">
               <button class="rbt-btn rbt-btn-primary" onClick={() => { updateRecord(info.avatar, info.name, { notes: draft }); setEditing(false); }}>保存</button>
               <button class="rbt-btn" onClick={() => setEditing(false)}>取消</button>
             </div>
           </>
-        ) : rec?.notes ? <LongText text={rec.notes} limit={600} /> : <div class="rbt-muted">还没填。</div>}
+        ) : rec?.notes ? <LongText text={rec.notes} limit={600} /> : <div class="rbt-muted">还没填写。可以把发布帖里的推荐设置和玩法粘进来。</div>}
       </div>
     </Section>
   );
@@ -199,23 +199,22 @@ export function PresetSection({ info }: { info: CardInfo }) {
   const current = currentPresetName();
   const otherApi = rec && rec.api !== presetApi();
   return (
-    <Section title="推荐预设" hint="换到这张卡时会自动切到它">
+    <Section title="推荐预设" hint="切到这张卡时自动换上">
       <div class="rbt-form-row">
         <select class="text_pole rbt-select" value={rec?.name ?? ''} onChange={(e) => setRecommendedPreset(info.avatar, info.name, (e.currentTarget as HTMLSelectElement).value || null)}>
-          <option value="">— 不指定 —</option>
-          {rec && !names.includes(rec.name) && <option value={rec.name}>{rec.name}（找不到）</option>}
+          <option value="">不指定</option>
+          {rec && !names.includes(rec.name) && <option value={rec.name}>{rec.name}（已不存在）</option>}
           {names.map((n) => <option key={n} value={n}>{n}</option>)}
         </select>
-        {!rec && info.isCurrent && current && <button class="rbt-btn" onClick={() => setRecommendedPreset(info.avatar, info.name, current)}>用当前预设</button>}
+        {!rec && info.isCurrent && current && <button class="rbt-btn" onClick={() => setRecommendedPreset(info.avatar, info.name, current)}>用现在这个</button>}
       </div>
-      {otherApi && <div class="rbt-hint">这个推荐预设是在「{rec!.api}」接口下设的，现在用的接口不同，换卡时不会比较。</div>}
+      {otherApi && <div class="rbt-hint">这个推荐是在「{rec!.api}」下设的，和现在用的 API 不同，所以不会自动换。</div>}
       {rec && info.isCurrent && !otherApi && rec.name !== current && (
         <div class="rbt-warn rbt-row-between">
-          <span>现在用的是「{current}」，不是推荐的「{rec.name}」。</span>
-          <button class="rbt-btn rbt-btn-primary rbt-btn-small" onClick={() => switchPreset(rec.name)}>切换过去</button>
+          <span>现在用的是「{current}」，推荐的是「{rec.name}」。</span>
+          <button class="rbt-btn rbt-btn-primary rbt-btn-small" onClick={() => switchPreset(rec.name)}>换上推荐的</button>
         </div>
       )}
-      {rec && <small class="rbt-muted">以后换到这张卡时会自动切到这个预设（可以在「换卡时」里关掉自动切换）。</small>}
     </Section>
   );
 }
@@ -238,7 +237,7 @@ export function ExtSection({ info }: { info: CardInfo }) {
   };
   return (
     <Section title="需要的插件">
-      {!list.length && <div class="rbt-muted">还没填。从下面选，或者手动写没装的插件。</div>}
+      {!list.length && <div class="rbt-muted">还没登记。从下面选一个已装的插件，或手动填一个没装的。</div>}
       {list.map((l, i) => {
         const st = extStatus(l.req, installed);
         const chip = STATUS_CHIP[st.status];
@@ -246,7 +245,7 @@ export function ExtSection({ info }: { info: CardInfo }) {
           <div key={`${l.req.name}${i}`} class="rbt-link-row">
             <Chip color={chip.color}>{chip.text}</Chip>
             <span class="rbt-env-name">{st.match?.name ?? l.req.name}</span>
-            {l.auto && <small class="rbt-muted">自动识别：{l.reason}</small>}
+            {l.auto && <small class="rbt-muted">{l.reason}</small>}
             {st.status === 'missing' && l.req.url && <a href={l.req.url} target="_blank" rel="noopener noreferrer">安装地址</a>}
             {!l.auto && <button class="rbt-btn rbt-btn-small rbt-push" title="从列表里删除" onClick={() => updateRecord(info.avatar, info.name, { extensions: manual.filter((m) => m !== l.req) })}>✕</button>}
           </div>
@@ -254,16 +253,16 @@ export function ExtSection({ info }: { info: CardInfo }) {
       })}
       <div class="rbt-form-row">
         <select class="text_pole rbt-select" value={pick} onChange={(e) => setPick((e.currentTarget as HTMLSelectElement).value)}>
-          <option value="">添加一个插件…</option>
-          {installed.filter((e) => !listed.has(e.id)).map((e) => <option key={e.id} value={e.id}>{e.name}{e.enabled ? '' : '（没启用）'}</option>)}
-          <option value="__other">其他（没装的，手动填）</option>
+          <option value="">添加插件…</option>
+          {installed.filter((e) => !listed.has(e.id)).map((e) => <option key={e.id} value={e.id}>{e.name}{e.enabled ? '' : '（未启用）'}</option>)}
+          <option value="__other">没装的插件，手动填写…</option>
         </select>
         {pick && pick !== '__other' && <button class="rbt-btn" onClick={add}>添加</button>}
       </div>
       {pick === '__other' && (
         <div class="rbt-form-row">
           <input class="text_pole rbt-input rbt-w-label" placeholder="插件名" value={name} onInput={(e) => setName(inputValue(e))} />
-          <input class="text_pole rbt-input" placeholder="安装地址（可不填）" value={url} onInput={(e) => setUrl(inputValue(e))} />
+          <input class="text_pole rbt-input" placeholder="安装地址（选填）" value={url} onInput={(e) => setUrl(inputValue(e))} />
           <button class="rbt-btn" disabled={!name.trim()} onClick={add}>添加</button>
         </div>
       )}
@@ -279,7 +278,7 @@ export function DiffList({ title, entries }: { title: string; entries: { comment
     <details class="rbt-inline-details">
       <summary>{title} {entries.length} 条</summary>
       <ul class="rbt-diff-list">
-        {entries.slice(0, 30).map((e, i) => <li key={i}><b>{e.comment || '(无标题)'}</b> <small class="rbt-muted">{e.content.slice(0, 60)}</small></li>)}
+        {entries.slice(0, 30).map((e, i) => <li key={i}><b>{e.comment || '（无标题）'}</b> <small class="rbt-muted">{e.content.slice(0, 60)}</small></li>)}
         {entries.length > 30 && <li class="rbt-muted">…还有 {entries.length - 30} 条</li>}
       </ul>
     </details>
@@ -299,8 +298,8 @@ export function WorldSection({ info }: { info: CardInfo }) {
 
   const run = async (overwrite: boolean) => {
     if (overwrite) {
-      const ok = await ctx().Popup?.show?.confirm?.('用卡里的版本覆盖世界书',
-        `会把世界书「${w.importName}」换成卡里内嵌的版本。只在文件里的条目会丢掉（可能是你或脚本加的）。覆盖前会把旧文件备份到 data/default-user/user/files/。确定吗？`);
+      const ok = await ctx().Popup?.show?.confirm?.('用卡里的版本覆盖？',
+        `世界书「${w.importName}」会换成卡里自带的版本，只在现有世界书里的条目会丢失（可能是你或脚本加的）。覆盖前会自动备份。`);
       if (!ok) return;
     }
     setBusy(true);
@@ -310,32 +309,32 @@ export function WorldSection({ info }: { info: CardInfo }) {
   const nameTaken = worldNames().includes(w.importName);
   return (
     <Section title="世界书">
-      {w.state === 'none' && <div class="rbt-muted">这张卡没有绑定世界书，卡里也没带。</div>}
+      {w.state === 'none' && <div class="rbt-muted">这张卡没有世界书。</div>}
       {w.state !== 'none' && (
         <div class="rbt-link-row">
           <span class="rbt-env-name">{w.name || w.importName}</span>
           {w.state === 'ok' && <Chip color={OK}>已绑定</Chip>}
-          {w.state === 'missing' && <Chip color={BAD}>绑定了，但世界书文件不存在</Chip>}
-          {w.state === 'unbound' && <Chip color={WARN}>卡里带了，但没导入</Chip>}
-          {w.embedded !== null && <small class="rbt-muted">卡里内嵌 {w.embedded} 条</small>}
+          {w.state === 'missing' && <Chip color={BAD}>找不到这本世界书</Chip>}
+          {w.state === 'unbound' && <Chip color={WARN}>还没导入</Chip>}
+          {w.embedded !== null && <small class="rbt-muted">卡里自带 {w.embedded} 条</small>}
         </div>
       )}
       {(w.state === 'missing' || w.state === 'unbound') && w.embedded !== null && (
         nameTaken
-          ? <div class="rbt-warn rbt-row-between"><span>已经有一本同名世界书「{w.importName}」，没有自动导入。</span><button class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => run(true)}>用卡里的版本覆盖</button></div>
-          : <div class="rbt-row"><button class="rbt-btn rbt-btn-primary" disabled={busy} onClick={() => run(false)}>{busy ? '导入中…' : '从卡里导入并绑定'}</button></div>
+          ? <div class="rbt-warn rbt-row-between"><span>已有一本同名世界书「{w.importName}」，所以没有自动导入。</span><button class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => run(true)}>用卡里的版本覆盖</button></div>
+          : <div class="rbt-row"><button class="rbt-btn rbt-btn-primary" disabled={busy} onClick={() => run(false)}>{busy ? '正在导入…' : '导入并绑定'}</button></div>
       )}
       {w.state === 'ok' && w.embedded !== null && (
-        diff === 'loading' ? <small class="rbt-muted">正在对比卡里和文件…</small>
+        diff === 'loading' ? <small class="rbt-muted">正在对比…</small>
           : diff && (diff.onlyCard.length || diff.onlyWorld.length) ? (
             <div class="rbt-warn">
-              <div>卡里的世界书和已导入的文件不一样：卡里 {diff.card} 条，文件 {diff.world} 条，内容相同 {diff.same} 条。</div>
-              <small>只在文件里有的，可能是你自己或脚本加的；只在卡里有的，多半是作者更新了卡。</small>
-              <DiffList title="只在卡里有" entries={diff.onlyCard} />
-              <DiffList title="只在文件里有" entries={diff.onlyWorld} />
-              <div class="rbt-row"><button class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => run(true)}>用卡里的版本覆盖（先备份）</button></div>
+              <div>卡里自带的和现在用的不一样：卡里 {diff.card} 条，现在 {diff.world} 条，其中 {diff.same} 条相同。</div>
+              <small>只在现在这本里的，可能是你或脚本加的；只在卡里的，多半是作者更新了卡。</small>
+              <DiffList title="只在卡里" entries={diff.onlyCard} />
+              <DiffList title="只在现在这本里" entries={diff.onlyWorld} />
+              <div class="rbt-row"><button class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => run(true)}>用卡里的版本覆盖</button></div>
             </div>
-          ) : diff ? <small class="rbt-ok">和卡里内嵌的版本一致 ✓</small> : null
+          ) : diff ? <small class="rbt-ok">和卡里自带的一致 ✓</small> : null
       )}
       {w.extra.length > 0 && <div class="rbt-card-sub"><small class="rbt-muted">附加世界书：</small>{w.extra.map((b) => <Chip key={b}>{b}</Chip>)}</div>}
     </Section>
@@ -354,22 +353,22 @@ export function RegexSection({ info }: { info: CardInfo }) {
   return (
     <Section title="正则与脚本">
       <div class="rbt-link-row">
-        <span>卡内正则 <b>{info.regex.total}</b> 条（启用 {info.regex.enabled}）</span>
-        {info.regex.total > 0 && (info.regex.allowed ? <Chip color={OK}>已允许运行</Chip> : <Chip color={BAD}>没允许运行</Chip>)}
+        <span>卡里的正则 <b>{info.regex.total}</b> 条{info.regex.total > 0 && `，开着 ${info.regex.enabled} 条`}</span>
+        {info.regex.total > 0 && (info.regex.allowed ? <Chip color={OK}>已允许运行</Chip> : <Chip color={BAD}>未允许运行</Chip>)}
       </div>
       <div class="rbt-link-row">
         <span>酒馆助手角色脚本 <b>{info.scripts.total}</b> 个</span>
-        {info.scripts.total > 0 && (info.scripts.enabled ? <Chip color={OK}>已启用</Chip> : <Chip color={BAD}>没启用</Chip>)}
+        {info.scripts.total > 0 && (info.scripts.enabled ? <Chip color={OK}>已启用</Chip> : <Chip color={BAD}>未启用</Chip>)}
       </div>
       {info.scripts.names.length > 0 && <div class="rbt-chips">{info.scripts.names.map((n, i) => <Chip key={i}>{n}</Chip>)}</div>}
       {owned.length > 0 && (
         <div class="rbt-card-sub">
-          <small class="rbt-muted">标记为属于这张卡的全局正则：</small>
+          <small class="rbt-muted">标为属于这张卡的全局正则：</small>
           {owned.map((r) => <div key={r.id} class="rbt-link-row"><span>{r.scriptName}</span>{r.disabled ? <Chip>关</Chip> : <Chip color={OK}>开</Chip>}</div>)}
         </div>
       )}
-      {preset && presetRx > 0 && <small class="rbt-muted">另外，当前预设「{preset}」带了 {presetRx} 条预设正则，玩哪张卡都会生效。</small>}
-      <small class="rbt-muted">全局正则在左栏「全局」里逐条开关。</small>
+      {preset && presetRx > 0 && <small class="rbt-muted">另外，正在用的预设「{preset}」带了 {presetRx} 条正则，对所有卡生效。</small>}
+      <small class="rbt-muted">全局正则在左栏「全局工具箱」里逐条开关。</small>
     </Section>
   );
 }

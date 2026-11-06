@@ -27,11 +27,11 @@ export function ItemRow({ item }: { item: EnvItem }) {
     <div class={`rbt-env-item ${item.enabled ? '' : 'off'}`}>
       <Chip>{KIND_LABEL[item.kind]}</Chip>
       <span class="rbt-env-name">{item.name}</span>
-      {item.misplaced && <Chip color="#f0a43a" title={`标记为${item.misplaced}`}>不属于这张卡</Chip>}
+      {item.misplaced && <Chip color="#f0a43a" title={`标为${item.misplaced}`}>不属于这张卡</Chip>}
       {item.detail && <small class="rbt-muted">{item.detail}</small>}
       {item.toggle && (
         <span class="rbt-env-toggle">
-          <small class={item.enabled ? 'rbt-ok' : 'rbt-muted'}>{busy ? '…' : item.enabled ? '已开启' : '已关闭'}</small>
+          {busy && <small class="rbt-muted">…</small>}
           <Toggle checked={item.enabled} onChange={onToggle} title="点击开 / 关" />
         </span>
       )}
@@ -65,7 +65,7 @@ function SubItemRow({ sub }: { sub: EnvSubItem }) {
       <span class="rbt-sub-name">{sub.name}</span>
       {sub.detail && <small class="rbt-muted">{sub.detail}</small>}
       <span class="rbt-env-toggle">
-        <small class={sub.enabled ? 'rbt-ok' : 'rbt-muted'}>{busy ? '…' : sub.enabled ? '开' : '关'}</small>
+        {busy && <small class="rbt-muted">…</small>}
         <Toggle checked={sub.enabled} onChange={onToggle} title="点击开 / 关这一条" />
       </span>
     </div>
@@ -78,10 +78,10 @@ function SubItemList({ items, groupOff }: { items: EnvSubItem[]; groupOff: boole
   const shown = items.filter((s) => (!filter || s.name.includes(filter)) && (!onlyOn || s.enabled));
   return (
     <div class="rbt-sub-list">
-      {groupOff && <div class="rbt-hint">总开关是关的，下面这些即使显示"开"也不会运行。</div>}
+      {groupOff && <div class="rbt-hint">上面的总开关关着，所以下面这些都不会运行。</div>}
       {items.length > 10 && (
         <div class="rbt-sub-tools">
-          <input class="text_pole rbt-input" placeholder="搜索正则名…" value={filter} onInput={(e) => setFilter((e.currentTarget as HTMLInputElement).value)} />
+          <input class="text_pole rbt-input" placeholder="搜索正则…" value={filter} onInput={(e) => setFilter((e.currentTarget as HTMLInputElement).value)} />
           <label class="rbt-check"><input type="checkbox" checked={onlyOn} onChange={(e) => setOnlyOn((e.currentTarget as HTMLInputElement).checked)} />只看开着的</label>
         </div>
       )}
@@ -116,9 +116,9 @@ function GlobalRegexList({ items }: { items: EnvItem[] }) {
   if (!scripts.length) return <div class="rbt-muted">没有全局正则。</div>;
   return (
     <>
-      <small class="rbt-muted">标上"属于谁"以后，换卡时会自动开关：属于这张卡或当前预设的打开，属于别的卡或预设的关掉。</small>
+      <small class="rbt-muted">给正则选好「属于」，换卡时就会自动开关：属于当前的卡或预设就打开，属于别的就关掉。</small>
       {guesses.length > 1 && (
-        <div class="rbt-row"><button class="rbt-btn rbt-btn-small" onClick={() => { for (const { r, g } of guesses) setRegexOwner(r.id, g!); }}>按名字猜，全部标上（{guesses.length} 条）</button></div>
+        <div class="rbt-row"><button class="rbt-btn rbt-btn-small" onClick={() => { for (const { r, g } of guesses) setRegexOwner(r.id, g!); }}>按名字自动选好 {guesses.length} 条</button></div>
       )}
       {scripts.map((r) => {
         const item = byId.get(`rx:g:${r.id ?? r.scriptName}`);
@@ -129,12 +129,12 @@ function GlobalRegexList({ items }: { items: EnvItem[] }) {
             <div class="rbt-form-row rbt-owner-pick">
               <small class="rbt-muted">属于</small>
               <select class="text_pole rbt-select" value={ownerValue(owners[r.id])} onChange={(e) => onPick(r.id, (e.currentTarget as HTMLSelectElement).value)}>
-                <option value="">未标注（换卡时不动它）</option>
+                <option value="">没选（换卡时不动它）</option>
                 <optgroup label="插件">{exts.map((e) => <option key={e.id} value={`extension:${e.id}`}>{e.name}</option>)}</optgroup>
                 <optgroup label="预设">{presets.map((p) => <option key={p} value={`preset:${p}`}>{p}</option>)}</optgroup>
                 <optgroup label="角色卡">{chars.map((c) => <option key={c.avatar} value={`card:${c.avatar}`}>{c.name}</option>)}</optgroup>
               </select>
-              {g && <button class="rbt-btn rbt-btn-small" title="按名字猜的" onClick={() => setRegexOwner(r.id, g)}>猜是 {g.label}</button>}
+              {g && <button class="rbt-btn rbt-btn-small" title="按名字猜的，点一下就选上" onClick={() => setRegexOwner(r.id, g)}>可能是 {g.label}</button>}
             </div>
           </div>
         );
@@ -168,7 +168,7 @@ function AddGlobalWorld() {
         try { await runSlash(`/world state=on silent=true ${slashQuote(name)}`); } finally { setBusy(false); refreshEnv(); }
       }}>
         <option value="">打开一本全局世界书…</option>
-        {options.map((w) => <option key={w} value={w}>{w}{scopes.character.has(w) ? '（已经绑在这张卡上）' : ''}</option>)}
+        {options.map((w) => <option key={w} value={w}>{w}{scopes.character.has(w) ? '（已绑在当前卡上）' : ''}</option>)}
       </select>
     </div>
   );
@@ -188,7 +188,7 @@ function PresetPicker() {
       }}>
         {names.map((n) => <option key={n} value={n}>{n}</option>)}
       </select>
-      <button class="rbt-btn" onClick={() => openDrawer('preset')}>编辑这个预设</button>
+      <button class="rbt-btn" onClick={() => openDrawer('preset')}>编辑预设</button>
     </div>
   );
 }
@@ -220,7 +220,6 @@ function PluginList() {
             {e.name !== e.id && <small class="rbt-muted">{e.id}</small>}
             {e.id in want && want[e.id] !== e.enabled && <Chip color="#f0a43a">刷新后生效</Chip>}
             <span class="rbt-env-toggle">
-              <small class={on ? 'rbt-ok' : 'rbt-muted'}>{on ? '已启用' : '已停用'}</small>
               <Toggle checked={on} onChange={(v) => setWant({ ...want, [e.id]: v })} title="启用 / 停用这个插件" />
             </span>
           </div>
@@ -228,7 +227,7 @@ function PluginList() {
       })}
       {changed.length > 0 && (
         <div class="rbt-warn rbt-row-between">
-          <span>改了 {changed.length} 个插件，要刷新页面才生效。</span>
+          <span>改了 {changed.length} 个插件，刷新页面后生效。</span>
           <span class="rbt-row">
             <button class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => setWant({})}>还原</button>
             <button class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={busy} onClick={apply}>保存并刷新</button>
@@ -251,25 +250,25 @@ export function GlobalPage() {
   const scripts = pick((i) => i.scope === 'global' && i.kind === 'script');
   return (
     <div class="rbt-page">
-      <div class="rbt-page-lead">这里的东西换卡时不会跟着走，对所有卡都生效。跟某张卡配套的，最好绑到卡上；全局正则可以标"属于谁"，换卡时就会自动开关。</div>
+      <div class="rbt-page-lead">这里的设置对所有卡都生效，换卡时不会跟着变。只给某张卡用的东西，最好绑到那张卡上。</div>
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
           <Section title="全局世界书" hint="打开后对所有卡生效">
             {worlds.map((i) => <ItemRow key={i.id} item={i} />)}
-            {!worlds.length && <small class="rbt-muted">现在没有开着的全局世界书。</small>}
+            {!worlds.length && <small class="rbt-muted">没有开着的全局世界书。</small>}
             <AddGlobalWorld />
           </Section>
           <Section title="全局正则">
             <GlobalRegexList items={regex} />
-            <div class="rbt-row"><button class="rbt-btn" onClick={openRegexManager}>新建 / 编辑 / 导入正则</button></div>
+            <div class="rbt-row"><button class="rbt-btn" onClick={openRegexManager}>新建、编辑或导入正则</button></div>
           </Section>
           {scripts.length > 0 && <Section title="酒馆助手全局脚本">{scripts.map((i) => <ItemRow key={i.id} item={i} />)}</Section>}
         </div>
         <div class="rbt-page-group">
-          <Section title="预设" hint="换卡时会切到那张卡的推荐预设">
+          <Section title="预设" hint="切到有推荐预设的卡时会自动换">
             <PresetPicker />
             {presetRx.map((i) => <ItemRow key={i.id} item={i} />)}
-            {!presetRx.length && <small class="rbt-muted">这个预设没有自带正则和脚本。</small>}
+            {!presetRx.length && <small class="rbt-muted">这个预设没有自带正则或脚本。</small>}
           </Section>
           <Section title="插件" hint="对所有卡生效">
             <PluginList />

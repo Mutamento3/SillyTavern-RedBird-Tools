@@ -9,22 +9,7 @@ import { panelOpen } from '../ui/Panel';
 import { openView, sheetView, shellActive } from '../ui/views';
 import { DRAWERS, drawerButtonHandlers, openDrawers, type DrawerKey } from './drawers';
 import { ToolboxButton } from './EnvStatus';
-import {
-  allTags,
-  charsTick,
-  createCharacter,
-  createGroup,
-  editCharacter,
-  importCharacterFile,
-  importCharacterUrl,
-  isCurrent,
-  listCharacters,
-  openCharacter,
-  sortCharacters,
-  toggleFavorite,
-  type CharItem,
-  type CharSort,
-} from './characters';
+import { HomeGallery } from './Home';
 import {
   isCurrentChat,
   loadRecentChats,
@@ -48,6 +33,8 @@ const ST_KEYS: DrawerKey[] = ['preset', 'extensions', 'api', 'persona', 'setting
 
 /** Whether the API is connected (ST's online_status). */
 export const apiOnline = signal(true);
+/** True on the home screen (no character or group open). */
+export const homeActive = signal(false);
 function readOnline(): void {
   const st = String(ctx().onlineStatus ?? '');
   apiOnline.value = !!st && st !== 'no_connection';
@@ -60,6 +47,7 @@ function applyBodyClasses(): void {
   const c = ctx();
   const home = (c.characterId === undefined || c.characterId === null) && !c.groupId;
   b.toggle('rbt-home', home);
+  homeActive.value = home;
   shellActive.value = shellOn.value && (window.innerWidth || 1280) > 1000;
 }
 
@@ -136,16 +124,6 @@ function RecentRow({ r }: { r: RecentChat }) {
   );
 }
 
-export type LeftView = 'chats' | 'chars';
-export const leftView = signal<LeftView>('chats');
-const VIEW_KEY = 'rbt-shell-left-view';
-const SORT_KEY = 'rbt-shell-char-sort';
-
-function setView(v: LeftView): void {
-  leftView.value = v;
-  try { localStorage.setItem(VIEW_KEY, v); } catch { /* ignore */ }
-}
-
 function ChatList({ q }: { q: string }) {
   void chatTick.value; // re-render current-chat highlight
   useEffect(() => { if (!recentChats.value.length) void loadRecentChats(); }, []);
@@ -177,97 +155,34 @@ function ChatList({ q }: { q: string }) {
   );
 }
 
-function CharRow({ it }: { it: CharItem }) {
-  const current = isCurrent(it);
-  const sub = it.note || it.version;
-  return (
-    <div class={'rbt-char-row' + (current ? ' current' : '')}>
-      <button type="button" class="rbt-char-open" onClick={() => { void openCharacter(it); }} title={it.name}>
-        <img class="rbt-recent-avatar" src={it.thumb} alt="" loading="lazy" />
-        <span class="rbt-recent-main">
-          <span class="rbt-recent-name">{it.fav && <i class="fa-solid fa-star rbt-char-favmark" />}{it.name}</span>
-          {sub && <span class="rbt-recent-preview">{sub}</span>}
-          {it.problems.length > 0 && <span class="rbt-char-problem" title={it.problems.join('、')}><i class="fa-solid fa-circle-exclamation" /> {it.problems.join(' · ')}</span>}
-          {it.tags.length > 0 && (
-            <span class="rbt-char-tags">
-              {it.tags.slice(0, 2).map((t) => <span key={t.id} class="rbt-char-tag">{t.name}</span>)}
-              {it.tags.length > 2 && <span class="rbt-char-tag more">+{it.tags.length - 2}</span>}
-            </span>
-          )}
-        </span>
-      </button>
-      <span class="rbt-char-actions">
-        {it.kind === 'character' && (
-          <button type="button" class={'rbt-row-act' + (it.fav ? ' on' : '')} title={it.fav ? '取消收藏' : '收藏'} onClick={() => { void toggleFavorite(it); }}>
-            <i class={(it.fav ? 'fa-solid' : 'fa-regular') + ' fa-star'} />
-          </button>
-        )}
-        <button type="button" class="rbt-row-act" title="编辑" onClick={() => { void editCharacter(it); }}>
-          <i class="fa-solid fa-pen" />
-        </button>
-      </span>
-    </div>
-  );
+/** 酒馆欢迎页上的东西（临时聊天、文档、版本号），首页中间换成了角色画廊，就挪到左栏底部。 */
+function openTemporaryChat(): void {
+  const click = () => trigger('.openTemporaryChat');
+  if (!inChat()) { click(); return; }
+  goHome();
+  let n = 0;
+  const wait = () => {
+    if (document.querySelector('.openTemporaryChat')) click();
+    else if (n++ < 30) setTimeout(wait, 100);
+  };
+  setTimeout(wait, 100);
 }
 
-function CharList({ q }: { q: string }) {
-  void charsTick.value;
-  void chatTick.value;
-  const [filter, setFilter] = useState('all');
-  const [sort, setSortState] = useState<CharSort>(() => {
-    try { return (localStorage.getItem(SORT_KEY) as CharSort) || 'recent'; } catch { return 'recent'; }
-  });
-  const setSort = (v: CharSort) => { setSortState(v); try { localStorage.setItem(SORT_KEY, v); } catch { /* ignore */ } };
-  const all = listCharacters();
-  const tags = allTags(all);
-  const query = q.trim().toLowerCase();
-  const shown = sortCharacters(all.filter((it) => {
-    if (filter === 'fav' && !it.fav) return false;
-    if (filter === 'group' && it.kind !== 'group') return false;
-    if (filter === 'char' && it.kind !== 'character') return false;
-    if (filter === 'problem' && !it.problems.length) return false;
-    if (filter === 'nolinks' && (it.kind !== 'character' || it.hasLinks)) return false;
-    if (filter.startsWith('tag:') && !it.tags.some((t) => t.id === filter.slice(4))) return false;
-    if (query && !(it.name.toLowerCase().includes(query) || it.note.toLowerCase().includes(query) || it.tags.some((t) => t.name.toLowerCase().includes(query)))) return false;
-    return true;
-  }), sort);
+/** Leaving the shell is easy to click by accident, so confirm and say how to come back. */
+async function leaveShell(): Promise<void> {
+  const ok = await ctx().Popup?.show?.confirm?.('切回原版界面？', '想回到现在的三栏界面时，在输入框里发送 /rbt shell，或者在「扩展 › RedBird 工具箱」里勾选「三栏外壳」。');
+  if (ok) setShellEnabled(false);
+}
 
-  return (
-    <>
-      <div class="rbt-char-tools">
-        <select class="rbt-mini-select" value={filter} title="筛选" onChange={(e) => setFilter((e.currentTarget as HTMLSelectElement).value)}>
-          <option value="all">全部（{all.length}）</option>
-          <option value="fav">★ 收藏（{all.filter((x) => x.fav).length}）</option>
-          <option value="problem">有问题的（{all.filter((x) => x.problems.length).length}）</option>
-          <option value="nolinks">没填来源链接的</option>
-          <option value="char">只看角色</option>
-          {all.some((x) => x.kind === 'group') && <option value="group">只看群组</option>}
-          {tags.length > 0 && <optgroup label="标签">{tags.map(({ tag, count }) => <option key={tag.id} value={'tag:' + tag.id}>{tag.name}（{count}）</option>)}</optgroup>}
-        </select>
-        <select class="rbt-mini-select" value={sort} title="排序" onChange={(e) => setSort((e.currentTarget as HTMLSelectElement).value as CharSort)}>
-          <option value="recent">最近聊过</option>
-          <option value="name">名称</option>
-          <option value="added">最近添加</option>
-        </select>
-      </div>
-      <div class="rbt-char-lib">
-        <button type="button" class="rbt-lib-btn" onClick={createCharacter} title="新建角色"><i class="fa-solid fa-user-plus" /> 新建</button>
-        <button type="button" class="rbt-lib-btn" onClick={importCharacterFile} title="从文件导入角色卡"><i class="fa-solid fa-file-import" /> 导入</button>
-        <button type="button" class="rbt-lib-btn icon" onClick={importCharacterUrl} title="从链接导入"><i class="fa-solid fa-link" /></button>
-        <button type="button" class="rbt-lib-btn icon" onClick={createGroup} title="新建群组"><i class="fa-solid fa-users" /></button>
-        <button type="button" class="rbt-lib-btn icon" onClick={() => openView('maintain')} title="维护：批量导入缺的世界书、反查、导出 / 导入档案"><i class="fa-solid fa-screwdriver-wrench" /></button>
-      </div>
-      <div class="rbt-recent">
-        {shown.map((it) => <CharRow key={it.key} it={it} />)}
-        {!shown.length && <div class="rbt-recent-empty">{query || filter !== 'all' ? '没有匹配的角色' : '还没有角色'}</div>}
-      </div>
-    </>
-  );
+/** ST version for the left footer, read once from ST's own /version endpoint. */
+const stVersion = signal('');
+function loadVersion(): void {
+  fetch('/version').then((r) => r.json()).then((v: { pkgVersion?: string }) => { if (v?.pkgVersion) stVersion.value = v.pkgVersion; }).catch(() => { /* ignore */ });
 }
 
 function LeftColumn() {
   const [q, setQ] = useState('');
-  const view = leftView.value;
+  const version = stVersion.value;
 
   return (
     <aside class="rbt-left" aria-label="RedBird 左栏">
@@ -289,22 +204,30 @@ function LeftColumn() {
       </nav>
 
       <div class="rbt-left-actions">
-        <div class="rbt-segctl" role="tablist">
-          <button type="button" role="tab" class={view === 'chats' ? 'active' : ''} onClick={() => setView('chats')}>聊天</button>
-          <button type="button" role="tab" class={view === 'chars' ? 'active' : ''} onClick={() => setView('chars')}>角色</button>
-        </div>
+        <div class="rbt-left-title">最近的聊天</div>
         <label class="rbt-search">
           <i class="fa-solid fa-magnifying-glass" />
-          <input type="search" placeholder={view === 'chats' ? '搜索聊天' : '搜索角色、备注、标签'} value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
+          <input type="search" placeholder="搜索聊天" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
         </label>
       </div>
 
-      {view === 'chats' ? <ChatList q={q} /> : <CharList q={q} />}
+      <ChatList q={q} />
 
       <div class="rbt-left-foot">
-        <button type="button" class="rbt-foot-btn" title="关掉三栏外壳，回到酒馆原来的界面" onClick={() => setShellEnabled(false)}>
-          <i class="fa-solid fa-table-columns" /> 原版界面
+        <button type="button" class="rbt-foot-btn" title="和酒馆助手临时聊几句，不会保存" onClick={openTemporaryChat}>
+          <i class="fa-solid fa-comment-dots fa-fw" /> 临时聊天
         </button>
+        <div class="rbt-foot-links">
+          <a href="https://docs.sillytavern.app/" target="_blank" rel="noopener"><i class="fa-solid fa-circle-question" /> 文档</a>
+          <a href="https://github.com/SillyTavern/SillyTavern" target="_blank" rel="noopener"><i class="fa-brands fa-github" /> GitHub</a>
+          <a href="https://discord.gg/sillytavern" target="_blank" rel="noopener"><i class="fa-brands fa-discord" /> Discord</a>
+        </div>
+        <div class="rbt-foot-row">
+          <button type="button" class="rbt-foot-btn" title="关掉三栏外壳，回到酒馆原来的界面" onClick={() => { void leaveShell(); }}>
+            <i class="fa-solid fa-table-columns fa-fw" /> 原版界面
+          </button>
+          {version && <span class="rbt-foot-version">SillyTavern {version}</span>}
+        </div>
       </div>
     </aside>
   );
@@ -362,6 +285,7 @@ export function Shell() {
     <>
       {!leftCollapsed.value && <LeftColumn />}
       <NavBar />
+      {homeActive.value && shellActive.value && <HomeGallery />}
     </>
   );
 }
@@ -370,7 +294,6 @@ export function initShellState(): void {
   shellOn.value = settings().shellEnabled;
   try {
     leftCollapsed.value = localStorage.getItem(COLLAPSE_KEY) === '1';
-    leftView.value = localStorage.getItem(VIEW_KEY) === 'chars' ? 'chars' : 'chats';
   } catch { /* ignore */ }
   applyBodyClasses();
   window.addEventListener('resize', applyBodyClasses);
@@ -386,6 +309,7 @@ export function initShellState(): void {
     if (ev) c.eventSource.on(ev, bump);
   }
   readOnline();
+  loadVersion();
   for (const ev of [c.eventTypes.ONLINE_STATUS_CHANGED, c.eventTypes.MAIN_API_CHANGED, c.eventTypes.CHATCOMPLETION_SOURCE_CHANGED, c.eventTypes.CONNECTION_PROFILE_LOADED]) {
     if (ev) c.eventSource.on(ev, () => setTimeout(readOnline, 0));
   }

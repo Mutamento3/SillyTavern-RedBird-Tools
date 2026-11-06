@@ -52,10 +52,10 @@ function addSettingsDrawer(): void {
         <div class="flex-container flexGap5">
           ${VIEW_IDS.map((v) => `<div class="menu_button" data-view="${v}">${VIEW_LABELS[v]}</div>`).join('')}
         </div>
-        <label class="checkbox_label"><input type="checkbox" id="rbt_shell_switch" /> 三栏外壳（电脑上用左栏和导航条代替原顶栏）</label>
-        <label class="checkbox_label"><input type="checkbox" id="rbt_auto_switch" /> 换卡时自动切换配套环境（关掉则只提醒）</label>
-        <label class="checkbox_label"><input type="checkbox" id="rbt_auto_world" /> 卡里带的世界书还没导入时，自动导入并绑定</label>
-        <small>也可以从输入框左边的魔法棒菜单打开，或输入 <code>/rbt</code>。</small>
+        <label class="checkbox_label"><input type="checkbox" id="rbt_shell_switch" /> 三栏界面（电脑上用左栏和导航条代替酒馆原来的顶栏）</label>
+        <label class="checkbox_label"><input type="checkbox" id="rbt_auto_switch" /> 换卡时自动切换世界书、正则和预设（关掉后只提醒）</label>
+        <label class="checkbox_label"><input type="checkbox" id="rbt_auto_world" /> 卡里自带的世界书还没导入时，自动导入并绑定</label>
+        <small>也可以从输入框左边的魔法棒菜单打开，或发送 <code>/rbt</code>。发送 <code>/rbt shell</code> 开关三栏界面。</small>
       </div>
     </div>`;
   host.appendChild(wrap);

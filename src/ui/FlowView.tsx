@@ -9,14 +9,14 @@ function PreviewButton({ onDone }: { onDone: () => void }) {
     <button
       class="rbt-btn"
       disabled={previewBusy.value}
-      title="按酒馆的方式组装下一轮提示词，但不发送给 AI（不花钱，也不改聊天）"
+      title="把下一轮要发给 AI 的内容先拼出来看看，不会真的发送，不花钱，也不改动聊天"
       onClick={async () => {
         const ok = await previewNextPrompt();
         if (ok) onDone();
-        else toast('warning', '没能生成预览。请确认选中了角色并使用 Chat Completion 模式。');
+        else toast('warning', '没能预览。请先打开一个角色，并使用 Chat Completion。');
       }}
     >
-      {previewBusy.value ? '组装中…' : '预览下一轮（不发送）'}
+      {previewBusy.value ? '正在预览…' : '预览下一轮'}
     </button>
   );
 }
@@ -133,7 +133,7 @@ function WIList({ wi }: { wi: ActivatedWI[] }) {
     for (const e of wi) m.set(e.book, [...(m.get(e.book) ?? []), e]);
     return [...m.entries()];
   }, [wi]);
-  if (!wi.length) return <Empty>这一轮没有触发任何世界书条目。</Empty>;
+  if (!wi.length) return <Empty>这一轮没有触发世界书条目。</Empty>;
   return (
     <div class="rbt-wi">
       {byBook.map(([book, entries]) => (
@@ -151,7 +151,7 @@ function WIList({ wi }: { wi: ActivatedWI[] }) {
                   ? <Chip color="#3d8bfd">常驻</Chip>
                   : e.matchedKeys.length
                     ? e.matchedKeys.slice(0, 4).map((k) => <Chip key={k} color="#2fbf8f">{k}</Chip>)
-                    : <Chip color="#888" title="最近消息里没找到它的关键词：可能是递归触发、其他条件，或关键词是正则">递归/其他</Chip>}
+                    : <Chip color="#888" title="最近的消息里没有它的关键词。可能是被别的条目带出来的，或关键词是正则">其他方式触发</Chip>}
               </summary>
               <pre class="rbt-content">{e.content}</pre>
             </details>
@@ -172,11 +172,10 @@ export function FlowView() {
   if (!cap) {
     return (
       <Empty>
-        还没有捕获到提示词。<br />
-        正常发送一条消息（或重新生成），这里就会显示这一轮真正发给 AI 的内容。<br />
-        也可以先预览一下，不会发送：<br />
+        发一条消息或重新生成后，这里会显示这一轮实际发给 AI 的全部内容。<br />
+        也可以先预览，不会发送：<br />
         <PreviewButton onDone={() => setSelectedId(null)} /><br />
-        <small>目前只支持 Chat Completion 模式。</small>
+        <small>仅支持 Chat Completion。</small>
       </Empty>
     );
   }
@@ -193,18 +192,18 @@ export function FlowView() {
         <PreviewButton onDone={() => setSelectedId(null)} />
       </div>
       {cap.genType === 'preview' && (
-        <div class="rbt-hint">这是预览：没有发送给 AI。预览时酒馆不会报告具体触发了哪些世界书条目，所以世界书内容只显示为整块；真正发送一条消息后能看到逐条来源。</div>
+        <div class="rbt-hint">这是预览，没有发给 AI。预览时看不到具体触发了哪些世界书条目，发一条消息后就能看到。</div>
       )}
       <div class="rbt-summary">
         <div class="rbt-summary-line">
-          <b>{result.messages.length}</b> 条消息 · 约 <b>{fmtTokens(result.totalTokens)}</b> tokens（估算）
+          <b>{result.messages.length}</b> 条消息 · 约 <b>{fmtTokens(result.totalTokens)}</b> tokens
           {cap.presetName && <> · 预设 <b>{cap.presetName}</b></>}
-          {!result.aligned && <Chip color="#c98a00" title="没能从提示词管理器拿到结构信息，来源是按文字匹配推断的">推断模式</Chip>}
+          {!result.aligned && <Chip color="#c98a00" title="拿不到预设的结构，来源是按文字推测的">推测</Chip>}
         </div>
         <StackBar totals={result.totals} total={result.totalTokens} />
         <Legend totals={result.totals} total={result.totalTokens} />
         {globalWI > 0 && (
-          <div class="rbt-warn">⚠ 有约 {globalWI} tokens 来自<b>全局世界书</b>：{globalBooks.join('、')}。如果这本书不属于这张卡，就是"串味"了。</div>
+          <div class="rbt-warn">约 {globalWI} tokens 来自全局世界书「{globalBooks.join('、')}」。如果它不属于这张卡，别的设定就混进来了。</div>
         )}
       </div>
       <div class="rbt-subtabs">

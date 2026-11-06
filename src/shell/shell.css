@@ -735,9 +735,10 @@ body.rbt-shell #qr--bar #qr--popoutTrigger {
 /* 全局工具箱的两个标签（全局 / 维护） */
 @media (min-width: 1001px) {
   .rbt-sheet-bar .rbt-sheet-title { flex-shrink: 0; }
-  .rbt-sheet-tabs { display: flex; gap: 2px; flex: 1; margin-left: 12px; }
+  .rbt-sheet-tabs { display: inline-flex; gap: 2px; margin: 0 auto 0 14px; padding: 2px; border-radius: 8px; background: var(--rbd-bg3, rgba(0, 0, 0, 0.22)); }
   .rbt-sheet-tabs button {
-    padding: 4px 12px;
+    padding: 3px 14px;
+    font-size: 12px !important;
     border: 0;
     border-radius: 6px;
     background: transparent;
@@ -746,7 +747,7 @@ body.rbt-shell #qr--bar #qr--popoutTrigger {
     cursor: pointer;
   }
   .rbt-sheet-tabs button:hover { color: var(--SmartThemeBodyColor); }
-  .rbt-sheet-tabs button.active { background: var(--rbd-bg2, rgba(255, 255, 255, 0.08)); color: var(--SmartThemeBodyColor); font-weight: 600; }
+  .rbt-sheet-tabs button.active { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.08)); color: var(--SmartThemeBodyColor); font-weight: 600; }
 }
 
 /* 「全局工具箱」：工具箱自己的入口，单独一行，和下面酒馆自带的入口分开 */
@@ -769,3 +770,161 @@ body.rbt-shell #qr--bar #qr--popoutTrigger {
   .rbt-gtool:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.1)); }
   .rbt-gtool.active { background: var(--rbd-accent-soft, rgba(226, 114, 91, 0.14)); color: var(--rbd-accent, #e2725b); }
 }
+
+/* =================================================== 首页：角色画廊 ===
+   图片是视觉中心：竖版大卡片、立绘铺满；底部用图片自己的颜色渐变 + 模糊托住名字。
+   层级只靠图片、底色和字重，没有边框和阴影。 */
+@media (min-width: 1001px) {
+  body.rbt-shell.rbt-home #sheld { visibility: hidden; }
+
+  .rbt-home-gallery {
+    position: fixed;
+    top: var(--rbt-nav-h);
+    left: var(--rbt-L);
+    width: var(--rbt-chat-w);
+    height: calc(100dvh - var(--rbt-nav-h));
+    z-index: 31;
+    overflow-y: auto;
+    padding: 28px clamp(20px, 3vw, 44px) 48px;
+    box-sizing: border-box;
+    background: var(--rbd-canvas, #0f1012);
+    color: var(--SmartThemeBodyColor);
+  }
+
+  .rbt-home-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+  .rbt-home-head h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; }
+  .rbt-home-head h1 small { margin-left: 6px; font-size: 15px; font-weight: 500; color: var(--rbd-text3, #6b707a); }
+  .rbt-home-search { width: 260px; }
+  .rbt-home-actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+  .rbt-home-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border: 0; border-radius: 999px;
+    background: var(--rbd-bg2, rgba(255, 255, 255, 0.07));
+    color: var(--SmartThemeBodyColor); font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap;
+  }
+  .rbt-home-btn:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.12)); }
+  .rbt-home-btn.primary { background: var(--rbd-accent, #e2725b); color: #fff; }
+  .rbt-home-btn.primary:hover { filter: brightness(1.08); }
+  .rbt-home-btn i { font-size: 12px; opacity: 0.85; }
+
+  .rbt-home-filters { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .rbt-home-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; }
+  .rbt-home-pills button {
+    padding: 5px 14px; border: 0; border-radius: 999px; background: transparent;
+    color: var(--rbd-text2, #9ca1aa); font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .rbt-home-pills button:hover { color: var(--SmartThemeBodyColor); background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); }
+  .rbt-home-pills button.active { background: var(--SmartThemeBodyColor, #e8e8e8); color: var(--rbd-canvas, #0f1012); font-weight: 600; }
+  .rbt-home-select {
+    width: auto !important; min-width: 0; margin: 0 !important;
+    padding: 5px 10px !important; border: 0 !important; border-radius: 999px !important;
+    background: var(--rbd-bg2, rgba(255, 255, 255, 0.06)) !important;
+    color: var(--rbd-text2, #9ca1aa) !important; font-size: 13px !important; cursor: pointer;
+  }
+  .rbt-home-select.active { color: var(--SmartThemeBodyColor) !important; background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.12)) !important; }
+  .rbt-home-note { margin: -8px 0 20px; font-size: 13px; color: var(--rbd-text2, #9ca1aa); line-height: 1.6; }
+  .rbt-linkbtn { padding: 0 2px; border: 0; background: none; color: var(--rbd-accent, #e2725b); font: inherit; cursor: pointer; }
+  .rbt-home-empty { padding: 80px 0; text-align: center; color: var(--rbd-text3, #6b707a); }
+
+  /* ---- 卡片 ---- */
+  .rbt-home-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+    gap: 22px 18px;
+  }
+  .rbt-hcard {
+    --tint: hsl(225 12% 16%);
+    position: relative;
+    aspect-ratio: 2 / 3;
+    border-radius: 22px;
+    overflow: hidden;
+    background: var(--tint);
+    isolation: isolate;
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .rbt-hcard:hover { transform: translateY(-4px) scale(1.015); }
+  .rbt-hcard-hit {
+    position: absolute; inset: 0; display: block; width: 100%; height: 100%;
+    padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: center; cursor: pointer;
+  }
+  .rbt-hcard-hit:focus-visible { outline: 2px solid var(--rbd-accent, #e2725b); outline-offset: -2px; border-radius: 22px; }
+  .rbt-hcard-img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; object-position: 50% 18%;
+    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .rbt-hcard:hover .rbt-hcard-img { transform: scale(1.04); }
+  /* 底部：先模糊，再叠图片自己的颜色，渐渐托出名字 */
+  .rbt-hcard-shade {
+    position: absolute; inset: 0;
+    -webkit-backdrop-filter: blur(22px) saturate(1.2);
+    backdrop-filter: blur(22px) saturate(1.2);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 48%, #000 76%);
+    mask-image: linear-gradient(to bottom, transparent 48%, #000 76%);
+    background: linear-gradient(to bottom, transparent 40%, color-mix(in srgb, var(--tint) 70%, transparent) 70%, var(--tint) 100%);
+  }
+  .rbt-hcard-text {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 0 16px 20px;
+    color: #fff;
+  }
+  .rbt-hcard-name {
+    font-size: 19px; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    text-wrap: balance;
+  }
+  .rbt-hcard-meta {
+    max-width: 100%; font-size: 12px; color: rgba(255, 255, 255, 0.68);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* 左上角：毛玻璃小标签 */
+  .rbt-hcard-pill {
+    position: absolute; top: 12px; left: 12px;
+    display: inline-flex; align-items: center; gap: 6px; max-width: calc(100% - 24px);
+    padding: 5px 11px 5px 9px; border-radius: 999px;
+    background: rgba(20, 20, 24, 0.42);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
+    color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .rbt-hcard-pill.warn > i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #f0a43a; }
+  .rbt-hcard-pill > i.fa-solid { font-size: 11px; opacity: 0.9; }
+  /* 右上角：收藏标记；悬停时换成收藏 / 编辑按钮 */
+  .rbt-hcard-favmark {
+    position: absolute; top: 12px; right: 12px;
+    display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(20, 20, 24, 0.42);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    color: #ffd45e; font-size: 12px; pointer-events: none;
+    transition: opacity 0.15s;
+  }
+  .rbt-hcard-acts {
+    position: absolute; top: 12px; right: 12px; z-index: 2;
+    display: flex; gap: 6px; opacity: 0; transition: opacity 0.15s;
+  }
+  .rbt-hcard:hover .rbt-hcard-acts, .rbt-hcard:focus-within .rbt-hcard-acts { opacity: 1; }
+  .rbt-hcard:hover .rbt-hcard-favmark, .rbt-hcard:focus-within .rbt-hcard-favmark { opacity: 0; }
+  .rbt-hcard-act {
+    display: grid; place-items: center; width: 30px; height: 30px; padding: 0;
+    border: 0; border-radius: 50%;
+    background: rgba(20, 20, 24, 0.5);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    color: #fff; font-size: 12px; cursor: pointer;
+  }
+  .rbt-hcard-act:hover { background: rgba(20, 20, 24, 0.72); }
+  .rbt-hcard-act.on { color: #ffd45e; }
+
+  /* ---- 左栏：标题、底部的酒馆链接 ---- */
+  .rbt-left-title { font-size: 12px; font-weight: 600; color: var(--rbd-text2, #9ca1aa); padding: 2px 2px 0; }
+  .rbt-left-foot { display: flex; flex-direction: column; gap: 2px; }
+  .rbt-foot-links { display: flex; gap: 12px; padding: 2px 0 2px; }
+  .rbt-foot-links a { font-size: 12px; color: var(--rbd-text3, #6b707a); text-decoration: none; white-space: nowrap; }
+  .rbt-foot-links a:hover { color: var(--SmartThemeBodyColor); }
+  .rbt-foot-links i { margin-right: 3px; }
+  .rbt-foot-row { display: flex; align-items: center; justify-content: space-between; }
+  .rbt-foot-version { font-size: 11px; color: var(--rbd-text3, #6b707a); opacity: 0.7; }
+}
+
+/* 酒馆的 .menu_button 是 width: min-content，中文会一个字一行；按钮文字不换行 */
+#rbt_settings .menu_button,
+body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }

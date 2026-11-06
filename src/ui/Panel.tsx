@@ -102,7 +102,7 @@ export function Panel() {
             <button key={id} class={activeTab.value === id ? 'active' : ''} onClick={() => { activeTab.value = id; }}>{VIEW_LABELS[id]}</button>
           ))}
         </div>
-        <button class="rbt-close" title="导出诊断数据（存到酒馆 user/files 文件夹，方便排查问题）" onClick={() => { void exportDiagnostics(); }}>⤓</button>
+        <button class="rbt-close" title="导出诊断文件，用来排查问题" onClick={() => { void exportDiagnostics(); }}>⤓</button>
         <button class="rbt-close" title="关闭" onClick={() => { panelOpen.value = false; }}>✕</button>
       </div>
       <div class="rbt-body">

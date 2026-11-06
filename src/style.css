@@ -463,3 +463,262 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-owner-row .rbt-env-item { margin-bottom: 2px; }
 .rbt-owner-pick { padding-left: 8px; align-items: center; }
 .rbt-owner-pick .rbt-select { flex: 1; }
+
+/* =====================================================================
+   设计系统 v2（Apple HIG 式）：覆盖上面的旧样式，让工具箱各页面和三栏外壳是同一种语言。
+   - 层级只靠底色深浅 + 留白 + 字重 / 字色；不要装饰性边框和阴影。
+   - 分区 = 一块浅一层的圆角底色（grouped list）；分区里的行只用极细分隔线。
+   - 状态 = 中性文字前的小色点（绿 = 正常，橙 = 需要注意，红 = 有问题）；没有含义的标签一律灰色。
+   - 唯一强调色只给：当前标签、开关、主按钮。
+   - 字号：标题 15 / 正文 13 / 次要 12 / 辅助 11。
+   ===================================================================== */
+.rbt-panel,
+.rbt-scope {
+  --t1: var(--SmartThemeBodyColor, #dcdcd2);
+  --t2: var(--rbd-text2, color-mix(in srgb, var(--t1) 66%, transparent));
+  --t3: var(--rbd-text3, color-mix(in srgb, var(--t1) 46%, transparent));
+  --g2: var(--rbd-bg2, rgba(255, 255, 255, 0.045));
+  --g2h: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.08));
+  --g3: var(--rbd-bg3, rgba(0, 0, 0, 0.22));
+  --hair: var(--rbd-hairline, rgba(255, 255, 255, 0.06));
+  --accent: var(--rbd-accent, #e2725b);
+  --accent-soft: var(--rbd-accent-soft, rgba(226, 114, 91, 0.14));
+  --ok: #4cb782;
+  --warnc: #e0a040;
+  --bad: #e5484d;
+  /* 旧变量指向新值，没改到的旧规则也会一起变安静 */
+  --rbt-border: var(--hair);
+  --rbt-muted: var(--t3);
+  --rbt-soft: var(--g2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.rbt-panel { box-shadow: none; border-left-color: var(--hair); }
+.rbt-muted { color: var(--t3); }
+.rbt-ok { color: var(--ok); }
+.rbt-danger { color: var(--bad); }
+
+/* ---- 标签页：统一成分段控件 ---- */
+.rbt-tabs,
+.rbt-subtabs {
+  display: inline-flex;
+  flex: 0 1 auto;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--g3);
+}
+.rbt-subtabs { margin: 0 0 10px; }
+.rbt-tabs button,
+.rbt-subtabs button {
+  padding: 3px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--t2);
+  font-size: 12px;
+}
+.rbt-tabs button:hover,
+.rbt-subtabs button:hover { color: var(--t1); }
+.rbt-tabs button.active,
+.rbt-subtabs button.active {
+  border: 0;
+  background: var(--g2h);
+  color: var(--t1);
+  font-weight: 600;
+}
+.rbt-header { gap: 10px; border-bottom: 1px solid var(--hair); }
+
+/* ---- 分区：一块浅一层的圆角底色，没有边框 ---- */
+.rbt-summary,
+.rbt-card-section,
+.rbt-section,
+.rbt-profile,
+.rbt-card-head,
+.rbt-stack,
+.rbt-var-changes,
+.rbt-wi-book {
+  border: 0;
+  border-radius: 10px;
+  background: var(--g2);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.rbt-card-section-head { margin-bottom: 6px; }
+.rbt-card-section-head b { font-size: 13px; font-weight: 600; }
+.rbt-card-section-head small { font-size: 11px; color: var(--t3); }
+.rbt-page-group-title { font-size: 11px; font-weight: 600; color: var(--t3); letter-spacing: 0.02em; margin: 2px 2px -4px; }
+.rbt-section > summary { font-weight: 600; }
+
+/* ---- 行：只用极细分隔线 ---- */
+.rbt-env-item,
+.rbt-sub-item,
+.rbt-var-change,
+.rbt-wi-entry,
+.rbt-link-row,
+.rbt-owner-row,
+.rbt-card-row,
+.rbt-vartree-row {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px solid var(--hair);
+}
+.rbt-env-item { padding: 7px 0; margin-bottom: 0; }
+.rbt-env-item:last-child,
+.rbt-sub-item:last-child,
+.rbt-var-change:last-child,
+.rbt-wi-entry:last-child,
+.rbt-link-row:last-child,
+.rbt-owner-row:last-child,
+.rbt-card-row:last-child,
+.rbt-env-details:last-child > summary .rbt-env-item { border-bottom: 0; }
+.rbt-owner-row .rbt-env-item { border-bottom: 0; }
+.rbt-env-details > summary .rbt-env-item { border-bottom: 1px solid var(--hair); }
+.rbt-var-change { padding: 8px 0; }
+.rbt-card-row { padding: 8px 4px; border-radius: 0; }
+.rbt-card-row:hover { background: var(--g2h); }
+.rbt-card-row.current { border-color: var(--hair); background: var(--accent-soft); }
+.rbt-sub-list { margin: 4px 0 8px; padding-left: 14px; border-left: 0; }
+.rbt-env-children { margin: 4px 0 8px 14px; color: var(--t3); }
+
+/* ---- 标签 / 状态 ---- */
+.rbt-chip {
+  border: 0;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--t2);
+  font-size: 11px;
+  line-height: 18px;
+  padding: 0 6px;
+}
+.rbt-chip.has-color::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--chip);
+  flex-shrink: 0;
+}
+.rbt-chip-depth { --chip: var(--t3); }
+.rbt-role { background: transparent; color: var(--t3); padding: 0; font-weight: 600; }
+.rbt-role-user { color: var(--t2); }
+.rbt-role-assistant { color: var(--t2); }
+
+/* ---- 按钮 / 开关 / 输入框 ---- */
+.rbt-btn {
+  border: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--t1);
+  padding: 4px 12px;
+  font-size: 12px;
+}
+.rbt-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.rbt-btn-small { padding: 2px 10px; font-size: 12px; }
+.rbt-btn-primary { border: 0; background: var(--accent); color: #fff; }
+.rbt-btn-primary:hover { background: color-mix(in srgb, var(--accent) 88%, #fff); }
+.rbt-switch input:checked + span { background: var(--accent); }
+.rbt-switch span { background: rgba(255, 255, 255, 0.16); }
+.rbt-panel .text_pole,
+.rbt-scope .text_pole,
+.rbt-panel select,
+.rbt-scope select {
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: var(--g3) !important;
+  color: var(--t1);
+  box-shadow: none !important;
+}
+.rbt-panel .text_pole:focus,
+.rbt-scope .text_pole:focus,
+.rbt-panel select:focus,
+.rbt-scope select:focus { box-shadow: 0 0 0 1px var(--accent) !important; }
+
+/* ---- 提示块 ---- */
+.rbt-warn,
+.rbt-cards .rbt-warn {
+  border: 0;
+  border-radius: 8px;
+  background: rgba(224, 160, 64, 0.1);
+  color: var(--t1);
+  padding: 8px 10px;
+}
+.rbt-hint,
+.rbt-cards .rbt-hint,
+.rbt-flow > .rbt-hint {
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--t2);
+  padding: 8px 10px;
+}
+.rbt-empty { padding: 16px 8px; font-size: 12px; color: var(--t3); line-height: 1.7; }
+.rbt-var-changes .rbt-empty { padding: 4px 0; text-align: left; }
+
+/* ---- 信息流：来源用小色点，不用左侧色条 ---- */
+.rbt-stack { padding: 4px 12px; gap: 0; }
+.rbt-msg {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px solid var(--hair);
+}
+.rbt-msg:last-child { border-bottom: 0; }
+.rbt-kind-injection { border-style: solid; background: transparent; }
+.rbt-msg-head { padding: 7px 0 2px; gap: 8px; }
+.rbt-msg-head::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--cat);
+  order: 1;
+}
+.rbt-msg-idx { order: 0; min-width: 1.4em; color: var(--t3); }
+.rbt-msg-head > :not(.rbt-msg-idx) { order: 2; }
+.rbt-msg-label { font-weight: 600; }
+.rbt-msg-preview { padding: 0 0 7px 38px; color: var(--t3); }
+.rbt-msg.open { background: transparent; }
+.rbt-chatgroup { border: 0; border-radius: 0; background: transparent; border-bottom: 1px solid var(--hair); }
+.rbt-chatgroup:last-child { border-bottom: 0; }
+.rbt-chatgroup-head { padding: 7px 0; color: var(--t2); }
+.rbt-chatgroup > .rbt-msg { margin: 0 0 0 18px; }
+.rbt-content { border-radius: 8px; background: var(--g3); }
+.rbt-seg { box-shadow: none; background: color-mix(in srgb, var(--seg) 16%, transparent); }
+.rbt-stackbar { height: 8px; border-radius: 4px; }
+.rbt-legend { color: var(--t2); }
+.rbt-wi-book-head { margin-bottom: 6px; }
+.rbt-wi-entry summary { padding: 7px 0; }
+.rbt-vartree-row { padding: 4px 0; }
+.rbt-vartree-row.changed { background: rgba(224, 160, 64, 0.1); }
+
+/* 变量表：一列键一列值，不要嵌套滚动、不要代码块底色 */
+.rbt-panel .rbt-vartree-list, .rbt-scope .rbt-vartree-list { max-height: none; overflow: visible; }
+.rbt-panel .rbt-vartree-row code, .rbt-scope .rbt-vartree-row code,
+.rbt-panel .rbt-var-path, .rbt-scope .rbt-var-path {
+  background: none; border: 0; padding: 0; color: var(--t2); font-size: 12px;
+}
+.rbt-panel .rbt-vartree-row span, .rbt-scope .rbt-vartree-row span { color: var(--t1); }
+
+/* 设置行：名字 + 灰色说明，开关靠右 */
+.rbt-switch-row { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
+.rbt-switch-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rbt-switch-text > span { color: var(--t1); }
+.rbt-switch-text > small { color: var(--t3); font-size: 11px; line-height: 1.45; }
+.rbt-switch-row .rbt-switch { flex: none; }
+.rbt-check input { accent-color: var(--accent); }
+
+/* 输入框和正文同一字号，不要比周围大一圈 */
+.rbt-panel .text_pole, .rbt-scope .text_pole,
+.rbt-panel select, .rbt-scope select { font-size: 12.5px !important; min-height: 30px; padding: 4px 8px !important; }
+
+/* 手机上五个标签挤一行：不显示滚动条，收窄间距 */
+.rbt-panel .rbt-tabs { scrollbar-width: none; }
+.rbt-panel .rbt-tabs::-webkit-scrollbar { display: none; }
+@media (max-width: 480px) {
+  .rbt-panel .rbt-tabs button { padding: 3px 9px; }
+}

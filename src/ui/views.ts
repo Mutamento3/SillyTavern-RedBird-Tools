@@ -44,6 +44,8 @@ export function openView(view: ViewId): void {
     sheetView.value = view;
     return;
   }
+  // 一个时刻只看一样：要在右侧面板里看的东西，先把全局工具箱收起来，不然会被挡住
+  if (sheetView.value) sheetView.value = null;
   openInDock(view);
 }
 

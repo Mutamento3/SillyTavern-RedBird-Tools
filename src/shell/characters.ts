@@ -64,8 +64,8 @@ export function listCharacters(): CharItem[] {
     const problems: string[] = [];
     if (info.world.state === 'missing') problems.push('世界书缺文件');
     if (info.world.state === 'unbound') problems.push('世界书没导入');
-    if (info.regex.total > 0 && !info.regex.allowed) problems.push('正则没允许');
-    if (info.scripts.total > 0 && !info.scripts.enabled) problems.push('脚本没启用');
+    if (info.regex.total > 0 && !info.regex.allowed) problems.push('正则未允许运行');
+    if (info.scripts.total > 0 && !info.scripts.enabled) problems.push('脚本未启用');
     if (requiredExtensions(info).some((e) => extStatus(e.req, installed).status !== 'enabled')) problems.push('缺插件');
     const notes = cleanPreview(ch.data?.creator_notes ?? ch.creatorcomment ?? '');
     return {

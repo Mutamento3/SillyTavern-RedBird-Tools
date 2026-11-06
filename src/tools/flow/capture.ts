@@ -51,7 +51,7 @@ const GEN_LABELS: Record<string, string> = {
   continue: '继续',
   impersonate: '扮演用户',
   quiet: '后台生成',
-  preview: '预览（未发送）',
+  preview: '预览',
   ask_command: '/ask',
 };
 

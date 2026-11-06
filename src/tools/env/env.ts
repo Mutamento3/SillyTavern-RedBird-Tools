@@ -53,7 +53,7 @@ const RX = { GLOBAL: 0, SCOPED: 1, PRESET: 2 } as const;
 type RxType = (typeof RX)[keyof typeof RX];
 
 function regexEffectLabel(r: Any): string {
-  return [r.markdownOnly ? '仅显示' : '', r.promptOnly ? '仅提示词' : ''].filter(Boolean).join(' + ') || '修改楼层';
+  return [r.markdownOnly ? '只改显示' : '', r.promptOnly ? '只改发给 AI 的' : ''].filter(Boolean).join('、') || '改消息原文';
 }
 
 /**
@@ -179,14 +179,14 @@ export function buildEnvReport(): EnvReport {
     items.push({
       id: `wb:g:${name}`, scope: 'global', kind: 'worldbook', name, enabled: true,
       leaks: !scopes.character.has(name) && !scopes.chat.has(name),
-      detail: scopes.character.has(name) ? '同时也是这张卡的世界书' : '对所有卡生效',
+      detail: scopes.character.has(name) ? '也绑在当前卡上' : '对所有卡生效',
       toggle: async (on) => runSlash(`/world state=${on ? 'on' : 'off'} silent=true ${slashQuote(name)}`),
     });
   }
   // --- global regex
   for (const r of (es.regex ?? []) as Any[]) {
     const owner = owners[r.id];
-    const ownerText = owner ? `属于${owner.kind === 'extension' ? '扩展' : owner.kind === 'card' ? '角色卡' : '预设'}「${owner.label}」` : '';
+    const ownerText = owner ? `属于${owner.kind === 'extension' ? '插件' : owner.kind === 'card' ? '角色卡' : '预设'}「${owner.label}」` : '';
     const elsewhere = owner && ((owner.kind === 'card' && owner.key !== avatar) || (owner.kind === 'preset' && owner.key !== preset.name));
     items.push({
       id: `rx:g:${r.id ?? r.scriptName}`, scope: 'global', kind: 'regex', name: r.scriptName || '(未命名正则)',
@@ -210,8 +210,8 @@ export function buildEnvReport(): EnvReport {
   const exts = enabledThirdPartyExtensions();
   if (exts.length) {
     items.push({
-      id: 'ext', scope: 'global', kind: 'extension', name: `已启用的第三方扩展 ${exts.length} 个`, enabled: true, leaks: false,
-      detail: '扩展对所有卡生效，关闭需要刷新页面，这里只做提醒', children: exts,
+      id: 'ext', scope: 'global', kind: 'extension', name: `已启用的插件 ${exts.length} 个`, enabled: true, leaks: false,
+      detail: '对所有卡生效', children: exts,
     });
   }
 
@@ -223,9 +223,9 @@ export function buildEnvReport(): EnvReport {
     const allowed = (es.preset_allowed_regex?.[preset.api] ?? []).includes(preset.name);
     const active = preset.regex.filter((r: Any) => !r.disabled);
     items.push({
-      id: 'rx:p', scope: 'preset', kind: 'regex', name: `预设正则 ${preset.regex.length} 条（启用 ${active.length}）`,
+      id: 'rx:p', scope: 'preset', kind: 'regex', name: `预设里的正则 ${preset.regex.length} 条，开着 ${active.length} 条`,
       enabled: allowed, leaks: allowed && active.length > 0,
-      detail: allowed ? '只要用这个预设，玩哪张卡都会生效。总开关 = 是否允许这个预设的正则运行' : '这个预设的正则未被允许运行',
+      detail: allowed ? '用这个预设时对所有卡生效。右边的开关决定是否允许运行' : '未允许运行，打开右边的开关才会生效',
       toggle: (on) => setRegexGroupAllowed(RX.PRESET, on),
       subItems: regexSubItems(RX.PRESET, preset.regex),
     });
@@ -234,8 +234,8 @@ export function buildEnvReport(): EnvReport {
   if (thPreset.length) {
     const on = (thSettings?.enabled?.presets ?? []).includes(preset.name);
     items.push({
-      id: 'th:p', scope: 'preset', kind: 'script', name: `预设脚本（酒馆助手）${thPreset.length} 个`, enabled: on,
-      leaks: on, detail: on ? '只要用这个预设，玩哪张卡都会运行' : '未启用',
+      id: 'th:p', scope: 'preset', kind: 'script', name: `预设里的酒馆助手脚本 ${thPreset.length} 个`, enabled: on,
+      leaks: on, detail: on ? '用这个预设时对所有卡生效' : '未启用',
       children: thPreset.map((s) => `${s.enabled ? '●' : '○'} ${s.name}`),
     });
   }
@@ -250,8 +250,8 @@ export function buildEnvReport(): EnvReport {
       const allowed = (es.character_allowed_regex ?? []).includes(avatar);
       const activeCard = cardRegex.filter((r: Any) => !r.disabled).length;
       items.push({
-        id: 'rx:c', scope: 'character', kind: 'regex', name: `卡内正则 ${cardRegex.length} 条（启用 ${activeCard}）`, enabled: allowed, leaks: false,
-        detail: allowed ? '总开关 = 是否允许这张卡的正则运行' : '未允许运行（卡里的正则不会生效）',
+        id: 'rx:c', scope: 'character', kind: 'regex', name: `卡里的正则 ${cardRegex.length} 条，开着 ${activeCard} 条`, enabled: allowed, leaks: false,
+        detail: allowed ? '右边的开关决定是否允许运行' : '未允许运行，卡里的正则不会生效',
         toggle: (on) => setRegexGroupAllowed(RX.SCOPED, on),
         subItems: regexSubItems(RX.SCOPED, cardRegex),
       });
@@ -261,12 +261,12 @@ export function buildEnvReport(): EnvReport {
       const on = thCharacterScriptsEnabled(es, char);
       items.push({
         id: 'th:c', scope: 'character', kind: 'script', name: `角色脚本（酒馆助手）${thChar.length} 个`, enabled: on, leaks: false,
-        detail: on ? '已启用' : '未启用（卡里的脚本不会运行）', children: thChar.map((s) => `${s.enabled ? '●' : '○'} ${s.name}`),
+        detail: on ? '已启用' : '未启用，卡里的脚本不会运行', children: thChar.map((s) => `${s.enabled ? '●' : '○'} ${s.name}`),
       });
     }
   }
-  for (const name of scopes.chat) items.push({ id: `wb:chat:${name}`, scope: 'chat', kind: 'worldbook', name, enabled: true, leaks: false, detail: '绑定到当前聊天' });
-  for (const name of scopes.persona) items.push({ id: `wb:p:${name}`, scope: 'persona', kind: 'worldbook', name, enabled: true, leaks: true, detail: '绑定到用户设定，换卡后仍生效' });
+  for (const name of scopes.chat) items.push({ id: `wb:chat:${name}`, scope: 'chat', kind: 'worldbook', name, enabled: true, leaks: false, detail: '绑在当前聊天上' });
+  for (const name of scopes.persona) items.push({ id: `wb:p:${name}`, scope: 'persona', kind: 'worldbook', name, enabled: true, leaks: true, detail: '绑在用户设定上，换卡后仍然生效' });
 
   const profile = avatar ? settings().profiles[avatar] : undefined;
   const report: EnvReport = { cardName: char?.name ?? '', avatar, presetApi: preset.api, presetName: preset.name, items, profile, drift: null };

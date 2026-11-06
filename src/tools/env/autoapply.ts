@@ -158,7 +158,7 @@ export async function applyPlan(plan: ApplyPlan): Promise<string[]> {
   const changes: string[] = [];
   if (plan.preset) {
     await switchPreset(plan.preset);
-    changes.push(`预设 → ${plan.preset}`);
+    changes.push(`预设换成「${plan.preset}」`);
   }
   if (plan.worldsOn.length || plan.worldsOff.length) {
     await setWorlds(plan.worldsOn, plan.worldsOff);
@@ -220,16 +220,16 @@ export async function autoApplyOnSwitch(openStatus: () => void): Promise<void> {
   if (planHasChanges(plan) || imported.length) {
     const changes = [...imported, ...(planHasChanges(plan) ? await applyPlan(plan) : [])];
     if (changes.length) {
-      toast('success', `已按「${char.name}」的配套环境切换：${changes.join('；')}。点这里查看或撤销。`, '换卡自动套用', { onclick: openStatus, timeOut: 9000 });
+      toast('success', `已换成「${char.name}」的配置：${changes.join('；')}。点这里查看或撤销。`, '自动切换', { onclick: openStatus, timeOut: 9000 });
     }
   }
   const disabled = plan.plugins.filter((p) => p.status === 'disabled');
   const missing = plan.plugins.filter((p) => p.status === 'missing');
   if (disabled.length || missing.length) {
     const parts = [
-      disabled.length && `没启用：${disabled.map((p) => p.name).join('、')}`,
-      missing.length && `没安装：${missing.map((p) => p.name).join('、')}`,
+      disabled.length && `未启用：${disabled.map((p) => p.name).join('、')}`,
+      missing.length && `未安装：${missing.map((p) => p.name).join('、')}`,
     ].filter(Boolean);
-    toast('warning', `「${char.name}」需要的插件${parts.join('；')}。点这里处理。`, '换卡自动套用', { onclick: openStatus, timeOut: 9000 });
+    toast('warning', `「${char.name}」需要的插件${parts.join('；')}。点这里处理。`, '自动切换', { onclick: openStatus, timeOut: 9000 });
   }
 }
