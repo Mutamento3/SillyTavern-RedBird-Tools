@@ -5,7 +5,7 @@
 ## 安装
 
 1. 打开酒馆 → 顶栏「扩展」→「安装扩展程序」；
-2. 粘贴 `https://github.com/GuandongTao/SillyTavern-RedBird-Tools`，点安装；
+2. 粘贴 `https://github.com/RebBirdTD/SillyTavern-RedBird-Tools`，点安装；
 3. 装好后刷新页面。从输入框左边的魔法棒菜单 →「RedBird 工具箱」打开，或者发送 `/rbt`。
 
 想用三栏界面（左栏 + 首页角色画廊 + 状态栏）：在「扩展 › RedBird 工具箱」里勾「三栏界面」，或者发送 `/rbt shell`。
