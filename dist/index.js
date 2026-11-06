@@ -318,7 +318,7 @@ function settings() {
   if (!es[SETTINGS_KEY]) es[SETTINGS_KEY] = {};
   const s2 = es[SETTINGS_KEY];
   s2.toastOnCardSwitch ??= true;
-  s2.shellEnabled ??= true;
+  s2.shellEnabled ??= false;
   s2.autoApplyEnv ??= true;
   s2.profiles ??= {};
   s2.cards ??= {};

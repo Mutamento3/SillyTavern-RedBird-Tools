@@ -2,6 +2,17 @@
 
 一个 SillyTavern 扩展，用来**边玩边学**别人写的预设、大世界卡、MVU 卡和前端卡。
 
+## 安装
+
+1. 打开酒馆 → 顶栏「扩展」→「安装扩展程序」；
+2. 粘贴 `https://github.com/GuandongTao/SillyTavern-RedBird-Tools`，点安装；
+3. 装好后刷新页面。从输入框左边的魔法棒菜单 →「RedBird 工具箱」打开，或者发送 `/rbt`。
+
+想用三栏界面（左栏 + 首页角色画廊 + 状态栏）：在「扩展 › RedBird 工具箱」里勾「三栏界面」，或者发送 `/rbt shell`。
+
+要求：SillyTavern 1.19 左右，信息流 / 推荐模型只支持 Chat Completion。建议装上酒馆助手（JS-Slash-Runner），MVU 变量卡需要它。
+
+
 工具箱有 5 个视图，按"用户此刻在做什么"放在不同的地方：
 
 | 视图 | 用来做什么 | 在哪里 |

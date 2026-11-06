@@ -6,6 +6,7 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.1.0",
-  "auto_update": false
+  "version": "0.2.0",
+  "auto_update": false,
+  "homePage": "https://github.com/GuandongTao/SillyTavern-RedBird-Tools"
 }

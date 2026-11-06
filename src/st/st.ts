@@ -157,7 +157,8 @@ export function settings(): RbtSettings {
   if (!es[SETTINGS_KEY]) es[SETTINGS_KEY] = {};
   const s = es[SETTINGS_KEY];
   s.toastOnCardSwitch ??= true;
-  s.shellEnabled ??= true;
+  // 新装的人先用酒馆原来的界面 + 工具箱；三栏界面在设置里或 /rbt shell 打开
+  s.shellEnabled ??= false;
   s.autoApplyEnv ??= true;
   s.profiles ??= {};
   s.cards ??= {};
