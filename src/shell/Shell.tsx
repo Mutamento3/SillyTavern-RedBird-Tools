@@ -237,10 +237,10 @@ function LeftColumn() {
 
 // ----------------------------------------------------------------- nav ---
 
-/** 「世界书」 with how many books are loaded; a dot when another card's book is on globally. */
+/** 「世界书（N）」: N = how many books are loaded in this chat (card, extra, chat, persona, global); a dot when another card's book is on globally. */
 function WorldButton() {
   const w = worldStatus();
-  return <DrawerButton k="worldinfo" compact label={w.count ? `世界书 ${w.count}` : '世界书'} title={w.warn ? `${w.title}
+  return <DrawerButton k="worldinfo" compact label={`世界书（${w.count}）`} title={w.warn ? `${w.title}
 ${w.warn}` : w.title} dot={w.warn} />;
 }
 
@@ -267,6 +267,7 @@ function NavBar() {
           <>
             {char && <img class="rbt-nav-avatar" src={c.getThumbnailUrl('avatar', char.avatar)} alt="" />}
             <span class="rbt-nav-name">{name}</span>
+            <DrawerButton k="characters" compact label="编辑卡片" title={`编辑「${name}」的角色卡`} />
             {chatId && (
               <button type="button" class="rbt-nav-save" title="切换 / 管理这个角色的存档" onClick={() => trigger('#option_select_chat')}>
                 {prettyChatName(chatId, name)} <i class="fa-solid fa-chevron-down" />
@@ -281,7 +282,6 @@ function NavBar() {
       </div>
       {char && <StatusBar />}
       <div class="rbt-nav-actions">
-        {!home && <DrawerButton k="characters" compact label="编辑卡片" title="打开酒馆的角色卡编辑页" />}
         {!home && <WorldButton />}
         {!home && <ToolboxButton />}
       </div>

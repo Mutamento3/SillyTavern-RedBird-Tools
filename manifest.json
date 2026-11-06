@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "工具箱会提醒新版本了；推荐模型、聊天状态栏、导入窗口。"
+  "rbt_whats_new": "状态栏显示 API；导入时认出 PNG/JSON 是同一张卡，世界书和预设可以直接绑到卡上；编辑卡片挪到角色名旁边。"
 }

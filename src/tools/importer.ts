@@ -8,6 +8,7 @@ import { refreshEnv } from './env/env';
 import type { GlobalTab } from '../ui/views';
 
 import { detectJson, type ImportKind } from '../core/importKind';
+import { cardFromPng, looksLikeCardBook, summarizeCard, worldEntryCount, type CardSummary } from '../core/cardFile';
 export type { ImportKind };
 
 export const KIND_LABEL: Record<ImportKind, string> = {
@@ -59,12 +60,63 @@ export interface ImportItem {
   linkLabel: string;
   url: string;
   notes: string;
+  /** Character cards: what is inside (name, built-in book, regex). */
+  card?: CardSummary;
+  /** Worldbooks: how many entries. */
+  entries?: number;
+  /** Left out unless the user ticks it back on (e.g. the JSON copy of a PNG card). */
+  skip?: boolean;
+  /** Why it was left out / what we suggest. */
+  note?: string;
+  /** Worldbook: bind to the card imported in the same batch. Preset: make it that card's recommended preset. */
+  toCard?: boolean;
 }
 
 export async function prepareImport(files: File[]): Promise<ImportItem[]> {
   const out: ImportItem[] = [];
-  for (const file of files) out.push({ file, kind: await detectKind(file), activate: false, author: '', linkLabel: '', url: '', notes: '' });
-  return out;
+  for (const file of files) {
+    const it: ImportItem = { file, kind: await detectKind(file), activate: false, author: '', linkLabel: '', url: '', notes: '' };
+    try {
+      if (it.kind === 'character') {
+        const data = /.png$/i.test(file.name) ? cardFromPng(new Uint8Array(await file.arrayBuffer())) : /.json$/i.test(file.name) ? JSON.parse(await file.text()) : null;
+        it.card = summarizeCard(data) ?? undefined;
+      }
+      if (it.kind === 'world') it.entries = worldEntryCount(JSON.parse(await file.text()));
+    } catch { /* unreadable: import as-is */ }
+    out.push(it);
+  }
+  return relate(out);
+}
+
+/**
+ * Files released together: a PNG and a JSON of the same card are one card (keep the PNG, it has
+ * the avatar); a worldbook next to a single card is either the book the card already carries
+ * (no need to import it) or one to bind to it; a preset next to it can become its recommended preset.
+ */
+export function relate(items: ImportItem[]): ImportItem[] {
+  const byName = new Map<string, ImportItem[]>();
+  for (const it of items) if (it.kind === 'character' && it.card) byName.set(it.card.name, [...(byName.get(it.card.name) ?? []), it]);
+  for (const [name, group] of byName) {
+    if (group.length < 2) continue;
+    const keep = group.find((g) => /.png$/i.test(g.file.name)) ?? group[0];
+    for (const g of group) if (g !== keep) { g.skip = true; g.note = `和「${keep.file.name}」是同一张卡（${name}）。PNG 带头像，导入它就够了。`; }
+  }
+  const cards = items.filter((i) => i.kind === 'character' && !i.skip);
+  if (cards.length !== 1 || !cards[0].card) return items;
+  const card = cards[0].card;
+  for (const it of items) {
+    if (it.kind === 'world') {
+      if (looksLikeCardBook(card, baseName(it.file), it.entries ?? 0)) {
+        it.skip = true;
+        it.note = `看起来就是「${card.name}」卡里自带的那本世界书（卡里 ${card.bookEntries} 条，这个文件 ${it.entries ?? '?'} 条）。打开这张卡时会自动导入，不用单独导入。`;
+      } else {
+        it.toCard = true;
+        it.note = card.bookEntries ? `「${card.name}」卡里已经自带一本世界书，这本会作为附加世界书绑上。` : `和「${card.name}」一起发布的世界书。`;
+      }
+    }
+    if (it.kind === 'preset') it.toCard = true;
+  }
+  return items;
 }
 
 const baseName = (f: File) => f.name.replace(/\.[^/.]+$/, '');
@@ -96,9 +148,15 @@ export async function runImport(items: ImportItem[], hooks: {
   openCharacter: (avatar: string) => Promise<void>;
   saveSource: (kind: 'preset' | 'world', name: string, rec: { author: string; links: { label: string; url: string }[]; notes: string }) => void;
   saveCardRecord: (avatar: string, rec: { links: { label: string; url: string }[]; notes: string }) => void;
+  /** `extra`: the card already carries a book, so add this one as an extra book. */
+  bindWorld: (avatar: string, world: string, extra: boolean) => Promise<void>;
+  setCardPreset: (avatar: string, preset: string) => void;
   normalizeUrl: (s: string) => string;
 }): Promise<ImportDone[]> {
   const done: ImportDone[] = [];
+  items = items.filter((i) => !i.skip);
+  const toCardWorlds: string[] = [];
+  let toCardPreset = '';
   const linksOf = (it: ImportItem) => { const u = hooks.normalizeUrl(it.url); return u ? [{ label: it.linkLabel.trim() || '链接', url: u }] : []; };
   const hasExtra = (it: ImportItem) => !!(it.author.trim() || linksOf(it).length || it.notes.trim());
 
@@ -108,6 +166,7 @@ export async function runImport(items: ImportItem[], hooks: {
     const name = await waitForNew(hooks.worldNames, before, baseName(it.file), 3000);
     if (name && hasExtra(it)) hooks.saveSource('world', name, { author: it.author.trim(), links: linksOf(it), notes: it.notes.trim() });
     if (name && it.activate) await hooks.setWorldGlobal(name);
+    if (name && it.toCard) toCardWorlds.push(name);
     done.push({ item: it, name });
   }
   for (const it of items.filter((i) => i.kind === 'preset')) {
@@ -116,6 +175,7 @@ export async function runImport(items: ImportItem[], hooks: {
     const name = await waitForNew(hooks.presetNames, before, baseName(it.file));
     if (name && hasExtra(it)) hooks.saveSource('preset', name, { author: it.author.trim(), links: linksOf(it), notes: it.notes.trim() });
     if (name && it.activate) await hooks.switchPreset(name);
+    if (name && it.toCard) toCardPreset = name;
     done.push({ item: it, name });
   }
   const rx = items.filter((i) => i.kind === 'regex');
@@ -128,6 +188,11 @@ export async function runImport(items: ImportItem[], hooks: {
     const avatar = await waitForNew(hooks.characterAvatars, before, '', 15000);
     if (avatar && (linksOf(it).length || it.notes.trim())) hooks.saveCardRecord(avatar, { links: linksOf(it), notes: it.notes.trim() });
     if (avatar && it.activate) lastCard = avatar;
+    // 一起发布的世界书 / 预设：绑到这张卡上
+    if (avatar) {
+      for (const w of toCardWorlds) await hooks.bindWorld(avatar, w, !!it.card?.bookEntries);
+      if (toCardPreset) hooks.setCardPreset(avatar, toCardPreset);
+    }
     done.push({ item: it, name: avatar });
   }
   if (lastCard) await hooks.openCharacter(lastCard);

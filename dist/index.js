@@ -2607,12 +2607,12 @@ function autoSourceUrl(ext) {
   if (e2.perchance_data?.slug) return `https://perchance.org/ai-character-chat?data=${e2.perchance_data.slug}`;
   return "";
 }
-const norm = (s2) => (s2 ?? "").replace(/\r\n/g, "\n").trim();
+const norm$1 = (s2) => (s2 ?? "").replace(/\r\n/g, "\n").trim();
 function cardBookEntries(book) {
-  return (book?.entries ?? []).map((e2) => ({ content: norm(e2.content), comment: e2.comment ?? e2.name ?? "", keys: e2.keys ?? [] }));
+  return (book?.entries ?? []).map((e2) => ({ content: norm$1(e2.content), comment: e2.comment ?? e2.name ?? "", keys: e2.keys ?? [] }));
 }
 function worldBookEntries(world) {
-  return Object.values(world?.entries ?? {}).map((e2) => ({ content: norm(e2.content), comment: e2.comment ?? "", keys: e2.key ?? [] }));
+  return Object.values(world?.entries ?? {}).map((e2) => ({ content: norm$1(e2.content), comment: e2.comment ?? "", keys: e2.key ?? [] }));
 }
 function diffBooks(card, world) {
   const pool = /* @__PURE__ */ new Map();
@@ -3658,6 +3658,39 @@ async function setModel(m2) {
   }
   return sameModel(currentModel(), m2);
 }
+const MAIN_API_LABEL = { textgenerationwebui: "Text Completion", novel: "NovelAI", koboldhorde: "AI Horde", kobold: "KoboldAI" };
+const TEXTGEN_LABEL = {
+  ooba: "Text Gen WebUI",
+  mancer: "Mancer",
+  vllm: "vLLM",
+  aphrodite: "Aphrodite",
+  tabby: "TabbyAPI",
+  koboldcpp: "KoboldCpp",
+  togetherai: "TogetherAI",
+  llamacpp: "llama.cpp",
+  ollama: "Ollama",
+  infermaticai: "InfermaticAI",
+  dreamgen: "DreamGen",
+  openrouter: "OpenRouter",
+  featherless: "Featherless",
+  huggingface: "HuggingFace",
+  generic: "通用"
+};
+function activeConnection() {
+  const c2 = ctx();
+  const main = String(c2.mainApi ?? "");
+  if (main === "openai") {
+    const src = String(oai()?.chat_completion_source ?? "");
+    return { api: SOURCE_LABEL[src] ?? (src || "Chat Completion"), model: currentModel()?.model ?? "" };
+  }
+  const online = String(c2.onlineStatus ?? "");
+  const model = online && online !== "no_connection" ? online : "";
+  if (main === "textgenerationwebui") {
+    const type = String(c2.textCompletionSettings?.type ?? "");
+    return { api: type ? TEXTGEN_LABEL[type] ?? type : "Text Completion", model };
+  }
+  return { api: MAIN_API_LABEL[main] ?? (main || "API"), model };
+}
 function ModelPicker({ value, onChange, fallback, offerSwitch }) {
   const cur = currentModel();
   const [editing, setEditing] = d$1(false);
@@ -3806,6 +3839,70 @@ function detectJson(j2) {
   if ("prompts" in o2 || "prompt_order" in o2 || "chat_completion_source" in o2 || "openai_max_tokens" in o2) return "preset";
   return "unknown";
 }
+function pngTextChunks(bytes) {
+  const sig = [137, 80, 78, 71, 13, 10, 26, 10];
+  if (bytes.length < 8 || sig.some((b2, i2) => bytes[i2] !== b2)) return {};
+  const out = {};
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let p2 = 8;
+  while (p2 + 12 <= bytes.length) {
+    const len = view.getUint32(p2);
+    const type = String.fromCharCode(bytes[p2 + 4], bytes[p2 + 5], bytes[p2 + 6], bytes[p2 + 7]);
+    const start2 = p2 + 8;
+    const end = start2 + len;
+    if (end + 4 > bytes.length) break;
+    if (type === "tEXt") {
+      let z2 = start2;
+      while (z2 < end && bytes[z2] !== 0) z2++;
+      const key = String.fromCharCode(...bytes.subarray(start2, z2));
+      let text = "";
+      for (let i2 = z2 + 1; i2 < end; i2++) text += String.fromCharCode(bytes[i2]);
+      out[key] = text;
+    }
+    if (type === "IEND") break;
+    p2 = end + 4;
+  }
+  return out;
+}
+function base64Json(b64) {
+  const bin = atob(b64.trim());
+  const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+function cardFromPng(bytes) {
+  const t2 = pngTextChunks(bytes);
+  for (const key of ["ccv3", "chara"]) {
+    if (!t2[key]) continue;
+    try {
+      return base64Json(t2[key]);
+    } catch {
+    }
+  }
+  return null;
+}
+const obj = (v2) => v2 && typeof v2 === "object" ? v2 : {};
+function summarizeCard(j2) {
+  const o2 = obj(j2);
+  const d2 = obj(o2.data);
+  const name = String(d2.name ?? o2.name ?? "").trim();
+  if (!name) return null;
+  const book = obj(d2.character_book ?? o2.character_book);
+  const entries = book.entries;
+  const bookEntries = Array.isArray(entries) ? entries.length : entries && typeof entries === "object" ? Object.keys(entries).length : 0;
+  const rx = obj(d2.extensions ?? o2.extensions).regex_scripts;
+  return { name, bookName: String(book.name ?? "").trim(), bookEntries, regexCount: Array.isArray(rx) ? rx.length : 0 };
+}
+function worldEntryCount(j2) {
+  const e2 = obj(j2).entries;
+  return Array.isArray(e2) ? e2.length : e2 && typeof e2 === "object" ? Object.keys(e2).length : 0;
+}
+const norm = (s2) => s2.toLowerCase().replace(/[\s_\-—·.，,。()（）[\]【】《》]+/g, "");
+function looksLikeCardBook(card, worldName, worldEntries) {
+  if (!card.bookEntries) return false;
+  if (card.bookName && norm(card.bookName) === norm(worldName)) return true;
+  const diff = Math.abs(card.bookEntries - worldEntries);
+  return diff <= Math.max(1, Math.round(card.bookEntries * 0.05));
+}
 const KIND_LABEL$2 = {
   preset: "预设",
   world: "世界书",
@@ -3848,8 +3945,47 @@ async function installPlugin(url) {
 }
 async function prepareImport(files) {
   const out = [];
-  for (const file of files) out.push({ file, kind: await detectKind(file), activate: false, author: "", linkLabel: "", url: "", notes: "" });
-  return out;
+  for (const file of files) {
+    const it = { file, kind: await detectKind(file), activate: false, author: "", linkLabel: "", url: "", notes: "" };
+    try {
+      if (it.kind === "character") {
+        const data = /.png$/i.test(file.name) ? cardFromPng(new Uint8Array(await file.arrayBuffer())) : /.json$/i.test(file.name) ? JSON.parse(await file.text()) : null;
+        it.card = summarizeCard(data) ?? void 0;
+      }
+      if (it.kind === "world") it.entries = worldEntryCount(JSON.parse(await file.text()));
+    } catch {
+    }
+    out.push(it);
+  }
+  return relate(out);
+}
+function relate(items) {
+  const byName = /* @__PURE__ */ new Map();
+  for (const it of items) if (it.kind === "character" && it.card) byName.set(it.card.name, [...byName.get(it.card.name) ?? [], it]);
+  for (const [name, group] of byName) {
+    if (group.length < 2) continue;
+    const keep = group.find((g2) => /.png$/i.test(g2.file.name)) ?? group[0];
+    for (const g2 of group) if (g2 !== keep) {
+      g2.skip = true;
+      g2.note = `和「${keep.file.name}」是同一张卡（${name}）。PNG 带头像，导入它就够了。`;
+    }
+  }
+  const cards = items.filter((i2) => i2.kind === "character" && !i2.skip);
+  if (cards.length !== 1 || !cards[0].card) return items;
+  const card = cards[0].card;
+  for (const it of items) {
+    if (it.kind === "world") {
+      if (looksLikeCardBook(card, baseName(it.file), it.entries ?? 0)) {
+        it.skip = true;
+        it.note = `看起来就是「${card.name}」卡里自带的那本世界书（卡里 ${card.bookEntries} 条，这个文件 ${it.entries ?? "?"} 条）。打开这张卡时会自动导入，不用单独导入。`;
+      } else {
+        it.toCard = true;
+        it.note = card.bookEntries ? `「${card.name}」卡里已经自带一本世界书，这本会作为附加世界书绑上。` : `和「${card.name}」一起发布的世界书。`;
+      }
+    }
+    if (it.kind === "preset") it.toCard = true;
+  }
+  return items;
 }
 const baseName = (f2) => f2.name.replace(/\.[^/.]+$/, "");
 async function waitForNew(get, before, fallback, ms = 8e3) {
@@ -3863,6 +3999,9 @@ async function waitForNew(get, before, fallback, ms = 8e3) {
 }
 async function runImport$1(items, hooks) {
   const done = [];
+  items = items.filter((i2) => !i2.skip);
+  const toCardWorlds = [];
+  let toCardPreset = "";
   const linksOf = (it) => {
     const u2 = hooks.normalizeUrl(it.url);
     return u2 ? [{ label: it.linkLabel.trim() || "链接", url: u2 }] : [];
@@ -3878,6 +4017,7 @@ async function runImport$1(items, hooks) {
     const name = await waitForNew(hooks.worldNames, before, baseName(it.file), 3e3);
     if (name && hasExtra(it)) hooks.saveSource("world", name, { author: it.author.trim(), links: linksOf(it), notes: it.notes.trim() });
     if (name && it.activate) await hooks.setWorldGlobal(name);
+    if (name && it.toCard) toCardWorlds.push(name);
     done.push({ item: it, name });
   }
   for (const it of items.filter((i2) => i2.kind === "preset")) {
@@ -3889,6 +4029,7 @@ async function runImport$1(items, hooks) {
     const name = await waitForNew(hooks.presetNames, before, baseName(it.file));
     if (name && hasExtra(it)) hooks.saveSource("preset", name, { author: it.author.trim(), links: linksOf(it), notes: it.notes.trim() });
     if (name && it.activate) await hooks.switchPreset(name);
+    if (name && it.toCard) toCardPreset = name;
     done.push({ item: it, name });
   }
   const rx = items.filter((i2) => i2.kind === "regex");
@@ -3903,6 +4044,10 @@ async function runImport$1(items, hooks) {
     const avatar = await waitForNew(hooks.characterAvatars, before, "", 15e3);
     if (avatar && (linksOf(it).length || it.notes.trim())) hooks.saveCardRecord(avatar, { links: linksOf(it), notes: it.notes.trim() });
     if (avatar && it.activate) lastCard = avatar;
+    if (avatar) {
+      for (const w2 of toCardWorlds) await hooks.bindWorld(avatar, w2, !!it.card?.bookEntries);
+      if (toCardPreset) hooks.setCardPreset(avatar, toCardPreset);
+    }
     done.push({ item: it, name: avatar });
   }
   if (lastCard) await hooks.openCharacter(lastCard);
@@ -5113,9 +5258,11 @@ function StatusBar() {
   const model = modelsApply() ? currentModel() : null;
   const wantModel = s2.profiles[char.avatar]?.model ?? (recPreset ? s2.presetInfo[recPreset]?.model : void 0);
   const modelWarn = !apiOnline.value ? "API 没连上" : wantModel && !sameModel(wantModel, model) ? `这张卡推荐 ${modelLabel(wantModel)}` : void 0;
+  const conn = activeConnection();
   return /* @__PURE__ */ u$2("div", { class: "rbt-statusbar", "aria-label": "现在用的预设和模型", children: [
     /* @__PURE__ */ u$2(Item, { icon: "fa-sliders", text: preset || "没有预设", title: `预设：${preset || "（没有）"}`, warn: presetWarn, onClick: () => openDrawer("preset") }),
-    modelsApply() && /* @__PURE__ */ u$2(Item, { icon: "fa-microchip", text: model ? model.model.split("/").pop() : "没选模型", title: model ? `模型：${modelLabel(model)}` : "还没选模型", warn: modelWarn, onClick: () => openDrawer("api") })
+    /* @__PURE__ */ u$2(Item, { icon: "fa-plug", text: conn.model ? `${conn.api} · ${conn.model.split("/").pop()}` : `${conn.api} · 没选模型`, title: `API：${conn.api}
+模型：${conn.model || "（没选）"}`, warn: modelWarn, onClick: () => openDrawer("api") })
   ] });
 }
 function worldStatus() {
@@ -5520,7 +5667,7 @@ function LeftColumn() {
 }
 function WorldButton() {
   const w2 = worldStatus();
-  return /* @__PURE__ */ u$2(DrawerButton, { k: "worldinfo", compact: true, label: w2.count ? `世界书 ${w2.count}` : "世界书", title: w2.warn ? `${w2.title}
+  return /* @__PURE__ */ u$2(DrawerButton, { k: "worldinfo", compact: true, label: `世界书（${w2.count}）`, title: w2.warn ? `${w2.title}
 ${w2.warn}` : w2.title, dot: w2.warn });
 }
 function NavBar() {
@@ -5536,6 +5683,7 @@ function NavBar() {
     /* @__PURE__ */ u$2("div", { class: "rbt-nav-title", children: home ? /* @__PURE__ */ u$2("span", { class: "rbt-nav-name", children: "首页" }) : /* @__PURE__ */ u$2(S$1, { children: [
       char && /* @__PURE__ */ u$2("img", { class: "rbt-nav-avatar", src: c2.getThumbnailUrl("avatar", char.avatar), alt: "" }),
       /* @__PURE__ */ u$2("span", { class: "rbt-nav-name", children: name }),
+      /* @__PURE__ */ u$2(DrawerButton, { k: "characters", compact: true, label: "编辑卡片", title: `编辑「${name}」的角色卡` }),
       chatId && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-nav-save", title: "切换 / 管理这个角色的存档", onClick: () => trigger("#option_select_chat"), children: [
         prettyChatName(chatId, name),
         " ",
@@ -5548,7 +5696,6 @@ function NavBar() {
     ] }) }),
     char && /* @__PURE__ */ u$2(StatusBar, {}),
     /* @__PURE__ */ u$2("div", { class: "rbt-nav-actions", children: [
-      !home && /* @__PURE__ */ u$2(DrawerButton, { k: "characters", compact: true, label: "编辑卡片", title: "打开酒馆的角色卡编辑页" }),
       !home && /* @__PURE__ */ u$2(WorldButton, {}),
       !home && /* @__PURE__ */ u$2(ToolboxButton, {})
     ] })
@@ -5739,9 +5886,9 @@ const ACTIVATE = {
   world: "导入后作为全局世界书打开（对所有卡生效）",
   character: "导入后打开这张卡"
 };
-function Row({ it, onChange }) {
+function Row({ it, onChange, cardName }) {
   const [more, setMore] = d$1(false);
-  const canExtra = it.kind === "preset" || it.kind === "world" || it.kind === "character";
+  const canExtra = !it.skip && (it.kind === "preset" || it.kind === "world" || it.kind === "character");
   const bad = it.url.trim() && !normalizeUrl(it.url);
   return /* @__PURE__ */ u$2("div", { class: `rbt-imp-row ${it.kind === "unknown" ? "off" : ""}`, children: [
     /* @__PURE__ */ u$2("div", { class: "rbt-imp-head", children: [
@@ -5749,8 +5896,36 @@ function Row({ it, onChange }) {
       /* @__PURE__ */ u$2("span", { class: "rbt-imp-name", children: it.file.name })
     ] }),
     it.kind === "unknown" && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "认不出是什么，会跳过。支持预设、世界书、正则和角色卡。" }),
+    it.card && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
+      "角色「",
+      it.card.name,
+      "」",
+      it.card.bookEntries ? ` · 自带世界书 ${it.card.bookEntries} 条` : "",
+      it.card.regexCount ? ` · 自带正则 ${it.card.regexCount} 条` : ""
+    ] }),
+    it.kind === "world" && it.entries !== void 0 && !it.note && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
+      it.entries,
+      " 条"
+    ] }),
+    it.note && /* @__PURE__ */ u$2("small", { class: it.skip ? "rbt-imp-note skip" : "rbt-imp-note", children: it.note }),
+    (it.note?.includes("同一张卡") || it.note?.includes("自带的那本")) && /* @__PURE__ */ u$2("label", { class: "rbt-imp-check", children: [
+      /* @__PURE__ */ u$2("input", { type: "checkbox", checked: !it.skip, onChange: (e2) => onChange({ skip: !e2.currentTarget.checked }) }),
+      "仍然导入"
+    ] }),
+    !it.skip && it.toCard && it.kind === "world" && cardName && /* @__PURE__ */ u$2("label", { class: "rbt-imp-check", children: [
+      /* @__PURE__ */ u$2("input", { type: "checkbox", checked: !!it.toCard, onChange: (e2) => onChange({ toCard: e2.currentTarget.checked }) }),
+      "绑定到「",
+      cardName,
+      "」"
+    ] }),
+    it.kind === "preset" && cardName && /* @__PURE__ */ u$2("label", { class: "rbt-imp-check", children: [
+      /* @__PURE__ */ u$2("input", { type: "checkbox", checked: !!it.toCard, onChange: (e2) => onChange({ toCard: e2.currentTarget.checked }) }),
+      "设为「",
+      cardName,
+      "」的推荐预设"
+    ] }),
     it.kind === "regex" && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "导入时酒馆会问放到哪里：全局、当前这张卡，还是当前预设。" }),
-    ACTIVATE[it.kind] && /* @__PURE__ */ u$2("label", { class: "rbt-imp-check", children: [
+    ACTIVATE[it.kind] && !it.skip && /* @__PURE__ */ u$2("label", { class: "rbt-imp-check", children: [
       /* @__PURE__ */ u$2("input", { type: "checkbox", checked: it.activate, onChange: (e2) => onChange({ activate: e2.currentTarget.checked }) }),
       ACTIVATE[it.kind]
     ] }),
@@ -5781,7 +5956,9 @@ function ImportDialog() {
     return () => document.removeEventListener("keydown", onKey);
   }, [items, busy]);
   if (!items) return null;
-  const usable = items.filter((i2) => i2.kind !== "unknown");
+  const usable = items.filter((i2) => i2.kind !== "unknown" && !i2.skip);
+  const theCard = items.filter((i2) => i2.kind === "character" && !i2.skip);
+  const cardName = theCard.length === 1 ? theCard[0].card?.name : void 0;
   const set = (idx, patch) => {
     draft.value = items.map((it, i2) => i2 === idx ? { ...it, ...patch } : it);
   };
@@ -5805,7 +5982,31 @@ function ImportDialog() {
           const ch = (ctx().characters ?? []).find((c2) => c2.avatar === avatar);
           updateRecord(avatar, ch?.name ?? avatar, { links: rec.links, notes: rec.notes });
         },
-        normalizeUrl
+        normalizeUrl,
+        bindWorld: async (avatar, world, extra) => {
+          const chars = ctx().characters ?? [];
+          const chid = chars.findIndex((c2) => c2.avatar === avatar);
+          if (chid < 0) return;
+          if (!extra && !chars[chid].data?.extensions?.world) {
+            await ctx().writeExtensionField(chid, "world", world);
+            return;
+          }
+          const wi = loaded.worldInfo?.world_info;
+          if (!wi) return;
+          const file = charaFileName(avatar);
+          const lore = wi.charLore ??= [];
+          let e2 = lore.find((x2) => x2.name === file);
+          if (!e2) {
+            e2 = { name: file, extraBooks: [] };
+            lore.push(e2);
+          }
+          if (!e2.extraBooks.includes(world)) e2.extraBooks.push(world);
+          ctx().saveSettingsDebounced();
+        },
+        setCardPreset: (avatar, preset) => {
+          const ch = (ctx().characters ?? []).find((c2) => c2.avatar === avatar);
+          setRecommendedPreset(avatar, ch?.name ?? avatar, preset);
+        }
       });
       const missed = done.filter((d2) => !d2.name && d2.item.kind !== "regex");
       if (missed.length) toast("warning", `这些没能确认导入成功（可能在酒馆的提示里取消了）：${missed.map((d2) => d2.item.file.name).join("、")}`, "导入");
@@ -5834,7 +6035,7 @@ function ImportDialog() {
           draft.value = null;
         }, children: "✕" })
       ] }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-sheet-body", children: items.map((it, i2) => /* @__PURE__ */ u$2(Row, { it, onChange: (p2) => set(i2, p2) }, `${it.file.name}${i2}`)) }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-sheet-body", children: items.map((it, i2) => /* @__PURE__ */ u$2(Row, { it, cardName, onChange: (p2) => set(i2, p2) }, `${it.file.name}${i2}`)) }),
       /* @__PURE__ */ u$2("footer", { class: "rbt-imp-foot", children: [
         /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "都不勾不填，就是普通导入。用的是酒馆自己的导入，重名时酒馆会问要不要覆盖。" }),
         /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn", disabled: busy, onClick: () => {

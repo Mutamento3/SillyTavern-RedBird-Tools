@@ -81,3 +81,27 @@ export async function setModel(m: ModelChoice): Promise<boolean> {
   }
   return sameModel(currentModel(), m);
 }
+
+const MAIN_API_LABEL: Record<string, string> = { textgenerationwebui: 'Text Completion', novel: 'NovelAI', koboldhorde: 'AI Horde', kobold: 'KoboldAI' };
+const TEXTGEN_LABEL: Record<string, string> = {
+  ooba: 'Text Gen WebUI', mancer: 'Mancer', vllm: 'vLLM', aphrodite: 'Aphrodite', tabby: 'TabbyAPI', koboldcpp: 'KoboldCpp',
+  togetherai: 'TogetherAI', llamacpp: 'llama.cpp', ollama: 'Ollama', infermaticai: 'InfermaticAI', dreamgen: 'DreamGen',
+  openrouter: 'OpenRouter', featherless: 'Featherless', huggingface: 'HuggingFace', generic: '通用',
+};
+
+/** The API and model in use right now, for any of ST's API types (for the status bar). */
+export function activeConnection(): { api: string; model: string } {
+  const c = ctx();
+  const main = String(c.mainApi ?? '');
+  if (main === 'openai') {
+    const src = String(oai()?.chat_completion_source ?? '');
+    return { api: SOURCE_LABEL[src] ?? (src || 'Chat Completion'), model: currentModel()?.model ?? '' };
+  }
+  const online = String(c.onlineStatus ?? '');
+  const model = online && online !== 'no_connection' ? online : '';
+  if (main === 'textgenerationwebui') {
+    const type = String(c.textCompletionSettings?.type ?? '');
+    return { api: type ? (TEXTGEN_LABEL[type] ?? type) : 'Text Completion', model };
+  }
+  return { api: MAIN_API_LABEL[main] ?? (main || 'API'), model };
+}

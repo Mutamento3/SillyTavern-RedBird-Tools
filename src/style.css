@@ -895,3 +895,6 @@ body.rbt-resizing #sheld { transition: none !important; }
   .rbt-gtool-row .rbt-gtool:first-child { flex: 1; min-width: 0; }
   .rbt-gtool.rbt-gtool-import { width: auto; flex: none; font-weight: 500; }
 }
+
+.rbt-imp-note { font-size: 12px; color: var(--t2, #9ca1aa); line-height: 1.5; }
+.rbt-imp-note.skip { color: var(--warnc, #e0a040); }

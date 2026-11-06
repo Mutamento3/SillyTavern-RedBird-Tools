@@ -7,8 +7,8 @@
 import { signal } from '@preact/signals';
 import { useEffect, useState } from 'preact/hooks';
 import { normalizeUrl } from '../core/cards';
-import { ctx, runSlash, slashQuote, toast } from '../st/st';
-import { presetNames, switchPreset, updateRecord, worldNames, archiveVersion } from '../tools/cards/cards';
+import { charaFileName, ctx, loaded, runSlash, slashQuote, toast } from '../st/st';
+import { presetNames, setRecommendedPreset, switchPreset, updateRecord, worldNames, archiveVersion } from '../tools/cards/cards';
 import { KIND_LABEL, KIND_TAB, prepareImport, runImport, type ImportItem } from '../tools/importer';
 import { updateSource } from '../tools/sources';
 import { refreshStatus } from '../shell/EnvStatus';
@@ -30,9 +30,9 @@ const ACTIVATE: Partial<Record<ImportItem['kind'], string>> = {
   character: '导入后打开这张卡',
 };
 
-function Row({ it, onChange }: { it: ImportItem; onChange: (patch: Partial<ImportItem>) => void }) {
+function Row({ it, onChange, cardName }: { it: ImportItem; onChange: (patch: Partial<ImportItem>) => void; cardName?: string }) {
   const [more, setMore] = useState(false);
-  const canExtra = it.kind === 'preset' || it.kind === 'world' || it.kind === 'character';
+  const canExtra = !it.skip && (it.kind === 'preset' || it.kind === 'world' || it.kind === 'character');
   const bad = it.url.trim() && !normalizeUrl(it.url);
   return (
     <div class={`rbt-imp-row ${it.kind === 'unknown' ? 'off' : ''}`}>
@@ -41,8 +41,21 @@ function Row({ it, onChange }: { it: ImportItem; onChange: (patch: Partial<Impor
         <span class="rbt-imp-name">{it.file.name}</span>
       </div>
       {it.kind === 'unknown' && <small class="rbt-muted">认不出是什么，会跳过。支持预设、世界书、正则和角色卡。</small>}
+      {it.card && <small class="rbt-muted">角色「{it.card.name}」{it.card.bookEntries ? ` · 自带世界书 ${it.card.bookEntries} 条` : ''}{it.card.regexCount ? ` · 自带正则 ${it.card.regexCount} 条` : ''}</small>}
+      {it.kind === 'world' && it.entries !== undefined && !it.note && <small class="rbt-muted">{it.entries} 条</small>}
+      {it.note && <small class={it.skip ? 'rbt-imp-note skip' : 'rbt-imp-note'}>{it.note}</small>}
+      {/* 被认成重复的：默认不导入，可以勾回来 */}
+      {(it.note?.includes('同一张卡') || it.note?.includes('自带的那本')) && (
+        <label class="rbt-imp-check"><input type="checkbox" checked={!it.skip} onChange={(e) => onChange({ skip: !(e.currentTarget as HTMLInputElement).checked })} />仍然导入</label>
+      )}
+      {!it.skip && it.toCard && it.kind === 'world' && cardName && (
+        <label class="rbt-imp-check"><input type="checkbox" checked={!!it.toCard} onChange={(e) => onChange({ toCard: (e.currentTarget as HTMLInputElement).checked })} />绑定到「{cardName}」</label>
+      )}
+      {it.kind === 'preset' && cardName && (
+        <label class="rbt-imp-check"><input type="checkbox" checked={!!it.toCard} onChange={(e) => onChange({ toCard: (e.currentTarget as HTMLInputElement).checked })} />设为「{cardName}」的推荐预设</label>
+      )}
       {it.kind === 'regex' && <small class="rbt-muted">导入时酒馆会问放到哪里：全局、当前这张卡，还是当前预设。</small>}
-      {ACTIVATE[it.kind] && (
+      {ACTIVATE[it.kind] && !it.skip && (
         <label class="rbt-imp-check"><input type="checkbox" checked={it.activate} onChange={(e) => onChange({ activate: (e.currentTarget as HTMLInputElement).checked })} />{ACTIVATE[it.kind]}</label>
       )}
       {canExtra && !more && <button type="button" class="rbt-linkbtn rbt-imp-more" onClick={() => setMore(true)}>＋ 作者、链接和备注（选填）</button>}
@@ -73,7 +86,9 @@ export function ImportDialog() {
     return () => document.removeEventListener('keydown', onKey);
   }, [items, busy]);
   if (!items) return null;
-  const usable = items.filter((i) => i.kind !== 'unknown');
+  const usable = items.filter((i) => i.kind !== 'unknown' && !i.skip);
+  const theCard = items.filter((i) => i.kind === 'character' && !i.skip);
+  const cardName = theCard.length === 1 ? theCard[0].card?.name : undefined;
   const set = (idx: number, patch: Partial<ImportItem>) => { draft.value = items.map((it, i) => (i === idx ? { ...it, ...patch } : it)); };
 
   const go = async () => {
@@ -91,6 +106,25 @@ export function ImportDialog() {
           updateRecord(avatar, ch?.name ?? avatar, { links: rec.links, notes: rec.notes });
         },
         normalizeUrl,
+        bindWorld: async (avatar, world, extra) => {
+          const chars = ctx().characters ?? [];
+          const chid = chars.findIndex((c: { avatar: string }) => c.avatar === avatar);
+          if (chid < 0) return;
+          if (!extra && !chars[chid].data?.extensions?.world) { await ctx().writeExtensionField(chid, 'world', world); return; }
+          // 卡已经有主世界书：作为附加世界书绑上（酒馆存在 world_info.charLore 里）
+          const wi = loaded.worldInfo?.world_info;
+          if (!wi) return;
+          const file = charaFileName(avatar);
+          const lore = (wi.charLore ??= []);
+          let e = lore.find((x: { name: string }) => x.name === file);
+          if (!e) { e = { name: file, extraBooks: [] }; lore.push(e); }
+          if (!e.extraBooks.includes(world)) e.extraBooks.push(world);
+          ctx().saveSettingsDebounced();
+        },
+        setCardPreset: (avatar, preset) => {
+          const ch = (ctx().characters ?? []).find((c: { avatar: string }) => c.avatar === avatar);
+          setRecommendedPreset(avatar, ch?.name ?? avatar, preset);
+        },
       });
       const missed = done.filter((d) => !d.name && d.item.kind !== 'regex');
       if (missed.length) toast('warning', `这些没能确认导入成功（可能在酒馆的提示里取消了）：${missed.map((d) => d.item.file.name).join('、')}`, '导入');
@@ -113,7 +147,7 @@ export function ImportDialog() {
           <button type="button" class="rbt-sheet-close" title="取消（Esc）" aria-label="取消" disabled={busy} onClick={() => { draft.value = null; }}>✕</button>
         </header>
         <div class="rbt-sheet-body">
-          {items.map((it, i) => <Row key={`${it.file.name}${i}`} it={it} onChange={(p) => set(i, p)} />)}
+          {items.map((it, i) => <Row key={`${it.file.name}${i}`} it={it} cardName={cardName} onChange={(p) => set(i, p)} />)}
         </div>
         <footer class="rbt-imp-foot">
           <small class="rbt-muted">都不勾不填，就是普通导入。用的是酒馆自己的导入，重名时酒馆会问要不要覆盖。</small>

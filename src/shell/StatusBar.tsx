@@ -6,7 +6,7 @@ import { currentCharacter, settings } from '../st/st';
 import { currentPresetName, cardInfo } from '../tools/cards/cards';
 import { currentBookScopes } from '../tools/flow/capture';
 import { planFor } from '../tools/env/autoapply';
-import { currentModel, modelLabel, modelsApply, sameModel } from '../tools/model';
+import { activeConnection, currentModel, modelLabel, modelsApply, sameModel } from '../tools/model';
 import { sourcesTick } from '../tools/sources';
 import { openDrawer } from './drawers';
 import { statusTick } from './EnvStatus';
@@ -41,10 +41,13 @@ export function StatusBar() {
   const wantModel = s.profiles[char.avatar]?.model ?? (recPreset ? s.presetInfo[recPreset]?.model : undefined);
   const modelWarn = !apiOnline.value ? 'API 没连上' : wantModel && !sameModel(wantModel, model) ? `这张卡推荐 ${modelLabel(wantModel)}` : undefined;
 
+  const conn = activeConnection();
+
   return (
     <div class="rbt-statusbar" aria-label="现在用的预设和模型">
       <Item icon="fa-sliders" text={preset || '没有预设'} title={`预设：${preset || '（没有）'}`} warn={presetWarn} onClick={() => openDrawer('preset')} />
-      {modelsApply() && <Item icon="fa-microchip" text={model ? model.model.split('/').pop()! : '没选模型'} title={model ? `模型：${modelLabel(model)}` : '还没选模型'} warn={modelWarn} onClick={() => openDrawer('api')} />}
+      <Item icon="fa-plug" text={conn.model ? `${conn.api} · ${conn.model.split('/').pop()}` : `${conn.api} · 没选模型`} title={`API：${conn.api}
+模型：${conn.model || '（没选）'}`} warn={modelWarn} onClick={() => openDrawer('api')} />
     </div>
   );
 }
