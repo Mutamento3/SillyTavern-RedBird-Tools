@@ -8,7 +8,7 @@ import { render } from 'preact';
 import './style.css';
 import './shell/shell.css';
 import './look/look.css';
-import { ACCENTS, accentId, applyLook, lookOn, retireOldTheme, setAccent, setLook } from './look/look';
+import { applyLook, lookOn, retireOldTheme, setLook, useBuiltInLook } from './look/look';
 import { ctx, preloadModules, saveSettings, settings } from './st/st';
 import { installStore } from './st/store';
 import { checkForUpdate, installedVersion, installUpdateCheck } from './tools/update';
@@ -64,8 +64,7 @@ function addSettingsDrawer(): void {
         <div class="rbt-set-group">
           <div class="rbt-set-title">界面</div>
           ${row('rbt_shell_switch', '三栏界面', '电脑上用左栏和顶部导航代替酒馆原来的图标栏')}
-          ${row('rbt_look_switch', '美化', '酒馆和工具箱用同一套深色配色和字体')}
-          <div class="rbt-accents" id="rbt_accents"><small>强调色</small>${ACCENTS.map((a) => `<button type="button" class="rbt-accent" data-accent="${a.id}" title="${a.label}" aria-label="${a.label}" style="--c:${a.color}"></button>`).join('')}</div>
+          ${row('rbt_look_switch', '美化', '酒馆和工具箱用同一套深色配色和字体。强调色和别的美化在「全局工具箱 › 美化」里')}
         </div>
         <div class="rbt-set-group">
           <div class="rbt-set-title">换卡时</div>
@@ -87,14 +86,8 @@ function addSettingsDrawer(): void {
     cb.addEventListener('change', () => set(cb.checked));
     return cb;
   };
-  const lookCb = bind('rbt_look_switch', () => lookOn.value, (v) => setLook(v));
+  const lookCb = bind('rbt_look_switch', () => lookOn.value, (v) => { if (v) void useBuiltInLook(); else setLook(false); });
   lookOn.subscribe((v) => { lookCb.checked = v; });
-  const accents = wrap.querySelectorAll<HTMLElement>('[data-accent]');
-  accents.forEach((b) => b.addEventListener('click', () => setAccent(b.dataset.accent!)));
-  accentId.subscribe((id) => accents.forEach((b) => b.classList.toggle('on', b.dataset.accent === id)));
-  // 强调色只在美化开着时有意义
-  const accentRow = wrap.querySelector<HTMLElement>('#rbt_accents')!;
-  lookOn.subscribe((v) => { accentRow.hidden = !v; });
   const shellCb = bind('rbt_shell_switch', () => shellOn.value, (v) => setShellEnabled(v));
   shellOn.subscribe((v) => { shellCb.checked = v; });
   bind('rbt_auto_switch', () => settings().autoApplyEnv, (v) => { settings().autoApplyEnv = v; saveSettings(); });

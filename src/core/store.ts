@@ -6,7 +6,7 @@
  * 删除也要记下来（墓碑：被删的时间），不然合并时会把删掉的东西又带回来。
  */
 
-export const STORE_SECTIONS = ['cards', 'profiles', 'regexOwners', 'presetInfo', 'pluginInfo', 'worldSources'] as const;
+export const STORE_SECTIONS = ['cards', 'profiles', 'regexOwners', 'presetInfo', 'pluginInfo', 'worldSources', 'themeInfo'] as const;
 export type StoreSection = (typeof STORE_SECTIONS)[number];
 
 type Rec = Record<string, unknown>;

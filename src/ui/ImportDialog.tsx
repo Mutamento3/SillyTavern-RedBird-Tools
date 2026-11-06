@@ -17,7 +17,7 @@ import { KIND_LABEL, KIND_TAB, prepareImport, runImport, type ImportItem } from 
 import { updateSource } from '../tools/sources';
 import { refreshStatus } from '../shell/EnvStatus';
 import { CheckRow } from './common';
-import { useStTheme } from '../look/look';
+import { loadThemes, useStTheme } from '../look/look';
 import { setGlobalTab, sheetOpen } from './views';
 
 const draft = signal<ImportItem[] | null>(null);
@@ -167,7 +167,7 @@ export function ImportDialog() {
   const related = (it: ImportItem) => it !== main && (it.toCard !== undefined || (!!it.dupOf && (it.kind === 'character' ? it.card?.name === main?.card?.name : true)));
   const companions = main ? items.filter(related).sort((a, b) => Number(!!a.skip) - Number(!!b.skip)) : [];
   const others = items.filter((it) => it !== main && !companions.includes(it));
-  const withSource = usable.filter((i) => i.kind === 'preset' || i.kind === 'world' || i.kind === 'character').length;
+  const withSource = usable.filter((i) => i.kind === 'preset' || i.kind === 'world' || i.kind === 'character' || i.kind === 'theme').length;
 
   const go = async () => {
     setBusy(true);
@@ -210,6 +210,7 @@ export function ImportDialog() {
       const tabs = [...new Set(usable.map((i) => KIND_TAB[i.kind]).filter(Boolean))];
       if (tabs.length === 1 && sheetOpen.value) setGlobalTab(tabs[0]!);
       archiveVersion.value++;
+      if (usable.some((i) => i.kind === 'theme')) void loadThemes();
       refreshStatus();
       draft.value = null;
     } finally {

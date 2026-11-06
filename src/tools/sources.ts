@@ -1,5 +1,5 @@
 /**
- * 预设 / 插件的作者和链接（教程、发布帖、主页…），方便回头去看。
+ * 预设 / 世界书 / 插件 / 美化的作者和链接（教程、发布帖、主页…），方便回头去看。
  * 插件自己的 manifest.json 里有 author 和 homePage，会自动带出来；你手填的作者会盖过它，链接是叠加的。
  * 预设里没有可靠的作者信息（文字里的网址多是图片和字体），只能手填。
  */
@@ -8,14 +8,15 @@ import type { CardLink, SourceRecord } from '../core/cards';
 import { loaded, saveSettings, settings } from '../st/st';
 import { markDeleted } from '../st/store';
 
-export type SourceKind = 'preset' | 'plugin' | 'world';
+export type SourceKind = 'preset' | 'plugin' | 'world' | 'theme';
 
 /** Bumped after an edit so every view showing the same source re-reads it. */
 export const sourcesTick = signal(0);
 
+const SECTION = { preset: 'presetInfo', world: 'worldSources', plugin: 'pluginInfo', theme: 'themeInfo' } as const;
+
 function store(kind: SourceKind): Record<string, SourceRecord> {
-  const s = settings();
-  return kind === 'preset' ? s.presetInfo : kind === 'world' ? s.worldSources : s.pluginInfo;
+  return settings()[SECTION[kind]];
 }
 
 /** What the plugin says about itself. `id` is the folder name under third-party/. */
@@ -65,7 +66,7 @@ export function updateSource(kind: SourceKind, key: string, patch: Partial<Omit<
   const all = store(kind);
   const cur = all[key] ?? { author: '', links: [], updatedAt: '' };
   const next = { ...cur, ...patch, updatedAt: new Date().toISOString() };
-  if (!next.author.trim() && !next.links.length && !next.series?.trim() && !next.version?.trim() && !next.notes?.trim() && !next.model) { delete all[key]; markDeleted(kind === 'preset' ? 'presetInfo' : kind === 'world' ? 'worldSources' : 'pluginInfo', key); }
+  if (!next.author.trim() && !next.links.length && !next.series?.trim() && !next.version?.trim() && !next.notes?.trim() && !next.model) { delete all[key]; markDeleted(SECTION[kind], key); }
   else all[key] = next;
   saveSettings();
   sourcesTick.value++;
@@ -100,6 +101,8 @@ function stem(name: string): string {
 
 /** Words that show up in many names without meaning they belong together. */
 const GENERIC = ['世界书', '预设', '设定集', '角色卡', '正则', '模板', '女性向', '男性向', '不完全版', '精简版', '重制版'];
+/** Plain words that start many unrelated names (e.g. ST's own themes Dark Lite / Dark V 1.0). */
+const GENERIC_STEMS = ['dark', 'light', 'default', 'new', 'my', 'test'];
 
 /**
  * Names that start with the same word and have no series yet — probably versions of one thing.
@@ -110,7 +113,7 @@ export function suggestSeries(kind: SourceKind, names: string[]): { series: stri
   for (const n of names) {
     if (sourceFor(kind, n).series) continue;
     const w = stem(n);
-    if (!w || w.length < 3) continue;
+    if (!w || w.length < 3 || GENERIC_STEMS.includes(w.toLowerCase())) continue;
     const k = w.toLowerCase();
     const e = by.get(k) ?? { label: w, names: [] };
     e.names.push(n);

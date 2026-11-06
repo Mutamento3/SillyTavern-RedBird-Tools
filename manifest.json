@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "新的苹果风深色美化（可以换强调色）；三栏界面支持手机：☰ 菜单 + 右上角工具箱，面板全屏；导入窗口按「一起发布的文件」分组，也能导入别人的美化。"
+  "rbt_whats_new": "全局工具箱新增「美化」标签：切换、记作者和链接、删除（先自动备份）；强调色也挪到了那里。"
 }

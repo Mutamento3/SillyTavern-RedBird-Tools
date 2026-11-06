@@ -1,14 +1,14 @@
 /**
  * 工具箱的所有视图和"在哪里打开"的唯一规则：
  * - 聊天工具箱（右侧）= 当前这个聊天和这张卡：角色档案、信息流、变量（边玩边看）；
- * - 全局工具箱 = 按酒馆自己的东西分：预设、世界书、正则、插件，加一个备份。
+ * - 全局工具箱 = 按酒馆自己的东西分：预设、世界书、正则、插件、美化，加一个备份。
  *   三栏外壳开着时是居中的大 overlay；没有外壳（手机、或关掉了外壳）时是聊天工具箱里的一个标签。
  * - 在全局工具箱里点一张卡 / 一个预设 / 一本世界书：就地打开详情，带「‹ 返回」，不跳到别处。
  */
 import { signal } from '@preact/signals';
 
 export type ViewId = 'flow' | 'vars' | 'card' | 'global';
-export type GlobalTab = 'presets' | 'worlds' | 'regex' | 'plugins' | 'backup';
+export type GlobalTab = 'presets' | 'worlds' | 'regex' | 'plugins' | 'looks' | 'backup';
 
 export const VIEW_LABELS: Record<ViewId, string> = {
   card: '角色档案',
@@ -17,12 +17,13 @@ export const VIEW_LABELS: Record<ViewId, string> = {
   global: '全局工具箱',
 };
 
-export const GLOBAL_TABS: GlobalTab[] = ['presets', 'worlds', 'regex', 'plugins', 'backup'];
+export const GLOBAL_TABS: GlobalTab[] = ['presets', 'worlds', 'regex', 'plugins', 'looks', 'backup'];
 export const GLOBAL_TAB_LABELS: Record<GlobalTab, string> = {
   presets: '预设',
   worlds: '世界书',
   regex: '正则',
   plugins: '插件',
+  looks: '美化',
   backup: '备份',
 };
 
@@ -48,6 +49,7 @@ const LEGACY: Record<string, { view: ViewId; tab?: GlobalTab }> = {
   maintain: { view: 'global', tab: 'backup' },
   presets: { view: 'global', tab: 'presets' }, worlds: { view: 'global', tab: 'worlds' },
   regex: { view: 'global', tab: 'regex' }, plugins: { view: 'global', tab: 'plugins' }, backup: { view: 'global', tab: 'backup' },
+  looks: { view: 'global', tab: 'looks' }, themes: { view: 'global', tab: 'looks' },
 };
 
 export function resolveView(name: string): { view: ViewId; tab?: GlobalTab } | null {
@@ -86,7 +88,7 @@ export function setGlobalTab(tab: GlobalTab): void {
 
 // ------------------------------------------------------------ detail ---
 
-export type Detail = { kind: 'card'; avatar: string } | { kind: 'preset'; name: string } | { kind: 'world'; name: string };
+export type Detail = { kind: 'card'; avatar: string } | { kind: 'preset'; name: string } | { kind: 'world'; name: string } | { kind: 'theme'; name: string };
 interface DetailEntry { d: Detail; back: string }
 
 /** A stack, so card → preset → card can go back step by step. Cleared when switching tabs. */

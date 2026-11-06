@@ -1,5 +1,5 @@
 /**
- * 全局工具箱：按酒馆自己的东西分标签——预设、世界书、正则、插件，加一个备份。
+ * 全局工具箱：按酒馆自己的东西分标签——预设、世界书、正则、插件、美化，加一个备份。
  * 「对所有卡生效」不再是一个标签，而是每样东西身上的标记（全局开着 / 正在用）。
  *
  * 交互规则（整个工具箱一致）：
@@ -43,8 +43,25 @@ import { openImport } from '../ImportDialog';
 import { CardPage } from './CardPage';
 import { AddGlobalWorld, GlobalRegexList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
 import { Section } from './parts';
+import {
+  ACCENTS, accentId, currentStTheme, deleteStTheme, loadThemes, lookOn, setAccent, setLook, stThemes, themeHasCss, themesLoading,
+  useBuiltInLook, useStTheme, type StTheme,
+} from '../../look/look';
 
 // ------------------------------------------------------------ shared ---
+
+/** Names of every preset / worldbook / theme, for series and version lists. */
+function namesOf(kind: SourceKind): string[] {
+  if (kind === 'preset') return presetNames();
+  if (kind === 'theme') return stThemes.value.map((t) => t.name);
+  return worldNames();
+}
+
+function openItem(kind: SourceKind, name: string, back: string): void {
+  if (kind === 'preset') openDetail({ kind: 'preset', name }, back);
+  else if (kind === 'theme') openDetail({ kind: 'theme', name }, back);
+  else openDetail({ kind: 'world', name }, back);
+}
 
 function cardsOf(list: CardInfo[] | undefined): string {
   if (!list?.length) return '';
@@ -152,7 +169,7 @@ function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filter
               <span class="rbt-navrow-main"><span class="rbt-navrow-title">{n}</span>{sub(n) && <span class="rbt-navrow-sub">{sub(n)}</span>}</span>
             </label>
           ) : (
-            <NavRow key={n} title={n} sub={sub(n) || undefined} trailing={trail?.(n)} onClick={() => openDetail(kind === 'preset' ? { kind: 'preset', name: n } : { kind: 'world', name: n }, back)} />
+            <NavRow key={n} title={n} sub={sub(n) || undefined} trailing={trail?.(n)} onClick={() => openItem(kind, n, back)} />
           ))}
         </Section>
       ))}
@@ -165,7 +182,7 @@ function VersionSection({ kind, id }: { kind: SourceKind; id: string }) {
   const v = sourceFor(kind, id);
   const listId = `rbt-series-${kind}`;
   const series = allSeries(kind);
-  const siblings = v.series ? (kind === 'preset' ? presetNames() : worldNames()).filter((n) => n !== id && sourceFor(kind, n).series === v.series) : [];
+  const siblings = v.series ? namesOf(kind).filter((n) => n !== id && sourceFor(kind, n).series === v.series) : [];
   const back = id;
   return (
     <Section title="系列和版本" hint="同一个东西的不同版本归到一个系列，方便对比和回头找">
@@ -183,7 +200,7 @@ function VersionSection({ kind, id }: { kind: SourceKind; id: string }) {
         <div class="rbt-card-sub">
           <small class="rbt-muted">同系列的其他版本：</small>
           {siblings.sort((x, y) => compareVersions(sourceFor(kind, x).version, sourceFor(kind, y).version)).map((n) => (
-            <NavRow key={n} title={n} sub={sourceFor(kind, n).version ? `版本 ${sourceFor(kind, n).version}` : undefined} onClick={() => openDetail(kind === 'preset' ? { kind: 'preset', name: n } : { kind: 'world', name: n }, back)} />
+            <NavRow key={n} title={n} sub={sourceFor(kind, n).version ? `版本 ${sourceFor(kind, n).version}` : undefined} onClick={() => openItem(kind, n, back)} />
           ))}
         </div>
       )}
@@ -497,6 +514,120 @@ function BackupPage() {
   );
 }
 
+// ------------------------------------------------------------- looks ---
+// 美化：工具箱自带的一套，加上装在酒馆里的界面主题（别人做的美化）。和预设一样：左边正在用，右边全部。
+
+/** 几个关键颜色的小色块：面板底色、正文、斜体、引号。 */
+function Swatches({ t, big }: { t: StTheme; big?: boolean }) {
+  const cols = [t.blur_tint_color, t.main_text_color, t.italics_text_color, t.quote_text_color].filter(Boolean) as string[];
+  if (!cols.length) return null;
+  return <span class={`rbt-swatches ${big ? 'big' : ''}`} aria-hidden="true">{cols.map((c, i) => <i key={i} style={{ background: c }} />)}</span>;
+}
+
+function useThemes(): void {
+  useEffect(() => { if (!stThemes.value.length && !themesLoading.value) void loadThemes(); }, []);
+}
+
+function LooksPage() {
+  useThemes();
+  void sourcesTick.value;
+  const list = stThemes.value;
+  const cur = currentStTheme();
+  const curTheme = list.find((t) => t.name === cur);
+  const builtIn = lookOn.value;
+  const back = GLOBAL_TAB_LABELS.looks;
+  return (
+    <div class="rbt-page">
+      <div class="rbt-page-cols">
+        <div class="rbt-page-group">
+          <Section title="正在用" hint={builtIn ? '工具箱自带的美化' : '酒馆里装的美化'}>
+            {builtIn ? (
+              <>
+                <div class="rbt-look-now">
+                  <span class="rbt-look-now-mark"><i class="fa-solid fa-feather-pointed" /></span>
+                  <span class="rbt-look-now-text"><b>工具箱自带</b><small>苹果风深色，只改颜色、字体和间距</small></span>
+                </div>
+                <div class="rbt-look-accents">
+                  <small>强调色</small>
+                  {ACCENTS.map((a) => (
+                    <button key={a.id} type="button" class={`rbt-accent-dot ${accentId.value === a.id ? 'on' : ''}`} title={a.label} aria-label={a.label} style={{ '--c': a.color }} onClick={() => setAccent(a.id)} />
+                  ))}
+                </div>
+                <button type="button" class="rbt-btn rbt-btn-small rbt-self-start" onClick={() => setLook(false)}>关掉，用酒馆主题「{cur || '默认'}」</button>
+              </>
+            ) : (
+              <>
+                <NavRow title={cur || '酒馆默认'} sub={themeHasCss(curTheme) ? '带自定义样式' : '只换颜色'} trailing={curTheme ? <Swatches t={curTheme} /> : undefined} onClick={() => cur && openDetail({ kind: 'theme', name: cur }, back)} />
+                <button type="button" class="rbt-btn rbt-btn-small rbt-self-start" onClick={() => { void useBuiltInLook(); }}>换成工具箱自带的美化</button>
+              </>
+            )}
+            <small class="rbt-muted">换美化时，酒馆面板、三栏界面和工具箱会一起换。两套美化不会同时开着。</small>
+          </Section>
+        </div>
+        <div class="rbt-page-group">
+          {themesLoading.value && !list.length ? <small class="rbt-muted">读取中…</small> : (
+            <SeriesList
+              kind="theme"
+              names={list.map((t) => t.name)}
+              back={back}
+              restTitle="美化"
+              sub={(n) => {
+                const t = list.find((x) => x.name === n);
+                const v = sourceFor('theme', n);
+                return [themeHasCss(t) ? '带自定义样式' : '只换颜色', v.version && `版本 ${v.version}`, v.author && `作者 ${v.author}`].filter(Boolean).join(' · ');
+              }}
+              trail={(n) => {
+                const t = list.find((x) => x.name === n);
+                return <>{!builtIn && n === cur && <Tag tone="accent">正在用</Tag>}{t && <Swatches t={t} />}</>;
+              }}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ThemeDetail({ name }: { name: string }) {
+  useThemes();
+  const t = stThemes.value.find((x) => x.name === name);
+  const cur = currentStTheme();
+  const inUse = !lookOn.value && name === cur;
+  const [busy, setBusy] = useState(false);
+  const css = t?.custom_css?.trim() ?? '';
+  const colors: [string, string | undefined][] = t ? [
+    ['面板底色', t.blur_tint_color], ['聊天底色', t.chat_tint_color], ['正文', t.main_text_color], ['斜体（动作、旁白）', t.italics_text_color], ['引号里的话', t.quote_text_color],
+  ] : [];
+  return (
+    <div class="rbt-page">
+      <div class="rbt-detail-head">
+        <h2>{name}</h2>
+        {inUse ? <Tag tone="accent">正在用</Tag> : t && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={async () => { setBusy(true); try { await useStTheme(name); } finally { setBusy(false); } }}>换成这个</button>}
+        {t && name !== cur && <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={async () => { setBusy(true); try { if (await deleteStTheme(name)) { updateSource('theme', name, { author: '', links: [], series: '', version: '', notes: '' }); goBack(); } } finally { setBusy(false); } }}>删除…</button>}
+      </div>
+      {!t && !themesLoading.value && <div class="rbt-warn">找不到这个美化，可能被删除了。</div>}
+      {lookOn.value && t && <small class="rbt-muted">现在用的是工具箱自带的美化。换成这个会把它关掉。</small>}
+      <div class="rbt-page-cols">
+        <div class="rbt-page-group">
+          {t && (
+            <Section title="样子" hint={css ? `带自定义样式（约 ${Math.max(1, Math.round(css.length / 1024))} KB），会改酒馆的排版和细节` : '只换颜色，不改排版'}>
+              <div class="rbt-theme-colors">
+                {colors.filter(([, c]) => !!c).map(([label, c]) => (
+                  <div key={label} class="rbt-theme-color"><i style={{ background: c }} /><span>{label}</span></div>
+                ))}
+              </div>
+            </Section>
+          )}
+          <SourceSection kind="theme" id={name} />
+        </div>
+        <div class="rbt-page-group">
+          <VersionSection kind="theme" id={name} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // -------------------------------------------------------------- host ---
 
 function DetailBody() {
@@ -507,6 +638,7 @@ function DetailBody() {
       {e.d.kind === 'card' && <CardPage avatar={e.d.avatar} embedded />}
       {e.d.kind === 'preset' && <PresetDetail name={e.d.name} />}
       {e.d.kind === 'world' && <WorldDetail name={e.d.name} />}
+      {e.d.kind === 'theme' && <ThemeDetail name={e.d.name} />}
     </>
   );
 }
@@ -530,6 +662,7 @@ export function GlobalToolbox() {
   if (t === 'worlds') return <WorldsPage />;
   if (t === 'regex') return <RegexPage />;
   if (t === 'plugins') return <PluginsPage />;
+  if (t === 'looks') return <LooksPage />;
   if (t === 'backup') return <BackupPage />;
   return <Empty>没有这个标签。</Empty>;
 }

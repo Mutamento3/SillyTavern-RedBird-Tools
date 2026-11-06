@@ -434,7 +434,7 @@ export function exportArchive(): void {
   const file: ArchiveFile = {
     format: ARCHIVE_FORMAT, version: 1, exportedAt: new Date().toISOString(),
     cards: s.cards, profiles: s.profiles, regexOwners: s.regexOwners,
-    presetInfo: s.presetInfo, pluginInfo: s.pluginInfo, worldSources: s.worldSources,
+    presetInfo: s.presetInfo, pluginInfo: s.pluginInfo, worldSources: s.worldSources, themeInfo: s.themeInfo,
   };
   const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
@@ -450,7 +450,7 @@ export async function importArchive(text: string, mode: 'merge' | 'overwrite'): 
   const inc = parseArchive(text);
   const s = settings();
   if (mode === 'overwrite') {
-    const ok = await ctx().Popup?.show?.confirm?.('覆盖导入', '现在所有的角色档案、记住的配置、正则归属，以及预设、世界书和插件的来源，都会换成文件里的。');
+    const ok = await ctx().Popup?.show?.confirm?.('覆盖导入', '现在所有的角色档案、记住的配置、正则归属，以及预设、世界书、插件和美化的来源，都会换成文件里的。');
     if (!ok) return;
   }
   s.cards = mergeRecords(s.cards, inc.cards, mode, (v) => v.updatedAt ?? '');
@@ -459,6 +459,7 @@ export async function importArchive(text: string, mode: 'merge' | 'overwrite'): 
   s.presetInfo = mergeRecords(s.presetInfo, inc.presetInfo ?? {}, mode, (v) => v.updatedAt ?? '');
   s.pluginInfo = mergeRecords(s.pluginInfo, inc.pluginInfo ?? {}, mode, (v) => v.updatedAt ?? '');
   s.worldSources = mergeRecords(s.worldSources, inc.worldSources ?? {}, mode, (v) => v.updatedAt ?? '');
+  s.themeInfo = mergeRecords(s.themeInfo, inc.themeInfo ?? {}, mode, (v) => v.updatedAt ?? '');
   saveSettings();
   // 覆盖导入：文件里的就是全部，直接写进工具箱自己的存档，不和旧的合并
   if (mode === 'overwrite') { s.deleted = {}; void syncStore(true); }

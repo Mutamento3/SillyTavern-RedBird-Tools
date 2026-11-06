@@ -15,7 +15,7 @@ export const KIND_LABEL: Record<ImportKind, string> = {
   preset: '预设', world: '世界书', regex: '正则', character: '角色卡', theme: '美化', unknown: '认不出的文件',
 };
 
-export const KIND_TAB: Partial<Record<ImportKind, GlobalTab>> = { preset: 'presets', world: 'worlds', regex: 'regex' };
+export const KIND_TAB: Partial<Record<ImportKind, GlobalTab>> = { preset: 'presets', world: 'worlds', regex: 'regex', theme: 'looks' };
 
 /** What a file is, from its extension and (for JSON) its shape. */
 export async function detectKind(file: File): Promise<ImportKind> {
@@ -159,7 +159,7 @@ export async function runImport(items: ImportItem[], hooks: {
   switchPreset: (n: string) => Promise<void>;
   setWorldGlobal: (n: string) => Promise<void>;
   openCharacter: (avatar: string) => Promise<void>;
-  saveSource: (kind: 'preset' | 'world', name: string, rec: { author: string; links: { label: string; url: string }[]; notes: string }) => void;
+  saveSource: (kind: 'preset' | 'world' | 'theme', name: string, rec: { author: string; links: { label: string; url: string }[]; notes: string }) => void;
   saveCardRecord: (avatar: string, rec: { links: { label: string; url: string }[]; notes: string }) => void;
   /** `extra`: the card already carries a book, so add this one as an extra book. */
   bindWorld: (avatar: string, world: string, extra: boolean) => Promise<void>;
@@ -201,6 +201,7 @@ export async function runImport(items: ImportItem[], hooks: {
     if (!feed('ui_preset_import_file', [it.file], 'change')) { toast('error', '找不到酒馆的美化导入入口。', '导入'); break; }
     const t0 = Date.now();
     while (!has() && Date.now() - t0 < 15000) await wait(300);
+    if (has() && hasExtra(it)) hooks.saveSource('theme', name, { author: it.author.trim(), links: linksOf(it), notes: it.notes.trim() });
     if (has() && it.activate) await hooks.useTheme(name);
     done.push({ item: it, name: has() ? name : null });
   }

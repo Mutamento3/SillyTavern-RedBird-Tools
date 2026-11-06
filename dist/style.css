@@ -905,15 +905,6 @@ body.rbt-resizing #sheld { transition: none !important; }
 #rbt_settings .rbt-set-link { border: 0; background: none; padding: 0; font: inherit; font-size: 12px; color: var(--rbd-accent, #0a84ff); cursor: pointer; }
 #rbt_settings .rbt-set-link:hover { text-decoration: underline; }
 
-/* 设置里的强调色色块（属于「美化」那一行） */
-#rbt_settings .rbt-accents { display: flex; align-items: center; gap: 10px; padding: 2px 0 8px 36px; }
-#rbt_settings .rbt-accents[hidden] { display: none; }
-#rbt_settings .rbt-accents small { margin-right: 2px; font-size: 12px; color: var(--rbd-text2, rgba(235, 235, 245, 0.64)); }
-#rbt_settings .rbt-accent {
-  width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%;
-  background: var(--c); cursor: pointer;
-}
-#rbt_settings .rbt-accent.on { box-shadow: 0 0 0 2px var(--rbd-bg2, #2a2a2e), 0 0 0 4px var(--c); }
 
 
 /* 勾选框：18px、清楚的边框和白勾；整行都能点，悬停整行变亮（压过酒馆和美化里的勾选框样式） */
@@ -991,6 +982,25 @@ input.rbt-cb.rbt-cb[type='checkbox']:focus-visible { outline: 2px solid var(--rb
 .rbt-imp-item.compact.nested { padding-top: 12px; }
 .rbt-imp-item.compact .rbt-imp-alert { margin-left: 0; }
 .rbt-imp-item.compact .rbt-imp-alert p { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- 全局工具箱 › 美化 ---- */
+.rbt-look-now { display: flex; align-items: center; gap: 12px; padding: 4px 0 6px; }
+.rbt-look-now-mark { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-size: 16px; }
+.rbt-look-now-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rbt-look-now-text b { font-size: 14px; font-weight: 600; color: var(--t1); }
+.rbt-look-now-text small { font-size: 12px; color: var(--t2); }
+.rbt-look-accents { display: flex; align-items: center; gap: 10px; padding: 4px 0 10px; }
+.rbt-look-accents small { margin-right: 2px; font-size: 12px; color: var(--t2); }
+.rbt-accent-dot { flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: var(--c); cursor: pointer; }
+.rbt-accent-dot.on { box-shadow: 0 0 0 2px var(--rbd-bg1, #1e1e21), 0 0 0 4px var(--c); }
+/* 主题的几个关键颜色，叠在一起的小圆点 */
+.rbt-swatches { display: inline-flex; align-items: center; margin-left: 8px; }
+.rbt-swatches i { width: 12px; height: 12px; margin-left: -3px; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--g2, #2a2a2e); }
+.rbt-swatches i:first-child { margin-left: 0; }
+.rbt-theme-colors { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 16px; }
+.rbt-theme-color { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--t2); }
+.rbt-theme-color i { flex: none; width: 22px; height: 22px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--hair, rgba(255, 255, 255, 0.08)); }
+.rbt-self-start { align-self: flex-start; }
 /* =====================================================================
    三栏外壳：左栏 + 导航条 + 酒馆面板的位置。
    电脑上是三栏；≤ 1000px 时（文件最后）换成手机排法：☰ 抽屉 + 一行导航 + 全屏面板。
