@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { saveSettings, settings } from '../st/st';
-import { applyProfile, envReport, forgetProfile, refreshEnv, rememberProfile, type EnvItem, type Scope } from '../tools/env/env';
+import { applyProfile, envReport, forgetProfile, refreshEnv, rememberProfile, type EnvItem, type EnvSubItem, type Scope } from '../tools/env/env';
 import { Chip, Empty, Toggle } from './common';
 
 const SCOPES: { scope: Scope; title: string; hint: string }[] = [
@@ -33,15 +33,70 @@ function ItemRow({ item }: { item: EnvItem }) {
       <span class="rbt-env-name">{item.name}</span>
       {item.leaks && item.enabled && <Chip color="#e5484d" title="换卡后它还会继续生效">会串味</Chip>}
       {item.detail && <small class="rbt-muted">{item.detail}</small>}
-      {item.toggle && <span class="rbt-env-toggle"><Toggle checked={item.enabled} onChange={onToggle} title={busy ? '处理中…' : '开 / 关'} /></span>}
+      {item.toggle && (
+        <span class="rbt-env-toggle">
+          <small class={item.enabled ? 'rbt-ok' : 'rbt-muted'}>{busy ? '…' : item.enabled ? '已开启' : '已关闭'}</small>
+          <Toggle checked={item.enabled} onChange={onToggle} title="点击开 / 关" />
+        </span>
+      )}
     </div>
   );
+  if (item.subItems?.length) {
+    return (
+      <details class="rbt-env-details">
+        <summary>{body}</summary>
+        <SubItemList items={item.subItems} groupOff={!item.enabled} />
+      </details>
+    );
+  }
   if (!item.children?.length) return body;
   return (
     <details class="rbt-env-details">
       <summary>{body}</summary>
       <div class="rbt-env-children">{item.children.map((c, i) => <div key={i}>{c}</div>)}</div>
     </details>
+  );
+}
+
+function SubItemRow({ sub }: { sub: EnvSubItem }) {
+  const [busy, setBusy] = useState(false);
+  const onToggle = async (on: boolean) => {
+    setBusy(true);
+    try {
+      await sub.toggle(on);
+    } finally {
+      setBusy(false);
+      refreshEnv();
+    }
+  };
+  return (
+    <div class={`rbt-sub-item ${sub.enabled ? '' : 'off'}`}>
+      <span class="rbt-sub-name">{sub.name}</span>
+      {sub.detail && <small class="rbt-muted">{sub.detail}</small>}
+      <span class="rbt-env-toggle">
+        <small class={sub.enabled ? 'rbt-ok' : 'rbt-muted'}>{busy ? '…' : sub.enabled ? '开' : '关'}</small>
+        <Toggle checked={sub.enabled} onChange={onToggle} title="点击开 / 关这一条" />
+      </span>
+    </div>
+  );
+}
+
+function SubItemList({ items, groupOff }: { items: EnvSubItem[]; groupOff: boolean }) {
+  const [filter, setFilter] = useState('');
+  const [onlyOn, setOnlyOn] = useState(false);
+  const shown = items.filter((s) => (!filter || s.name.includes(filter)) && (!onlyOn || s.enabled));
+  return (
+    <div class="rbt-sub-list">
+      {groupOff && <div class="rbt-hint">总开关是关的，下面这些即使显示"开"也不会运行。</div>}
+      {items.length > 10 && (
+        <div class="rbt-sub-tools">
+          <input class="text_pole rbt-input" placeholder="搜索正则名…" value={filter} onInput={(e) => setFilter((e.currentTarget as HTMLInputElement).value)} />
+          <label class="rbt-check"><input type="checkbox" checked={onlyOn} onChange={(e) => setOnlyOn((e.currentTarget as HTMLInputElement).checked)} />只看开着的</label>
+        </div>
+      )}
+      {shown.map((s) => <SubItemRow key={s.id} sub={s} />)}
+      {!shown.length && <small class="rbt-muted">没有匹配的正则</small>}
+    </div>
   );
 }
 

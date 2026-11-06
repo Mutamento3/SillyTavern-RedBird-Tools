@@ -1562,6 +1562,48 @@ function installFlowCapture() {
   if (typeof es.makeLast === "function") es.makeLast(et.CHAT_COMPLETION_PROMPT_READY, onPromptReady);
   else es.on(et.CHAT_COMPLETION_PROMPT_READY, onPromptReady);
 }
+const RX = { GLOBAL: 0, SCOPED: 1, PRESET: 2 };
+function regexEffectLabel(r2) {
+  return [r2.markdownOnly ? "仅显示" : "", r2.promptOnly ? "仅提示词" : ""].filter(Boolean).join(" + ") || "修改楼层";
+}
+async function setRegexEnabled(type, id, on) {
+  const re = loaded.regexEngine;
+  if (!re) throw new Error("regex engine not loaded");
+  const list = re.getScriptsByType(type) ?? [];
+  if (!list.some((s2) => s2.id === id)) {
+    toast("error", '没找到这条正则，可能已经被改名或删除。请点"刷新"。');
+    return;
+  }
+  const next = list.map((s2) => s2.id === id ? { ...s2, disabled: !on } : s2);
+  await re.saveScriptsByType(next, type);
+  saveSettings();
+  if (ctx().getCurrentChatId?.()) await ctx().reloadCurrentChat();
+}
+async function setRegexGroupAllowed(type, on) {
+  const re = loaded.regexEngine;
+  if (!re) return;
+  if (type === RX.PRESET) {
+    const api = re.getCurrentPresetAPI();
+    const name = re.getCurrentPresetName();
+    if (on) re.allowPresetScripts(api, name);
+    else re.disallowPresetScripts(api, name);
+  } else if (type === RX.SCOPED) {
+    const char = currentCharacter();
+    if (on) re.allowScopedScripts(char);
+    else re.disallowScopedScripts(char);
+  }
+  saveSettings();
+  if (ctx().getCurrentChatId?.()) await ctx().reloadCurrentChat();
+}
+function regexSubItems(type, scripts) {
+  return scripts.map((r2, i2) => ({
+    id: String(r2.id ?? i2),
+    name: r2.scriptName || "(未命名正则)",
+    detail: regexEffectLabel(r2),
+    enabled: !r2.disabled,
+    toggle: (on) => setRegexEnabled(type, r2.id, on)
+  }));
+}
 const envReport = y$1(null);
 function thScripts(node, out = []) {
   if (!node) return out;
@@ -1629,8 +1671,8 @@ function buildEnvReport() {
       name: r2.scriptName || "(未命名正则)",
       enabled: !r2.disabled,
       leaks: !r2.disabled,
-      detail: [r2.markdownOnly ? "仅显示" : "", r2.promptOnly ? "仅提示词" : ""].filter(Boolean).join(" + ") || "修改楼层",
-      toggle: async (on) => runSlash(`/regex-toggle state=${on ? "on" : "off"} quiet=true ${slashQuote(r2.scriptName)}`)
+      detail: regexEffectLabel(r2),
+      toggle: (on) => setRegexEnabled(RX.GLOBAL, r2.id, on)
     });
   }
   const thSettings = es.tavern_helper?.script;
@@ -1674,8 +1716,9 @@ function buildEnvReport() {
       name: `预设正则 ${preset.regex.length} 条（启用 ${active.length}）`,
       enabled: allowed,
       leaks: allowed && active.length > 0,
-      detail: allowed ? "只要用这个预设，玩哪张卡都会生效" : "这个预设的正则未被允许运行",
-      children: preset.regex.map((r2) => `${r2.disabled ? "○" : "●"} ${r2.scriptName}`)
+      detail: allowed ? "只要用这个预设，玩哪张卡都会生效。总开关 = 是否允许这个预设的正则运行" : "这个预设的正则未被允许运行",
+      toggle: (on) => setRegexGroupAllowed(RX.PRESET, on),
+      subItems: regexSubItems(RX.PRESET, preset.regex)
     });
   }
   const thPreset = thScripts(preset.th);
@@ -1699,15 +1742,17 @@ function buildEnvReport() {
     const cardRegex = char.data?.extensions?.regex_scripts ?? [];
     if (cardRegex.length) {
       const allowed = (es.character_allowed_regex ?? []).includes(avatar);
+      const activeCard = cardRegex.filter((r2) => !r2.disabled).length;
       items.push({
         id: "rx:c",
         scope: "character",
         kind: "regex",
-        name: `卡内正则 ${cardRegex.length} 条`,
+        name: `卡内正则 ${cardRegex.length} 条（启用 ${activeCard}）`,
         enabled: allowed,
         leaks: false,
-        detail: allowed ? "已允许运行" : "未允许运行（卡里的正则不会生效）",
-        children: cardRegex.map((r2) => `${r2.disabled ? "○" : "●"} ${r2.scriptName}`)
+        detail: allowed ? "总开关 = 是否允许这张卡的正则运行" : "未允许运行（卡里的正则不会生效）",
+        toggle: (on) => setRegexGroupAllowed(RX.SCOPED, on),
+        subItems: regexSubItems(RX.SCOPED, cardRegex)
       });
     }
     const thChar = thScripts(char.data?.extensions?.tavern_helper ?? char.data?.extensions?.TavernHelper_scripts);
@@ -1780,8 +1825,14 @@ async function applyProfile() {
   if (d2.preset) await runSlash(`/preset ${slashQuote(d2.preset)}`);
   for (const w2 of d2.worldsOff) await runSlash(`/world state=off silent=true ${slashQuote(w2)}`);
   for (const w2 of d2.worldsOn) await runSlash(`/world state=on silent=true ${slashQuote(w2)}`);
-  for (const x2 of d2.regexOff) await runSlash(`/regex-toggle state=off quiet=true ${slashQuote(x2)}`);
-  for (const x2 of d2.regexOn) await runSlash(`/regex-toggle state=on quiet=true ${slashQuote(x2)}`);
+  if (d2.regexOff.length || d2.regexOn.length) {
+    const re = loaded.regexEngine;
+    const list = re?.getScriptsByType(RX.GLOBAL) ?? [];
+    const next = list.map((s2) => d2.regexOff.includes(s2.scriptName) ? { ...s2, disabled: true } : d2.regexOn.includes(s2.scriptName) ? { ...s2, disabled: false } : s2);
+    await re?.saveScriptsByType(next, RX.GLOBAL);
+    saveSettings();
+    if (ctx().getCurrentChatId?.()) await ctx().reloadCurrentChat();
+  }
   const after = refreshEnv();
   if (after.drift?.count) toast("warning", `还有 ${after.drift.count} 项没能恢复，请在面板里检查`);
   else toast("success", `已恢复「${r2.cardName}」记住的环境`);
@@ -2053,12 +2104,58 @@ function ItemRow({ item }) {
     /* @__PURE__ */ u$2("span", { class: "rbt-env-name", children: item.name }),
     item.leaks && item.enabled && /* @__PURE__ */ u$2(Chip, { color: "#e5484d", title: "换卡后它还会继续生效", children: "会串味" }),
     item.detail && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: item.detail }),
-    item.toggle && /* @__PURE__ */ u$2("span", { class: "rbt-env-toggle", children: /* @__PURE__ */ u$2(Toggle, { checked: item.enabled, onChange: onToggle, title: busy ? "处理中…" : "开 / 关" }) })
+    item.toggle && /* @__PURE__ */ u$2("span", { class: "rbt-env-toggle", children: [
+      /* @__PURE__ */ u$2("small", { class: item.enabled ? "rbt-ok" : "rbt-muted", children: busy ? "…" : item.enabled ? "已开启" : "已关闭" }),
+      /* @__PURE__ */ u$2(Toggle, { checked: item.enabled, onChange: onToggle, title: "点击开 / 关" })
+    ] })
   ] });
+  if (item.subItems?.length) {
+    return /* @__PURE__ */ u$2("details", { class: "rbt-env-details", children: [
+      /* @__PURE__ */ u$2("summary", { children: body }),
+      /* @__PURE__ */ u$2(SubItemList, { items: item.subItems, groupOff: !item.enabled })
+    ] });
+  }
   if (!item.children?.length) return body;
   return /* @__PURE__ */ u$2("details", { class: "rbt-env-details", children: [
     /* @__PURE__ */ u$2("summary", { children: body }),
     /* @__PURE__ */ u$2("div", { class: "rbt-env-children", children: item.children.map((c2, i2) => /* @__PURE__ */ u$2("div", { children: c2 }, i2)) })
+  ] });
+}
+function SubItemRow({ sub }) {
+  const [busy, setBusy] = d$1(false);
+  const onToggle = async (on) => {
+    setBusy(true);
+    try {
+      await sub.toggle(on);
+    } finally {
+      setBusy(false);
+      refreshEnv();
+    }
+  };
+  return /* @__PURE__ */ u$2("div", { class: `rbt-sub-item ${sub.enabled ? "" : "off"}`, children: [
+    /* @__PURE__ */ u$2("span", { class: "rbt-sub-name", children: sub.name }),
+    sub.detail && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: sub.detail }),
+    /* @__PURE__ */ u$2("span", { class: "rbt-env-toggle", children: [
+      /* @__PURE__ */ u$2("small", { class: sub.enabled ? "rbt-ok" : "rbt-muted", children: busy ? "…" : sub.enabled ? "开" : "关" }),
+      /* @__PURE__ */ u$2(Toggle, { checked: sub.enabled, onChange: onToggle, title: "点击开 / 关这一条" })
+    ] })
+  ] });
+}
+function SubItemList({ items, groupOff }) {
+  const [filter, setFilter] = d$1("");
+  const [onlyOn, setOnlyOn] = d$1(false);
+  const shown = items.filter((s2) => (!filter || s2.name.includes(filter)) && (!onlyOn || s2.enabled));
+  return /* @__PURE__ */ u$2("div", { class: "rbt-sub-list", children: [
+    groupOff && /* @__PURE__ */ u$2("div", { class: "rbt-hint", children: '总开关是关的，下面这些即使显示"开"也不会运行。' }),
+    items.length > 10 && /* @__PURE__ */ u$2("div", { class: "rbt-sub-tools", children: [
+      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: "搜索正则名…", value: filter, onInput: (e2) => setFilter(e2.currentTarget.value) }),
+      /* @__PURE__ */ u$2("label", { class: "rbt-check", children: [
+        /* @__PURE__ */ u$2("input", { type: "checkbox", checked: onlyOn, onChange: (e2) => setOnlyOn(e2.currentTarget.checked) }),
+        "只看开着的"
+      ] })
+    ] }),
+    shown.map((s2) => /* @__PURE__ */ u$2(SubItemRow, { sub: s2 }, s2.id)),
+    !shown.length && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "没有匹配的正则" })
   ] });
 }
 function EnvView() {
@@ -2505,19 +2602,43 @@ const TABS = [
   { id: "env", label: "换卡体检" }
 ];
 const POS_KEY = "rbt-panel-rect";
+const MIN_W = 320;
+const MIN_H = 240;
+function viewport() {
+  const vw = window.innerWidth || document.documentElement.clientWidth || window.screen.width || 1024;
+  const vh = window.innerHeight || document.documentElement.clientHeight || window.screen.height || 768;
+  return { vw: Math.max(vw, MIN_W), vh: Math.max(vh, MIN_H) };
+}
+function defaultRect() {
+  const { vw, vh } = viewport();
+  const w2 = Math.min(560, vw - 20);
+  return { x: vw - w2 - 10, y: 50, w: w2, h: Math.min(760, vh - 70) };
+}
 function loadRect() {
   try {
     const r2 = JSON.parse(localStorage.getItem(POS_KEY) ?? "");
-    if (typeof r2?.x === "number") return r2;
+    if (typeof r2?.x === "number" && r2.w >= MIN_W && r2.h >= MIN_H) return r2;
   } catch {
   }
-  const w2 = Math.min(560, window.innerWidth - 20);
-  return { x: window.innerWidth - w2 - 10, y: 50, w: w2, h: Math.min(760, window.innerHeight - 70) };
+  return defaultRect();
 }
 function clampRect(r2) {
-  const w2 = Math.min(Math.max(320, r2.w), window.innerWidth);
-  const h2 = Math.min(Math.max(240, r2.h), window.innerHeight);
-  return { w: w2, h: h2, x: Math.min(Math.max(0, r2.x), window.innerWidth - 80), y: Math.min(Math.max(0, r2.y), window.innerHeight - 40) };
+  const { vw, vh } = viewport();
+  const w2 = Math.min(Math.max(MIN_W, r2.w), vw);
+  const h2 = Math.min(Math.max(MIN_H, r2.h), vh);
+  return {
+    w: w2,
+    h: h2,
+    x: Math.max(0, Math.min(r2.x, vw - Math.min(w2, 120))),
+    y: Math.max(0, Math.min(r2.y, vh - 40))
+  };
+}
+function saveRect(el) {
+  if (el.offsetWidth < MIN_W || el.offsetHeight < MIN_H) return;
+  localStorage.setItem(POS_KEY, JSON.stringify({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }));
+}
+function applyRect(el, r2) {
+  Object.assign(el.style, { left: `${r2.x}px`, top: `${r2.y}px`, width: `${r2.w}px`, height: `${r2.h}px` });
 }
 function openPanel(tab) {
   if (tab) activeTab.value = tab;
@@ -2528,13 +2649,17 @@ function Panel() {
   h$2(() => {
     const el = ref.current;
     if (!el || !panelOpen.value) return;
-    const r2 = clampRect(loadRect());
-    Object.assign(el.style, { left: `${r2.x}px`, top: `${r2.y}px`, width: `${r2.w}px`, height: `${r2.h}px` });
-    const ro = new ResizeObserver(() => {
-      localStorage.setItem(POS_KEY, JSON.stringify({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }));
-    });
+    applyRect(el, clampRect(loadRect()));
+    const ro = new ResizeObserver(() => saveRect(el));
     ro.observe(el);
-    return () => ro.disconnect();
+    const onResize = () => applyRect(el, clampRect({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }));
+    window.addEventListener("resize", onResize);
+    document.addEventListener("visibilitychange", onResize);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("visibilitychange", onResize);
+    };
   }, [panelOpen.value]);
   if (!panelOpen.value) return null;
   const onDragStart = (e2) => {
@@ -2550,7 +2675,7 @@ function Panel() {
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
-      localStorage.setItem(POS_KEY, JSON.stringify({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }));
+      saveRect(el);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);

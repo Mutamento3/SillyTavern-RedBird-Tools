@@ -19,19 +19,49 @@ const POS_KEY = 'rbt-panel-rect';
 
 interface Rect { x: number; y: number; w: number; h: number }
 
+const MIN_W = 320;
+const MIN_H = 240;
+
+/** Viewport size; background tabs can report 0, so fall back to the screen size. */
+function viewport(): { vw: number; vh: number } {
+  const vw = window.innerWidth || document.documentElement.clientWidth || window.screen.width || 1024;
+  const vh = window.innerHeight || document.documentElement.clientHeight || window.screen.height || 768;
+  return { vw: Math.max(vw, MIN_W), vh: Math.max(vh, MIN_H) };
+}
+
+function defaultRect(): Rect {
+  const { vw, vh } = viewport();
+  const w = Math.min(560, vw - 20);
+  return { x: vw - w - 10, y: 50, w, h: Math.min(760, vh - 70) };
+}
+
 function loadRect(): Rect {
   try {
     const r = JSON.parse(localStorage.getItem(POS_KEY) ?? '');
-    if (typeof r?.x === 'number') return r;
+    if (typeof r?.x === 'number' && r.w >= MIN_W && r.h >= MIN_H) return r;
   } catch { /* ignore */ }
-  const w = Math.min(560, window.innerWidth - 20);
-  return { x: window.innerWidth - w - 10, y: 50, w, h: Math.min(760, window.innerHeight - 70) };
+  return defaultRect();
 }
 
 function clampRect(r: Rect): Rect {
-  const w = Math.min(Math.max(320, r.w), window.innerWidth);
-  const h = Math.min(Math.max(240, r.h), window.innerHeight);
-  return { w, h, x: Math.min(Math.max(0, r.x), window.innerWidth - 80), y: Math.min(Math.max(0, r.y), window.innerHeight - 40) };
+  const { vw, vh } = viewport();
+  const w = Math.min(Math.max(MIN_W, r.w), vw);
+  const h = Math.min(Math.max(MIN_H, r.h), vh);
+  return {
+    w,
+    h,
+    x: Math.max(0, Math.min(r.x, vw - Math.min(w, 120))),
+    y: Math.max(0, Math.min(r.y, vh - 40)),
+  };
+}
+
+function saveRect(el: HTMLElement): void {
+  if (el.offsetWidth < MIN_W || el.offsetHeight < MIN_H) return; // hidden / not laid out yet
+  localStorage.setItem(POS_KEY, JSON.stringify({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }));
+}
+
+function applyRect(el: HTMLElement, r: Rect): void {
+  Object.assign(el.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
 }
 
 export function openPanel(tab?: TabId): void {
@@ -45,13 +75,18 @@ export function Panel() {
   useEffect(() => {
     const el = ref.current;
     if (!el || !panelOpen.value) return;
-    const r = clampRect(loadRect());
-    Object.assign(el.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
-    const ro = new ResizeObserver(() => {
-      localStorage.setItem(POS_KEY, JSON.stringify({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }));
-    });
+    applyRect(el, clampRect(loadRect()));
+    const ro = new ResizeObserver(() => saveRect(el));
     ro.observe(el);
-    return () => ro.disconnect();
+    // Keep the panel on screen when the window changes size (or a background tab becomes visible).
+    const onResize = () => applyRect(el, clampRect({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }));
+    window.addEventListener('resize', onResize);
+    document.addEventListener('visibilitychange', onResize);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', onResize);
+      document.removeEventListener('visibilitychange', onResize);
+    };
   }, [panelOpen.value]);
 
   if (!panelOpen.value) return null;
@@ -69,7 +104,7 @@ export function Panel() {
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
-      localStorage.setItem(POS_KEY, JSON.stringify({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }));
+      saveRect(el);
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);

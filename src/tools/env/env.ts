@@ -31,6 +31,71 @@ export interface EnvItem {
   leaks: boolean;
   toggle?: (on: boolean) => Promise<void>;
   children?: string[];
+  /** Individually switchable children (e.g. each regex script of a preset). */
+  subItems?: EnvSubItem[];
+}
+
+export interface EnvSubItem {
+  id: string;
+  name: string;
+  detail?: string;
+  enabled: boolean;
+  toggle: (on: boolean) => Promise<void>;
+}
+
+// ------------------------------------------------------- regex toggles ---
+
+/** ST regex SCRIPT_TYPES. */
+const RX = { GLOBAL: 0, SCOPED: 1, PRESET: 2 } as const;
+type RxType = (typeof RX)[keyof typeof RX];
+
+function regexEffectLabel(r: Any): string {
+  return [r.markdownOnly ? '仅显示' : '', r.promptOnly ? '仅提示词' : ''].filter(Boolean).join(' + ') || '修改楼层';
+}
+
+/**
+ * Enable/disable one regex script. Writes through ST's regex engine directly (instead of
+ * /regex-toggle) so that switching a single preset/card script does not also silently
+ * "allow" the whole preset/card, and duplicate names across scopes are handled by id.
+ */
+async function setRegexEnabled(type: RxType, id: string, on: boolean): Promise<void> {
+  const re = loaded.regexEngine;
+  if (!re) throw new Error('regex engine not loaded');
+  const list: Any[] = re.getScriptsByType(type) ?? [];
+  if (!list.some((s) => s.id === id)) {
+    toast('error', '没找到这条正则，可能已经被改名或删除。请点"刷新"。');
+    return;
+  }
+  const next = list.map((s) => (s.id === id ? { ...s, disabled: !on } : s));
+  await re.saveScriptsByType(next, type);
+  saveSettings();
+  // Re-render messages so display-only regex changes show up immediately.
+  if (ctx().getCurrentChatId?.()) await ctx().reloadCurrentChat();
+}
+
+async function setRegexGroupAllowed(type: RxType, on: boolean): Promise<void> {
+  const re = loaded.regexEngine;
+  if (!re) return;
+  if (type === RX.PRESET) {
+    const api = re.getCurrentPresetAPI();
+    const name = re.getCurrentPresetName();
+    if (on) re.allowPresetScripts(api, name); else re.disallowPresetScripts(api, name);
+  } else if (type === RX.SCOPED) {
+    const char = currentCharacter();
+    if (on) re.allowScopedScripts(char); else re.disallowScopedScripts(char);
+  }
+  saveSettings();
+  if (ctx().getCurrentChatId?.()) await ctx().reloadCurrentChat();
+}
+
+function regexSubItems(type: RxType, scripts: Any[]): EnvSubItem[] {
+  return scripts.map((r, i) => ({
+    id: String(r.id ?? i),
+    name: r.scriptName || '(未命名正则)',
+    detail: regexEffectLabel(r),
+    enabled: !r.disabled,
+    toggle: (on: boolean) => setRegexEnabled(type, r.id, on),
+  }));
 }
 
 export interface EnvReport {
@@ -118,8 +183,8 @@ export function buildEnvReport(): EnvReport {
     items.push({
       id: `rx:g:${r.id ?? r.scriptName}`, scope: 'global', kind: 'regex', name: r.scriptName || '(未命名正则)',
       enabled: !r.disabled, leaks: !r.disabled,
-      detail: [r.markdownOnly ? '仅显示' : '', r.promptOnly ? '仅提示词' : ''].filter(Boolean).join(' + ') || '修改楼层',
-      toggle: async (on) => runSlash(`/regex-toggle state=${on ? 'on' : 'off'} quiet=true ${slashQuote(r.scriptName)}`),
+      detail: regexEffectLabel(r),
+      toggle: (on) => setRegexEnabled(RX.GLOBAL, r.id, on),
     });
   }
   // --- Tavern Helper global scripts
@@ -152,8 +217,9 @@ export function buildEnvReport(): EnvReport {
     items.push({
       id: 'rx:p', scope: 'preset', kind: 'regex', name: `预设正则 ${preset.regex.length} 条（启用 ${active.length}）`,
       enabled: allowed, leaks: allowed && active.length > 0,
-      detail: allowed ? '只要用这个预设，玩哪张卡都会生效' : '这个预设的正则未被允许运行',
-      children: preset.regex.map((r: Any) => `${r.disabled ? '○' : '●'} ${r.scriptName}`),
+      detail: allowed ? '只要用这个预设，玩哪张卡都会生效。总开关 = 是否允许这个预设的正则运行' : '这个预设的正则未被允许运行',
+      toggle: (on) => setRegexGroupAllowed(RX.PRESET, on),
+      subItems: regexSubItems(RX.PRESET, preset.regex),
     });
   }
   const thPreset = thScripts(preset.th);
@@ -174,10 +240,12 @@ export function buildEnvReport(): EnvReport {
     const cardRegex: Any[] = char.data?.extensions?.regex_scripts ?? [];
     if (cardRegex.length) {
       const allowed = (es.character_allowed_regex ?? []).includes(avatar);
+      const activeCard = cardRegex.filter((r: Any) => !r.disabled).length;
       items.push({
-        id: 'rx:c', scope: 'character', kind: 'regex', name: `卡内正则 ${cardRegex.length} 条`, enabled: allowed, leaks: false,
-        detail: allowed ? '已允许运行' : '未允许运行（卡里的正则不会生效）',
-        children: cardRegex.map((r: Any) => `${r.disabled ? '○' : '●'} ${r.scriptName}`),
+        id: 'rx:c', scope: 'character', kind: 'regex', name: `卡内正则 ${cardRegex.length} 条（启用 ${activeCard}）`, enabled: allowed, leaks: false,
+        detail: allowed ? '总开关 = 是否允许这张卡的正则运行' : '未允许运行（卡里的正则不会生效）',
+        toggle: (on) => setRegexGroupAllowed(RX.SCOPED, on),
+        subItems: regexSubItems(RX.SCOPED, cardRegex),
       });
     }
     const thChar = thScripts(char.data?.extensions?.tavern_helper ?? char.data?.extensions?.TavernHelper_scripts);
@@ -251,8 +319,15 @@ export async function applyProfile(): Promise<void> {
   if (d.preset) await runSlash(`/preset ${slashQuote(d.preset)}`);
   for (const w of d.worldsOff) await runSlash(`/world state=off silent=true ${slashQuote(w)}`);
   for (const w of d.worldsOn) await runSlash(`/world state=on silent=true ${slashQuote(w)}`);
-  for (const x of d.regexOff) await runSlash(`/regex-toggle state=off quiet=true ${slashQuote(x)}`);
-  for (const x of d.regexOn) await runSlash(`/regex-toggle state=on quiet=true ${slashQuote(x)}`);
+  if (d.regexOff.length || d.regexOn.length) {
+    const re = loaded.regexEngine;
+    const list: Any[] = re?.getScriptsByType(RX.GLOBAL) ?? [];
+    const next = list.map((s) => (d.regexOff.includes(s.scriptName) ? { ...s, disabled: true }
+      : d.regexOn.includes(s.scriptName) ? { ...s, disabled: false } : s));
+    await re?.saveScriptsByType(next, RX.GLOBAL);
+    saveSettings();
+    if (ctx().getCurrentChatId?.()) await ctx().reloadCurrentChat();
+  }
   const after = refreshEnv();
   if (after.drift?.count) toast('warning', `还有 ${after.drift.count} 项没能恢复，请在面板里检查`);
   else toast('success', `已恢复「${r.cardName}」记住的环境`);
