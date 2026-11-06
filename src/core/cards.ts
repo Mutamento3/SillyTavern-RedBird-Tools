@@ -16,6 +16,19 @@ export interface CardRecord {
   updatedAt: string;
 }
 
+/** Author and links for a preset or a plugin (tutorials, release posts…). */
+export interface SourceRecord {
+  /** Empty = use what the plugin itself says (manifest). */
+  author: string;
+  links: CardLink[];
+  /** Presets / worldbooks: which series this belongs to, so versions line up. */
+  series?: string;
+  version?: string;
+  /** What changed in this version, how to use it… */
+  notes?: string;
+  updatedAt: string;
+}
+
 export type RegexOwnerKind = 'extension' | 'card' | 'preset';
 export interface RegexOwner {
   kind: RegexOwnerKind;
@@ -218,12 +231,15 @@ export interface ArchiveFile {
   cards: Record<string, CardRecord>;
   profiles: Record<string, unknown>;
   regexOwners: Record<string, RegexOwner>;
+  presetInfo?: Record<string, SourceRecord>;
+  pluginInfo?: Record<string, SourceRecord>;
+  worldSources?: Record<string, SourceRecord>;
 }
 
 export function parseArchive(text: string): ArchiveFile {
   const j = JSON.parse(text);
   if (j?.format !== ARCHIVE_FORMAT) throw new Error('这不是 RedBird 工具箱导出的角色档案文件');
-  return { ...j, cards: j.cards ?? {}, profiles: j.profiles ?? {}, regexOwners: j.regexOwners ?? {} };
+  return { ...j, cards: j.cards ?? {}, profiles: j.profiles ?? {}, regexOwners: j.regexOwners ?? {}, presetInfo: j.presetInfo ?? {}, pluginInfo: j.pluginInfo ?? {}, worldSources: j.worldSources ?? {} };
 }
 
 /** merge: keep whichever record is newer; overwrite: incoming replaces everything. */

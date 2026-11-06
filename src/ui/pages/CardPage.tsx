@@ -101,18 +101,19 @@ function SwitchSection({ avatar, isCurrent }: { avatar: string; isCurrent: boole
   );
 }
 
-export function CardPage() {
+/** `avatar`: show this card (a detail inside 全局工具箱); otherwise the dock's current / picked card. */
+export function CardPage({ avatar: forced, embedded }: { avatar?: string; embedded?: boolean } = {}) {
   void archiveVersion.value;
   void statusTick.value;
   const cur = currentCharacter();
-  const avatar = archiveTarget.value ?? cur?.avatar;
+  const avatar = forced ?? archiveTarget.value ?? cur?.avatar;
   useEffect(() => { if (avatar) void ensureFullCharacter(avatar); }, [avatar]);
   const f = avatar ? findChar(avatar) : null;
   if (!f) return <Empty>没有打开单人角色卡。在左栏「角色」里点一张卡，就能看到它的档案。</Empty>;
   const info = cardInfo(f.char);
   return (
     <div class="rbt-page">
-      <CardHeader info={info} />
+      <CardHeader info={info} embedded={embedded} />
       {info.isCurrent && <AttentionBox char={f.char} />}
       <div class="rbt-page-cols">
         <div class="rbt-page-group">

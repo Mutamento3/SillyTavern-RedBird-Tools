@@ -3,7 +3,7 @@
  * 左栏只放最近的聊天；挑角色、新建 / 导入都在这里。
  */
 import { useMemo, useState } from 'preact/hooks';
-import { openView } from '../ui/views';
+import { openGlobal } from '../ui/views';
 import {
   allTags,
   charsTick,
@@ -187,8 +187,9 @@ export function HomeGallery() {
       </div>
       {filter === 'problem' && (
         <div class="rbt-home-note">
-          这些卡缺世界书、插件，或者正则 / 脚本没开。点进去后，在「聊天工具箱 › 角色档案」里一键处理；要批量处理，去
-          <button type="button" class="rbt-linkbtn" onClick={() => openView('maintain')}>全局工具箱 › 维护</button>。
+          这些卡缺世界书、插件，或者正则 / 脚本没开。点进去后，在「聊天工具箱 › 角色档案」里一键处理；缺的世界书也可以在
+          <button type="button" class="rbt-linkbtn" onClick={() => openGlobal('worlds')}>全局工具箱 › 世界书</button>
+          里一次全部导入。
         </div>
       )}
       <div class="rbt-home-grid">

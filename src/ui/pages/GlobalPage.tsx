@@ -1,6 +1,5 @@
 /**
- * 「全局」：对所有卡都生效的东西——全局世界书、全局正则（开关和"属于谁"在同一行）、预设带的正则和脚本、
- * 用户设定的世界书、酒馆助手全局脚本、已启用的插件。合并了原「换卡体检」的全局部分和「角色档案 · 正则归属」。
+ * 全局工具箱各标签共用的零件：一行开关、全局正则列表、加全局世界书、切预设、插件开关。
  */
 import { useEffect, useState } from 'preact/hooks';
 import type { RegexOwner } from '../../core/cards';
@@ -10,6 +9,8 @@ import { currentBookScopes } from '../../tools/flow/capture';
 import { openDrawer } from '../../shell/drawers';
 import { envReport, refreshEnv, type EnvItem, type EnvSubItem } from '../../tools/env/env';
 import { Chip, Toggle } from '../common';
+import { SourceEditor } from '../SourceEditor';
+import { sourceFor } from '../../tools/sources';
 import { OK, Section } from './parts';
 
 const KIND_LABEL: Record<EnvItem['kind'], string> = {
@@ -96,7 +97,7 @@ function ownerValue(o: RegexOwner | undefined): string {
 }
 
 /** One global regex: on/off and "belongs to" on the same row. */
-function GlobalRegexList({ items }: { items: EnvItem[] }) {
+export function GlobalRegexList({ items }: { items: EnvItem[] }) {
   void archiveVersion.value;
   const scripts = globalRegexScripts();
   const owners = settings().regexOwners;
@@ -144,7 +145,7 @@ function GlobalRegexList({ items }: { items: EnvItem[] }) {
 }
 
 /** Open ST's own regex manager (create / edit / import) inside the 扩展·正则 panel. */
-function openRegexManager(): void {
+export function openRegexManager(): void {
   openDrawer('extensions');
   setTimeout(() => {
     const box = document.querySelector<HTMLElement>('.regex_settings');
@@ -154,7 +155,7 @@ function openRegexManager(): void {
   }, 350);
 }
 
-function AddGlobalWorld() {
+export function AddGlobalWorld() {
   const scopes = currentBookScopes();
   const options = worldNames().filter((w) => !scopes.global.has(w)).sort((x, y) => x.localeCompare(y, 'zh-Hans-CN'));
   const [busy, setBusy] = useState(false);
@@ -174,11 +175,12 @@ function AddGlobalWorld() {
   );
 }
 
-function PresetPicker() {
+export function PresetPicker() {
   const names = presetNames();
   const cur = currentPresetName();
   const [busy, setBusy] = useState(false);
   return (
+    <>
     <div class="rbt-form-row">
       <select class="text_pole rbt-select" value={cur} disabled={busy} onChange={async (e) => {
         const name = (e.currentTarget as HTMLSelectElement).value;
@@ -190,13 +192,15 @@ function PresetPicker() {
       </select>
       <button class="rbt-btn" onClick={() => openDrawer('preset')}>编辑预设</button>
     </div>
+    </>
   );
 }
 
 /** Plugins: switch each one; ST needs a page reload to apply, so changes are staged. */
-function PluginList() {
+export function PluginList() {
   const list = installedExtensions().sort((x, y) => Number(y.enabled) - Number(x.enabled) || x.name.localeCompare(y.name));
   const [want, setWant] = useState<Record<string, boolean>>({});
+  const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const changed = list.filter((e) => e.id in want && want[e.id] !== e.enabled);
   const apply = async () => {
@@ -215,13 +219,19 @@ function PluginList() {
       {list.map((e) => {
         const on = e.id in want ? want[e.id] : e.enabled;
         return (
-          <div key={e.id} class={`rbt-env-item ${on ? '' : 'off'}`}>
-            <span class="rbt-env-name">{e.name}</span>
-            {e.name !== e.id && <small class="rbt-muted">{e.id}</small>}
+          <div key={e.id} class="rbt-plugin">
+          <div class={`rbt-env-item ${on ? '' : 'off'}`}>
+            <button type="button" class="rbt-plugin-name" title="作者和链接" onClick={() => setOpen(open === e.id ? null : e.id)}>
+              <i class={`fa-solid fa-chevron-${open === e.id ? 'down' : 'right'} rbt-plugin-caret`} />
+              <span class="rbt-env-name">{e.name}</span>
+            </button>
+            {sourceFor('plugin', e.id).author && <small class="rbt-muted">{sourceFor('plugin', e.id).author}</small>}
             {e.id in want && want[e.id] !== e.enabled && <Chip color="#f0a43a">刷新后生效</Chip>}
             <span class="rbt-env-toggle">
               <Toggle checked={on} onChange={(v) => setWant({ ...want, [e.id]: v })} title="启用 / 停用这个插件" />
             </span>
+          </div>
+          {open === e.id && <div class="rbt-plugin-more"><SourceEditor kind="plugin" id={e.id} /></div>}
           </div>
         );
       })}
@@ -235,46 +245,5 @@ function PluginList() {
         </div>
       )}
     </>
-  );
-}
-
-export function GlobalPage() {
-  const report = envReport.value;
-  useEffect(() => { refreshEnv(); }, []);
-  void archiveVersion.value;
-  if (!report) return null;
-  const pick = (f: (i: EnvItem) => boolean) => report.items.filter(f);
-  const worlds = pick((i) => i.kind === 'worldbook' && (i.scope === 'global' || i.scope === 'persona'));
-  const regex = pick((i) => i.scope === 'global' && i.kind === 'regex');
-  const presetRx = pick((i) => i.scope === 'preset' && i.kind !== 'preset');
-  const scripts = pick((i) => i.scope === 'global' && i.kind === 'script');
-  return (
-    <div class="rbt-page">
-      <div class="rbt-page-lead">这里的设置对所有卡都生效，换卡时不会跟着变。只给某张卡用的东西，最好绑到那张卡上。</div>
-      <div class="rbt-page-cols">
-        <div class="rbt-page-group">
-          <Section title="全局世界书" hint="打开后对所有卡生效">
-            {worlds.map((i) => <ItemRow key={i.id} item={i} />)}
-            {!worlds.length && <small class="rbt-muted">没有开着的全局世界书。</small>}
-            <AddGlobalWorld />
-          </Section>
-          <Section title="全局正则">
-            <GlobalRegexList items={regex} />
-            <div class="rbt-row"><button class="rbt-btn" onClick={openRegexManager}>新建、编辑或导入正则</button></div>
-          </Section>
-          {scripts.length > 0 && <Section title="酒馆助手全局脚本">{scripts.map((i) => <ItemRow key={i.id} item={i} />)}</Section>}
-        </div>
-        <div class="rbt-page-group">
-          <Section title="预设" hint="切到有推荐预设的卡时会自动换">
-            <PresetPicker />
-            {presetRx.map((i) => <ItemRow key={i.id} item={i} />)}
-            {!presetRx.length && <small class="rbt-muted">这个预设没有自带正则或脚本。</small>}
-          </Section>
-          <Section title="插件" hint="对所有卡生效">
-            <PluginList />
-          </Section>
-        </div>
-      </div>
-    </div>
   );
 }

@@ -9,7 +9,7 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { CardRecord, RegexOwner } from '../core/cards';
+import type { CardRecord, RegexOwner, SourceRecord } from '../core/cards';
 
 export type Any = any;
 
@@ -124,6 +124,12 @@ export interface RbtSettings {
   regexOwners: Record<string, RegexOwner>;
   /** Import a card's embedded lorebook automatically when its bound world file is missing. */
   autoImportWorld: boolean;
+  /** Author + links per preset name. */
+  presetInfo: Record<string, SourceRecord>;
+  /** Author + links per plugin folder name (on top of what its manifest says). */
+  pluginInfo: Record<string, SourceRecord>;
+  /** Author + links + series per worldbook name. */
+  worldSources: Record<string, SourceRecord>;
   /** Lorebook backups written to data/<user>/user/files before overwriting. */
   worldBackups: { file: string; world: string; at: string }[];
 }
@@ -152,6 +158,9 @@ export function settings(): RbtSettings {
   s.regexOwners ??= {};
   s.autoImportWorld ??= true;
   s.worldBackups ??= [];
+  s.presetInfo ??= {};
+  s.pluginInfo ??= {};
+  s.worldSources ??= {};
   return s as RbtSettings;
 }
 

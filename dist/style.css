@@ -722,6 +722,125 @@ body.rbt-resizing #sheld { transition: none !important; }
 @media (max-width: 480px) {
   .rbt-panel .rbt-tabs button { padding: 3px 9px; }
 }
+
+/* 预设 / 插件的作者和链接 */
+.rbt-source-line { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 6px; font-size: 12px; color: var(--t2); }
+.rbt-source-author b { color: var(--t1); font-weight: 600; }
+.rbt-source-link { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); text-decoration: none; }
+.rbt-source-link:hover { text-decoration: underline; }
+.rbt-source-link i { font-size: 9px; opacity: 0.8; }
+.rbt-source-edit { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding: 10px 12px; border-radius: 8px; background: var(--g3); }
+.rbt-source-k { flex: none; width: 32px; }
+.rbt-plugin-name { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; min-width: 0; }
+.rbt-plugin-caret { flex: none; width: 10px; font-size: 9px; color: var(--t3); }
+.rbt-plugin-more { padding: 0 0 8px 16px; }
+.rbt-plugin-more .rbt-source-line { margin-top: 0; }
+
+/* ===== 变量：重点是"在跟踪什么、现在是多少"；变化只是一个小点 + 灰字原值 ===== */
+.rbt-vhead { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.rbt-vhead-line { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.rbt-vhead-count { font-size: 15px; color: var(--t1); }
+.rbt-vhead-count b { font-size: 17px; }
+.rbt-vhead-sub { color: var(--t2); font-size: 12.5px; }
+.rbt-accent { color: var(--accent); }
+.rbt-panel .rbt-vfloor, .rbt-scope .rbt-vfloor { width: auto !important; margin-left: auto !important; max-width: 200px; }
+
+.rbt-vtools { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.rbt-vsearch { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0 10px; height: 30px; border-radius: 8px; background: var(--g3); color: var(--t3); }
+.rbt-vsearch input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--t1); font: inherit; font-size: 12.5px; }
+.rbt-vseg { display: inline-flex; flex: none; gap: 2px; padding: 2px; border-radius: 8px; background: var(--g3); }
+.rbt-vseg button { padding: 3px 10px; border: 0; border-radius: 6px; background: none; color: var(--t2); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.rbt-vseg button.active { background: var(--g2h); color: var(--t1); font-weight: 600; }
+
+.rbt-vgroup { margin-bottom: 14px; }
+.rbt-vgroup-title { display: flex; align-items: center; gap: 8px; margin: 0 0 6px 4px; font-size: 12px; font-weight: 600; color: var(--t2); font-family: var(--monoFontFamily, ui-monospace, monospace); }
+.rbt-vgroup-badge { padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-family: var(--mainFontFamily, inherit); font-size: 11px; font-weight: 600; }
+.rbt-vgroup-body { border-radius: 10px; background: var(--g2); padding: 2px 12px; }
+
+.rbt-vrow { border-bottom: 1px solid var(--hair); }
+.rbt-vrow:last-child { border-bottom: 0; }
+.rbt-vrow-main {
+  display: grid; grid-template-columns: 8px minmax(90px, 38%) 1fr; align-items: baseline; column-gap: 8px;
+  width: 100%; padding: 8px 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.rbt-vrow-main.static { cursor: default; }
+.rbt-vrow-mark { width: 6px; height: 6px; border-radius: 50%; align-self: center; }
+.rbt-vrow.changed .rbt-vrow-mark { background: var(--accent); }
+.rbt-vrow-name { color: var(--t2); font-size: 12px; font-family: var(--monoFontFamily, ui-monospace, monospace); word-break: break-all; }
+.rbt-vrow-value { color: var(--t1); font-size: 13px; word-break: break-word; }
+.rbt-vrow.changed .rbt-vrow-value { font-weight: 600; }
+.rbt-vrow.removed .rbt-vrow-value { color: var(--t3); font-weight: 400; font-style: italic; }
+.rbt-vrow-was { margin: -4px 0 8px calc(8px + 8px + 38%); font-size: 11.5px; color: var(--t3); word-break: break-word; }
+.rbt-vrow-main:hover .rbt-vrow-name { color: var(--t1); }
+.rbt-vrow-detail { display: flex; flex-direction: column; gap: 6px; margin: 0 0 10px 16px; padding: 8px 10px; border-radius: 8px; background: var(--g3); font-size: 12px; }
+.rbt-vrow-desc { color: var(--t1); line-height: 1.5; }
+.rbt-vrow-path { color: var(--t3); font-family: var(--monoFontFamily, ui-monospace, monospace); font-size: 11px; word-break: break-all; }
+.rbt-vrow-refs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.rbt-vrow-ref { padding: 1px 8px; border-radius: 999px; background: var(--g2); color: var(--t2); font-size: 11.5px; }
+
+.rbt-vlocal { margin-top: 4px; }
+.rbt-vlocal > summary { margin: 0 0 6px 4px; font-size: 12px; font-weight: 600; color: var(--t2); cursor: pointer; }
+
+/* ===== 可点的一行：整行可点、悬停整行变亮，结尾 › 或 ↗ ===== */
+.rbt-navrow {
+  display: flex; align-items: center; gap: 10px;
+  width: calc(100% + 16px); margin: 0 -8px; padding: 7px 8px;
+  border: 0; border-radius: 8px; background: none;
+  color: var(--t1); font: inherit; text-align: left; cursor: pointer;
+}
+.rbt-navrow + .rbt-navrow { box-shadow: 0 -1px 0 var(--hair); }
+.rbt-navrow:hover { background: var(--g2h); box-shadow: none; }
+.rbt-navrow:hover + .rbt-navrow { box-shadow: none; }
+.rbt-navrow:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.rbt-navrow-img { flex: none; width: 28px; height: 28px; border-radius: 50%; object-fit: cover; object-position: 50% 20%; }
+.rbt-navrow-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.rbt-navrow-title { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbt-navrow-sub { font-size: 11.5px; color: var(--t3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbt-navrow-trail { flex: none; display: flex; gap: 6px; align-items: center; }
+.rbt-navrow-icon { flex: none; width: 12px; font-size: 11px; color: var(--t3); text-align: center; }
+.rbt-navrow:hover .rbt-navrow-icon { color: var(--t2); }
+
+/* 小标签：中性底色，tone 只加一个彩色小点 */
+.rbt-tag { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 999px; background: var(--g3); color: var(--t2); font-size: 11px; white-space: nowrap; }
+.rbt-tag[class*='tone-']::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--t3); }
+.rbt-tag.tone-ok::before { background: var(--ok); }
+.rbt-tag.tone-warn::before { background: var(--warnc); }
+.rbt-tag.tone-bad::before { background: var(--bad); }
+.rbt-tag.tone-accent { color: var(--accent); background: var(--accent-soft); }
+.rbt-tag.tone-accent::before { background: var(--accent); }
+
+/* 详情页：顶部「‹ 返回」+ 标题 */
+.rbt-back {
+  display: inline-flex; align-items: center; gap: 6px; margin: 0 0 10px -6px; padding: 4px 8px;
+  border: 0; border-radius: 6px; background: none; color: var(--accent); font: inherit; font-size: 13px; cursor: pointer;
+}
+.rbt-back:hover { background: var(--accent-soft); }
+.rbt-back i { font-size: 11px; }
+.rbt-detail-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.rbt-detail-head h2 { margin: 0; font-size: 18px; font-weight: 700; color: var(--t1); word-break: break-word; }
+.rbt-detail-head .rbt-btn i { font-size: 10px; margin-left: 2px; }
+
+/* 侧边栏里的全局工具箱：子标签单独一行 */
+.rbt-dock-subtabs { margin-bottom: 12px; }
+.rbt-dock-subtabs .rbt-sheet-tabs { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--g3); }
+.rbt-dock-subtabs .rbt-sheet-tabs button { padding: 3px 12px; border: 0; border-radius: 6px; background: none; color: var(--t2); font: inherit; font-size: 12px; cursor: pointer; }
+.rbt-dock-subtabs .rbt-sheet-tabs button.active { background: var(--g2h); color: var(--t1); font-weight: 600; }
+
+/* 整理模式：顶部一条工具栏，每行变成勾选框 */
+.rbt-org-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.rbt-org-bar > small { flex: 1; }
+.rbt-org-bar .rbt-input { flex: 1; min-width: 140px; }
+.rbt-org-count { font-size: 12.5px; font-weight: 600; color: var(--t1); white-space: nowrap; }
+.rbt-pickrow {
+  display: flex; align-items: center; gap: 10px;
+  width: calc(100% + 16px); margin: 0 -8px; padding: 7px 8px; border-radius: 8px; cursor: pointer;
+}
+.rbt-pickrow + .rbt-pickrow { box-shadow: 0 -1px 0 var(--hair); }
+.rbt-pickrow:hover { background: var(--g2h); }
+.rbt-pickrow.on { background: var(--accent-soft); }
+.rbt-pickrow input { flex: none; margin: 0; accent-color: var(--accent); }
+
+.rbt-list-filter { margin-bottom: 10px; }
 /* =====================================================================
    三栏外壳（第一阶段）：左栏 + 导航条 + 酒馆面板的位置
    只在宽于 1000px 时生效；更窄时保持酒馆原样。

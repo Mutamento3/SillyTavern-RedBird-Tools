@@ -41,6 +41,7 @@ import {
   type ExtStatus,
 } from '../../tools/cards/cards';
 import { Chip } from '../common';
+import { SourceLine } from '../SourceEditor';
 
 export const OK = '#2fbf8f';
 export const WARN = '#f0a43a';
@@ -92,7 +93,7 @@ export function inputValue(e: Event): string {
 
 // ------------------------------------------------------------ header ---
 
-export function CardHeader({ info }: { info: CardInfo }) {
+export function CardHeader({ info, embedded }: { info: CardInfo; embedded?: boolean }) {
   const [firstLine, ...rest] = info.version.split(/\r?\n/);
   return (
     <div class="rbt-card-head">
@@ -113,7 +114,7 @@ export function CardHeader({ info }: { info: CardInfo }) {
         )}
         {info.tags.length > 0 && <div class="rbt-chips">{info.tags.map((t) => <Chip key={t}>{t}</Chip>)}</div>}
       </div>
-      {!info.isCurrent && currentCharacter() && <button class="rbt-btn rbt-btn-small" onClick={() => { archiveTarget.value = null; }}>回到当前卡</button>}
+      {!embedded && !info.isCurrent && currentCharacter() && <button class="rbt-btn rbt-btn-small" onClick={() => { archiveTarget.value = null; }}>回到当前卡</button>}
     </div>
   );
 }
@@ -208,6 +209,7 @@ export function PresetSection({ info }: { info: CardInfo }) {
         </select>
         {!rec && info.isCurrent && current && <button class="rbt-btn" onClick={() => setRecommendedPreset(info.avatar, info.name, current)}>用现在这个</button>}
       </div>
+      {rec && names.includes(rec.name) && <SourceLine kind="preset" id={rec.name} />}
       {otherApi && <div class="rbt-hint">这个推荐是在「{rec!.api}」下设的，和现在用的 API 不同，所以不会自动换。</div>}
       {rec && info.isCurrent && !otherApi && rec.name !== current && (
         <div class="rbt-warn rbt-row-between">
@@ -242,12 +244,15 @@ export function ExtSection({ info }: { info: CardInfo }) {
         const st = extStatus(l.req, installed);
         const chip = STATUS_CHIP[st.status];
         return (
-          <div key={`${l.req.name}${i}`} class="rbt-link-row">
+          <div key={`${l.req.name}${i}`}>
+          <div class="rbt-link-row">
             <Chip color={chip.color}>{chip.text}</Chip>
             <span class="rbt-env-name">{st.match?.name ?? l.req.name}</span>
             {l.auto && <small class="rbt-muted">{l.reason}</small>}
             {st.status === 'missing' && l.req.url && <a href={l.req.url} target="_blank" rel="noopener noreferrer">安装地址</a>}
             {!l.auto && <button class="rbt-btn rbt-btn-small rbt-push" title="从列表里删除" onClick={() => updateRecord(info.avatar, info.name, { extensions: manual.filter((m) => m !== l.req) })}>✕</button>}
+          </div>
+          {st.match && <SourceLine kind="plugin" id={st.match.id} />}
           </div>
         );
       })}

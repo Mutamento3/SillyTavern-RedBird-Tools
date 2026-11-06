@@ -325,6 +325,9 @@ function settings() {
   s2.regexOwners ??= {};
   s2.autoImportWorld ??= true;
   s2.worldBackups ??= [];
+  s2.presetInfo ??= {};
+  s2.pluginInfo ??= {};
+  s2.worldSources ??= {};
   return s2;
 }
 function saveSettings() {
@@ -1417,7 +1420,7 @@ const ARCHIVE_FORMAT = "redbird-tools-card-archive";
 function parseArchive(text) {
   const j2 = JSON.parse(text);
   if (j2?.format !== ARCHIVE_FORMAT) throw new Error("这不是 RedBird 工具箱导出的角色档案文件");
-  return { ...j2, cards: j2.cards ?? {}, profiles: j2.profiles ?? {}, regexOwners: j2.regexOwners ?? {} };
+  return { ...j2, cards: j2.cards ?? {}, profiles: j2.profiles ?? {}, regexOwners: j2.regexOwners ?? {}, presetInfo: j2.presetInfo ?? {}, pluginInfo: j2.pluginInfo ?? {}, worldSources: j2.worldSources ?? {} };
 }
 function mergeRecords(cur, incoming, mode, stamp2 = () => "") {
   if (mode === "overwrite") return { ...incoming };
@@ -2560,7 +2563,10 @@ function exportArchive() {
     exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
     cards: s2.cards,
     profiles: s2.profiles,
-    regexOwners: s2.regexOwners
+    regexOwners: s2.regexOwners,
+    presetInfo: s2.presetInfo,
+    pluginInfo: s2.pluginInfo,
+    worldSources: s2.worldSources
   };
   const blob = new Blob([JSON.stringify(file, null, 2)], { type: "application/json" });
   const a2 = document.createElement("a");
@@ -2575,12 +2581,15 @@ async function importArchive(text, mode) {
   const inc = parseArchive(text);
   const s2 = settings();
   if (mode === "overwrite") {
-    const ok = await ctx().Popup?.show?.confirm?.("覆盖导入", "会用文件里的内容替换现在所有的角色档案、记住的环境和正则归属。确定吗？");
+    const ok = await ctx().Popup?.show?.confirm?.("覆盖导入", "现在所有的角色档案、记住的配置、正则归属，以及预设、世界书和插件的来源，都会换成文件里的。");
     if (!ok) return;
   }
   s2.cards = mergeRecords(s2.cards, inc.cards, mode, (v2) => v2.updatedAt ?? "");
   s2.profiles = mergeRecords(s2.profiles, inc.profiles, mode, (v2) => v2.savedAt ?? "");
   s2.regexOwners = mergeRecords(s2.regexOwners, inc.regexOwners, mode);
+  s2.presetInfo = mergeRecords(s2.presetInfo, inc.presetInfo ?? {}, mode, (v2) => v2.updatedAt ?? "");
+  s2.pluginInfo = mergeRecords(s2.pluginInfo, inc.pluginInfo ?? {}, mode, (v2) => v2.updatedAt ?? "");
+  s2.worldSources = mergeRecords(s2.worldSources, inc.worldSources ?? {}, mode, (v2) => v2.updatedAt ?? "");
   saveSettings();
   refreshEnv();
   bump();
@@ -2844,6 +2853,117 @@ function installWorldNote() {
     if (e2.target?.id === "world_editor_select") render();
   });
 }
+const sourcesTick = y$1(0);
+function store(kind) {
+  const s2 = settings();
+  return kind === "preset" ? s2.presetInfo : kind === "world" ? s2.worldSources : s2.pluginInfo;
+}
+function pluginManifest(id) {
+  try {
+    const m2 = loaded.extensions?.getExtensionManifest?.(`third-party/${id}`) ?? {};
+    return { author: String(m2.author ?? "").trim(), homePage: /^https?:\/\//i.test(String(m2.homePage ?? "")) ? String(m2.homePage) : "" };
+  } catch {
+    return { author: "", homePage: "" };
+  }
+}
+function sourceFor(kind, key) {
+  void sourcesTick.value;
+  const rec = store(kind)[key];
+  const auto = kind === "plugin" ? pluginManifest(key) : { author: "", homePage: "" };
+  const links = rec?.links ?? [];
+  const autoLinks = auto.homePage && !links.some((l2) => l2.url === auto.homePage) ? [{ label: "主页", url: auto.homePage }] : [];
+  const autoVer = kind === "plugin" ? "" : versionFromName(key);
+  return {
+    author: rec?.author?.trim() || auto.author,
+    autoAuthor: auto.author,
+    autoLinks,
+    links,
+    series: rec?.series?.trim() ?? "",
+    version: rec?.version?.trim() || autoVer,
+    versionIsAuto: !rec?.version?.trim() && !!autoVer,
+    notes: rec?.notes ?? ""
+  };
+}
+function hasSource(v2) {
+  return !!(v2.author || v2.autoLinks.length || v2.links.length);
+}
+function updateSource(kind, key, patch) {
+  const all = store(kind);
+  const cur = all[key] ?? { author: "", links: [], updatedAt: "" };
+  const next = { ...cur, ...patch, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+  if (!next.author.trim() && !next.links.length && !next.series?.trim() && !next.version?.trim() && !next.notes?.trim()) delete all[key];
+  else all[key] = next;
+  saveSettings();
+  sourcesTick.value++;
+}
+function versionFromName(name) {
+  const m2 = name.match(/(?:^|[^a-z0-9])v?(\d+(?:[._]\d+)+)(?!\d)/i) ?? name.match(/(?:^|[^a-z0-9])v(?:er)?(\d+)(?!\d)/i);
+  return m2 ? m2[1].replace(/_/g, ".") : "";
+}
+function compareVersions(a2, b2) {
+  if (!a2 || !b2) return a2 ? -1 : b2 ? 1 : 0;
+  const pa = a2.split(/[^0-9]+/).filter(Boolean).map(Number);
+  const pb = b2.split(/[^0-9]+/).filter(Boolean).map(Number);
+  for (let i2 = 0; i2 < Math.max(pa.length, pb.length); i2++) {
+    const d2 = (pb[i2] ?? 0) - (pa[i2] ?? 0);
+    if (d2) return d2;
+  }
+  return b2.localeCompare(a2);
+}
+function stem(name) {
+  const parts = name.split(/[\s_\-—·.,，。、|/\\()（）[\]【】《》「」『』<>]+/).filter(Boolean);
+  const word = parts.find((p2) => !/^v?\d+$/i.test(p2) && p2.length >= 2);
+  return word ?? "";
+}
+const GENERIC = ["世界书", "预设", "设定集", "角色卡", "正则", "模板", "女性向", "男性向", "不完全版", "精简版", "重制版"];
+function suggestSeries(kind, names) {
+  const by = /* @__PURE__ */ new Map();
+  for (const n2 of names) {
+    if (sourceFor(kind, n2).series) continue;
+    const w2 = stem(n2);
+    if (!w2 || w2.length < 3) continue;
+    const k2 = w2.toLowerCase();
+    const e2 = by.get(k2) ?? { label: w2, names: [] };
+    e2.names.push(n2);
+    by.set(k2, e2);
+  }
+  const free = names.filter((n2) => !sourceFor(kind, n2).series);
+  const runs = /* @__PURE__ */ new Map();
+  for (const n2 of free) {
+    for (const run of n2.match(/[㐀-鿿]{3,}/g) ?? []) {
+      for (let len = run.length; len >= 3; len--) {
+        for (let i2 = 0; i2 + len <= run.length; i2++) {
+          const w2 = run.slice(i2, i2 + len);
+          runs.set(w2, (runs.get(w2) ?? /* @__PURE__ */ new Set()).add(n2));
+        }
+      }
+    }
+  }
+  const cjk = [...runs.entries()].filter(([w2, ns]) => ns.size > 1 && !GENERIC.some((g2) => w2.includes(g2) || g2.includes(w2))).sort(([a2, x2], [b2, y2]) => y2.size - x2.size || b2.length - a2.length);
+  const seen = /* @__PURE__ */ new Set();
+  const cjkGroups = [];
+  for (const [w2, ns] of cjk) {
+    const key = [...ns].sort().join("\n");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cjkGroups.push({ series: w2, names: [...ns] });
+  }
+  const out = [...by.values()].filter((e2) => e2.names.length > 1).map((e2) => ({ series: e2.label, names: e2.names }));
+  for (const g2 of cjkGroups) if (!out.some((o2) => o2.names.length === g2.names.length && o2.names.every((n2) => g2.names.includes(n2)) && o2.series === g2.series)) out.push(g2);
+  return out.sort((a2, b2) => b2.names.length - a2.names.length).slice(0, 3);
+}
+function setSeries(kind, names, series) {
+  for (const n2 of names) {
+    const all = store(kind);
+    const cur = all[n2] ?? { author: "", links: [], updatedAt: "" };
+    all[n2] = { ...cur, series, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+  }
+  saveSettings();
+  sourcesTick.value++;
+}
+function allSeries(kind) {
+  return [...new Set(Object.values(store(kind)).map((r2) => r2.series?.trim()).filter((x2) => !!x2))].sort();
+}
 function Chip(props) {
   return /* @__PURE__ */ u$2("span", { class: `rbt-chip ${props.color ? "has-color" : ""} ${props.class ?? ""}`, title: props.title, style: props.color ? { "--chip": props.color } : void 0, children: props.children });
 }
@@ -2900,628 +3020,110 @@ function SwitchRow({ label, detail, checked, onChange }) {
     /* @__PURE__ */ u$2(Toggle, { checked, onChange })
   ] });
 }
-const OK = "#2fbf8f";
-const WARN = "#f0a43a";
-const BAD = "#e5484d";
-function LinkText({ text }) {
-  return /* @__PURE__ */ u$2(S$1, { children: splitLinks(text).map((p2, i2) => "url" in p2 ? /* @__PURE__ */ u$2("a", { href: p2.url, target: "_blank", rel: "noopener noreferrer", children: p2.url }, i2) : /* @__PURE__ */ u$2("span", { children: p2.text }, i2)) });
-}
-function LongText({ text, limit = 400 }) {
-  const [open, setOpen] = d$1(false);
-  const long = text.length > limit;
-  return /* @__PURE__ */ u$2("div", { class: "rbt-pre", children: [
-    /* @__PURE__ */ u$2(LinkText, { text: long && !open ? `${text.slice(0, limit)}…` : text }),
-    long && /* @__PURE__ */ u$2("div", { children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", onClick: () => setOpen(!open), children: open ? "收起" : "展开全部" }) })
-  ] });
-}
-function Section({ title, hint, children }) {
-  return /* @__PURE__ */ u$2("div", { class: "rbt-card-section", children: [
-    /* @__PURE__ */ u$2("div", { class: "rbt-card-section-head", children: [
-      /* @__PURE__ */ u$2("b", { children: title }),
-      hint && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
-        " ",
-        hint
-      ] })
+function NavRow({ title, sub, img, trailing, external, onClick, hint }) {
+  return /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-navrow", onClick, title: hint, children: [
+    img && /* @__PURE__ */ u$2("img", { class: "rbt-navrow-img", src: img, alt: "", loading: "lazy" }),
+    /* @__PURE__ */ u$2("span", { class: "rbt-navrow-main", children: [
+      /* @__PURE__ */ u$2("span", { class: "rbt-navrow-title", children: title }),
+      sub && /* @__PURE__ */ u$2("span", { class: "rbt-navrow-sub", children: sub })
     ] }),
-    children
+    trailing && /* @__PURE__ */ u$2("span", { class: "rbt-navrow-trail", children: trailing }),
+    /* @__PURE__ */ u$2("i", { class: `fa-solid ${external ? "fa-arrow-up-right-from-square" : "fa-chevron-right"} rbt-navrow-icon` })
   ] });
 }
-const STATUS_CHIP = {
-  enabled: { color: OK, text: "已启用" },
-  disabled: { color: WARN, text: "已装，未启用" },
-  missing: { color: BAD, text: "未安装" }
-};
-const CONTACT_LABEL = { discord: "Discord", qq: "QQ", qqgroup: "QQ 群", url: "链接" };
-function inputValue(e2) {
-  return e2.currentTarget.value;
+function Tag({ children, tone }) {
+  return /* @__PURE__ */ u$2("span", { class: `rbt-tag ${tone ? `tone-${tone}` : ""}`, children });
 }
-function CardHeader({ info }) {
-  const [firstLine, ...rest] = info.version.split(/\r?\n/);
-  return /* @__PURE__ */ u$2("div", { class: "rbt-card-head", children: [
-    /* @__PURE__ */ u$2("img", { class: "rbt-avatar", src: thumbnailUrl(info.avatar), alt: "", loading: "lazy" }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-card-head-main", children: [
-      /* @__PURE__ */ u$2("div", { class: "rbt-card-title", children: [
-        /* @__PURE__ */ u$2("b", { children: info.name }),
-        !info.isCurrent && /* @__PURE__ */ u$2(Chip, { color: WARN, children: "不是正在玩的卡" })
-      ] }),
-      info.creator && /* @__PURE__ */ u$2("div", { class: "rbt-muted rbt-pre-line", children: [
-        "作者：",
-        info.creator
-      ] }),
-      firstLine && (rest.length ? /* @__PURE__ */ u$2("details", { class: "rbt-inline-details", children: [
-        /* @__PURE__ */ u$2("summary", { class: "rbt-muted", children: [
-          "版本：",
-          firstLine,
-          "（还有 ",
-          rest.length,
-          " 行更新记录）"
-        ] }),
-        /* @__PURE__ */ u$2("div", { class: "rbt-pre", children: rest.join("\n") })
-      ] }) : /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: [
-        "版本：",
-        firstLine
-      ] })),
-      info.tags.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-chips", children: info.tags.map((t2) => /* @__PURE__ */ u$2(Chip, { children: t2 }, t2)) })
+function LinkChip({ l: l2 }) {
+  return /* @__PURE__ */ u$2("a", { class: "rbt-source-link", href: l2.url, target: "_blank", rel: "noopener noreferrer", title: l2.url, children: [
+    l2.label,
+    " ",
+    /* @__PURE__ */ u$2("i", { class: "fa-solid fa-arrow-up-right-from-square" })
+  ] });
+}
+function SourceLine({ kind, id }) {
+  const v2 = sourceFor(kind, id);
+  if (!hasSource(v2)) return null;
+  return /* @__PURE__ */ u$2("div", { class: "rbt-source-line", children: [
+    v2.author && /* @__PURE__ */ u$2("span", { class: "rbt-source-author", children: [
+      "作者 ",
+      /* @__PURE__ */ u$2("b", { children: v2.author })
     ] }),
-    !info.isCurrent && currentCharacter() && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", onClick: () => {
-      archiveTarget.value = null;
-    }, children: "回到当前卡" })
+    [...v2.autoLinks, ...v2.links].map((l2, i2) => /* @__PURE__ */ u$2(LinkChip, { l: l2 }, i2))
   ] });
 }
-function SourceSection({ info }) {
-  const rec = info.record;
-  const links = rec?.links ?? [];
+function SourceEditor({ kind, id }) {
+  const v2 = sourceFor(kind, id);
+  const [editing, setEditing] = d$1(false);
   const [label, setLabel] = d$1("");
   const [url, setUrl] = d$1("");
-  const [editing, setEditing] = d$1(false);
-  const [draft, setDraft] = d$1("");
   const urlOk = isHttpUrl(url);
-  const addLink = () => {
+  const add = () => {
     if (!urlOk) return;
-    updateRecord(info.avatar, info.name, { links: [...links, { label: label.trim() || "链接", url: url.trim() }] });
+    updateSource(kind, id, { links: [...v2.links, { label: label.trim() || "链接", url: url.trim() }] });
     setLabel("");
     setUrl("");
   };
-  return /* @__PURE__ */ u$2(Section, { title: "来源与作者说明", children: [
-    (info.contacts.length > 0 || info.autoSource) && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "卡里写的来源和联系方式：" }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-chips", children: [
-        info.contacts.map((c2, i2) => c2.kind === "url" ? /* @__PURE__ */ u$2("a", { href: c2.value, target: "_blank", rel: "noopener noreferrer", children: c2.value }, i2) : /* @__PURE__ */ u$2(Chip, { title: "从卡的作者信息里找到的", children: [
-          CONTACT_LABEL[c2.kind],
-          " ",
-          c2.value
-        ] }, i2)),
-        info.autoSource && /* @__PURE__ */ u$2("a", { href: info.autoSource, target: "_blank", rel: "noopener noreferrer", children: info.autoSource })
-      ] })
-    ] }),
-    info.creatorNotes.trim() && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "作者写在卡里的备注：" }),
-      /* @__PURE__ */ u$2(LongText, { text: info.creatorNotes })
-    ] }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "相关链接，比如发布帖、更新帖、教程：" }),
-      links.map((l2, i2) => /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
-        /* @__PURE__ */ u$2("a", { href: l2.url, target: "_blank", rel: "noopener noreferrer", title: l2.url, children: l2.label }),
-        /* @__PURE__ */ u$2("small", { class: "rbt-muted rbt-ellipsis", children: l2.url }),
-        /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", title: "删除这条链接", onClick: () => updateRecord(info.avatar, info.name, { links: links.filter((_2, j2) => j2 !== i2) }), children: "✕" })
-      ] }, i2)),
-      /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
-        /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input rbt-w-label", placeholder: "名称，如：发布帖", value: label, onInput: (e2) => setLabel(inputValue(e2)) }),
-        /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: "https://…", value: url, onInput: (e2) => setUrl(inputValue(e2)), onKeyDown: (e2) => {
-          if (e2.key === "Enter") addLink();
-        } }),
-        /* @__PURE__ */ u$2("button", { class: "rbt-btn", disabled: !urlOk, onClick: addLink, children: "添加" })
-      ] })
-    ] }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
-      /* @__PURE__ */ u$2("div", { class: "rbt-row-between", children: [
-        /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "作者说明：" }),
-        !editing && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", onClick: () => {
-          setDraft(rec?.notes ?? "");
-          setEditing(true);
-        }, children: rec?.notes ? "编辑" : "填写" })
+  const manualAuthor = v2.author !== v2.autoAuthor ? v2.author : "";
+  if (!editing) {
+    return /* @__PURE__ */ u$2("div", { class: "rbt-source-line", children: [
+      v2.author && /* @__PURE__ */ u$2("span", { class: "rbt-source-author", children: [
+        "作者 ",
+        /* @__PURE__ */ u$2("b", { children: v2.author })
       ] }),
-      editing ? /* @__PURE__ */ u$2(S$1, { children: [
-        /* @__PURE__ */ u$2("textarea", { class: "text_pole rbt-textarea", rows: 10, value: draft, placeholder: "把发布帖里的推荐设置、玩法和注意事项粘进来。网址会自动变成链接。", onInput: (e2) => setDraft(e2.currentTarget.value) }),
-        /* @__PURE__ */ u$2("div", { class: "rbt-row", children: [
-          /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-primary", onClick: () => {
-            updateRecord(info.avatar, info.name, { notes: draft });
-            setEditing(false);
-          }, children: "保存" }),
-          /* @__PURE__ */ u$2("button", { class: "rbt-btn", onClick: () => setEditing(false), children: "取消" })
-        ] })
-      ] }) : rec?.notes ? /* @__PURE__ */ u$2(LongText, { text: rec.notes, limit: 600 }) : /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: "还没填写。可以把发布帖里的推荐设置和玩法粘进来。" })
-    ] })
-  ] });
-}
-function PresetSection({ info }) {
-  const names = presetNames();
-  const rec = info.preset;
-  const current = currentPresetName();
-  const otherApi = rec && rec.api !== presetApi();
-  return /* @__PURE__ */ u$2(Section, { title: "推荐预设", hint: "切到这张卡时自动换上", children: [
-    /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
-      /* @__PURE__ */ u$2("select", { class: "text_pole rbt-select", value: rec?.name ?? "", onChange: (e2) => setRecommendedPreset(info.avatar, info.name, e2.currentTarget.value || null), children: [
-        /* @__PURE__ */ u$2("option", { value: "", children: "不指定" }),
-        rec && !names.includes(rec.name) && /* @__PURE__ */ u$2("option", { value: rec.name, children: [
-          rec.name,
-          "（已不存在）"
-        ] }),
-        names.map((n2) => /* @__PURE__ */ u$2("option", { value: n2, children: n2 }, n2))
-      ] }),
-      !rec && info.isCurrent && current && /* @__PURE__ */ u$2("button", { class: "rbt-btn", onClick: () => setRecommendedPreset(info.avatar, info.name, current), children: "用现在这个" })
-    ] }),
-    otherApi && /* @__PURE__ */ u$2("div", { class: "rbt-hint", children: [
-      "这个推荐是在「",
-      rec.api,
-      "」下设的，和现在用的 API 不同，所以不会自动换。"
-    ] }),
-    rec && info.isCurrent && !otherApi && rec.name !== current && /* @__PURE__ */ u$2("div", { class: "rbt-warn rbt-row-between", children: [
-      /* @__PURE__ */ u$2("span", { children: [
-        "现在用的是「",
-        current,
-        "」，推荐的是「",
-        rec.name,
-        "」。"
-      ] }),
-      /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-primary rbt-btn-small", onClick: () => switchPreset(rec.name), children: "换上推荐的" })
-    ] })
-  ] });
-}
-function ExtSection({ info }) {
-  const installed2 = installedExtensions();
-  const list = requiredExtensions(info);
-  const manual = info.record?.extensions ?? [];
-  const [pick, setPick] = d$1("");
-  const [name, setName] = d$1("");
-  const [url, setUrl] = d$1("");
-  const listed = new Set(list.map((l2) => extStatus(l2.req, installed2).match?.id).filter(Boolean));
-  const add = () => {
-    const req = pick === "__other" ? { name: name.trim(), url: isHttpUrl(url) ? url.trim() : void 0 } : { name: pick };
-    if (!req.name) return;
-    updateRecord(info.avatar, info.name, { extensions: [...manual, req] });
-    setPick("");
-    setName("");
-    setUrl("");
-  };
-  return /* @__PURE__ */ u$2(Section, { title: "需要的插件", children: [
-    !list.length && /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: "还没登记。从下面选一个已装的插件，或手动填一个没装的。" }),
-    list.map((l2, i2) => {
-      const st = extStatus(l2.req, installed2);
-      const chip = STATUS_CHIP[st.status];
-      return /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
-        /* @__PURE__ */ u$2(Chip, { color: chip.color, children: chip.text }),
-        /* @__PURE__ */ u$2("span", { class: "rbt-env-name", children: st.match?.name ?? l2.req.name }),
-        l2.auto && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: l2.reason }),
-        st.status === "missing" && l2.req.url && /* @__PURE__ */ u$2("a", { href: l2.req.url, target: "_blank", rel: "noopener noreferrer", children: "安装地址" }),
-        !l2.auto && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small rbt-push", title: "从列表里删除", onClick: () => updateRecord(info.avatar, info.name, { extensions: manual.filter((m2) => m2 !== l2.req) }), children: "✕" })
-      ] }, `${l2.req.name}${i2}`);
-    }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
-      /* @__PURE__ */ u$2("select", { class: "text_pole rbt-select", value: pick, onChange: (e2) => setPick(e2.currentTarget.value), children: [
-        /* @__PURE__ */ u$2("option", { value: "", children: "添加插件…" }),
-        installed2.filter((e2) => !listed.has(e2.id)).map((e2) => /* @__PURE__ */ u$2("option", { value: e2.id, children: [
-          e2.name,
-          e2.enabled ? "" : "（未启用）"
-        ] }, e2.id)),
-        /* @__PURE__ */ u$2("option", { value: "__other", children: "没装的插件，手动填写…" })
-      ] }),
-      pick && pick !== "__other" && /* @__PURE__ */ u$2("button", { class: "rbt-btn", onClick: add, children: "添加" })
-    ] }),
-    pick === "__other" && /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
-      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input rbt-w-label", placeholder: "插件名", value: name, onInput: (e2) => setName(inputValue(e2)) }),
-      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: "安装地址（选填）", value: url, onInput: (e2) => setUrl(inputValue(e2)) }),
-      /* @__PURE__ */ u$2("button", { class: "rbt-btn", disabled: !name.trim(), onClick: add, children: "添加" })
-    ] })
-  ] });
-}
-function DiffList({ title, entries }) {
-  if (!entries.length) return null;
-  return /* @__PURE__ */ u$2("details", { class: "rbt-inline-details", children: [
-    /* @__PURE__ */ u$2("summary", { children: [
-      title,
-      " ",
-      entries.length,
-      " 条"
-    ] }),
-    /* @__PURE__ */ u$2("ul", { class: "rbt-diff-list", children: [
-      entries.slice(0, 30).map((e2, i2) => /* @__PURE__ */ u$2("li", { children: [
-        /* @__PURE__ */ u$2("b", { children: e2.comment || "（无标题）" }),
-        " ",
-        /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: e2.content.slice(0, 60) })
-      ] }, i2)),
-      entries.length > 30 && /* @__PURE__ */ u$2("li", { class: "rbt-muted", children: [
-        "…还有 ",
-        entries.length - 30,
-        " 条"
-      ] })
-    ] })
-  ] });
-}
-function WorldSection({ info }) {
-  const [diff, setDiff] = d$1("loading");
-  const [busy, setBusy] = d$1(false);
-  const w2 = info.world;
-  h$2(() => {
-    let alive = true;
-    setDiff("loading");
-    checkWorld(info).then((d2) => {
-      if (alive) setDiff(d2);
-    }).catch(() => {
-      if (alive) setDiff(null);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [info.avatar, w2.name, w2.state, archiveVersion.value]);
-  const run = async (overwrite) => {
-    if (overwrite) {
-      const ok = await ctx().Popup?.show?.confirm?.(
-        "用卡里的版本覆盖？",
-        `世界书「${w2.importName}」会换成卡里自带的版本，只在现有世界书里的条目会丢失（可能是你或脚本加的）。覆盖前会自动备份。`
-      );
-      if (!ok) return;
-    }
-    setBusy(true);
-    try {
-      await importCardWorld(info.avatar, { overwrite });
-    } finally {
-      setBusy(false);
-    }
-  };
-  const nameTaken = worldNames().includes(w2.importName);
-  return /* @__PURE__ */ u$2(Section, { title: "世界书", children: [
-    w2.state === "none" && /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: "这张卡没有世界书。" }),
-    w2.state !== "none" && /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
-      /* @__PURE__ */ u$2("span", { class: "rbt-env-name", children: w2.name || w2.importName }),
-      w2.state === "ok" && /* @__PURE__ */ u$2(Chip, { color: OK, children: "已绑定" }),
-      w2.state === "missing" && /* @__PURE__ */ u$2(Chip, { color: BAD, children: "找不到这本世界书" }),
-      w2.state === "unbound" && /* @__PURE__ */ u$2(Chip, { color: WARN, children: "还没导入" }),
-      w2.embedded !== null && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
-        "卡里自带 ",
-        w2.embedded,
-        " 条"
-      ] })
-    ] }),
-    (w2.state === "missing" || w2.state === "unbound") && w2.embedded !== null && (nameTaken ? /* @__PURE__ */ u$2("div", { class: "rbt-warn rbt-row-between", children: [
-      /* @__PURE__ */ u$2("span", { children: [
-        "已有一本同名世界书「",
-        w2.importName,
-        "」，所以没有自动导入。"
-      ] }),
-      /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", disabled: busy, onClick: () => run(true), children: "用卡里的版本覆盖" })
-    ] }) : /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-primary", disabled: busy, onClick: () => run(false), children: busy ? "正在导入…" : "导入并绑定" }) })),
-    w2.state === "ok" && w2.embedded !== null && (diff === "loading" ? /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "正在对比…" }) : diff && (diff.onlyCard.length || diff.onlyWorld.length) ? /* @__PURE__ */ u$2("div", { class: "rbt-warn", children: [
-      /* @__PURE__ */ u$2("div", { children: [
-        "卡里自带的和现在用的不一样：卡里 ",
-        diff.card,
-        " 条，现在 ",
-        diff.world,
-        " 条，其中 ",
-        diff.same,
-        " 条相同。"
-      ] }),
-      /* @__PURE__ */ u$2("small", { children: "只在现在这本里的，可能是你或脚本加的；只在卡里的，多半是作者更新了卡。" }),
-      /* @__PURE__ */ u$2(DiffList, { title: "只在卡里", entries: diff.onlyCard }),
-      /* @__PURE__ */ u$2(DiffList, { title: "只在现在这本里", entries: diff.onlyWorld }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", disabled: busy, onClick: () => run(true), children: "用卡里的版本覆盖" }) })
-    ] }) : diff ? /* @__PURE__ */ u$2("small", { class: "rbt-ok", children: "和卡里自带的一致 ✓" }) : null),
-    w2.extra.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "附加世界书：" }),
-      w2.extra.map((b2) => /* @__PURE__ */ u$2(Chip, { children: b2 }, b2))
-    ] })
-  ] });
-}
-function RegexSection({ info }) {
-  const owned = globalRegexScripts().filter((r2) => {
-    const o2 = settings().regexOwners[r2.id];
-    return o2?.kind === "card" && o2.key === info.avatar;
-  });
-  const preset = info.isCurrent ? currentPresetName() : "";
-  const presetRx = preset ? presetRegexCount(preset) : 0;
-  return /* @__PURE__ */ u$2(Section, { title: "正则与脚本", children: [
-    /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
-      /* @__PURE__ */ u$2("span", { children: [
-        "卡里的正则 ",
-        /* @__PURE__ */ u$2("b", { children: info.regex.total }),
-        " 条",
-        info.regex.total > 0 && `，开着 ${info.regex.enabled} 条`
-      ] }),
-      info.regex.total > 0 && (info.regex.allowed ? /* @__PURE__ */ u$2(Chip, { color: OK, children: "已允许运行" }) : /* @__PURE__ */ u$2(Chip, { color: BAD, children: "未允许运行" }))
-    ] }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
-      /* @__PURE__ */ u$2("span", { children: [
-        "酒馆助手角色脚本 ",
-        /* @__PURE__ */ u$2("b", { children: info.scripts.total }),
-        " 个"
-      ] }),
-      info.scripts.total > 0 && (info.scripts.enabled ? /* @__PURE__ */ u$2(Chip, { color: OK, children: "已启用" }) : /* @__PURE__ */ u$2(Chip, { color: BAD, children: "未启用" }))
-    ] }),
-    info.scripts.names.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-chips", children: info.scripts.names.map((n2, i2) => /* @__PURE__ */ u$2(Chip, { children: n2 }, i2)) }),
-    owned.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "标为属于这张卡的全局正则：" }),
-      owned.map((r2) => /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
-        /* @__PURE__ */ u$2("span", { children: r2.scriptName }),
-        r2.disabled ? /* @__PURE__ */ u$2(Chip, { children: "关" }) : /* @__PURE__ */ u$2(Chip, { color: OK, children: "开" })
-      ] }, r2.id))
-    ] }),
-    preset && presetRx > 0 && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
-      "另外，正在用的预设「",
-      preset,
-      "」带了 ",
-      presetRx,
-      " 条正则，对所有卡生效。"
-    ] }),
-    /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "全局正则在左栏「全局工具箱」里逐条开关。" })
-  ] });
-}
-const KIND_LABEL$1 = {
-  worldbook: "世界书",
-  regex: "正则",
-  script: "脚本",
-  extension: "插件",
-  preset: "预设"
-};
-function ItemRow({ item }) {
-  const [busy, setBusy] = d$1(false);
-  const onToggle = async (on) => {
-    if (!item.toggle) return;
-    setBusy(true);
-    try {
-      await item.toggle(on);
-    } finally {
-      setBusy(false);
-      refreshEnv();
-    }
-  };
-  const body = /* @__PURE__ */ u$2("div", { class: `rbt-env-item ${item.enabled ? "" : "off"}`, children: [
-    /* @__PURE__ */ u$2(Chip, { children: KIND_LABEL$1[item.kind] }),
-    /* @__PURE__ */ u$2("span", { class: "rbt-env-name", children: item.name }),
-    item.misplaced && /* @__PURE__ */ u$2(Chip, { color: "#f0a43a", title: `标为${item.misplaced}`, children: "不属于这张卡" }),
-    item.detail && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: item.detail }),
-    item.toggle && /* @__PURE__ */ u$2("span", { class: "rbt-env-toggle", children: [
-      busy && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "…" }),
-      /* @__PURE__ */ u$2(Toggle, { checked: item.enabled, onChange: onToggle, title: "点击开 / 关" })
-    ] })
-  ] });
-  if (item.subItems?.length) {
-    return /* @__PURE__ */ u$2("details", { class: "rbt-env-details", children: [
-      /* @__PURE__ */ u$2("summary", { children: body }),
-      /* @__PURE__ */ u$2(SubItemList, { items: item.subItems, groupOff: !item.enabled })
+      [...v2.autoLinks, ...v2.links].map((l2, i2) => /* @__PURE__ */ u$2(LinkChip, { l: l2 }, i2)),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", onClick: () => setEditing(true), children: hasSource(v2) ? "编辑" : "添加作者和链接" })
     ] });
   }
-  if (!item.children?.length) return body;
-  return /* @__PURE__ */ u$2("details", { class: "rbt-env-details", children: [
-    /* @__PURE__ */ u$2("summary", { children: body }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-env-children", children: item.children.map((c2, i2) => /* @__PURE__ */ u$2("div", { children: c2 }, i2)) })
-  ] });
-}
-function SubItemRow({ sub }) {
-  const [busy, setBusy] = d$1(false);
-  const onToggle = async (on) => {
-    setBusy(true);
-    try {
-      await sub.toggle(on);
-    } finally {
-      setBusy(false);
-      refreshEnv();
-    }
-  };
-  return /* @__PURE__ */ u$2("div", { class: `rbt-sub-item ${sub.enabled ? "" : "off"}`, children: [
-    /* @__PURE__ */ u$2("span", { class: "rbt-sub-name", children: sub.name }),
-    sub.detail && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: sub.detail }),
-    /* @__PURE__ */ u$2("span", { class: "rbt-env-toggle", children: [
-      busy && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "…" }),
-      /* @__PURE__ */ u$2(Toggle, { checked: sub.enabled, onChange: onToggle, title: "点击开 / 关这一条" })
-    ] })
-  ] });
-}
-function SubItemList({ items, groupOff }) {
-  const [filter, setFilter] = d$1("");
-  const [onlyOn, setOnlyOn] = d$1(false);
-  const shown = items.filter((s2) => (!filter || s2.name.includes(filter)) && (!onlyOn || s2.enabled));
-  return /* @__PURE__ */ u$2("div", { class: "rbt-sub-list", children: [
-    groupOff && /* @__PURE__ */ u$2("div", { class: "rbt-hint", children: "上面的总开关关着，所以下面这些都不会运行。" }),
-    items.length > 10 && /* @__PURE__ */ u$2("div", { class: "rbt-sub-tools", children: [
-      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: "搜索正则…", value: filter, onInput: (e2) => setFilter(e2.currentTarget.value) }),
-      /* @__PURE__ */ u$2("label", { class: "rbt-check", children: [
-        /* @__PURE__ */ u$2("input", { type: "checkbox", checked: onlyOn, onChange: (e2) => setOnlyOn(e2.currentTarget.checked) }),
-        "只看开着的"
-      ] })
+  return /* @__PURE__ */ u$2("div", { class: "rbt-source-edit", children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted rbt-source-k", children: "作者" }),
+      /* @__PURE__ */ u$2(
+        "input",
+        {
+          class: "text_pole rbt-input",
+          placeholder: v2.autoAuthor ? `${v2.autoAuthor}（插件自带，可改）` : "作者名字",
+          value: manualAuthor,
+          onChange: (e2) => updateSource(kind, id, { author: e2.currentTarget.value.trim() })
+        }
+      )
     ] }),
-    shown.map((s2) => /* @__PURE__ */ u$2(SubItemRow, { sub: s2 }, s2.id)),
-    !shown.length && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "没有匹配的正则" })
-  ] });
-}
-function ownerValue(o2) {
-  return o2 ? `${o2.kind}:${o2.key}` : "";
-}
-function GlobalRegexList({ items }) {
-  void archiveVersion.value;
-  const scripts = globalRegexScripts();
-  const owners = settings().regexOwners;
-  const exts = installedExtensions();
-  const presets = presetNames();
-  const chars = allCharacters();
-  const byId = new Map(items.map((i2) => [i2.id, i2]));
-  const guesses = scripts.map((r2) => ({ r: r2, g: owners[r2.id] ? null : guessRegexOwner(r2) })).filter((x2) => x2.g);
-  const onPick = (id, v2) => {
-    if (!v2) return setRegexOwner(id, null);
-    const i2 = v2.indexOf(":");
-    const kind = v2.slice(0, i2);
-    const key = v2.slice(i2 + 1);
-    const label = kind === "extension" ? exts.find((e2) => e2.id === key)?.name ?? key : kind === "card" ? findChar(key)?.char?.name ?? key : key;
-    setRegexOwner(id, { kind, key, label });
-  };
-  if (!scripts.length) return /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: "没有全局正则。" });
-  return /* @__PURE__ */ u$2(S$1, { children: [
-    /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "给正则选好「属于」，换卡时就会自动开关：属于当前的卡或预设就打开，属于别的就关掉。" }),
-    guesses.length > 1 && /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", onClick: () => {
-      for (const { r: r2, g: g2 } of guesses) setRegexOwner(r2.id, g2);
-    }, children: [
-      "按名字自动选好 ",
-      guesses.length,
-      " 条"
-    ] }) }),
-    scripts.map((r2) => {
-      const item = byId.get(`rx:g:${r2.id ?? r2.scriptName}`);
-      const g2 = owners[r2.id] ? null : guessRegexOwner(r2);
-      return /* @__PURE__ */ u$2("div", { class: "rbt-owner-row", children: [
-        item ? /* @__PURE__ */ u$2(ItemRow, { item }) : /* @__PURE__ */ u$2("div", { class: "rbt-env-item", children: /* @__PURE__ */ u$2("span", { class: "rbt-env-name", children: r2.scriptName }) }),
-        /* @__PURE__ */ u$2("div", { class: "rbt-form-row rbt-owner-pick", children: [
-          /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "属于" }),
-          /* @__PURE__ */ u$2("select", { class: "text_pole rbt-select", value: ownerValue(owners[r2.id]), onChange: (e2) => onPick(r2.id, e2.currentTarget.value), children: [
-            /* @__PURE__ */ u$2("option", { value: "", children: "没选（换卡时不动它）" }),
-            /* @__PURE__ */ u$2("optgroup", { label: "插件", children: exts.map((e2) => /* @__PURE__ */ u$2("option", { value: `extension:${e2.id}`, children: e2.name }, e2.id)) }),
-            /* @__PURE__ */ u$2("optgroup", { label: "预设", children: presets.map((p2) => /* @__PURE__ */ u$2("option", { value: `preset:${p2}`, children: p2 }, p2)) }),
-            /* @__PURE__ */ u$2("optgroup", { label: "角色卡", children: chars.map((c2) => /* @__PURE__ */ u$2("option", { value: `card:${c2.avatar}`, children: c2.name }, c2.avatar)) })
-          ] }),
-          g2 && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", title: "按名字猜的，点一下就选上", onClick: () => setRegexOwner(r2.id, g2), children: [
-            "可能是 ",
-            g2.label
-          ] })
-        ] })
-      ] }, r2.id);
-    })
-  ] });
-}
-function openRegexManager() {
-  openDrawer("extensions");
-  setTimeout(() => {
-    const box = document.querySelector(".regex_settings");
-    const content = box?.querySelector(".inline-drawer-content");
-    if (content && getComputedStyle(content).display === "none") box?.querySelector(".inline-drawer-toggle")?.click();
-    box?.scrollIntoView({ block: "start" });
-  }, 350);
-}
-function AddGlobalWorld() {
-  const scopes = currentBookScopes();
-  const options = worldNames().filter((w2) => !scopes.global.has(w2)).sort((x2, y2) => x2.localeCompare(y2, "zh-Hans-CN"));
-  const [busy, setBusy] = d$1(false);
-  if (!options.length) return null;
-  return /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: /* @__PURE__ */ u$2("select", { class: "text_pole rbt-select", value: "", disabled: busy, onChange: async (e2) => {
-    const name = e2.currentTarget.value;
-    if (!name) return;
-    setBusy(true);
-    try {
-      await runSlash(`/world state=on silent=true ${slashQuote(name)}`);
-    } finally {
-      setBusy(false);
-      refreshEnv();
-    }
-  }, children: [
-    /* @__PURE__ */ u$2("option", { value: "", children: "打开一本全局世界书…" }),
-    options.map((w2) => /* @__PURE__ */ u$2("option", { value: w2, children: [
-      w2,
-      scopes.character.has(w2) ? "（已绑在当前卡上）" : ""
-    ] }, w2))
-  ] }) });
-}
-function PresetPicker() {
-  const names = presetNames();
-  const cur = currentPresetName();
-  const [busy, setBusy] = d$1(false);
-  return /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
-    /* @__PURE__ */ u$2("select", { class: "text_pole rbt-select", value: cur, disabled: busy, onChange: async (e2) => {
-      const name = e2.currentTarget.value;
-      if (!name || name === cur) return;
-      setBusy(true);
-      try {
-        await switchPreset(name);
-      } finally {
-        setBusy(false);
-        refreshEnv();
-      }
-    }, children: names.map((n2) => /* @__PURE__ */ u$2("option", { value: n2, children: n2 }, n2)) }),
-    /* @__PURE__ */ u$2("button", { class: "rbt-btn", onClick: () => openDrawer("preset"), children: "编辑预设" })
-  ] });
-}
-function PluginList() {
-  const list = installedExtensions().sort((x2, y2) => Number(y2.enabled) - Number(x2.enabled) || x2.name.localeCompare(y2.name));
-  const [want, setWant] = d$1({});
-  const [busy, setBusy] = d$1(false);
-  const changed = list.filter((e2) => e2.id in want && want[e2.id] !== e2.enabled);
-  const apply = async () => {
-    const ext = loaded.extensions;
-    if (!ext) return;
-    setBusy(true);
-    for (const e2 of changed) {
-      const name = `third-party/${e2.id}`;
-      if (want[e2.id]) await ext.enableExtension(name, false);
-      else await ext.disableExtension(name, false);
-    }
-    location.reload();
-  };
-  return /* @__PURE__ */ u$2(S$1, { children: [
-    list.map((e2) => {
-      const on = e2.id in want ? want[e2.id] : e2.enabled;
-      return /* @__PURE__ */ u$2("div", { class: `rbt-env-item ${on ? "" : "off"}`, children: [
-        /* @__PURE__ */ u$2("span", { class: "rbt-env-name", children: e2.name }),
-        e2.name !== e2.id && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: e2.id }),
-        e2.id in want && want[e2.id] !== e2.enabled && /* @__PURE__ */ u$2(Chip, { color: "#f0a43a", children: "刷新后生效" }),
-        /* @__PURE__ */ u$2("span", { class: "rbt-env-toggle", children: /* @__PURE__ */ u$2(Toggle, { checked: on, onChange: (v2) => setWant({ ...want, [e2.id]: v2 }), title: "启用 / 停用这个插件" }) })
-      ] }, e2.id);
-    }),
-    changed.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-warn rbt-row-between", children: [
-      /* @__PURE__ */ u$2("span", { children: [
-        "改了 ",
-        changed.length,
-        " 个插件，刷新页面后生效。"
-      ] }),
-      /* @__PURE__ */ u$2("span", { class: "rbt-row", children: [
-        /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", disabled: busy, onClick: () => setWant({}), children: "还原" }),
-        /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small rbt-btn-primary", disabled: busy, onClick: apply, children: "保存并刷新" })
-      ] })
-    ] })
-  ] });
-}
-function GlobalPage() {
-  const report = envReport.value;
-  h$2(() => {
-    refreshEnv();
-  }, []);
-  void archiveVersion.value;
-  if (!report) return null;
-  const pick = (f2) => report.items.filter(f2);
-  const worlds = pick((i2) => i2.kind === "worldbook" && (i2.scope === "global" || i2.scope === "persona"));
-  const regex = pick((i2) => i2.scope === "global" && i2.kind === "regex");
-  const presetRx = pick((i2) => i2.scope === "preset" && i2.kind !== "preset");
-  const scripts = pick((i2) => i2.scope === "global" && i2.kind === "script");
-  return /* @__PURE__ */ u$2("div", { class: "rbt-page", children: [
-    /* @__PURE__ */ u$2("div", { class: "rbt-page-lead", children: "这里的设置对所有卡都生效，换卡时不会跟着变。只给某张卡用的东西，最好绑到那张卡上。" }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-page-cols", children: [
-      /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
-        /* @__PURE__ */ u$2(Section, { title: "全局世界书", hint: "打开后对所有卡生效", children: [
-          worlds.map((i2) => /* @__PURE__ */ u$2(ItemRow, { item: i2 }, i2.id)),
-          !worlds.length && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "没有开着的全局世界书。" }),
-          /* @__PURE__ */ u$2(AddGlobalWorld, {})
-        ] }),
-        /* @__PURE__ */ u$2(Section, { title: "全局正则", children: [
-          /* @__PURE__ */ u$2(GlobalRegexList, { items: regex }),
-          /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { class: "rbt-btn", onClick: openRegexManager, children: "新建、编辑或导入正则" }) })
-        ] }),
-        scripts.length > 0 && /* @__PURE__ */ u$2(Section, { title: "酒馆助手全局脚本", children: scripts.map((i2) => /* @__PURE__ */ u$2(ItemRow, { item: i2 }, i2.id)) })
-      ] }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
-        /* @__PURE__ */ u$2(Section, { title: "预设", hint: "切到有推荐预设的卡时会自动换", children: [
-          /* @__PURE__ */ u$2(PresetPicker, {}),
-          presetRx.map((i2) => /* @__PURE__ */ u$2(ItemRow, { item: i2 }, i2.id)),
-          !presetRx.length && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "这个预设没有自带正则或脚本。" })
-        ] }),
-        /* @__PURE__ */ u$2(Section, { title: "插件", hint: "对所有卡生效", children: /* @__PURE__ */ u$2(PluginList, {}) })
-      ] })
-    ] })
+    v2.autoLinks.map((l2, i2) => /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
+      /* @__PURE__ */ u$2(LinkChip, { l: l2 }),
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted rbt-ellipsis", children: l2.url }),
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted rbt-push", children: "插件自带" })
+    ] }, `a${i2}`)),
+    v2.links.map((l2, i2) => /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
+      /* @__PURE__ */ u$2(LinkChip, { l: l2 }),
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted rbt-ellipsis", children: l2.url }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-push", title: "删除这条链接", onClick: () => updateSource(kind, id, { links: v2.links.filter((_2, j2) => j2 !== i2) }), children: "✕" })
+    ] }, i2)),
+    /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
+      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input rbt-w-label", placeholder: "名称，如：教程", value: label, onInput: (e2) => setLabel(e2.currentTarget.value) }),
+      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: "https://…", value: url, onInput: (e2) => setUrl(e2.currentTarget.value), onKeyDown: (e2) => {
+        if (e2.key === "Enter") add();
+      } }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn", disabled: !urlOk, onClick: add, children: "添加" })
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-primary rbt-btn-small", onClick: () => setEditing(false), children: "完成" }) })
   ] });
 }
 const VIEW_LABELS = {
+  card: "角色档案",
   flow: "信息流",
   vars: "变量",
-  card: "角色档案",
-  global: "全局",
-  maintain: "维护"
+  global: "全局工具箱"
 };
-const SHEET_IDS = ["global", "maintain"];
-const sheetView = y$1(null);
+const GLOBAL_TABS = ["presets", "worlds", "regex", "plugins", "backup"];
+const GLOBAL_TAB_LABELS = {
+  presets: "预设",
+  worlds: "世界书",
+  regex: "正则",
+  plugins: "插件",
+  backup: "备份"
+};
+const sheetOpen = y$1(false);
+const globalTab = y$1("presets");
 const shellActive = y$1(false);
 let openInDock = () => {
 };
@@ -3531,231 +3133,226 @@ function configureViews(opts) {
   openInDock = opts.openInDock;
   beforeSheet = opts.beforeSheet;
 }
-function isSheet(v2) {
-  return SHEET_IDS.includes(v2);
+const LEGACY = {
+  env: { view: "card" },
+  cards: { view: "card" },
+  maintain: { view: "global", tab: "backup" },
+  presets: { view: "global", tab: "presets" },
+  worlds: { view: "global", tab: "worlds" },
+  regex: { view: "global", tab: "regex" },
+  plugins: { view: "global", tab: "plugins" },
+  backup: { view: "global", tab: "backup" }
+};
+function resolveView(name) {
+  if (Object.keys(VIEW_LABELS).includes(name)) return { view: name };
+  return LEGACY[name] ?? null;
 }
-function openView(view) {
-  if (isSheet(view) && shellActive.value) {
+function openGlobal(tab) {
+  if (tab) globalTab.value = tab;
+  detailStack.value = [];
+  if (shellActive.value) {
     beforeSheet();
-    sheetView.value = view;
+    sheetOpen.value = true;
     return;
   }
-  if (sheetView.value) sheetView.value = null;
+  openInDock("global");
+}
+function openView(view) {
+  if (view === "global") {
+    openGlobal();
+    return;
+  }
+  sheetOpen.value = false;
+  detailStack.value = [];
   openInDock(view);
 }
-function closeSheet$1() {
-  sheetView.value = null;
-}
-function openCard(avatar) {
-  archiveTarget.value = avatar;
-  openView("card");
-}
-function CardLink({ info }) {
-  return /* @__PURE__ */ u$2("a", { class: "rbt-card-link", onClick: () => openCard(info.avatar), children: info.name });
-}
-function BackupBox() {
-  const [auto, setAuto] = d$1(settings().autoImportWorld);
-  const fileRef = A$1(null);
-  const [mode, setMode] = d$1("merge");
-  const s2 = settings();
-  const backups = s2.worldBackups.slice(-5).reverse();
-  const pickFile = (m2) => {
-    setMode(m2);
-    fileRef.current?.click();
-  };
-  const onFile = async (e2) => {
-    const input = e2.currentTarget;
-    const file = input.files?.[0];
-    input.value = "";
-    if (!file) return;
-    try {
-      await importArchive(await file.text(), mode);
-    } catch (err) {
-      window.toastr?.error?.(err.message, "导入失败");
-    }
-  };
-  return /* @__PURE__ */ u$2(Section, { title: "设置与备份", children: [
-    /* @__PURE__ */ u$2(
-      SwitchRow,
-      {
-        label: "自动导入卡里的世界书",
-        detail: "打开一张卡时，如果它自带的世界书还没导入，就自动导入并绑定。不会覆盖已有的同名世界书。",
-        checked: auto,
-        onChange: (v2) => {
-          s2.autoImportWorld = v2;
-          saveSettings();
-          setAuto(v2);
-        }
-      }
-    ),
-    /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "你填的来源、说明、推荐预设和记住的配置，都和酒馆设置存在一起。换电脑或想留个底时，可以导出成一个文件。" }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-row", children: [
-        /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-primary", onClick: () => exportArchive(), children: "导出档案" }),
-        /* @__PURE__ */ u$2("button", { class: "rbt-btn", onClick: () => pickFile("merge"), children: "导入并合并" }),
-        /* @__PURE__ */ u$2("button", { class: "rbt-btn", onClick: () => pickFile("overwrite"), children: "导入并覆盖" }),
-        /* @__PURE__ */ u$2("input", { ref: fileRef, type: "file", accept: ".json,application/json", style: { display: "none" }, onChange: onFile })
-      ] }),
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "合并：同一张卡留下较新的那份。覆盖：全部换成文件里的。" })
-    ] }),
-    backups.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "覆盖世界书前自动做的备份：" }),
-      backups.map((b2) => /* @__PURE__ */ u$2("div", { title: `酒馆的 user/files 文件夹里：${b2.file}`, children: /* @__PURE__ */ u$2("small", { children: [
-        new Date(b2.at).toLocaleString(),
-        " 「",
-        b2.world,
-        "」"
-      ] }) }, b2.file))
-    ] })
-  ] });
-}
-function MaintainPage() {
-  void archiveVersion.value;
-  const [busy, setBusy] = d$1(false);
-  const ov = buildOverview();
-  const missing = cardsMissingWorld();
-  const sharedWorlds = [...ov.byWorld.entries()].filter(([, cs]) => cs.length > 1);
-  const presetRx = presetNames().map((p2) => ({ p: p2, n: presetRegexCount(p2) })).filter((x2) => x2.n > 0);
-  const cardRx = allCharacters().map(cardInfo).filter((c2) => c2.regex.total > 0).sort((a2, b2) => b2.regex.total - a2.regex.total);
-  const curPreset = currentPresetName();
-  return /* @__PURE__ */ u$2("div", { class: "rbt-page", children: /* @__PURE__ */ u$2("div", { class: "rbt-page-cols", children: [
-    /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
-      /* @__PURE__ */ u$2(Section, { title: "待处理", children: [
-        !missing.length && !ov.orphans.length && /* @__PURE__ */ u$2("div", { class: "rbt-ok", children: "一切正常" }),
-        missing.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-warn rbt-row-between", children: [
-          /* @__PURE__ */ u$2("span", { children: [
-            missing.length,
-            " 张卡自带的世界书还没导入：",
-            missing.map((m2) => m2.name).join("、")
-          ] }),
-          /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-primary rbt-btn-small", disabled: busy, onClick: async () => {
-            setBusy(true);
-            try {
-              await importAllMissingWorlds();
-            } finally {
-              setBusy(false);
-            }
-          }, children: "全部导入" })
-        ] }),
-        ov.orphans.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-warn", children: [
-          /* @__PURE__ */ u$2("div", { children: [
-            ov.orphans.length,
-            " 份档案找不到对应的卡。卡可能被删了，或重新导入后换了文件名。"
-          ] }),
-          ov.orphans.map((o2) => /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
-            /* @__PURE__ */ u$2("span", { children: [
-              "「",
-              o2.cardName,
-              "」",
-              /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: o2.avatar })
-            ] }),
-            o2.candidates.map((c2) => /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", onClick: () => relink(o2.avatar, c2), children: [
-              "转给「",
-              c2,
-              "」"
-            ] }, c2)),
-            /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", onClick: async () => {
-              if (await ctx().Popup?.show?.confirm?.("删除这份档案？", `「${o2.cardName}」的来源、说明和记住的配置都会删除。`)) dropRecord(o2.avatar);
-            }, children: "删除" })
-          ] }, o2.avatar))
-        ] })
-      ] }),
-      /* @__PURE__ */ u$2(Section, { title: "推荐预设", hint: "哪些卡推荐了哪个预设，点卡名查看", children: [
-        !ov.byPreset.size && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "还没有卡设了推荐预设。" }),
-        [...ov.byPreset.entries()].map(([p2, cs]) => /* @__PURE__ */ u$2("div", { class: "rbt-lookup-row", children: [
-          /* @__PURE__ */ u$2("b", { children: p2 }),
-          "：",
-          cs.map((c2, i2) => /* @__PURE__ */ u$2("span", { children: [
-            i2 > 0 && "、",
-            /* @__PURE__ */ u$2(CardLink, { info: c2 })
-          ] }, c2.avatar))
-        ] }, p2))
-      ] }),
-      /* @__PURE__ */ u$2(Section, { title: "多张卡共用的世界书", hint: sharedWorlds.length ? `${sharedWorlds.length} 本` : void 0, children: [
-        !sharedWorlds.length && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "没有。" }),
-        sharedWorlds.map(([w2, cs]) => /* @__PURE__ */ u$2("div", { class: "rbt-lookup-row", children: [
-          /* @__PURE__ */ u$2("b", { children: w2 }),
-          "：",
-          cs.map((c2, i2) => /* @__PURE__ */ u$2("span", { children: [
-            i2 > 0 && "、",
-            /* @__PURE__ */ u$2(CardLink, { info: c2 })
-          ] }, c2.avatar))
-        ] }, w2))
-      ] }),
-      /* @__PURE__ */ u$2(Section, { title: "没有卡在用的世界书", hint: ov.unusedWorlds.length ? `${ov.unusedWorlds.length} 本` : void 0, children: [
-        !ov.unusedWorlds.length && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "没有。" }),
-        ov.unusedWorlds.map((w2) => /* @__PURE__ */ u$2("div", { class: "rbt-lookup-row", children: [
-          w2.name,
-          " ",
-          w2.global && /* @__PURE__ */ u$2(Chip, { color: BAD, title: "作为全局世界书开着，对所有卡生效", children: "全局开着" })
-        ] }, w2.name))
-      ] })
-    ] }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
-      /* @__PURE__ */ u$2(Section, { title: "带正则的预设", hint: "只在用这个预设时生效", children: [
-        !presetRx.length && /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: "没有。" }),
-        presetRx.map(({ p: p2, n: n2 }) => /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
-          /* @__PURE__ */ u$2("span", { children: p2 }),
-          /* @__PURE__ */ u$2("b", { children: [
-            n2,
-            " 条"
-          ] }),
-          p2 === curPreset && /* @__PURE__ */ u$2(Chip, { color: "#3d8bfd", children: "正在用" })
-        ] }, p2))
-      ] }),
-      /* @__PURE__ */ u$2(Section, { title: "带正则的卡", hint: "只对那张卡生效，点卡名查看", children: [
-        !cardRx.length && /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: "没有。" }),
-        cardRx.map((c2) => /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
-          /* @__PURE__ */ u$2(CardLink, { info: c2 }),
-          /* @__PURE__ */ u$2("b", { children: [
-            c2.regex.total,
-            " 条"
-          ] }),
-          !c2.regex.allowed && /* @__PURE__ */ u$2(Chip, { color: BAD, children: "未允许运行" })
-        ] }, c2.avatar))
-      ] }),
-      /* @__PURE__ */ u$2(BackupBox, {})
-    ] })
-  ] }) });
-}
-const TABS = ["global", "maintain"];
 function closeSheet() {
-  closeSheet$1();
-  archiveTarget.value = null;
+  sheetOpen.value = false;
+  detailStack.value = [];
 }
-function SheetHost() {
-  const v2 = sheetView.value;
-  h$2(() => {
-    if (!v2) return;
-    const onKey = (e2) => {
-      if (e2.key !== "Escape") return;
-      if (document.querySelector("dialog[open]")) return;
-      closeSheet();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [v2]);
-  if (!v2) return null;
-  const title = "全局工具箱";
-  return /* @__PURE__ */ u$2(S$1, { children: [
-    /* @__PURE__ */ u$2("div", { class: "rbt-sheet-backdrop", onMouseDown: () => closeSheet() }),
-    /* @__PURE__ */ u$2("section", { class: "rbt-sheet rbt-scope", role: "dialog", "aria-label": title, children: [
-      /* @__PURE__ */ u$2("header", { class: "rbt-sheet-bar", children: [
-        /* @__PURE__ */ u$2("span", { class: "rbt-sheet-title", children: [
-          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-globe fa-fw" }),
-          title
-        ] }),
-        /* @__PURE__ */ u$2("div", { class: "rbt-sheet-tabs", role: "tablist", children: TABS.map((t2) => /* @__PURE__ */ u$2("button", { type: "button", role: "tab", class: v2 === t2 ? "active" : "", onClick: () => {
-          sheetView.value = t2;
-        }, children: VIEW_LABELS[t2] }, t2)) }),
-        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-sheet-close", title: "关闭（Esc）", "aria-label": "关闭", onClick: () => closeSheet(), children: "✕" })
-      ] }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-sheet-body", children: [
-        v2 === "global" && /* @__PURE__ */ u$2(GlobalPage, {}),
-        v2 === "maintain" && /* @__PURE__ */ u$2(MaintainPage, {})
-      ] })
-    ] })
-  ] });
+function setGlobalTab(tab) {
+  globalTab.value = tab;
+  detailStack.value = [];
+}
+const detailStack = y$1([]);
+function currentDetail() {
+  const st = detailStack.value;
+  return st[st.length - 1] ?? null;
+}
+function openDetail(d2, back) {
+  detailStack.value = [...detailStack.value, { d: d2, back }];
+}
+function goBack() {
+  detailStack.value = detailStack.value.slice(0, -1);
+}
+const GLOBAL = 0;
+const lastApplied = y$1(null);
+function globalWorlds() {
+  return [...loaded.worldInfo?.selected_world_info ?? []];
+}
+function globalRegex() {
+  return loaded.regexEngine?.getScriptsByType?.(GLOBAL) ?? [];
+}
+function booksOfOtherCards(avatar) {
+  const out = /* @__PURE__ */ new Set();
+  for (const ch of ctx().characters ?? []) {
+    if (ch.avatar === avatar) continue;
+    const w2 = ch.data?.extensions?.world;
+    if (w2) out.add(w2);
+  }
+  for (const e2 of loaded.worldInfo?.world_info?.charLore ?? []) {
+    if (e2.name === charaFileName(avatar)) continue;
+    for (const b2 of e2.extraBooks ?? []) out.add(b2);
+  }
+  return out;
+}
+function ownBooks(char) {
+  const out = /* @__PURE__ */ new Set();
+  const w2 = char.data?.extensions?.world;
+  if (w2) out.add(w2);
+  const extra = loaded.worldInfo?.world_info?.charLore?.find((e2) => e2.name === charaFileName(char.avatar))?.extraBooks ?? [];
+  for (const b2 of extra) out.add(b2);
+  return out;
+}
+function planFor(char) {
+  const avatar = char.avatar;
+  const s2 = settings();
+  const profile = s2.profiles[avatar];
+  const owners = s2.regexOwners ?? {};
+  const api = presetApi();
+  const cur = currentPresetName();
+  const plan = { avatar, cardName: char.name, worldsOn: [], worldsOff: [], regexOn: [], regexOff: [], plugins: [] };
+  if (profile?.preset && profile.preset.api === api && profile.preset.name !== cur && presetNames().includes(profile.preset.name)) {
+    plan.preset = profile.preset.name;
+  }
+  const targetPreset = plan.preset ?? cur;
+  const now = globalWorlds();
+  const existing = new Set(loaded.worldInfo?.world_names ?? []);
+  if (profile?.globalWorlds) {
+    plan.worldsOn = profile.globalWorlds.filter((w2) => !now.includes(w2) && existing.has(w2));
+    plan.worldsOff = now.filter((w2) => !profile.globalWorlds.includes(w2));
+  } else {
+    const others = booksOfOtherCards(avatar);
+    const mine = ownBooks(char);
+    plan.worldsOff = now.filter((w2) => others.has(w2) && !mine.has(w2));
+  }
+  for (const r2 of globalRegex()) {
+    let want;
+    if (profile?.globalRegexEnabled) want = profile.globalRegexEnabled.includes(r2.scriptName);
+    else {
+      const o2 = owners[r2.id];
+      if (o2?.kind === "card") want = o2.key === avatar;
+      else if (o2?.kind === "preset") want = o2.key === targetPreset;
+    }
+    if (want === void 0) continue;
+    const on = !r2.disabled;
+    if (want && !on) plan.regexOn.push({ id: r2.id, name: r2.scriptName });
+    if (!want && on) plan.regexOff.push({ id: r2.id, name: r2.scriptName });
+  }
+  const installed2 = installedExtensions();
+  for (const r2 of requiredExtensions(cardInfo(char))) {
+    const st = extStatus(r2.req, installed2);
+    if (st.status === "disabled" && st.match) plan.plugins.push({ id: st.match.id, name: st.match.name, status: "disabled" });
+    if (st.status === "missing") plan.plugins.push({ id: "", name: r2.req.name, status: "missing" });
+  }
+  return plan;
+}
+function planHasChanges(p2) {
+  return !!p2.preset || p2.worldsOn.length > 0 || p2.worldsOff.length > 0 || p2.regexOn.length > 0 || p2.regexOff.length > 0;
+}
+async function setRegexStates(changes) {
+  const re = loaded.regexEngine;
+  if (!re || !Object.keys(changes).length) return;
+  const next = globalRegex().map((r2) => r2.id in changes ? { ...r2, disabled: changes[r2.id] } : r2);
+  await re.saveScriptsByType(next, GLOBAL);
+  saveSettings();
+  if (ctx().getCurrentChatId?.()) await ctx().reloadCurrentChat();
+}
+async function setWorlds(on, off) {
+  for (const w2 of off) await runSlash(`/world state=off silent=true ${slashQuote(w2)}`);
+  for (const w2 of on) await runSlash(`/world state=on silent=true ${slashQuote(w2)}`);
+}
+async function applyPlan(plan) {
+  const snapshot = {
+    preset: currentPresetName(),
+    globalWorlds: globalWorlds(),
+    regexDisabled: Object.fromEntries(globalRegex().map((r2) => [r2.id, !!r2.disabled]))
+  };
+  const changes = [];
+  if (plan.preset) {
+    await switchPreset(plan.preset);
+    changes.push(`预设换成「${plan.preset}」`);
+  }
+  if (plan.worldsOn.length || plan.worldsOff.length) {
+    await setWorlds(plan.worldsOn, plan.worldsOff);
+    for (const w2 of plan.worldsOff) changes.push(`关掉全局世界书「${w2}」`);
+    for (const w2 of plan.worldsOn) changes.push(`打开全局世界书「${w2}」`);
+  }
+  const rx = {};
+  for (const r2 of plan.regexOff) {
+    rx[r2.id] = true;
+    changes.push(`关掉全局正则「${r2.name}」`);
+  }
+  for (const r2 of plan.regexOn) {
+    rx[r2.id] = false;
+    changes.push(`打开全局正则「${r2.name}」`);
+  }
+  await setRegexStates(rx);
+  if (changes.length) lastApplied.value = { avatar: plan.avatar, cardName: plan.cardName, at: Date.now(), changes, snapshot };
+  refreshEnv();
+  return changes;
+}
+async function undoLastApply() {
+  const a2 = lastApplied.value;
+  if (!a2 || a2.undone) return;
+  const s2 = a2.snapshot;
+  if (s2.preset && s2.preset !== currentPresetName()) await switchPreset(s2.preset);
+  const now = globalWorlds();
+  await setWorlds(s2.globalWorlds.filter((w2) => !now.includes(w2)), now.filter((w2) => !s2.globalWorlds.includes(w2)));
+  const rx = {};
+  for (const r2 of globalRegex()) {
+    if (r2.id in s2.regexDisabled && s2.regexDisabled[r2.id] !== !!r2.disabled) rx[r2.id] = s2.regexDisabled[r2.id];
+  }
+  await setRegexStates(rx);
+  lastApplied.value = { ...a2, undone: true };
+  refreshEnv();
+  toast("success", "已撤销刚才的自动切换");
+}
+async function enablePluginsAndReload(ids) {
+  const ext = loaded.extensions;
+  if (!ext?.enableExtension || !ids.length) return;
+  for (const id of ids) await ext.enableExtension(id.startsWith("third-party/") ? id : `third-party/${id}`, false);
+  location.reload();
+}
+let lastAvatar = null;
+async function autoApplyOnSwitch(openStatus) {
+  const c2 = ctx();
+  if (c2.groupId) return;
+  const char = c2.characters?.[Number(c2.characterId)];
+  if (!char?.avatar || char.avatar === lastAvatar) return;
+  lastAvatar = char.avatar;
+  if (!settings().autoApplyEnv) return;
+  const imported = [];
+  const w2 = cardInfo(char).world;
+  if (settings().autoImportWorld && w2.embedded && (w2.state === "missing" || w2.state === "unbound")) {
+    if (await importCardWorld(char.avatar, { quiet: true }) === "imported") imported.push(`从卡里导入并绑定了世界书「${w2.importName}」`);
+  }
+  const plan = planFor(char);
+  if (planHasChanges(plan) || imported.length) {
+    const changes = [...imported, ...planHasChanges(plan) ? await applyPlan(plan) : []];
+    if (changes.length) {
+      toast("success", `已换成「${char.name}」的配置：${changes.join("；")}。点这里查看或撤销。`, "自动切换", { onclick: openStatus, timeOut: 9e3 });
+    }
+  }
+  const disabled = plan.plugins.filter((p2) => p2.status === "disabled");
+  const missing = plan.plugins.filter((p2) => p2.status === "missing");
+  if (disabled.length || missing.length) {
+    const parts = [
+      disabled.length && `未启用：${disabled.map((p2) => p2.name).join("、")}`,
+      missing.length && `未安装：${missing.map((p2) => p2.name).join("、")}`
+    ].filter(Boolean);
+    toast("warning", `「${char.name}」需要的插件${parts.join("；")}。点这里处理。`, "自动切换", { onclick: openStatus, timeOut: 9e3 });
+  }
 }
 function isPlainObject(v2) {
   return typeof v2 === "object" && v2 !== null && !Array.isArray(v2);
@@ -3995,7 +3592,7 @@ const WI_POSITION = {
   6: "示例对话后 ↓EM",
   7: "出口 Outlet"
 };
-const KIND_LABEL = {
+const KIND_LABEL$1 = {
   prompt: "预设条目",
   marker: "占位符",
   chat: "聊天",
@@ -4051,7 +3648,7 @@ function MessageRow({ msg }) {
         "深度 ",
         msg.depth
       ] }),
-      msg.kind !== "chat" && msg.kind !== "injection" && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: KIND_LABEL[msg.kind] }),
+      msg.kind !== "chat" && msg.kind !== "injection" && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: KIND_LABEL$1[msg.kind] }),
       extraSources > 0 && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
         "+",
         extraSources,
@@ -4189,491 +3786,88 @@ function FlowView() {
     sub === "wi" && /* @__PURE__ */ u$2(WIList, { wi: cap.wi })
   ] });
 }
-const GLOBAL = 0;
-const lastApplied = y$1(null);
-function globalWorlds() {
-  return [...loaded.worldInfo?.selected_world_info ?? []];
-}
-function globalRegex() {
-  return loaded.regexEngine?.getScriptsByType?.(GLOBAL) ?? [];
-}
-function booksOfOtherCards(avatar) {
-  const out = /* @__PURE__ */ new Set();
-  for (const ch of ctx().characters ?? []) {
-    if (ch.avatar === avatar) continue;
-    const w2 = ch.data?.extensions?.world;
-    if (w2) out.add(w2);
-  }
-  for (const e2 of loaded.worldInfo?.world_info?.charLore ?? []) {
-    if (e2.name === charaFileName(avatar)) continue;
-    for (const b2 of e2.extraBooks ?? []) out.add(b2);
-  }
-  return out;
-}
-function ownBooks(char) {
-  const out = /* @__PURE__ */ new Set();
-  const w2 = char.data?.extensions?.world;
-  if (w2) out.add(w2);
-  const extra = loaded.worldInfo?.world_info?.charLore?.find((e2) => e2.name === charaFileName(char.avatar))?.extraBooks ?? [];
-  for (const b2 of extra) out.add(b2);
-  return out;
-}
-function planFor(char) {
-  const avatar = char.avatar;
-  const s2 = settings();
-  const profile = s2.profiles[avatar];
-  const owners = s2.regexOwners ?? {};
-  const api = presetApi();
-  const cur = currentPresetName();
-  const plan = { avatar, cardName: char.name, worldsOn: [], worldsOff: [], regexOn: [], regexOff: [], plugins: [] };
-  if (profile?.preset && profile.preset.api === api && profile.preset.name !== cur && presetNames().includes(profile.preset.name)) {
-    plan.preset = profile.preset.name;
-  }
-  const targetPreset = plan.preset ?? cur;
-  const now = globalWorlds();
-  const existing = new Set(loaded.worldInfo?.world_names ?? []);
-  if (profile?.globalWorlds) {
-    plan.worldsOn = profile.globalWorlds.filter((w2) => !now.includes(w2) && existing.has(w2));
-    plan.worldsOff = now.filter((w2) => !profile.globalWorlds.includes(w2));
-  } else {
-    const others = booksOfOtherCards(avatar);
-    const mine = ownBooks(char);
-    plan.worldsOff = now.filter((w2) => others.has(w2) && !mine.has(w2));
-  }
-  for (const r2 of globalRegex()) {
-    let want;
-    if (profile?.globalRegexEnabled) want = profile.globalRegexEnabled.includes(r2.scriptName);
-    else {
-      const o2 = owners[r2.id];
-      if (o2?.kind === "card") want = o2.key === avatar;
-      else if (o2?.kind === "preset") want = o2.key === targetPreset;
-    }
-    if (want === void 0) continue;
-    const on = !r2.disabled;
-    if (want && !on) plan.regexOn.push({ id: r2.id, name: r2.scriptName });
-    if (!want && on) plan.regexOff.push({ id: r2.id, name: r2.scriptName });
-  }
-  const installed2 = installedExtensions();
-  for (const r2 of requiredExtensions(cardInfo(char))) {
-    const st = extStatus(r2.req, installed2);
-    if (st.status === "disabled" && st.match) plan.plugins.push({ id: st.match.id, name: st.match.name, status: "disabled" });
-    if (st.status === "missing") plan.plugins.push({ id: "", name: r2.req.name, status: "missing" });
-  }
-  return plan;
-}
-function planHasChanges(p2) {
-  return !!p2.preset || p2.worldsOn.length > 0 || p2.worldsOff.length > 0 || p2.regexOn.length > 0 || p2.regexOff.length > 0;
-}
-async function setRegexStates(changes) {
-  const re = loaded.regexEngine;
-  if (!re || !Object.keys(changes).length) return;
-  const next = globalRegex().map((r2) => r2.id in changes ? { ...r2, disabled: changes[r2.id] } : r2);
-  await re.saveScriptsByType(next, GLOBAL);
-  saveSettings();
-  if (ctx().getCurrentChatId?.()) await ctx().reloadCurrentChat();
-}
-async function setWorlds(on, off) {
-  for (const w2 of off) await runSlash(`/world state=off silent=true ${slashQuote(w2)}`);
-  for (const w2 of on) await runSlash(`/world state=on silent=true ${slashQuote(w2)}`);
-}
-async function applyPlan(plan) {
-  const snapshot = {
-    preset: currentPresetName(),
-    globalWorlds: globalWorlds(),
-    regexDisabled: Object.fromEntries(globalRegex().map((r2) => [r2.id, !!r2.disabled]))
+function buildGroups(leaves, changes) {
+  const byPath = new Map(changes.map((c2) => [c2.path, c2]));
+  const groups = /* @__PURE__ */ new Map();
+  const add = (path, r2) => {
+    const dot = path.indexOf(".");
+    const key = dot > 0 ? path.slice(0, dot) : "";
+    const g2 = groups.get(key) ?? { key, rows: [], changed: 0 };
+    g2.rows.push({ ...r2, name: dot > 0 ? path.slice(dot + 1) : path });
+    if (r2.change) g2.changed++;
+    groups.set(key, g2);
   };
-  const changes = [];
-  if (plan.preset) {
-    await switchPreset(plan.preset);
-    changes.push(`预设换成「${plan.preset}」`);
-  }
-  if (plan.worldsOn.length || plan.worldsOff.length) {
-    await setWorlds(plan.worldsOn, plan.worldsOff);
-    for (const w2 of plan.worldsOff) changes.push(`关掉全局世界书「${w2}」`);
-    for (const w2 of plan.worldsOn) changes.push(`打开全局世界书「${w2}」`);
-  }
-  const rx = {};
-  for (const r2 of plan.regexOff) {
-    rx[r2.id] = true;
-    changes.push(`关掉全局正则「${r2.name}」`);
-  }
-  for (const r2 of plan.regexOn) {
-    rx[r2.id] = false;
-    changes.push(`打开全局正则「${r2.name}」`);
-  }
-  await setRegexStates(rx);
-  if (changes.length) lastApplied.value = { avatar: plan.avatar, cardName: plan.cardName, at: Date.now(), changes, snapshot };
-  refreshEnv();
-  return changes;
+  for (const l2 of leaves) add(l2.path, { path: l2.path, value: l2.value, desc: l2.desc, change: byPath.get(l2.path) });
+  for (const c2 of changes) if (c2.kind === "removed") add(c2.path, { path: c2.path, value: void 0, desc: c2.desc, change: c2 });
+  return [...groups.values()].sort((a2, b2) => Number(!!a2.key) - Number(!!b2.key));
 }
-async function undoLastApply() {
-  const a2 = lastApplied.value;
-  if (!a2 || a2.undone) return;
-  const s2 = a2.snapshot;
-  if (s2.preset && s2.preset !== currentPresetName()) await switchPreset(s2.preset);
-  const now = globalWorlds();
-  await setWorlds(s2.globalWorlds.filter((w2) => !now.includes(w2)), now.filter((w2) => !s2.globalWorlds.includes(w2)));
-  const rx = {};
-  for (const r2 of globalRegex()) {
-    if (r2.id in s2.regexDisabled && s2.regexDisabled[r2.id] !== !!r2.disabled) rx[r2.id] = s2.regexDisabled[r2.id];
-  }
-  await setRegexStates(rx);
-  lastApplied.value = { ...a2, undone: true };
-  refreshEnv();
-  toast("success", "已撤销刚才的自动切换");
-}
-async function enablePluginsAndReload(ids) {
-  const ext = loaded.extensions;
-  if (!ext?.enableExtension || !ids.length) return;
-  for (const id of ids) await ext.enableExtension(id.startsWith("third-party/") ? id : `third-party/${id}`, false);
-  location.reload();
-}
-let lastAvatar = null;
-async function autoApplyOnSwitch(openStatus) {
-  const c2 = ctx();
-  if (c2.groupId) return;
-  const char = c2.characters?.[Number(c2.characterId)];
-  if (!char?.avatar || char.avatar === lastAvatar) return;
-  lastAvatar = char.avatar;
-  if (!settings().autoApplyEnv) return;
-  const imported = [];
-  const w2 = cardInfo(char).world;
-  if (settings().autoImportWorld && w2.embedded && (w2.state === "missing" || w2.state === "unbound")) {
-    if (await importCardWorld(char.avatar, { quiet: true }) === "imported") imported.push(`从卡里导入并绑定了世界书「${w2.importName}」`);
-  }
-  const plan = planFor(char);
-  if (planHasChanges(plan) || imported.length) {
-    const changes = [...imported, ...planHasChanges(plan) ? await applyPlan(plan) : []];
-    if (changes.length) {
-      toast("success", `已换成「${char.name}」的配置：${changes.join("；")}。点这里查看或撤销。`, "自动切换", { onclick: openStatus, timeOut: 9e3 });
-    }
-  }
-  const disabled = plan.plugins.filter((p2) => p2.status === "disabled");
-  const missing = plan.plugins.filter((p2) => p2.status === "missing");
-  if (disabled.length || missing.length) {
-    const parts = [
-      disabled.length && `未启用：${disabled.map((p2) => p2.name).join("、")}`,
-      missing.length && `未安装：${missing.map((p2) => p2.name).join("、")}`
-    ].filter(Boolean);
-    toast("warning", `「${char.name}」需要的插件${parts.join("；")}。点这里处理。`, "自动切换", { onclick: openStatus, timeOut: 9e3 });
-  }
-}
-const statusTick = y$1(0);
-function hasMvu(char) {
-  const ext = char.data?.extensions ?? {};
-  try {
-    return /MagVarUpdate/i.test(JSON.stringify(ext.tavern_helper ?? ext.TavernHelper_scripts ?? ""));
-  } catch {
-    return false;
-  }
-}
-function buildSections(char) {
-  const info = cardInfo(char);
-  const scopes = currentBookScopes();
-  const report = buildEnvReport();
-  const plan = planFor(char);
-  const sections = [];
-  const bump2 = () => {
-    statusTick.value++;
-  };
-  const wb = [];
-  const w2 = info.world;
-  if (w2.state === "ok") wb.push({ level: "ok", text: `「${w2.name}」已加载`, detail: "绑在角色卡上，这张卡的所有存档都会自动用它" });
-  else if (w2.state === "missing") {
-    wb.push({
-      level: "warn",
-      text: `找不到世界书「${w2.name}」`,
-      detail: "卡绑定了它，但它已经不在了",
-      action: info.world.embedded ? { label: "从卡里导入", run: async () => {
-        await importCardWorld(info.avatar);
-        bump2();
-      } } : void 0
-    });
-  } else if (w2.state === "unbound") {
-    wb.push({ level: "warn", text: `卡里自带的世界书还没导入`, detail: `${w2.embedded} 条`, action: { label: "导入并绑定", run: async () => {
-      await importCardWorld(info.avatar);
-      bump2();
-    } } });
-  } else wb.push({ level: "info", text: "这张卡没有绑定世界书" });
-  for (const b2 of w2.extra) wb.push({ level: "ok", text: `「${b2}」已加载`, detail: "附加世界书，也绑在这张卡上" });
-  for (const b2 of scopes.chat) wb.push({ level: "ok", text: `「${b2}」已加载`, detail: "绑在当前这个聊天上" });
-  for (const b2 of scopes.persona) wb.push({ level: "info", text: `「${b2}」`, detail: "绑在你的用户设定上，所有卡都会用" });
-  for (const b2 of scopes.global) {
-    const off = plan.worldsOff.includes(b2);
-    wb.push({ level: off ? "warn" : "info", text: `全局世界书「${b2}」开着`, detail: off ? "它属于别的卡，或不在这张卡记住的配置里" : "对所有卡生效" });
-  }
-  sections.push({ title: "世界书", lines: wb });
-  const pr = [];
-  const cur = currentPresetName();
-  const rec = info.preset;
-  if (rec && rec.api === presetApi()) {
-    if (rec.name === cur) pr.push({ level: "ok", text: `「${cur}」`, detail: "就是这张卡的推荐预设" });
-    else pr.push({ level: "warn", text: `现在用的是「${cur}」`, detail: `这张卡推荐「${rec.name}」`, action: { label: "换上推荐的", run: async () => {
-      await switchPreset(rec.name);
-      bump2();
-    } } });
-  } else {
-    pr.push({
-      level: "info",
-      text: `「${cur}」`,
-      detail: "这张卡还没设推荐预设",
-      action: { label: "设为推荐", run: () => {
-        setRecommendedPreset(info.avatar, info.name, cur);
-        bump2();
-      } }
-    });
-  }
-  const presetRx = report.items.find((i2) => i2.id === "rx:p");
-  if (presetRx) pr.push({ level: "info", text: presetRx.name, detail: "预设自带的正则，跟着预设走" });
-  sections.push({ title: "预设", lines: pr });
-  const rx = [];
-  if (info.regex.total) {
-    rx.push(info.regex.allowed ? { level: "ok", text: `卡里的 ${info.regex.total} 条正则已允许运行` } : {
-      level: "warn",
-      text: `卡里的 ${info.regex.total} 条正则未允许运行`,
-      detail: "状态栏、界面美化这类效果不会出现",
-      action: { label: "允许运行", run: async () => {
-        loaded.regexEngine?.allowScopedScripts?.(char);
-        saveSettings();
-        if (ctx().getCurrentChatId?.()) await ctx().reloadCurrentChat();
-      } }
-    });
-  } else rx.push({ level: "info", text: "这张卡没有自带正则" });
-  const globalOn = report.items.filter((i2) => i2.scope === "global" && i2.kind === "regex" && i2.enabled);
-  for (const g2 of globalOn) {
-    const bad = plan.regexOff.some((r2) => r2.name === g2.name);
-    rx.push({ level: bad ? "warn" : "info", text: `全局正则「${g2.name}」开着`, detail: bad ? "它被标为属于别的卡或预设" : g2.detail ?? "对所有卡生效" });
-  }
-  sections.push({ title: "正则", lines: rx });
-  const sc = [];
-  if (info.scripts.total) {
-    sc.push(info.scripts.enabled ? { level: "ok", text: `酒馆助手角色脚本 ${info.scripts.total} 个已启用`, detail: info.scripts.names.slice(0, 4).join("、") } : { level: "warn", text: `酒馆助手角色脚本未启用（${info.scripts.total} 个）`, detail: "在「扩展·正则 › 酒馆助手 › 脚本库」里打开" });
-    if (hasMvu(char)) sc.push({ level: info.scripts.enabled ? "ok" : "warn", text: info.scripts.enabled ? "MVU 变量正常更新" : "MVU 变量不会更新", detail: info.scripts.enabled ? "随角色脚本一起运行" : "因为角色脚本未启用" });
-  } else sc.push({ level: "info", text: "这张卡没有酒馆助手脚本" });
-  sections.push({ title: "脚本", lines: sc });
-  const pl = [];
-  const disabled = plan.plugins.filter((p2) => p2.status === "disabled");
-  for (const p2 of plan.plugins) {
-    pl.push({ level: "warn", text: `插件「${p2.name}」${p2.status === "missing" ? "未安装" : "未启用"}` });
-  }
-  if (disabled.length) {
-    pl.push({ level: "info", text: `启用 ${disabled.length} 个插件后要刷新页面`, action: { label: "启用并刷新", run: () => enablePluginsAndReload(disabled.map((p2) => p2.id)) } });
-  }
-  if (!plan.plugins.length) pl.push({ level: "ok", text: "需要的插件都已启用" });
-  sections.push({ title: "插件", lines: pl });
-  const issues = sections.reduce((n2, s2) => n2 + s2.lines.filter((l2) => l2.level === "warn").length, 0);
-  return { sections, issues };
-}
-const LEVEL_ICON = { ok: "fa-circle-check", warn: "fa-circle-exclamation" };
-function cardIssues(char) {
-  return buildSections(char).sections.flatMap((s2) => s2.lines.filter((l2) => l2.level === "warn").map((line) => ({ section: s2.title, line })));
-}
-function ToolboxButton() {
-  void statusTick.value;
-  void chatTick.value;
-  const char = currentCharacter();
-  const issues = char ? buildSections(char).issues : 0;
-  return /* @__PURE__ */ u$2(
-    "button",
-    {
-      type: "button",
-      class: `rbt-gbtn compact ${panelOpen.value ? "active" : ""}`,
-      title: issues ? `聊天工具箱：角色档案里有 ${issues} 项需要注意` : "聊天工具箱：角色档案、信息流、变量",
-      onClick: () => {
-        panelOpen.value = !panelOpen.value;
-      },
-      children: [
-        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-feather-pointed fa-fw" }),
-        /* @__PURE__ */ u$2("span", { children: "聊天工具箱" }),
-        issues > 0 && /* @__PURE__ */ u$2("span", { class: "rbt-dot" })
-      ]
-    }
-  );
-}
-function AttentionBox({ char }) {
-  void statusTick.value;
-  const [busy, setBusy] = d$1(false);
-  const issues = cardIssues(char);
-  if (!issues.length) return /* @__PURE__ */ u$2("div", { class: "rbt-attn ok", children: [
-    /* @__PURE__ */ u$2("i", { class: `fa-solid ${LEVEL_ICON.ok}` }),
-    " 这张卡需要的都已就位"
-  ] });
-  return /* @__PURE__ */ u$2("div", { class: "rbt-attn", children: [
-    /* @__PURE__ */ u$2("div", { class: "rbt-attn-title", children: [
-      issues.length,
-      " 项需要注意"
+function VarRow({ r: r2, sources }) {
+  const [open, setOpen] = d$1(false);
+  const refs = T(() => open && sources ? findReferences(r2.path, sources) : [], [open, r2.path, sources]);
+  const ch = r2.change;
+  const removed = ch?.kind === "removed";
+  return /* @__PURE__ */ u$2("div", { class: `rbt-vrow ${ch ? "changed" : ""} ${removed ? "removed" : ""} ${open ? "open" : ""}`, children: [
+    /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-vrow-main", onClick: () => setOpen(!open), title: r2.desc || r2.path, children: [
+      /* @__PURE__ */ u$2("span", { class: "rbt-vrow-mark" }),
+      /* @__PURE__ */ u$2("span", { class: "rbt-vrow-name", children: r2.name }),
+      /* @__PURE__ */ u$2("span", { class: "rbt-vrow-value", children: removed ? "已删除" : formatValue(r2.value, open ? 2e3 : 80) })
     ] }),
-    issues.map(({ section, line }, i2) => /* @__PURE__ */ u$2("div", { class: "rbt-attn-line", children: [
-      /* @__PURE__ */ u$2("i", { class: `fa-solid ${LEVEL_ICON.warn}` }),
-      /* @__PURE__ */ u$2("span", { class: "rbt-attn-text", children: [
-        /* @__PURE__ */ u$2("small", { children: section }),
-        " ",
-        line.text,
-        line.detail && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
-          " · ",
-          line.detail
-        ] })
-      ] }),
-      line.action && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", disabled: busy, onClick: async () => {
-        setBusy(true);
-        try {
-          await line.action.run();
-        } finally {
-          setBusy(false);
-          statusTick.value++;
-          archiveVersion.value++;
-        }
-      }, children: line.action.label })
-    ] }, i2))
-  ] });
-}
-function SwitchSection({ avatar, isCurrent }) {
-  void statusTick.value;
-  const [auto, setAuto] = d$1(settings().autoApplyEnv);
-  const [busy, setBusy] = d$1(false);
-  const profile = settings().profiles[avatar];
-  const report = isCurrent ? buildEnvReport() : null;
-  const drift = report?.drift;
-  const applied = lastApplied.value?.avatar === avatar ? lastApplied.value : null;
-  const run = async (f2) => {
-    setBusy(true);
-    try {
-      await f2();
-    } finally {
-      setBusy(false);
-      statusTick.value++;
-      archiveVersion.value++;
-    }
-  };
-  const remembered = profile && (profile.globalWorlds || profile.globalRegexEnabled);
-  return /* @__PURE__ */ u$2(Section, { title: "换卡时", hint: "切到这张卡时，把世界书、正则和预设换成它的配置", children: [
-    /* @__PURE__ */ u$2(
-      SwitchRow,
-      {
-        label: "自动切换",
-        detail: "对所有卡生效。关掉后只提醒，不会自动改。",
-        checked: auto,
-        onChange: (v2) => {
-          settings().autoApplyEnv = v2;
-          saveSettings();
-          setAuto(v2);
-        }
-      }
-    ),
-    applied && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: applied.undone ? "已撤销刚才的自动切换：" : `${new Date(applied.at).toLocaleTimeString()} 切到这张卡时，自动做了这些：` }),
-      /* @__PURE__ */ u$2("ul", { class: "rbt-drift", children: applied.changes.map((t2, i2) => /* @__PURE__ */ u$2("li", { children: t2 }, i2)) }),
-      !applied.undone && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", disabled: busy, onClick: () => run(undoLastApply), children: "撤销" })
+    ch && !removed && /* @__PURE__ */ u$2("div", { class: "rbt-vrow-was", children: ch.kind === "added" ? "这一轮新加的" : /* @__PURE__ */ u$2(S$1, { children: [
+      "原来 ",
+      formatValue(ch.before, 80)
+    ] }) }),
+    removed && /* @__PURE__ */ u$2("div", { class: "rbt-vrow-was", children: [
+      "原来 ",
+      formatValue(ch.before, 80)
     ] }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: remembered ? /* @__PURE__ */ u$2(S$1, { children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
-        "记住的配置（",
-        new Date(profile.savedAt).toLocaleString(),
-        "）："
-      ] }),
-      /* @__PURE__ */ u$2("ul", { class: "rbt-drift", children: [
-        /* @__PURE__ */ u$2("li", { children: [
-          "全局世界书：",
-          profile.globalWorlds?.length ? profile.globalWorlds.join("、") : "全部关"
-        ] }),
-        /* @__PURE__ */ u$2("li", { children: [
-          "全局正则：",
-          profile.globalRegexEnabled?.length ? `开 ${profile.globalRegexEnabled.length} 条` : "全部关"
-        ] }),
-        profile.preset && /* @__PURE__ */ u$2("li", { children: [
-          "预设：",
-          profile.preset.name
+    open && /* @__PURE__ */ u$2("div", { class: "rbt-vrow-detail", children: [
+      r2.desc && /* @__PURE__ */ u$2("div", { class: "rbt-vrow-desc", children: r2.desc }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-vrow-path", children: r2.path }),
+      sources === null ? /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "正在查找用到它的地方…" }) : refs.length ? /* @__PURE__ */ u$2("div", { class: "rbt-vrow-refs", children: [
+        /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "用到它的：" }),
+        refs.slice(0, 8).map((x2, i2) => /* @__PURE__ */ u$2("span", { class: "rbt-vrow-ref", title: `里面写了「${x2.term}」`, children: x2.source.label }, i2)),
+        refs.length > 8 && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
+          "等 ",
+          refs.length,
+          " 处"
         ] })
-      ] }),
-      isCurrent && (drift?.count ? /* @__PURE__ */ u$2("div", { class: "rbt-warn rbt-row-between", children: [
-        /* @__PURE__ */ u$2("span", { children: [
-          "现在的设置和记住的有 ",
-          drift.count,
-          " 处不同。"
-        ] }),
-        /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small rbt-btn-primary", disabled: busy, onClick: () => run(applyProfile), children: "恢复记住的" })
-      ] }) : /* @__PURE__ */ u$2("small", { class: "rbt-ok", children: "和现在的设置一致 ✓" })),
-      isCurrent && /* @__PURE__ */ u$2("div", { class: "rbt-row", children: [
-        /* @__PURE__ */ u$2("button", { class: "rbt-btn", disabled: busy, onClick: () => run(rememberProfile), children: "改为记住现在的" }),
-        /* @__PURE__ */ u$2("button", { class: "rbt-btn", disabled: busy, onClick: () => run(forgetProfile), children: "不再记住" })
-      ] })
-    ] }) : /* @__PURE__ */ u$2(S$1, { children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "还没记住这张卡的配置。现在切到这张卡时，只会关掉别的卡的世界书和正则，并换上推荐预设。" }),
-      isCurrent ? /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-primary", disabled: busy, onClick: () => run(rememberProfile), children: "记住现在的配置" }) }) : /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "打开这张卡后才能记住它的配置。" })
-    ] }) })
-  ] });
-}
-function CardPage() {
-  void archiveVersion.value;
-  void statusTick.value;
-  const cur = currentCharacter();
-  const avatar = archiveTarget.value ?? cur?.avatar;
-  h$2(() => {
-    if (avatar) void ensureFullCharacter(avatar);
-  }, [avatar]);
-  const f2 = avatar ? findChar(avatar) : null;
-  if (!f2) return /* @__PURE__ */ u$2(Empty, { children: "没有打开单人角色卡。在左栏「角色」里点一张卡，就能看到它的档案。" });
-  const info = cardInfo(f2.char);
-  return /* @__PURE__ */ u$2("div", { class: "rbt-page", children: [
-    /* @__PURE__ */ u$2(CardHeader, { info }),
-    info.isCurrent && /* @__PURE__ */ u$2(AttentionBox, { char: f2.char }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-page-cols", children: [
-      /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
-        /* @__PURE__ */ u$2("div", { class: "rbt-page-group-title", children: "配套环境" }),
-        /* @__PURE__ */ u$2(WorldSection, { info }),
-        /* @__PURE__ */ u$2(PresetSection, { info }),
-        /* @__PURE__ */ u$2(RegexSection, { info }),
-        /* @__PURE__ */ u$2(ExtSection, { info })
-      ] }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
-        /* @__PURE__ */ u$2(SourceSection, { info }),
-        /* @__PURE__ */ u$2(SwitchSection, { avatar: info.avatar, isCurrent: info.isCurrent })
-      ] })
+      ] }) : /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "世界书和预设里没有直接写到它。" })
     ] })
   ] });
 }
-const KIND = {
-  added: { label: "新增", color: "#2fbf8f" },
-  removed: { label: "删除", color: "#e5484d" },
-  changed: { label: "修改", color: "#f0a43a" }
-};
-function ChangeRow({ ch, sources }) {
-  const refs = T(() => sources ? findReferences(ch.path, sources) : [], [ch.path, sources]);
-  return /* @__PURE__ */ u$2("div", { class: "rbt-var-change", children: [
-    /* @__PURE__ */ u$2("div", { class: "rbt-var-head", children: [
-      /* @__PURE__ */ u$2(Chip, { color: KIND[ch.kind].color, children: KIND[ch.kind].label }),
-      /* @__PURE__ */ u$2("code", { class: "rbt-var-path", children: ch.path })
-    ] }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-var-values", children: [
-      ch.kind !== "added" && /* @__PURE__ */ u$2("span", { class: "rbt-var-before", children: formatValue(ch.before) }),
-      ch.kind === "changed" && /* @__PURE__ */ u$2("span", { class: "rbt-arrow", children: "→" }),
-      ch.kind !== "removed" && /* @__PURE__ */ u$2("span", { class: "rbt-var-after", children: formatValue(ch.after) })
-    ] }),
-    ch.desc && /* @__PURE__ */ u$2("div", { class: "rbt-var-desc", children: ch.desc }),
-    sources && /* @__PURE__ */ u$2("div", { class: "rbt-var-refs", children: refs.length ? /* @__PURE__ */ u$2(S$1, { children: [
-      "用到它的：",
-      refs.slice(0, 4).map((r2, i2) => /* @__PURE__ */ u$2(Chip, { color: r2.source.kind === "preset" ? "#8b7cf6" : "#2fbf8f", title: `里面写了「${r2.term}」`, children: r2.source.label }, i2)),
-      refs.length > 4 && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
-        " 等 ",
-        refs.length,
-        " 处"
+function GroupBlock({ g: g2, sources, onlyChanged }) {
+  const rows = onlyChanged ? g2.rows.filter((r2) => r2.change) : g2.rows;
+  if (!rows.length) return null;
+  return /* @__PURE__ */ u$2("section", { class: "rbt-vgroup", children: [
+    g2.key && /* @__PURE__ */ u$2("h4", { class: "rbt-vgroup-title", children: [
+      g2.key,
+      g2.changed > 0 && /* @__PURE__ */ u$2("span", { class: "rbt-vgroup-badge", children: [
+        g2.changed,
+        " 项变了"
       ] })
-    ] }) : /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "世界书和预设里没有直接用到它" }) })
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-vgroup-body", children: rows.map((r2) => /* @__PURE__ */ u$2(VarRow, { r: r2, sources }, r2.path)) })
   ] });
 }
-function VarTree({ data, highlight }) {
-  const [filter, setFilter] = d$1("");
+function filterGroups(groups, q2) {
+  const query = q2.trim().toLowerCase();
+  if (!query) return groups;
+  return groups.map((g2) => ({ ...g2, rows: g2.rows.filter((r2) => r2.path.toLowerCase().includes(query) || formatValue(r2.value, 400).toLowerCase().includes(query) || (r2.desc ?? "").toLowerCase().includes(query)) })).filter((g2) => g2.rows.length);
+}
+function LocalVars({ data }) {
   const leaves = T(() => [...flattenVars(data).values()], [data]);
-  const shown = leaves.filter((l2) => !filter || l2.path.includes(filter) || formatValue(l2.value).includes(filter));
-  return /* @__PURE__ */ u$2("div", { class: "rbt-vartree", children: [
-    /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: "搜索变量…", value: filter, onInput: (e2) => setFilter(e2.currentTarget.value) }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-vartree-list", children: [
-      shown.slice(0, 500).map((l2) => /* @__PURE__ */ u$2("div", { class: `rbt-vartree-row ${highlight.has(l2.path) ? "changed" : ""}`, title: l2.desc, children: [
-        /* @__PURE__ */ u$2("code", { children: l2.path }),
-        /* @__PURE__ */ u$2("span", { children: formatValue(l2.value, 200) })
-      ] }, l2.path)),
-      shown.length > 500 && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "只显示前 500 项" })
-    ] })
+  if (!leaves.length) return null;
+  return /* @__PURE__ */ u$2("details", { class: "rbt-vlocal", children: [
+    /* @__PURE__ */ u$2("summary", { children: [
+      "聊天变量（/setvar）",
+      leaves.length,
+      " 个"
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-vgroup-body", children: leaves.map((l2) => /* @__PURE__ */ u$2("div", { class: "rbt-vrow", children: /* @__PURE__ */ u$2("div", { class: "rbt-vrow-main static", children: [
+      /* @__PURE__ */ u$2("span", { class: "rbt-vrow-mark" }),
+      /* @__PURE__ */ u$2("span", { class: "rbt-vrow-name", children: l2.path }),
+      /* @__PURE__ */ u$2("span", { class: "rbt-vrow-value", children: formatValue(l2.value, 120) })
+    ] }) }, l2.path)) })
   ] });
 }
 function VarsView() {
@@ -4682,6 +3876,8 @@ function VarsView() {
   const diffs = floorDiffs(floors);
   const [selected, setSelected] = d$1(null);
   const [sources, setSources] = d$1(null);
+  const [q2, setQ] = d$1("");
+  const [onlyChanged, setOnlyChanged] = d$1(false);
   const local = chatLocalVars();
   h$2(() => {
     let alive = true;
@@ -4692,73 +3888,78 @@ function VarsView() {
       alive = false;
     };
   }, [floors.length]);
-  if (!diffs.length) {
+  const current = diffs.find((d2) => d2.floor.index === selected) ?? diffs[diffs.length - 1];
+  const latest = current && current === diffs[diffs.length - 1];
+  const leaves = T(() => current ? [...flattenVars(current.floor.statData ?? current.floor.vars).values()] : [], [current]);
+  const changes = current?.prev ? current.changes : [];
+  const groups = T(() => buildGroups(leaves, changes), [leaves, changes]);
+  const shown = filterGroups(groups, q2);
+  if (!current) {
     return /* @__PURE__ */ u$2("div", { class: "rbt-vars", children: [
       /* @__PURE__ */ u$2(Empty, { children: [
         "这个聊天还没有变量。",
         /* @__PURE__ */ u$2("br", {}),
-        "用 MVU 的卡在 AI 回复后会把变量存进每一楼，这里会显示每一轮变了什么。"
+        "用 MVU 的卡在 AI 回复后会把变量存进每一楼，这里会列出它在跟踪的所有变量和每一轮的变化。"
       ] }),
-      Object.keys(local).length > 0 && /* @__PURE__ */ u$2("details", { class: "rbt-section", open: true, children: [
-        /* @__PURE__ */ u$2("summary", { children: [
-          "聊天变量（/setvar）",
-          Object.keys(local).length,
-          " 个"
-        ] }),
-        /* @__PURE__ */ u$2(VarTree, { data: local, highlight: /* @__PURE__ */ new Set() })
-      ] })
+      /* @__PURE__ */ u$2(LocalVars, { data: local })
     ] });
   }
-  const current = diffs.find((d2) => d2.floor.index === selected) ?? diffs[diffs.length - 1];
-  const changedPaths = new Set(current.changes.map((c2) => c2.path));
   const readers = sources ? wholeTreeReaders(sources) : [];
+  const nChanged = changes.length;
   return /* @__PURE__ */ u$2("div", { class: "rbt-vars", children: [
-    /* @__PURE__ */ u$2("div", { class: "rbt-toolbar", children: /* @__PURE__ */ u$2("select", { class: "text_pole rbt-select", value: current.floor.index, onChange: (e2) => setSelected(Number(e2.currentTarget.value)), children: [...diffs].reverse().map((d2) => /* @__PURE__ */ u$2("option", { value: d2.floor.index, children: [
-      "#",
-      d2.floor.index,
-      " ",
-      d2.floor.name,
-      " · ",
-      d2.prev ? `${d2.changes.length} 处变化` : "初始值"
-    ] }, d2.floor.index)) }) }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-summary", children: [
-      /* @__PURE__ */ u$2("div", { class: "rbt-summary-line", children: current.prev ? /* @__PURE__ */ u$2(S$1, { children: [
-        "第 ",
-        /* @__PURE__ */ u$2("b", { children: current.floor.index }),
-        " 楼比第 ",
-        current.prev.index,
-        " 楼：",
-        /* @__PURE__ */ u$2("b", { children: current.changes.length }),
-        " 处变化"
-      ] }) : /* @__PURE__ */ u$2(S$1, { children: [
-        "第 ",
-        /* @__PURE__ */ u$2("b", { children: current.floor.index }),
-        " 楼是第一个有变量的楼层，下面是初始值"
-      ] }) }),
-      readers.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-hint", children: [
-        "这些条目会把全部变量发给 AI，所以任何变化都会影响下一轮：",
-        readers.slice(0, 5).map((r2, i2) => /* @__PURE__ */ u$2(Chip, { color: "#2fbf8f", children: r2.label }, i2))
+    /* @__PURE__ */ u$2("div", { class: "rbt-vhead", children: [
+      /* @__PURE__ */ u$2("div", { class: "rbt-vhead-line", children: [
+        /* @__PURE__ */ u$2("span", { class: "rbt-vhead-count", children: [
+          "跟踪 ",
+          /* @__PURE__ */ u$2("b", { children: leaves.length }),
+          " 个变量"
+        ] }),
+        /* @__PURE__ */ u$2("span", { class: "rbt-vhead-sub", children: current.prev ? nChanged ? /* @__PURE__ */ u$2(S$1, { children: [
+          "这一轮变了 ",
+          /* @__PURE__ */ u$2("b", { class: "rbt-accent", children: nChanged }),
+          " 个"
+        ] }) : "这一轮没有变化" : "这是初始值" }),
+        /* @__PURE__ */ u$2("select", { class: "text_pole rbt-select rbt-vfloor", value: current.floor.index, title: "看某一楼当时的变量", onChange: (e2) => setSelected(Number(e2.currentTarget.value)), children: [...diffs].reverse().map((d2, i2) => /* @__PURE__ */ u$2("option", { value: d2.floor.index, children: [
+          i2 === 0 ? "最新 · " : "",
+          "第 ",
+          d2.floor.index,
+          " 楼",
+          d2.prev ? d2.changes.length ? ` · 变了 ${d2.changes.length} 个` : "" : " · 初始值"
+        ] }, d2.floor.index)) })
+      ] }),
+      !latest && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
+        "正在看第 ",
+        current.floor.index,
+        " 楼当时的值。",
+        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-linkbtn", onClick: () => setSelected(null), children: "回到最新" })
+      ] }),
+      readers.length > 0 && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
+        "「",
+        readers.slice(0, 2).map((r2) => r2.label).join("」「"),
+        "」",
+        readers.length > 2 ? ` 等 ${readers.length} 处` : "",
+        "会把全部变量发给 AI，所以任何变化都会影响下一轮。"
       ] })
     ] }),
-    current.changes.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-var-changes", children: current.changes.map((ch) => /* @__PURE__ */ u$2(ChangeRow, { ch, sources }, ch.path)) }),
-    /* @__PURE__ */ u$2("details", { class: "rbt-section", open: current.changes.length === 0, children: [
-      /* @__PURE__ */ u$2("summary", { children: "这一楼的全部变量" }),
-      /* @__PURE__ */ u$2(VarTree, { data: current.floor.statData ?? current.floor.vars, highlight: changedPaths })
-    ] }, `full-${current.floor.index}`),
-    Object.keys(local).length > 0 && /* @__PURE__ */ u$2("details", { class: "rbt-section", children: [
-      /* @__PURE__ */ u$2("summary", { children: [
-        "聊天变量（/setvar）",
-        Object.keys(local).length,
-        " 个"
+    /* @__PURE__ */ u$2("div", { class: "rbt-vtools", children: [
+      /* @__PURE__ */ u$2("label", { class: "rbt-vsearch", children: [
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-magnifying-glass" }),
+        /* @__PURE__ */ u$2("input", { type: "search", placeholder: "搜索变量、值、说明", value: q2, onInput: (e2) => setQ(e2.currentTarget.value) })
       ] }),
-      /* @__PURE__ */ u$2(VarTree, { data: local, highlight: /* @__PURE__ */ new Set() })
-    ] })
+      nChanged > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-vseg", role: "tablist", children: [
+        /* @__PURE__ */ u$2("button", { type: "button", class: !onlyChanged ? "active" : "", onClick: () => setOnlyChanged(false), children: "全部" }),
+        /* @__PURE__ */ u$2("button", { type: "button", class: onlyChanged ? "active" : "", onClick: () => setOnlyChanged(true), children: "只看变了的" })
+      ] })
+    ] }),
+    shown.map((g2) => /* @__PURE__ */ u$2(GroupBlock, { g: g2, sources, onlyChanged }, g2.key || "_")),
+    !shown.length && /* @__PURE__ */ u$2(Empty, { children: "没有符合的变量。" }),
+    /* @__PURE__ */ u$2(LocalVars, { data: local })
   ] });
 }
 const panelOpen = y$1(false);
 const activeTab = y$1("flow");
 function tabsNow() {
-  return shellActive.value ? ["card", "flow", "vars"] : ["card", "flow", "vars", "global", "maintain"];
+  return shellActive.value ? ["card", "flow", "vars"] : ["card", "flow", "vars", "global"];
 }
 const WIDTH_KEY = "rbt-dock-width";
 const MIN_W = 320;
@@ -4827,7 +4028,7 @@ function Panel() {
       ] }),
       /* @__PURE__ */ u$2("div", { class: "rbt-tabs", children: tabsNow().map((id) => /* @__PURE__ */ u$2("button", { class: activeTab.value === id ? "active" : "", onClick: () => {
         activeTab.value = id;
-      }, children: VIEW_LABELS[id] }, id)) }),
+      }, children: id === "global" ? "全局" : VIEW_LABELS[id] }, id)) }),
       /* @__PURE__ */ u$2("button", { class: "rbt-close", title: "导出诊断文件，用来排查问题", onClick: () => {
         void exportDiagnostics();
       }, children: "⤓" }),
@@ -4839,8 +4040,10 @@ function Panel() {
       activeTab.value === "flow" && /* @__PURE__ */ u$2(FlowView, {}),
       activeTab.value === "vars" && /* @__PURE__ */ u$2(VarsView, {}),
       activeTab.value === "card" && /* @__PURE__ */ u$2(CardPage, {}),
-      activeTab.value === "global" && /* @__PURE__ */ u$2(GlobalPage, {}),
-      activeTab.value === "maintain" && /* @__PURE__ */ u$2(MaintainPage, {})
+      activeTab.value === "global" && /* @__PURE__ */ u$2(S$1, { children: [
+        /* @__PURE__ */ u$2("div", { class: "rbt-dock-subtabs", children: /* @__PURE__ */ u$2(GlobalTabs, {}) }),
+        /* @__PURE__ */ u$2(GlobalToolbox, {})
+      ] })
     ] })
   ] });
 }
@@ -5033,9 +4236,9 @@ function HomeGallery() {
       ] })
     ] }),
     filter === "problem" && /* @__PURE__ */ u$2("div", { class: "rbt-home-note", children: [
-      "这些卡缺世界书、插件，或者正则 / 脚本没开。点进去后，在「聊天工具箱 › 角色档案」里一键处理；要批量处理，去",
-      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-linkbtn", onClick: () => openView("maintain"), children: "全局工具箱 › 维护" }),
-      "。"
+      "这些卡缺世界书、插件，或者正则 / 脚本没开。点进去后，在「聊天工具箱 › 角色档案」里一键处理；缺的世界书也可以在",
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-linkbtn", onClick: () => openGlobal("worlds"), children: "全局工具箱 › 世界书" }),
+      "里一次全部导入。"
     ] }),
     /* @__PURE__ */ u$2("div", { class: "rbt-home-grid", children: shown.map((it) => /* @__PURE__ */ u$2(Card, { it }, it.key)) }),
     !shown.length && /* @__PURE__ */ u$2("div", { class: "rbt-home-empty", children: query || filter !== "all" ? "没有符合条件的角色。" : "还没有角色。点「新建角色」或「导入」开始。" })
@@ -5101,7 +4304,7 @@ function DrawerButton({ k: k2, compact, label, title, dot }) {
   ] });
 }
 function GlobalButton() {
-  return /* @__PURE__ */ u$2("button", { type: "button", class: `rbt-gtool ${sheetView.value ? "active" : ""}`, title: "全局工具箱：对所有卡都生效的世界书、正则、预设、插件，以及维护", onClick: () => openView("global"), children: [
+  return /* @__PURE__ */ u$2("button", { type: "button", class: `rbt-gtool ${sheetOpen.value ? "active" : ""}`, title: "全局工具箱：预设、世界书、正则、插件和备份", onClick: () => openGlobal(), children: [
     /* @__PURE__ */ u$2("i", { class: "fa-solid fa-globe fa-fw" }),
     /* @__PURE__ */ u$2("span", { children: "全局工具箱" })
   ] });
@@ -5288,6 +4491,1336 @@ function initShellState() {
     if (ev) c2.eventSource.on(ev, () => setTimeout(readOnline, 0));
   }
 }
+const statusTick = y$1(0);
+function hasMvu(char) {
+  const ext = char.data?.extensions ?? {};
+  try {
+    return /MagVarUpdate/i.test(JSON.stringify(ext.tavern_helper ?? ext.TavernHelper_scripts ?? ""));
+  } catch {
+    return false;
+  }
+}
+function buildSections(char) {
+  const info = cardInfo(char);
+  const scopes = currentBookScopes();
+  const report = buildEnvReport();
+  const plan = planFor(char);
+  const sections = [];
+  const bump2 = () => {
+    statusTick.value++;
+  };
+  const wb = [];
+  const w2 = info.world;
+  if (w2.state === "ok") wb.push({ level: "ok", text: `「${w2.name}」已加载`, detail: "绑在角色卡上，这张卡的所有存档都会自动用它" });
+  else if (w2.state === "missing") {
+    wb.push({
+      level: "warn",
+      text: `找不到世界书「${w2.name}」`,
+      detail: "卡绑定了它，但它已经不在了",
+      action: info.world.embedded ? { label: "从卡里导入", run: async () => {
+        await importCardWorld(info.avatar);
+        bump2();
+      } } : void 0
+    });
+  } else if (w2.state === "unbound") {
+    wb.push({ level: "warn", text: `卡里自带的世界书还没导入`, detail: `${w2.embedded} 条`, action: { label: "导入并绑定", run: async () => {
+      await importCardWorld(info.avatar);
+      bump2();
+    } } });
+  } else wb.push({ level: "info", text: "这张卡没有绑定世界书" });
+  for (const b2 of w2.extra) wb.push({ level: "ok", text: `「${b2}」已加载`, detail: "附加世界书，也绑在这张卡上" });
+  for (const b2 of scopes.chat) wb.push({ level: "ok", text: `「${b2}」已加载`, detail: "绑在当前这个聊天上" });
+  for (const b2 of scopes.persona) wb.push({ level: "info", text: `「${b2}」`, detail: "绑在你的用户设定上，所有卡都会用" });
+  for (const b2 of scopes.global) {
+    const off = plan.worldsOff.includes(b2);
+    wb.push({ level: off ? "warn" : "info", text: `全局世界书「${b2}」开着`, detail: off ? "它属于别的卡，或不在这张卡记住的配置里" : "对所有卡生效" });
+  }
+  sections.push({ title: "世界书", lines: wb });
+  const pr = [];
+  const cur = currentPresetName();
+  const rec = info.preset;
+  if (rec && rec.api === presetApi()) {
+    if (rec.name === cur) pr.push({ level: "ok", text: `「${cur}」`, detail: "就是这张卡的推荐预设" });
+    else pr.push({ level: "warn", text: `现在用的是「${cur}」`, detail: `这张卡推荐「${rec.name}」`, action: { label: "换上推荐的", run: async () => {
+      await switchPreset(rec.name);
+      bump2();
+    } } });
+  } else {
+    pr.push({
+      level: "info",
+      text: `「${cur}」`,
+      detail: "这张卡还没设推荐预设",
+      action: { label: "设为推荐", run: () => {
+        setRecommendedPreset(info.avatar, info.name, cur);
+        bump2();
+      } }
+    });
+  }
+  const presetRx = report.items.find((i2) => i2.id === "rx:p");
+  if (presetRx) pr.push({ level: "info", text: presetRx.name, detail: "预设自带的正则，跟着预设走" });
+  sections.push({ title: "预设", lines: pr });
+  const rx = [];
+  if (info.regex.total) {
+    rx.push(info.regex.allowed ? { level: "ok", text: `卡里的 ${info.regex.total} 条正则已允许运行` } : {
+      level: "warn",
+      text: `卡里的 ${info.regex.total} 条正则未允许运行`,
+      detail: "状态栏、界面美化这类效果不会出现",
+      action: { label: "允许运行", run: async () => {
+        loaded.regexEngine?.allowScopedScripts?.(char);
+        saveSettings();
+        if (ctx().getCurrentChatId?.()) await ctx().reloadCurrentChat();
+      } }
+    });
+  } else rx.push({ level: "info", text: "这张卡没有自带正则" });
+  const globalOn = report.items.filter((i2) => i2.scope === "global" && i2.kind === "regex" && i2.enabled);
+  for (const g2 of globalOn) {
+    const bad = plan.regexOff.some((r2) => r2.name === g2.name);
+    rx.push({ level: bad ? "warn" : "info", text: `全局正则「${g2.name}」开着`, detail: bad ? "它被标为属于别的卡或预设" : g2.detail ?? "对所有卡生效" });
+  }
+  sections.push({ title: "正则", lines: rx });
+  const sc = [];
+  if (info.scripts.total) {
+    sc.push(info.scripts.enabled ? { level: "ok", text: `酒馆助手角色脚本 ${info.scripts.total} 个已启用`, detail: info.scripts.names.slice(0, 4).join("、") } : { level: "warn", text: `酒馆助手角色脚本未启用（${info.scripts.total} 个）`, detail: "在「扩展·正则 › 酒馆助手 › 脚本库」里打开" });
+    if (hasMvu(char)) sc.push({ level: info.scripts.enabled ? "ok" : "warn", text: info.scripts.enabled ? "MVU 变量正常更新" : "MVU 变量不会更新", detail: info.scripts.enabled ? "随角色脚本一起运行" : "因为角色脚本未启用" });
+  } else sc.push({ level: "info", text: "这张卡没有酒馆助手脚本" });
+  sections.push({ title: "脚本", lines: sc });
+  const pl = [];
+  const disabled = plan.plugins.filter((p2) => p2.status === "disabled");
+  for (const p2 of plan.plugins) {
+    pl.push({ level: "warn", text: `插件「${p2.name}」${p2.status === "missing" ? "未安装" : "未启用"}` });
+  }
+  if (disabled.length) {
+    pl.push({ level: "info", text: `启用 ${disabled.length} 个插件后要刷新页面`, action: { label: "启用并刷新", run: () => enablePluginsAndReload(disabled.map((p2) => p2.id)) } });
+  }
+  if (!plan.plugins.length) pl.push({ level: "ok", text: "需要的插件都已启用" });
+  sections.push({ title: "插件", lines: pl });
+  const issues = sections.reduce((n2, s2) => n2 + s2.lines.filter((l2) => l2.level === "warn").length, 0);
+  return { sections, issues };
+}
+const LEVEL_ICON = { ok: "fa-circle-check", warn: "fa-circle-exclamation" };
+function cardIssues(char) {
+  return buildSections(char).sections.flatMap((s2) => s2.lines.filter((l2) => l2.level === "warn").map((line) => ({ section: s2.title, line })));
+}
+function ToolboxButton() {
+  void statusTick.value;
+  void chatTick.value;
+  const char = currentCharacter();
+  const issues = char ? buildSections(char).issues : 0;
+  return /* @__PURE__ */ u$2(
+    "button",
+    {
+      type: "button",
+      class: `rbt-gbtn compact ${panelOpen.value ? "active" : ""}`,
+      title: issues ? `聊天工具箱：角色档案里有 ${issues} 项需要注意` : "聊天工具箱：角色档案、信息流、变量",
+      onClick: () => {
+        panelOpen.value = !panelOpen.value;
+      },
+      children: [
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-feather-pointed fa-fw" }),
+        /* @__PURE__ */ u$2("span", { children: "聊天工具箱" }),
+        issues > 0 && /* @__PURE__ */ u$2("span", { class: "rbt-dot" })
+      ]
+    }
+  );
+}
+const OK = "#2fbf8f";
+const WARN = "#f0a43a";
+const BAD = "#e5484d";
+function LinkText({ text }) {
+  return /* @__PURE__ */ u$2(S$1, { children: splitLinks(text).map((p2, i2) => "url" in p2 ? /* @__PURE__ */ u$2("a", { href: p2.url, target: "_blank", rel: "noopener noreferrer", children: p2.url }, i2) : /* @__PURE__ */ u$2("span", { children: p2.text }, i2)) });
+}
+function LongText({ text, limit = 400 }) {
+  const [open, setOpen] = d$1(false);
+  const long = text.length > limit;
+  return /* @__PURE__ */ u$2("div", { class: "rbt-pre", children: [
+    /* @__PURE__ */ u$2(LinkText, { text: long && !open ? `${text.slice(0, limit)}…` : text }),
+    long && /* @__PURE__ */ u$2("div", { children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", onClick: () => setOpen(!open), children: open ? "收起" : "展开全部" }) })
+  ] });
+}
+function Section({ title, hint, children }) {
+  return /* @__PURE__ */ u$2("div", { class: "rbt-card-section", children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-card-section-head", children: [
+      /* @__PURE__ */ u$2("b", { children: title }),
+      hint && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
+        " ",
+        hint
+      ] })
+    ] }),
+    children
+  ] });
+}
+const STATUS_CHIP = {
+  enabled: { color: OK, text: "已启用" },
+  disabled: { color: WARN, text: "已装，未启用" },
+  missing: { color: BAD, text: "未安装" }
+};
+const CONTACT_LABEL = { discord: "Discord", qq: "QQ", qqgroup: "QQ 群", url: "链接" };
+function inputValue(e2) {
+  return e2.currentTarget.value;
+}
+function CardHeader({ info, embedded }) {
+  const [firstLine, ...rest] = info.version.split(/\r?\n/);
+  return /* @__PURE__ */ u$2("div", { class: "rbt-card-head", children: [
+    /* @__PURE__ */ u$2("img", { class: "rbt-avatar", src: thumbnailUrl(info.avatar), alt: "", loading: "lazy" }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-card-head-main", children: [
+      /* @__PURE__ */ u$2("div", { class: "rbt-card-title", children: [
+        /* @__PURE__ */ u$2("b", { children: info.name }),
+        !info.isCurrent && /* @__PURE__ */ u$2(Chip, { color: WARN, children: "不是正在玩的卡" })
+      ] }),
+      info.creator && /* @__PURE__ */ u$2("div", { class: "rbt-muted rbt-pre-line", children: [
+        "作者：",
+        info.creator
+      ] }),
+      firstLine && (rest.length ? /* @__PURE__ */ u$2("details", { class: "rbt-inline-details", children: [
+        /* @__PURE__ */ u$2("summary", { class: "rbt-muted", children: [
+          "版本：",
+          firstLine,
+          "（还有 ",
+          rest.length,
+          " 行更新记录）"
+        ] }),
+        /* @__PURE__ */ u$2("div", { class: "rbt-pre", children: rest.join("\n") })
+      ] }) : /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: [
+        "版本：",
+        firstLine
+      ] })),
+      info.tags.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-chips", children: info.tags.map((t2) => /* @__PURE__ */ u$2(Chip, { children: t2 }, t2)) })
+    ] }),
+    !embedded && !info.isCurrent && currentCharacter() && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", onClick: () => {
+      archiveTarget.value = null;
+    }, children: "回到当前卡" })
+  ] });
+}
+function SourceSection$1({ info }) {
+  const rec = info.record;
+  const links = rec?.links ?? [];
+  const [label, setLabel] = d$1("");
+  const [url, setUrl] = d$1("");
+  const [editing, setEditing] = d$1(false);
+  const [draft, setDraft] = d$1("");
+  const urlOk = isHttpUrl(url);
+  const addLink = () => {
+    if (!urlOk) return;
+    updateRecord(info.avatar, info.name, { links: [...links, { label: label.trim() || "链接", url: url.trim() }] });
+    setLabel("");
+    setUrl("");
+  };
+  return /* @__PURE__ */ u$2(Section, { title: "来源与作者说明", children: [
+    (info.contacts.length > 0 || info.autoSource) && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "卡里写的来源和联系方式：" }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-chips", children: [
+        info.contacts.map((c2, i2) => c2.kind === "url" ? /* @__PURE__ */ u$2("a", { href: c2.value, target: "_blank", rel: "noopener noreferrer", children: c2.value }, i2) : /* @__PURE__ */ u$2(Chip, { title: "从卡的作者信息里找到的", children: [
+          CONTACT_LABEL[c2.kind],
+          " ",
+          c2.value
+        ] }, i2)),
+        info.autoSource && /* @__PURE__ */ u$2("a", { href: info.autoSource, target: "_blank", rel: "noopener noreferrer", children: info.autoSource })
+      ] })
+    ] }),
+    info.creatorNotes.trim() && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "作者写在卡里的备注：" }),
+      /* @__PURE__ */ u$2(LongText, { text: info.creatorNotes })
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "相关链接，比如发布帖、更新帖、教程：" }),
+      links.map((l2, i2) => /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
+        /* @__PURE__ */ u$2("a", { href: l2.url, target: "_blank", rel: "noopener noreferrer", title: l2.url, children: l2.label }),
+        /* @__PURE__ */ u$2("small", { class: "rbt-muted rbt-ellipsis", children: l2.url }),
+        /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", title: "删除这条链接", onClick: () => updateRecord(info.avatar, info.name, { links: links.filter((_2, j2) => j2 !== i2) }), children: "✕" })
+      ] }, i2)),
+      /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
+        /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input rbt-w-label", placeholder: "名称，如：发布帖", value: label, onInput: (e2) => setLabel(inputValue(e2)) }),
+        /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: "https://…", value: url, onInput: (e2) => setUrl(inputValue(e2)), onKeyDown: (e2) => {
+          if (e2.key === "Enter") addLink();
+        } }),
+        /* @__PURE__ */ u$2("button", { class: "rbt-btn", disabled: !urlOk, onClick: addLink, children: "添加" })
+      ] })
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
+      /* @__PURE__ */ u$2("div", { class: "rbt-row-between", children: [
+        /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "作者说明：" }),
+        !editing && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", onClick: () => {
+          setDraft(rec?.notes ?? "");
+          setEditing(true);
+        }, children: rec?.notes ? "编辑" : "填写" })
+      ] }),
+      editing ? /* @__PURE__ */ u$2(S$1, { children: [
+        /* @__PURE__ */ u$2("textarea", { class: "text_pole rbt-textarea", rows: 10, value: draft, placeholder: "把发布帖里的推荐设置、玩法和注意事项粘进来。网址会自动变成链接。", onInput: (e2) => setDraft(e2.currentTarget.value) }),
+        /* @__PURE__ */ u$2("div", { class: "rbt-row", children: [
+          /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-primary", onClick: () => {
+            updateRecord(info.avatar, info.name, { notes: draft });
+            setEditing(false);
+          }, children: "保存" }),
+          /* @__PURE__ */ u$2("button", { class: "rbt-btn", onClick: () => setEditing(false), children: "取消" })
+        ] })
+      ] }) : rec?.notes ? /* @__PURE__ */ u$2(LongText, { text: rec.notes, limit: 600 }) : /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: "还没填写。可以把发布帖里的推荐设置和玩法粘进来。" })
+    ] })
+  ] });
+}
+function PresetSection({ info }) {
+  const names = presetNames();
+  const rec = info.preset;
+  const current = currentPresetName();
+  const otherApi = rec && rec.api !== presetApi();
+  return /* @__PURE__ */ u$2(Section, { title: "推荐预设", hint: "切到这张卡时自动换上", children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
+      /* @__PURE__ */ u$2("select", { class: "text_pole rbt-select", value: rec?.name ?? "", onChange: (e2) => setRecommendedPreset(info.avatar, info.name, e2.currentTarget.value || null), children: [
+        /* @__PURE__ */ u$2("option", { value: "", children: "不指定" }),
+        rec && !names.includes(rec.name) && /* @__PURE__ */ u$2("option", { value: rec.name, children: [
+          rec.name,
+          "（已不存在）"
+        ] }),
+        names.map((n2) => /* @__PURE__ */ u$2("option", { value: n2, children: n2 }, n2))
+      ] }),
+      !rec && info.isCurrent && current && /* @__PURE__ */ u$2("button", { class: "rbt-btn", onClick: () => setRecommendedPreset(info.avatar, info.name, current), children: "用现在这个" })
+    ] }),
+    rec && names.includes(rec.name) && /* @__PURE__ */ u$2(SourceLine, { kind: "preset", id: rec.name }),
+    otherApi && /* @__PURE__ */ u$2("div", { class: "rbt-hint", children: [
+      "这个推荐是在「",
+      rec.api,
+      "」下设的，和现在用的 API 不同，所以不会自动换。"
+    ] }),
+    rec && info.isCurrent && !otherApi && rec.name !== current && /* @__PURE__ */ u$2("div", { class: "rbt-warn rbt-row-between", children: [
+      /* @__PURE__ */ u$2("span", { children: [
+        "现在用的是「",
+        current,
+        "」，推荐的是「",
+        rec.name,
+        "」。"
+      ] }),
+      /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-primary rbt-btn-small", onClick: () => switchPreset(rec.name), children: "换上推荐的" })
+    ] })
+  ] });
+}
+function ExtSection({ info }) {
+  const installed2 = installedExtensions();
+  const list = requiredExtensions(info);
+  const manual = info.record?.extensions ?? [];
+  const [pick, setPick] = d$1("");
+  const [name, setName] = d$1("");
+  const [url, setUrl] = d$1("");
+  const listed = new Set(list.map((l2) => extStatus(l2.req, installed2).match?.id).filter(Boolean));
+  const add = () => {
+    const req = pick === "__other" ? { name: name.trim(), url: isHttpUrl(url) ? url.trim() : void 0 } : { name: pick };
+    if (!req.name) return;
+    updateRecord(info.avatar, info.name, { extensions: [...manual, req] });
+    setPick("");
+    setName("");
+    setUrl("");
+  };
+  return /* @__PURE__ */ u$2(Section, { title: "需要的插件", children: [
+    !list.length && /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: "还没登记。从下面选一个已装的插件，或手动填一个没装的。" }),
+    list.map((l2, i2) => {
+      const st = extStatus(l2.req, installed2);
+      const chip = STATUS_CHIP[st.status];
+      return /* @__PURE__ */ u$2("div", { children: [
+        /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
+          /* @__PURE__ */ u$2(Chip, { color: chip.color, children: chip.text }),
+          /* @__PURE__ */ u$2("span", { class: "rbt-env-name", children: st.match?.name ?? l2.req.name }),
+          l2.auto && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: l2.reason }),
+          st.status === "missing" && l2.req.url && /* @__PURE__ */ u$2("a", { href: l2.req.url, target: "_blank", rel: "noopener noreferrer", children: "安装地址" }),
+          !l2.auto && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small rbt-push", title: "从列表里删除", onClick: () => updateRecord(info.avatar, info.name, { extensions: manual.filter((m2) => m2 !== l2.req) }), children: "✕" })
+        ] }),
+        st.match && /* @__PURE__ */ u$2(SourceLine, { kind: "plugin", id: st.match.id })
+      ] }, `${l2.req.name}${i2}`);
+    }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
+      /* @__PURE__ */ u$2("select", { class: "text_pole rbt-select", value: pick, onChange: (e2) => setPick(e2.currentTarget.value), children: [
+        /* @__PURE__ */ u$2("option", { value: "", children: "添加插件…" }),
+        installed2.filter((e2) => !listed.has(e2.id)).map((e2) => /* @__PURE__ */ u$2("option", { value: e2.id, children: [
+          e2.name,
+          e2.enabled ? "" : "（未启用）"
+        ] }, e2.id)),
+        /* @__PURE__ */ u$2("option", { value: "__other", children: "没装的插件，手动填写…" })
+      ] }),
+      pick && pick !== "__other" && /* @__PURE__ */ u$2("button", { class: "rbt-btn", onClick: add, children: "添加" })
+    ] }),
+    pick === "__other" && /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
+      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input rbt-w-label", placeholder: "插件名", value: name, onInput: (e2) => setName(inputValue(e2)) }),
+      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: "安装地址（选填）", value: url, onInput: (e2) => setUrl(inputValue(e2)) }),
+      /* @__PURE__ */ u$2("button", { class: "rbt-btn", disabled: !name.trim(), onClick: add, children: "添加" })
+    ] })
+  ] });
+}
+function DiffList({ title, entries }) {
+  if (!entries.length) return null;
+  return /* @__PURE__ */ u$2("details", { class: "rbt-inline-details", children: [
+    /* @__PURE__ */ u$2("summary", { children: [
+      title,
+      " ",
+      entries.length,
+      " 条"
+    ] }),
+    /* @__PURE__ */ u$2("ul", { class: "rbt-diff-list", children: [
+      entries.slice(0, 30).map((e2, i2) => /* @__PURE__ */ u$2("li", { children: [
+        /* @__PURE__ */ u$2("b", { children: e2.comment || "（无标题）" }),
+        " ",
+        /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: e2.content.slice(0, 60) })
+      ] }, i2)),
+      entries.length > 30 && /* @__PURE__ */ u$2("li", { class: "rbt-muted", children: [
+        "…还有 ",
+        entries.length - 30,
+        " 条"
+      ] })
+    ] })
+  ] });
+}
+function WorldSection({ info }) {
+  const [diff, setDiff] = d$1("loading");
+  const [busy, setBusy] = d$1(false);
+  const w2 = info.world;
+  h$2(() => {
+    let alive = true;
+    setDiff("loading");
+    checkWorld(info).then((d2) => {
+      if (alive) setDiff(d2);
+    }).catch(() => {
+      if (alive) setDiff(null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [info.avatar, w2.name, w2.state, archiveVersion.value]);
+  const run = async (overwrite) => {
+    if (overwrite) {
+      const ok = await ctx().Popup?.show?.confirm?.(
+        "用卡里的版本覆盖？",
+        `世界书「${w2.importName}」会换成卡里自带的版本，只在现有世界书里的条目会丢失（可能是你或脚本加的）。覆盖前会自动备份。`
+      );
+      if (!ok) return;
+    }
+    setBusy(true);
+    try {
+      await importCardWorld(info.avatar, { overwrite });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const nameTaken = worldNames().includes(w2.importName);
+  return /* @__PURE__ */ u$2(Section, { title: "世界书", children: [
+    w2.state === "none" && /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: "这张卡没有世界书。" }),
+    w2.state !== "none" && /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
+      /* @__PURE__ */ u$2("span", { class: "rbt-env-name", children: w2.name || w2.importName }),
+      w2.state === "ok" && /* @__PURE__ */ u$2(Chip, { color: OK, children: "已绑定" }),
+      w2.state === "missing" && /* @__PURE__ */ u$2(Chip, { color: BAD, children: "找不到这本世界书" }),
+      w2.state === "unbound" && /* @__PURE__ */ u$2(Chip, { color: WARN, children: "还没导入" }),
+      w2.embedded !== null && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
+        "卡里自带 ",
+        w2.embedded,
+        " 条"
+      ] })
+    ] }),
+    (w2.state === "missing" || w2.state === "unbound") && w2.embedded !== null && (nameTaken ? /* @__PURE__ */ u$2("div", { class: "rbt-warn rbt-row-between", children: [
+      /* @__PURE__ */ u$2("span", { children: [
+        "已有一本同名世界书「",
+        w2.importName,
+        "」，所以没有自动导入。"
+      ] }),
+      /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", disabled: busy, onClick: () => run(true), children: "用卡里的版本覆盖" })
+    ] }) : /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-primary", disabled: busy, onClick: () => run(false), children: busy ? "正在导入…" : "导入并绑定" }) })),
+    w2.state === "ok" && w2.embedded !== null && (diff === "loading" ? /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "正在对比…" }) : diff && (diff.onlyCard.length || diff.onlyWorld.length) ? /* @__PURE__ */ u$2("div", { class: "rbt-warn", children: [
+      /* @__PURE__ */ u$2("div", { children: [
+        "卡里自带的和现在用的不一样：卡里 ",
+        diff.card,
+        " 条，现在 ",
+        diff.world,
+        " 条，其中 ",
+        diff.same,
+        " 条相同。"
+      ] }),
+      /* @__PURE__ */ u$2("small", { children: "只在现在这本里的，可能是你或脚本加的；只在卡里的，多半是作者更新了卡。" }),
+      /* @__PURE__ */ u$2(DiffList, { title: "只在卡里", entries: diff.onlyCard }),
+      /* @__PURE__ */ u$2(DiffList, { title: "只在现在这本里", entries: diff.onlyWorld }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", disabled: busy, onClick: () => run(true), children: "用卡里的版本覆盖" }) })
+    ] }) : diff ? /* @__PURE__ */ u$2("small", { class: "rbt-ok", children: "和卡里自带的一致 ✓" }) : null),
+    w2.extra.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "附加世界书：" }),
+      w2.extra.map((b2) => /* @__PURE__ */ u$2(Chip, { children: b2 }, b2))
+    ] })
+  ] });
+}
+function RegexSection({ info }) {
+  const owned = globalRegexScripts().filter((r2) => {
+    const o2 = settings().regexOwners[r2.id];
+    return o2?.kind === "card" && o2.key === info.avatar;
+  });
+  const preset = info.isCurrent ? currentPresetName() : "";
+  const presetRx = preset ? presetRegexCount(preset) : 0;
+  return /* @__PURE__ */ u$2(Section, { title: "正则与脚本", children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
+      /* @__PURE__ */ u$2("span", { children: [
+        "卡里的正则 ",
+        /* @__PURE__ */ u$2("b", { children: info.regex.total }),
+        " 条",
+        info.regex.total > 0 && `，开着 ${info.regex.enabled} 条`
+      ] }),
+      info.regex.total > 0 && (info.regex.allowed ? /* @__PURE__ */ u$2(Chip, { color: OK, children: "已允许运行" }) : /* @__PURE__ */ u$2(Chip, { color: BAD, children: "未允许运行" }))
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
+      /* @__PURE__ */ u$2("span", { children: [
+        "酒馆助手角色脚本 ",
+        /* @__PURE__ */ u$2("b", { children: info.scripts.total }),
+        " 个"
+      ] }),
+      info.scripts.total > 0 && (info.scripts.enabled ? /* @__PURE__ */ u$2(Chip, { color: OK, children: "已启用" }) : /* @__PURE__ */ u$2(Chip, { color: BAD, children: "未启用" }))
+    ] }),
+    info.scripts.names.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-chips", children: info.scripts.names.map((n2, i2) => /* @__PURE__ */ u$2(Chip, { children: n2 }, i2)) }),
+    owned.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "标为属于这张卡的全局正则：" }),
+      owned.map((r2) => /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
+        /* @__PURE__ */ u$2("span", { children: r2.scriptName }),
+        r2.disabled ? /* @__PURE__ */ u$2(Chip, { children: "关" }) : /* @__PURE__ */ u$2(Chip, { color: OK, children: "开" })
+      ] }, r2.id))
+    ] }),
+    preset && presetRx > 0 && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
+      "另外，正在用的预设「",
+      preset,
+      "」带了 ",
+      presetRx,
+      " 条正则，对所有卡生效。"
+    ] }),
+    /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "全局正则在左栏「全局工具箱」里逐条开关。" })
+  ] });
+}
+function AttentionBox({ char }) {
+  void statusTick.value;
+  const [busy, setBusy] = d$1(false);
+  const issues = cardIssues(char);
+  if (!issues.length) return /* @__PURE__ */ u$2("div", { class: "rbt-attn ok", children: [
+    /* @__PURE__ */ u$2("i", { class: `fa-solid ${LEVEL_ICON.ok}` }),
+    " 这张卡需要的都已就位"
+  ] });
+  return /* @__PURE__ */ u$2("div", { class: "rbt-attn", children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-attn-title", children: [
+      issues.length,
+      " 项需要注意"
+    ] }),
+    issues.map(({ section, line }, i2) => /* @__PURE__ */ u$2("div", { class: "rbt-attn-line", children: [
+      /* @__PURE__ */ u$2("i", { class: `fa-solid ${LEVEL_ICON.warn}` }),
+      /* @__PURE__ */ u$2("span", { class: "rbt-attn-text", children: [
+        /* @__PURE__ */ u$2("small", { children: section }),
+        " ",
+        line.text,
+        line.detail && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
+          " · ",
+          line.detail
+        ] })
+      ] }),
+      line.action && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", disabled: busy, onClick: async () => {
+        setBusy(true);
+        try {
+          await line.action.run();
+        } finally {
+          setBusy(false);
+          statusTick.value++;
+          archiveVersion.value++;
+        }
+      }, children: line.action.label })
+    ] }, i2))
+  ] });
+}
+function SwitchSection({ avatar, isCurrent }) {
+  void statusTick.value;
+  const [auto, setAuto] = d$1(settings().autoApplyEnv);
+  const [busy, setBusy] = d$1(false);
+  const profile = settings().profiles[avatar];
+  const report = isCurrent ? buildEnvReport() : null;
+  const drift = report?.drift;
+  const applied = lastApplied.value?.avatar === avatar ? lastApplied.value : null;
+  const run = async (f2) => {
+    setBusy(true);
+    try {
+      await f2();
+    } finally {
+      setBusy(false);
+      statusTick.value++;
+      archiveVersion.value++;
+    }
+  };
+  const remembered = profile && (profile.globalWorlds || profile.globalRegexEnabled);
+  return /* @__PURE__ */ u$2(Section, { title: "换卡时", hint: "切到这张卡时，把世界书、正则和预设换成它的配置", children: [
+    /* @__PURE__ */ u$2(
+      SwitchRow,
+      {
+        label: "自动切换",
+        detail: "对所有卡生效。关掉后只提醒，不会自动改。",
+        checked: auto,
+        onChange: (v2) => {
+          settings().autoApplyEnv = v2;
+          saveSettings();
+          setAuto(v2);
+        }
+      }
+    ),
+    applied && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: applied.undone ? "已撤销刚才的自动切换：" : `${new Date(applied.at).toLocaleTimeString()} 切到这张卡时，自动做了这些：` }),
+      /* @__PURE__ */ u$2("ul", { class: "rbt-drift", children: applied.changes.map((t2, i2) => /* @__PURE__ */ u$2("li", { children: t2 }, i2)) }),
+      !applied.undone && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", disabled: busy, onClick: () => run(undoLastApply), children: "撤销" })
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: remembered ? /* @__PURE__ */ u$2(S$1, { children: [
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
+        "记住的配置（",
+        new Date(profile.savedAt).toLocaleString(),
+        "）："
+      ] }),
+      /* @__PURE__ */ u$2("ul", { class: "rbt-drift", children: [
+        /* @__PURE__ */ u$2("li", { children: [
+          "全局世界书：",
+          profile.globalWorlds?.length ? profile.globalWorlds.join("、") : "全部关"
+        ] }),
+        /* @__PURE__ */ u$2("li", { children: [
+          "全局正则：",
+          profile.globalRegexEnabled?.length ? `开 ${profile.globalRegexEnabled.length} 条` : "全部关"
+        ] }),
+        profile.preset && /* @__PURE__ */ u$2("li", { children: [
+          "预设：",
+          profile.preset.name
+        ] })
+      ] }),
+      isCurrent && (drift?.count ? /* @__PURE__ */ u$2("div", { class: "rbt-warn rbt-row-between", children: [
+        /* @__PURE__ */ u$2("span", { children: [
+          "现在的设置和记住的有 ",
+          drift.count,
+          " 处不同。"
+        ] }),
+        /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small rbt-btn-primary", disabled: busy, onClick: () => run(applyProfile), children: "恢复记住的" })
+      ] }) : /* @__PURE__ */ u$2("small", { class: "rbt-ok", children: "和现在的设置一致 ✓" })),
+      isCurrent && /* @__PURE__ */ u$2("div", { class: "rbt-row", children: [
+        /* @__PURE__ */ u$2("button", { class: "rbt-btn", disabled: busy, onClick: () => run(rememberProfile), children: "改为记住现在的" }),
+        /* @__PURE__ */ u$2("button", { class: "rbt-btn", disabled: busy, onClick: () => run(forgetProfile), children: "不再记住" })
+      ] })
+    ] }) : /* @__PURE__ */ u$2(S$1, { children: [
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "还没记住这张卡的配置。现在切到这张卡时，只会关掉别的卡的世界书和正则，并换上推荐预设。" }),
+      isCurrent ? /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-primary", disabled: busy, onClick: () => run(rememberProfile), children: "记住现在的配置" }) }) : /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "打开这张卡后才能记住它的配置。" })
+    ] }) })
+  ] });
+}
+function CardPage({ avatar: forced, embedded } = {}) {
+  void archiveVersion.value;
+  void statusTick.value;
+  const cur = currentCharacter();
+  const avatar = forced ?? archiveTarget.value ?? cur?.avatar;
+  h$2(() => {
+    if (avatar) void ensureFullCharacter(avatar);
+  }, [avatar]);
+  const f2 = avatar ? findChar(avatar) : null;
+  if (!f2) return /* @__PURE__ */ u$2(Empty, { children: "没有打开单人角色卡。在左栏「角色」里点一张卡，就能看到它的档案。" });
+  const info = cardInfo(f2.char);
+  return /* @__PURE__ */ u$2("div", { class: "rbt-page", children: [
+    /* @__PURE__ */ u$2(CardHeader, { info, embedded }),
+    info.isCurrent && /* @__PURE__ */ u$2(AttentionBox, { char: f2.char }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-page-cols", children: [
+      /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
+        /* @__PURE__ */ u$2("div", { class: "rbt-page-group-title", children: "配套环境" }),
+        /* @__PURE__ */ u$2(WorldSection, { info }),
+        /* @__PURE__ */ u$2(PresetSection, { info }),
+        /* @__PURE__ */ u$2(RegexSection, { info }),
+        /* @__PURE__ */ u$2(ExtSection, { info })
+      ] }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
+        /* @__PURE__ */ u$2(SourceSection$1, { info }),
+        /* @__PURE__ */ u$2(SwitchSection, { avatar: info.avatar, isCurrent: info.isCurrent })
+      ] })
+    ] })
+  ] });
+}
+const KIND_LABEL = {
+  worldbook: "世界书",
+  regex: "正则",
+  script: "脚本",
+  extension: "插件",
+  preset: "预设"
+};
+function ItemRow({ item }) {
+  const [busy, setBusy] = d$1(false);
+  const onToggle = async (on) => {
+    if (!item.toggle) return;
+    setBusy(true);
+    try {
+      await item.toggle(on);
+    } finally {
+      setBusy(false);
+      refreshEnv();
+    }
+  };
+  const body = /* @__PURE__ */ u$2("div", { class: `rbt-env-item ${item.enabled ? "" : "off"}`, children: [
+    /* @__PURE__ */ u$2(Chip, { children: KIND_LABEL[item.kind] }),
+    /* @__PURE__ */ u$2("span", { class: "rbt-env-name", children: item.name }),
+    item.misplaced && /* @__PURE__ */ u$2(Chip, { color: "#f0a43a", title: `标为${item.misplaced}`, children: "不属于这张卡" }),
+    item.detail && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: item.detail }),
+    item.toggle && /* @__PURE__ */ u$2("span", { class: "rbt-env-toggle", children: [
+      busy && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "…" }),
+      /* @__PURE__ */ u$2(Toggle, { checked: item.enabled, onChange: onToggle, title: "点击开 / 关" })
+    ] })
+  ] });
+  if (item.subItems?.length) {
+    return /* @__PURE__ */ u$2("details", { class: "rbt-env-details", children: [
+      /* @__PURE__ */ u$2("summary", { children: body }),
+      /* @__PURE__ */ u$2(SubItemList, { items: item.subItems, groupOff: !item.enabled })
+    ] });
+  }
+  if (!item.children?.length) return body;
+  return /* @__PURE__ */ u$2("details", { class: "rbt-env-details", children: [
+    /* @__PURE__ */ u$2("summary", { children: body }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-env-children", children: item.children.map((c2, i2) => /* @__PURE__ */ u$2("div", { children: c2 }, i2)) })
+  ] });
+}
+function SubItemRow({ sub }) {
+  const [busy, setBusy] = d$1(false);
+  const onToggle = async (on) => {
+    setBusy(true);
+    try {
+      await sub.toggle(on);
+    } finally {
+      setBusy(false);
+      refreshEnv();
+    }
+  };
+  return /* @__PURE__ */ u$2("div", { class: `rbt-sub-item ${sub.enabled ? "" : "off"}`, children: [
+    /* @__PURE__ */ u$2("span", { class: "rbt-sub-name", children: sub.name }),
+    sub.detail && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: sub.detail }),
+    /* @__PURE__ */ u$2("span", { class: "rbt-env-toggle", children: [
+      busy && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "…" }),
+      /* @__PURE__ */ u$2(Toggle, { checked: sub.enabled, onChange: onToggle, title: "点击开 / 关这一条" })
+    ] })
+  ] });
+}
+function SubItemList({ items, groupOff }) {
+  const [filter, setFilter] = d$1("");
+  const [onlyOn, setOnlyOn] = d$1(false);
+  const shown = items.filter((s2) => (!filter || s2.name.includes(filter)) && (!onlyOn || s2.enabled));
+  return /* @__PURE__ */ u$2("div", { class: "rbt-sub-list", children: [
+    groupOff && /* @__PURE__ */ u$2("div", { class: "rbt-hint", children: "上面的总开关关着，所以下面这些都不会运行。" }),
+    items.length > 10 && /* @__PURE__ */ u$2("div", { class: "rbt-sub-tools", children: [
+      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: "搜索正则…", value: filter, onInput: (e2) => setFilter(e2.currentTarget.value) }),
+      /* @__PURE__ */ u$2("label", { class: "rbt-check", children: [
+        /* @__PURE__ */ u$2("input", { type: "checkbox", checked: onlyOn, onChange: (e2) => setOnlyOn(e2.currentTarget.checked) }),
+        "只看开着的"
+      ] })
+    ] }),
+    shown.map((s2) => /* @__PURE__ */ u$2(SubItemRow, { sub: s2 }, s2.id)),
+    !shown.length && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "没有匹配的正则" })
+  ] });
+}
+function ownerValue(o2) {
+  return o2 ? `${o2.kind}:${o2.key}` : "";
+}
+function GlobalRegexList({ items }) {
+  void archiveVersion.value;
+  const scripts = globalRegexScripts();
+  const owners = settings().regexOwners;
+  const exts = installedExtensions();
+  const presets = presetNames();
+  const chars = allCharacters();
+  const byId = new Map(items.map((i2) => [i2.id, i2]));
+  const guesses = scripts.map((r2) => ({ r: r2, g: owners[r2.id] ? null : guessRegexOwner(r2) })).filter((x2) => x2.g);
+  const onPick = (id, v2) => {
+    if (!v2) return setRegexOwner(id, null);
+    const i2 = v2.indexOf(":");
+    const kind = v2.slice(0, i2);
+    const key = v2.slice(i2 + 1);
+    const label = kind === "extension" ? exts.find((e2) => e2.id === key)?.name ?? key : kind === "card" ? findChar(key)?.char?.name ?? key : key;
+    setRegexOwner(id, { kind, key, label });
+  };
+  if (!scripts.length) return /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: "没有全局正则。" });
+  return /* @__PURE__ */ u$2(S$1, { children: [
+    /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "给正则选好「属于」，换卡时就会自动开关：属于当前的卡或预设就打开，属于别的就关掉。" }),
+    guesses.length > 1 && /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", onClick: () => {
+      for (const { r: r2, g: g2 } of guesses) setRegexOwner(r2.id, g2);
+    }, children: [
+      "按名字自动选好 ",
+      guesses.length,
+      " 条"
+    ] }) }),
+    scripts.map((r2) => {
+      const item = byId.get(`rx:g:${r2.id ?? r2.scriptName}`);
+      const g2 = owners[r2.id] ? null : guessRegexOwner(r2);
+      return /* @__PURE__ */ u$2("div", { class: "rbt-owner-row", children: [
+        item ? /* @__PURE__ */ u$2(ItemRow, { item }) : /* @__PURE__ */ u$2("div", { class: "rbt-env-item", children: /* @__PURE__ */ u$2("span", { class: "rbt-env-name", children: r2.scriptName }) }),
+        /* @__PURE__ */ u$2("div", { class: "rbt-form-row rbt-owner-pick", children: [
+          /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "属于" }),
+          /* @__PURE__ */ u$2("select", { class: "text_pole rbt-select", value: ownerValue(owners[r2.id]), onChange: (e2) => onPick(r2.id, e2.currentTarget.value), children: [
+            /* @__PURE__ */ u$2("option", { value: "", children: "没选（换卡时不动它）" }),
+            /* @__PURE__ */ u$2("optgroup", { label: "插件", children: exts.map((e2) => /* @__PURE__ */ u$2("option", { value: `extension:${e2.id}`, children: e2.name }, e2.id)) }),
+            /* @__PURE__ */ u$2("optgroup", { label: "预设", children: presets.map((p2) => /* @__PURE__ */ u$2("option", { value: `preset:${p2}`, children: p2 }, p2)) }),
+            /* @__PURE__ */ u$2("optgroup", { label: "角色卡", children: chars.map((c2) => /* @__PURE__ */ u$2("option", { value: `card:${c2.avatar}`, children: c2.name }, c2.avatar)) })
+          ] }),
+          g2 && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", title: "按名字猜的，点一下就选上", onClick: () => setRegexOwner(r2.id, g2), children: [
+            "可能是 ",
+            g2.label
+          ] })
+        ] })
+      ] }, r2.id);
+    })
+  ] });
+}
+function openRegexManager() {
+  openDrawer("extensions");
+  setTimeout(() => {
+    const box = document.querySelector(".regex_settings");
+    const content = box?.querySelector(".inline-drawer-content");
+    if (content && getComputedStyle(content).display === "none") box?.querySelector(".inline-drawer-toggle")?.click();
+    box?.scrollIntoView({ block: "start" });
+  }, 350);
+}
+function AddGlobalWorld() {
+  const scopes = currentBookScopes();
+  const options = worldNames().filter((w2) => !scopes.global.has(w2)).sort((x2, y2) => x2.localeCompare(y2, "zh-Hans-CN"));
+  const [busy, setBusy] = d$1(false);
+  if (!options.length) return null;
+  return /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: /* @__PURE__ */ u$2("select", { class: "text_pole rbt-select", value: "", disabled: busy, onChange: async (e2) => {
+    const name = e2.currentTarget.value;
+    if (!name) return;
+    setBusy(true);
+    try {
+      await runSlash(`/world state=on silent=true ${slashQuote(name)}`);
+    } finally {
+      setBusy(false);
+      refreshEnv();
+    }
+  }, children: [
+    /* @__PURE__ */ u$2("option", { value: "", children: "打开一本全局世界书…" }),
+    options.map((w2) => /* @__PURE__ */ u$2("option", { value: w2, children: [
+      w2,
+      scopes.character.has(w2) ? "（已绑在当前卡上）" : ""
+    ] }, w2))
+  ] }) });
+}
+function PresetPicker() {
+  const names = presetNames();
+  const cur = currentPresetName();
+  const [busy, setBusy] = d$1(false);
+  return /* @__PURE__ */ u$2(S$1, { children: /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
+    /* @__PURE__ */ u$2("select", { class: "text_pole rbt-select", value: cur, disabled: busy, onChange: async (e2) => {
+      const name = e2.currentTarget.value;
+      if (!name || name === cur) return;
+      setBusy(true);
+      try {
+        await switchPreset(name);
+      } finally {
+        setBusy(false);
+        refreshEnv();
+      }
+    }, children: names.map((n2) => /* @__PURE__ */ u$2("option", { value: n2, children: n2 }, n2)) }),
+    /* @__PURE__ */ u$2("button", { class: "rbt-btn", onClick: () => openDrawer("preset"), children: "编辑预设" })
+  ] }) });
+}
+function PluginList() {
+  const list = installedExtensions().sort((x2, y2) => Number(y2.enabled) - Number(x2.enabled) || x2.name.localeCompare(y2.name));
+  const [want, setWant] = d$1({});
+  const [open, setOpen] = d$1(null);
+  const [busy, setBusy] = d$1(false);
+  const changed = list.filter((e2) => e2.id in want && want[e2.id] !== e2.enabled);
+  const apply = async () => {
+    const ext = loaded.extensions;
+    if (!ext) return;
+    setBusy(true);
+    for (const e2 of changed) {
+      const name = `third-party/${e2.id}`;
+      if (want[e2.id]) await ext.enableExtension(name, false);
+      else await ext.disableExtension(name, false);
+    }
+    location.reload();
+  };
+  return /* @__PURE__ */ u$2(S$1, { children: [
+    list.map((e2) => {
+      const on = e2.id in want ? want[e2.id] : e2.enabled;
+      return /* @__PURE__ */ u$2("div", { class: "rbt-plugin", children: [
+        /* @__PURE__ */ u$2("div", { class: `rbt-env-item ${on ? "" : "off"}`, children: [
+          /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-plugin-name", title: "作者和链接", onClick: () => setOpen(open === e2.id ? null : e2.id), children: [
+            /* @__PURE__ */ u$2("i", { class: `fa-solid fa-chevron-${open === e2.id ? "down" : "right"} rbt-plugin-caret` }),
+            /* @__PURE__ */ u$2("span", { class: "rbt-env-name", children: e2.name })
+          ] }),
+          sourceFor("plugin", e2.id).author && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: sourceFor("plugin", e2.id).author }),
+          e2.id in want && want[e2.id] !== e2.enabled && /* @__PURE__ */ u$2(Chip, { color: "#f0a43a", children: "刷新后生效" }),
+          /* @__PURE__ */ u$2("span", { class: "rbt-env-toggle", children: /* @__PURE__ */ u$2(Toggle, { checked: on, onChange: (v2) => setWant({ ...want, [e2.id]: v2 }), title: "启用 / 停用这个插件" }) })
+        ] }),
+        open === e2.id && /* @__PURE__ */ u$2("div", { class: "rbt-plugin-more", children: /* @__PURE__ */ u$2(SourceEditor, { kind: "plugin", id: e2.id }) })
+      ] }, e2.id);
+    }),
+    changed.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-warn rbt-row-between", children: [
+      /* @__PURE__ */ u$2("span", { children: [
+        "改了 ",
+        changed.length,
+        " 个插件，刷新页面后生效。"
+      ] }),
+      /* @__PURE__ */ u$2("span", { class: "rbt-row", children: [
+        /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", disabled: busy, onClick: () => setWant({}), children: "还原" }),
+        /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small rbt-btn-primary", disabled: busy, onClick: apply, children: "保存并刷新" })
+      ] })
+    ] })
+  ] });
+}
+function cardsOf(list) {
+  if (!list?.length) return "";
+  return list.length <= 2 ? list.map((c2) => c2.name).join("、") : `${list.slice(0, 2).map((c2) => c2.name).join("、")} 等 ${list.length} 张卡`;
+}
+function openWorldInST(name) {
+  openDrawer("worldinfo");
+  setTimeout(() => openBookInEditor(name), 300);
+}
+function groupBySeries(kind, names) {
+  const by = /* @__PURE__ */ new Map();
+  for (const n2 of names) {
+    const s2 = sourceFor(kind, n2).series;
+    by.set(s2, [...by.get(s2) ?? [], n2]);
+  }
+  const groups = [...by.entries()].filter(([s2]) => s2).sort(([a2], [b2]) => a2.localeCompare(b2, "zh")).map(([series, ns]) => ({
+    series,
+    names: ns.sort((x2, y2) => compareVersions(sourceFor(kind, x2).version, sourceFor(kind, y2).version) || x2.localeCompare(y2, "zh"))
+  }));
+  const rest = by.get("") ?? [];
+  if (rest.length) groups.push({ series: "", names: rest.sort((x2, y2) => x2.localeCompare(y2, "zh")) });
+  return groups;
+}
+function SeriesSuggestions({ kind, names }) {
+  void sourcesTick.value;
+  const [hidden, setHidden] = d$1([]);
+  const list = suggestSeries(kind, names).filter((g2) => !hidden.includes(g2.series));
+  if (!list.length) return null;
+  return /* @__PURE__ */ u$2(S$1, { children: list.map((g2) => /* @__PURE__ */ u$2("div", { class: "rbt-hint rbt-row-between", children: [
+    /* @__PURE__ */ u$2("span", { children: [
+      g2.names.length,
+      " 个名字里都有「",
+      g2.series,
+      "」，可能是同一系列的不同版本。"
+    ] }),
+    /* @__PURE__ */ u$2("span", { class: "rbt-row", children: [
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", onClick: () => setHidden([...hidden, g2.series]), children: "不是" }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-btn-primary", onClick: () => setSeries(kind, g2.names, g2.series), children: [
+        "归为「",
+        g2.series,
+        "」系列"
+      ] })
+    ] })
+  ] }, g2.series)) });
+}
+function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filters }) {
+  void sourcesTick.value;
+  const [organizing, setOrganizing] = d$1(false);
+  const [picked, setPicked] = d$1([]);
+  const [series, setSeriesName] = d$1("");
+  const [fi, setFi] = d$1(0);
+  const names = filters ? allNames.filter(filters[fi]?.test ?? (() => true)) : allNames;
+  const groups = groupBySeries(kind, names);
+  const listId = `rbt-org-${kind}`;
+  const toggle = (n2) => setPicked((cur) => cur.includes(n2) ? cur.filter((x2) => x2 !== n2) : [...cur, n2]);
+  const done = () => {
+    setOrganizing(false);
+    setPicked([]);
+    setSeriesName("");
+  };
+  const apply = (name) => {
+    setSeries(kind, picked, name);
+    setPicked([]);
+  };
+  return /* @__PURE__ */ u$2(S$1, { children: [
+    !organizing && /* @__PURE__ */ u$2(SeriesSuggestions, { kind, names: allNames }),
+    filters && /* @__PURE__ */ u$2("div", { class: "rbt-vseg rbt-list-filter", role: "tablist", children: filters.map((f2, i2) => /* @__PURE__ */ u$2("button", { type: "button", class: fi === i2 ? "active" : "", onClick: () => setFi(i2), children: [
+      f2.label,
+      " ",
+      allNames.filter(f2.test).length
+    ] }, f2.label)) }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-org-bar", children: organizing ? /* @__PURE__ */ u$2(S$1, { children: [
+      /* @__PURE__ */ u$2("span", { class: "rbt-org-count", children: [
+        "已选 ",
+        picked.length,
+        " 个"
+      ] }),
+      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", list: listId, placeholder: "系列名，比如：小狗之神", value: series, onInput: (e2) => setSeriesName(e2.currentTarget.value) }),
+      /* @__PURE__ */ u$2("datalist", { id: listId, children: allSeries(kind).map((x2) => /* @__PURE__ */ u$2("option", { value: x2 }, x2)) }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-btn-primary", disabled: !picked.length || !series.trim(), onClick: () => apply(series.trim()), children: "归为这个系列" }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", disabled: !picked.length, onClick: () => apply(""), children: "移出系列" }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", onClick: done, children: "完成" })
+    ] }) : /* @__PURE__ */ u$2(S$1, { children: [
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "点一项看详情。想把几个归成一组，点「整理」。" }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", onClick: () => setOrganizing(true), children: "整理" })
+    ] }) }),
+    groups.map((g2) => /* @__PURE__ */ u$2(Section, { title: g2.series ? `${g2.series} 系列` : groups.length > 1 ? `其他${restTitle}` : `全部${restTitle}`, hint: `${g2.names.length} 个`, children: g2.names.map((n2) => organizing ? /* @__PURE__ */ u$2("label", { class: `rbt-pickrow ${picked.includes(n2) ? "on" : ""}`, children: [
+      /* @__PURE__ */ u$2("input", { type: "checkbox", checked: picked.includes(n2), onChange: () => toggle(n2) }),
+      /* @__PURE__ */ u$2("span", { class: "rbt-navrow-main", children: [
+        /* @__PURE__ */ u$2("span", { class: "rbt-navrow-title", children: n2 }),
+        sub(n2) && /* @__PURE__ */ u$2("span", { class: "rbt-navrow-sub", children: sub(n2) })
+      ] })
+    ] }, n2) : /* @__PURE__ */ u$2(NavRow, { title: n2, sub: sub(n2) || void 0, trailing: trail?.(n2), onClick: () => openDetail(kind === "preset" ? { kind: "preset", name: n2 } : { kind: "world", name: n2 }, back) }, n2)) }, g2.series || "_"))
+  ] });
+}
+function VersionSection({ kind, id }) {
+  const v2 = sourceFor(kind, id);
+  const listId = `rbt-series-${kind}`;
+  const series = allSeries(kind);
+  const siblings = v2.series ? (kind === "preset" ? presetNames() : worldNames()).filter((n2) => n2 !== id && sourceFor(kind, n2).series === v2.series) : [];
+  const back = id;
+  return /* @__PURE__ */ u$2(Section, { title: "系列和版本", hint: "同一个东西的不同版本归到一个系列，方便对比和回头找", children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted rbt-source-k", children: "系列" }),
+      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", list: listId, placeholder: "比如：小狗之神", value: v2.series, onChange: (e2) => updateSource(kind, id, { series: e2.currentTarget.value.trim() }) }),
+      /* @__PURE__ */ u$2("datalist", { id: listId, children: series.map((s2) => /* @__PURE__ */ u$2("option", { value: s2 }, s2)) })
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted rbt-source-k", children: "版本" }),
+      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: v2.versionIsAuto ? `${v2.version}（从名字里读到的）` : "比如：v8.0", value: v2.versionIsAuto ? "" : v2.version, onChange: (e2) => updateSource(kind, id, { version: e2.currentTarget.value.trim() }) })
+    ] }),
+    /* @__PURE__ */ u$2("textarea", { class: "text_pole rbt-textarea", rows: 3, placeholder: "更新说明：这一版改了什么、和上一版有什么不同、怎么用", value: v2.notes, onChange: (e2) => updateSource(kind, id, { notes: e2.currentTarget.value }) }),
+    siblings.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "同系列的其他版本：" }),
+      siblings.sort((x2, y2) => compareVersions(sourceFor(kind, x2).version, sourceFor(kind, y2).version)).map((n2) => /* @__PURE__ */ u$2(NavRow, { title: n2, sub: sourceFor(kind, n2).version ? `版本 ${sourceFor(kind, n2).version}` : void 0, onClick: () => openDetail(kind === "preset" ? { kind: "preset", name: n2 } : { kind: "world", name: n2 }, back) }, n2))
+    ] })
+  ] });
+}
+function SourceSection({ kind, id }) {
+  return /* @__PURE__ */ u$2(Section, { title: "作者和链接", hint: "发布帖、教程、更新帖…", children: /* @__PURE__ */ u$2(SourceEditor, { kind, id }) });
+}
+function CardRows({ cards, back, empty }) {
+  if (!cards.length) return /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: empty });
+  return /* @__PURE__ */ u$2(S$1, { children: cards.map((c2) => /* @__PURE__ */ u$2(NavRow, { img: thumbnailUrl(c2.avatar), title: c2.name, onClick: () => openDetail({ kind: "card", avatar: c2.avatar }, back) }, c2.avatar)) });
+}
+function PresetsPage() {
+  void archiveVersion.value;
+  void sourcesTick.value;
+  const report = envReport.value;
+  h$2(() => {
+    refreshEnv();
+  }, []);
+  const names = presetNames();
+  const cur = currentPresetName();
+  const ov = buildOverview();
+  const presetRx = (report?.items ?? []).filter((i2) => i2.scope === "preset" && i2.kind !== "preset");
+  const back = GLOBAL_TAB_LABELS.presets;
+  return /* @__PURE__ */ u$2("div", { class: "rbt-page", children: /* @__PURE__ */ u$2("div", { class: "rbt-page-cols", children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: /* @__PURE__ */ u$2(Section, { title: "正在用", hint: "切到有推荐预设的卡时会自动换", children: [
+      /* @__PURE__ */ u$2(PresetPicker, {}),
+      presetRx.map((i2) => /* @__PURE__ */ u$2(ItemRow, { item: i2 }, i2.id)),
+      !presetRx.length && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "这个预设没有自带正则或脚本。" })
+    ] }) }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: /* @__PURE__ */ u$2(
+      SeriesList,
+      {
+        kind: "preset",
+        names,
+        back,
+        restTitle: "预设",
+        sub: (n2) => {
+          const v2 = sourceFor("preset", n2);
+          const rec = ov.byPreset.get(n2);
+          const rx = presetRegexCount(n2);
+          return [v2.version && `版本 ${v2.version}`, v2.author && `作者 ${v2.author}`, rec?.length && `${rec.length} 张卡推荐`, rx && `${rx} 条正则`].filter(Boolean).join(" · ");
+        },
+        trail: (n2) => n2 === cur ? /* @__PURE__ */ u$2(Tag, { tone: "accent", children: "正在用" }) : null
+      }
+    ) })
+  ] }) });
+}
+function PresetDetail({ name }) {
+  void archiveVersion.value;
+  const cur = currentPresetName();
+  const ov = buildOverview();
+  const exists = presetNames().includes(name);
+  const rx = presetRegexCount(name);
+  const [busy, setBusy] = d$1(false);
+  return /* @__PURE__ */ u$2("div", { class: "rbt-page", children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-detail-head", children: [
+      /* @__PURE__ */ u$2("h2", { children: name }),
+      name === cur ? /* @__PURE__ */ u$2(Tag, { tone: "accent", children: "正在用" }) : exists && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-primary rbt-btn-small", disabled: busy, onClick: async () => {
+        setBusy(true);
+        try {
+          await switchPreset(name);
+        } finally {
+          setBusy(false);
+        }
+      }, children: "换成这个" }),
+      name === cur && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", onClick: () => openDrawer("preset"), children: [
+        "编辑预设 ",
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-arrow-up-right-from-square" })
+      ] })
+    ] }),
+    !exists && /* @__PURE__ */ u$2("div", { class: "rbt-warn", children: "找不到这个预设，可能被删除或改名了。" }),
+    rx > 0 && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
+      "自带 ",
+      rx,
+      " 条正则，用这个预设时生效。"
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-page-cols", children: [
+      /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
+        /* @__PURE__ */ u$2(SourceSection, { kind: "preset", id: name }),
+        /* @__PURE__ */ u$2(VersionSection, { kind: "preset", id: name })
+      ] }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: /* @__PURE__ */ u$2(Section, { title: "推荐它的卡", hint: "切到这些卡时会自动换上这个预设", children: /* @__PURE__ */ u$2(CardRows, { cards: ov.byPreset.get(name) ?? [], back: name, empty: "还没有卡推荐它。在角色档案的「推荐预设」里设置。" }) }) })
+    ] })
+  ] });
+}
+function WorldsPage() {
+  void archiveVersion.value;
+  void sourcesTick.value;
+  const report = envReport.value;
+  h$2(() => {
+    refreshEnv();
+  }, []);
+  const [busy, setBusy] = d$1(false);
+  const [auto, setAuto] = d$1(settings().autoImportWorld);
+  const ov = buildOverview();
+  const missing = cardsMissingWorld();
+  const globalOn = (report?.items ?? []).filter((i2) => i2.kind === "worldbook" && (i2.scope === "global" || i2.scope === "persona"));
+  const names = worldNames();
+  const back = GLOBAL_TAB_LABELS.worlds;
+  const scopes = currentBookScopes();
+  const viaChat = [...scopes.character, ...scopes.chat].filter((n2) => !scopes.global.has(n2));
+  return /* @__PURE__ */ u$2("div", { class: "rbt-page", children: [
+    missing.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-warn rbt-row-between", children: [
+      /* @__PURE__ */ u$2("span", { children: [
+        missing.length,
+        " 张卡自带的世界书还没导入：",
+        missing.map((m2) => m2.name).join("、")
+      ] }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-primary rbt-btn-small", disabled: busy, onClick: async () => {
+        setBusy(true);
+        try {
+          await importAllMissingWorlds();
+        } finally {
+          setBusy(false);
+        }
+      }, children: "全部导入" })
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-page-cols", children: [
+      /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
+        /* @__PURE__ */ u$2(Section, { title: "正在用", hint: "全局世界书对所有卡生效；只给某张卡用的，最好绑到那张卡上", children: [
+          globalOn.map((i2) => /* @__PURE__ */ u$2(ItemRow, { item: i2 }, i2.id)),
+          !globalOn.length && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "没有开着的全局世界书。" }),
+          /* @__PURE__ */ u$2(AddGlobalWorld, {}),
+          viaChat.length > 0 && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
+            "现在的聊天还通过角色卡加载了：",
+            viaChat.join("、"),
+            "。"
+          ] })
+        ] }),
+        /* @__PURE__ */ u$2(Section, { title: "设置", children: /* @__PURE__ */ u$2(SwitchRow, { label: "自动导入卡里的世界书", detail: "打开一张卡时，如果它自带的世界书还没导入，就自动导入并绑定。不会覆盖已有的同名世界书。", checked: auto, onChange: (x2) => {
+          settings().autoImportWorld = x2;
+          saveSettings();
+          setAuto(x2);
+        } }) })
+      ] }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: /* @__PURE__ */ u$2(
+        SeriesList,
+        {
+          kind: "world",
+          names,
+          back,
+          restTitle: "世界书",
+          sub: (n2) => {
+            const v2 = sourceFor("world", n2);
+            const cs = cardsOf(ov.byWorld.get(n2));
+            return [cs ? `绑定：${cs}` : "未绑定角色", v2.version && `版本 ${v2.version}`, v2.author && `作者 ${v2.author}`].filter(Boolean).join(" · ");
+          },
+          filters: [
+            { label: "全部", test: () => true },
+            { label: "已绑定角色", test: (n2) => ov.byWorld.has(n2) },
+            { label: "未绑定角色", test: (n2) => !ov.byWorld.has(n2) }
+          ],
+          trail: (n2) => scopes.global.has(n2) ? /* @__PURE__ */ u$2(Tag, { tone: "warn", children: "全局开着" }) : null
+        }
+      ) })
+    ] })
+  ] });
+}
+function WorldDetail({ name }) {
+  void archiveVersion.value;
+  const ov = buildOverview();
+  const on = currentBookScopes().global.has(name);
+  const [busy, setBusy] = d$1(false);
+  const toggle = async (v2) => {
+    setBusy(true);
+    try {
+      await runSlash(`/world state=${v2 ? "on" : "off"} silent=true ${slashQuote(name)}`);
+    } finally {
+      setBusy(false);
+      refreshEnv();
+      archiveVersion.value++;
+    }
+  };
+  return /* @__PURE__ */ u$2("div", { class: "rbt-page", children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-detail-head", children: [
+      /* @__PURE__ */ u$2("h2", { children: name }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", onClick: () => openWorldInST(name), children: [
+        "在世界书里打开 ",
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-arrow-up-right-from-square" })
+      ] })
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-page-cols", children: [
+      /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
+        /* @__PURE__ */ u$2(SourceSection, { kind: "world", id: name }),
+        /* @__PURE__ */ u$2(VersionSection, { kind: "world", id: name })
+      ] }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
+        /* @__PURE__ */ u$2(Section, { title: "用到它的卡", hint: "绑在这些卡上，玩它们时自动加载", children: /* @__PURE__ */ u$2(CardRows, { cards: ov.byWorld.get(name) ?? [], back: name, empty: "没绑在任何卡上。" }) }),
+        /* @__PURE__ */ u$2(Section, { title: "全局", children: /* @__PURE__ */ u$2("div", { class: "rbt-switch-row", children: [
+          /* @__PURE__ */ u$2("div", { class: "rbt-switch-text", children: [
+            /* @__PURE__ */ u$2("span", { children: "作为全局世界书打开" }),
+            /* @__PURE__ */ u$2("small", { children: "打开后对所有卡生效。" })
+          ] }),
+          busy ? /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "…" }) : /* @__PURE__ */ u$2(Toggle, { checked: on, onChange: toggle })
+        ] }) })
+      ] })
+    ] })
+  ] });
+}
+function RegexPage() {
+  void archiveVersion.value;
+  const report = envReport.value;
+  h$2(() => {
+    refreshEnv();
+  }, []);
+  const items = report?.items ?? [];
+  const regex = items.filter((i2) => i2.scope === "global" && i2.kind === "regex");
+  const scripts = items.filter((i2) => i2.scope === "global" && i2.kind === "script");
+  const cardRx = T(() => allCharacters().map(cardInfo).filter((c2) => c2.regex.total > 0).sort((a2, b2) => b2.regex.total - a2.regex.total), [archiveVersion.value]);
+  const presetRx = presetNames().map((p2) => ({ p: p2, n: presetRegexCount(p2) })).filter((x2) => x2.n > 0);
+  const cur = currentPresetName();
+  const back = GLOBAL_TAB_LABELS.regex;
+  return /* @__PURE__ */ u$2("div", { class: "rbt-page", children: /* @__PURE__ */ u$2("div", { class: "rbt-page-cols", children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
+      /* @__PURE__ */ u$2(Section, { title: "全局正则", hint: "对所有卡生效", children: [
+        /* @__PURE__ */ u$2(GlobalRegexList, { items: regex }),
+        /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn", onClick: openRegexManager, children: [
+          "新建、编辑或导入正则 ",
+          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-arrow-up-right-from-square" })
+        ] }) })
+      ] }),
+      scripts.length > 0 && /* @__PURE__ */ u$2(Section, { title: "酒馆助手全局脚本", hint: "对所有卡生效", children: scripts.map((i2) => /* @__PURE__ */ u$2(ItemRow, { item: i2 }, i2.id)) })
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
+      /* @__PURE__ */ u$2(Section, { title: "带正则的卡", hint: "只对那张卡生效", children: [
+        cardRx.map((c2) => /* @__PURE__ */ u$2(NavRow, { img: thumbnailUrl(c2.avatar), title: c2.name, sub: `${c2.regex.total} 条正则`, trailing: !c2.regex.allowed ? /* @__PURE__ */ u$2(Tag, { tone: "bad", children: "未允许运行" }) : void 0, onClick: () => openDetail({ kind: "card", avatar: c2.avatar }, back) }, c2.avatar)),
+        !cardRx.length && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "没有。" })
+      ] }),
+      /* @__PURE__ */ u$2(Section, { title: "带正则的预设", hint: "只在用这个预设时生效", children: [
+        presetRx.map(({ p: p2, n: n2 }) => /* @__PURE__ */ u$2(NavRow, { title: p2, sub: `${n2} 条正则`, trailing: p2 === cur ? /* @__PURE__ */ u$2(Tag, { tone: "accent", children: "正在用" }) : void 0, onClick: () => openDetail({ kind: "preset", name: p2 }, back) }, p2)),
+        !presetRx.length && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "没有。" })
+      ] })
+    ] })
+  ] }) });
+}
+function PluginsPage() {
+  return /* @__PURE__ */ u$2("div", { class: "rbt-page", children: /* @__PURE__ */ u$2(Section, { title: "插件", hint: "对所有卡生效；点名字看作者和链接", children: /* @__PURE__ */ u$2(PluginList, {}) }) });
+}
+function BackupPage() {
+  void archiveVersion.value;
+  const ov = buildOverview();
+  const s2 = settings();
+  const fileRef = A$1(null);
+  const [mode, setMode] = d$1("merge");
+  const backups = s2.worldBackups.slice(-8).reverse();
+  const pickFile = (m2) => {
+    setMode(m2);
+    fileRef.current?.click();
+  };
+  const onFile = async (e2) => {
+    const input = e2.currentTarget;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    try {
+      await importArchive(await file.text(), mode);
+    } catch (err) {
+      window.toastr?.error?.(err.message, "导入失败");
+    }
+  };
+  return /* @__PURE__ */ u$2("div", { class: "rbt-page", children: /* @__PURE__ */ u$2("div", { class: "rbt-page-cols", children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
+      /* @__PURE__ */ u$2(Section, { title: "导出和导入", children: [
+        /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "你在工具箱里填的东西——卡的来源和说明、推荐预设、记住的配置、正则归属，以及预设、世界书和插件的来源——都和酒馆设置存在一起。换电脑或想留个底时，可以导出成一个文件。" }),
+        /* @__PURE__ */ u$2("div", { class: "rbt-row", children: [
+          /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-primary", onClick: () => exportArchive(), children: "导出" }),
+          /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn", onClick: () => pickFile("merge"), children: "导入并合并" }),
+          /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn", onClick: () => pickFile("overwrite"), children: "导入并覆盖" }),
+          /* @__PURE__ */ u$2("input", { ref: fileRef, type: "file", accept: ".json,application/json", style: { display: "none" }, onChange: onFile })
+        ] }),
+        /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "合并：同一样东西留下较新的那份。覆盖：全部换成文件里的。" })
+      ] }),
+      ov.orphans.length > 0 && /* @__PURE__ */ u$2(Section, { title: "找不到卡的档案", hint: "卡可能被删了，或重新导入后换了文件名", children: ov.orphans.map((o2) => /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
+        /* @__PURE__ */ u$2("span", { children: [
+          "「",
+          o2.cardName,
+          "」"
+        ] }),
+        o2.candidates.map((c2) => /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", onClick: () => relink(o2.avatar, c2), children: [
+          "转给「",
+          c2,
+          "」"
+        ] }, c2)),
+        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-push", onClick: async () => {
+          if (await ctx().Popup?.show?.confirm?.("删除这份档案？", `「${o2.cardName}」的来源、说明和记住的配置都会删除。`)) dropRecord(o2.avatar);
+        }, children: "删除" })
+      ] }, o2.avatar)) })
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: /* @__PURE__ */ u$2(Section, { title: "世界书备份", hint: "用卡里的版本覆盖世界书之前，会自动备份旧的", children: [
+      backups.map((b2) => /* @__PURE__ */ u$2("div", { class: "rbt-link-row", title: `酒馆的 user/files 文件夹里：${b2.file}`, children: [
+        /* @__PURE__ */ u$2("span", { children: [
+          "「",
+          b2.world,
+          "」"
+        ] }),
+        /* @__PURE__ */ u$2("small", { class: "rbt-muted rbt-push", children: new Date(b2.at).toLocaleString() })
+      ] }, b2.file)),
+      !backups.length && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "还没有备份。" })
+    ] }) })
+  ] }) });
+}
+function DetailBody() {
+  const e2 = currentDetail();
+  return /* @__PURE__ */ u$2(S$1, { children: [
+    /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-back", onClick: goBack, children: [
+      /* @__PURE__ */ u$2("i", { class: "fa-solid fa-chevron-left" }),
+      " ",
+      e2.back
+    ] }),
+    e2.d.kind === "card" && /* @__PURE__ */ u$2(CardPage, { avatar: e2.d.avatar, embedded: true }),
+    e2.d.kind === "preset" && /* @__PURE__ */ u$2(PresetDetail, { name: e2.d.name }),
+    e2.d.kind === "world" && /* @__PURE__ */ u$2(WorldDetail, { name: e2.d.name })
+  ] });
+}
+function GlobalTabs() {
+  return /* @__PURE__ */ u$2("div", { class: "rbt-sheet-tabs", role: "tablist", children: GLOBAL_TABS.map((t2) => /* @__PURE__ */ u$2("button", { type: "button", role: "tab", class: globalTab.value === t2 ? "active" : "", onClick: () => setGlobalTab(t2), children: GLOBAL_TAB_LABELS[t2] }, t2)) });
+}
+function GlobalToolbox() {
+  void detailStack.value;
+  const t2 = globalTab.value;
+  if (currentDetail()) return /* @__PURE__ */ u$2(DetailBody, {});
+  if (t2 === "presets") return /* @__PURE__ */ u$2(PresetsPage, {});
+  if (t2 === "worlds") return /* @__PURE__ */ u$2(WorldsPage, {});
+  if (t2 === "regex") return /* @__PURE__ */ u$2(RegexPage, {});
+  if (t2 === "plugins") return /* @__PURE__ */ u$2(PluginsPage, {});
+  if (t2 === "backup") return /* @__PURE__ */ u$2(BackupPage, {});
+  return /* @__PURE__ */ u$2(Empty, { children: "没有这个标签。" });
+}
+function SheetHost() {
+  const open = sheetOpen.value;
+  h$2(() => {
+    if (!open) return;
+    const onKey = (e2) => {
+      if (e2.key !== "Escape") return;
+      if (document.querySelector("dialog[open]")) return;
+      closeSheet();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+  if (!open) return null;
+  const title = "全局工具箱";
+  return /* @__PURE__ */ u$2(S$1, { children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-sheet-backdrop", onMouseDown: () => closeSheet() }),
+    /* @__PURE__ */ u$2("section", { class: "rbt-sheet rbt-scope", role: "dialog", "aria-label": title, children: [
+      /* @__PURE__ */ u$2("header", { class: "rbt-sheet-bar", children: [
+        /* @__PURE__ */ u$2("span", { class: "rbt-sheet-title", children: [
+          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-globe fa-fw" }),
+          title
+        ] }),
+        /* @__PURE__ */ u$2(GlobalTabs, {}),
+        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-sheet-close", title: "关闭（Esc）", "aria-label": "关闭", onClick: () => closeSheet(), children: "✕" })
+      ] }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-sheet-body", children: /* @__PURE__ */ u$2(GlobalToolbox, {}) })
+    ] })
+  ] });
+}
 const VIEW_IDS = Object.keys(VIEW_LABELS);
 function addMenuButton() {
   const menu = document.getElementById("extensionsMenu");
@@ -5315,7 +5848,8 @@ function addSettingsDrawer() {
       </div>
       <div class="inline-drawer-content">
         <div class="flex-container flexGap5">
-          ${VIEW_IDS.map((v2) => `<div class="menu_button" data-view="${v2}">${VIEW_LABELS[v2]}</div>`).join("")}
+          ${VIEW_IDS.filter((v2) => v2 !== "global").map((v2) => `<div class="menu_button" data-view="${v2}">${VIEW_LABELS[v2]}</div>`).join("")}
+          ${GLOBAL_TABS.map((t2) => `<div class="menu_button" data-gtab="${t2}">全局 · ${GLOBAL_TAB_LABELS[t2]}</div>`).join("")}
         </div>
         <label class="checkbox_label"><input type="checkbox" id="rbt_shell_switch" /> 三栏界面（电脑上用左栏和导航条代替酒馆原来的顶栏）</label>
         <label class="checkbox_label"><input type="checkbox" id="rbt_auto_switch" /> 换卡时自动切换世界书、正则和预设（关掉后只提醒）</label>
@@ -5325,6 +5859,7 @@ function addSettingsDrawer() {
     </div>`;
   host.appendChild(wrap);
   wrap.querySelectorAll("[data-view]").forEach((b2) => b2.addEventListener("click", () => openView(b2.dataset.view)));
+  wrap.querySelectorAll("[data-gtab]").forEach((b2) => b2.addEventListener("click", () => openGlobal(b2.dataset.gtab)));
   const bind = (id, get, set) => {
     const cb = wrap.querySelector(`#${id}`);
     cb.checked = get();
@@ -5355,12 +5890,13 @@ function addSlashCommand() {
           setShellEnabled(!shellOn.value);
           return "";
         }
-        const v2 = VIEW_IDS.find((x2) => x2 === arg);
-        if (v2) openView(v2);
+        const r2 = arg ? resolveView(arg) : null;
+        if (r2?.view === "global") openGlobal(r2.tab);
+        else if (r2) openView(r2.view);
         else panelOpen.value = !panelOpen.value;
         return "";
       },
-      helpString: "打开/关闭 RedBird 工具箱。参数：flow（信息流）/ vars（变量）/ card（角色档案）/ global（全局）/ maintain（维护）；/rbt shell 开关三栏外壳。"
+      helpString: "打开/关闭 RedBird 工具箱。参数：card（角色档案）/ flow（信息流）/ vars（变量）/ presets、worlds、regex、plugins、backup（全局工具箱的各标签）；/rbt shell 开关三栏界面。"
     }));
   } catch (e2) {
     console.warn("[RedBird] slash command registration failed", e2);
@@ -5374,7 +5910,11 @@ async function init() {
       for (const k2 of openDrawers.value) closeDrawer(k2);
     }
   });
-  const legacy = (tab) => openView(tab === "env" || tab === "cards" ? "card" : tab);
+  const legacy = (tab) => {
+    const r2 = resolveView(tab);
+    if (r2?.view === "global") openGlobal(r2.tab);
+    else if (r2) openView(r2.view);
+  };
   installFlowCapture();
   installVarsWatch();
   installEnvWatch(legacy);
@@ -5387,7 +5927,10 @@ async function init() {
   installRecentWatch();
   installCharactersWatch();
   openDrawers.subscribe((open) => {
-    if (open.length && sheetView.value) closeSheet$1();
+    if (open.length && sheetOpen.value) closeSheet();
+  });
+  shellActive.subscribe((on) => {
+    if (!on && sheetOpen.value) closeSheet();
   });
   const onSwitch = async () => {
     try {
@@ -5411,7 +5954,7 @@ async function init() {
   addMenuButton();
   addSettingsDrawer();
   addSlashCommand();
-  window.RedBirdTools = { captures, openPanel, openView, setShellEnabled };
+  window.RedBirdTools = { captures, openPanel, openView, openGlobal, setShellEnabled };
   console.log("[RedBird] 工具箱已加载");
 }
 const start = () => {

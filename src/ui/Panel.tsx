@@ -3,8 +3,7 @@ import { useEffect } from 'preact/hooks';
 import { exportDiagnostics } from '../tools/diag';
 import { FlowView } from './FlowView';
 import { CardPage } from './pages/CardPage';
-import { GlobalPage } from './pages/GlobalPage';
-import { MaintainPage } from './pages/MaintainPage';
+import { GlobalTabs, GlobalToolbox } from './pages/GlobalToolbox';
 import { VarsView } from './VarsView';
 import { shellActive, VIEW_LABELS, type ViewId } from './views';
 
@@ -15,7 +14,7 @@ export const activeTab = signal<TabId>('flow');
 
 /** In shell mode the management views open as overlays, so the dock keeps only the watch-while-playing tabs. */
 function tabsNow(): TabId[] {
-  return shellActive.value ? ['card', 'flow', 'vars'] : ['card', 'flow', 'vars', 'global', 'maintain'];
+  return shellActive.value ? ['card', 'flow', 'vars'] : ['card', 'flow', 'vars', 'global'];
 }
 
 /**
@@ -99,7 +98,7 @@ export function Panel() {
         <span class="rbt-title" title={shellActive.value ? "聊天工具箱" : "RedBird 工具箱"}>🐦<span class="rbt-title-text">{shellActive.value ? ' 聊天工具箱' : ' RedBird 工具箱'}</span></span>
         <div class="rbt-tabs">
           {tabsNow().map((id) => (
-            <button key={id} class={activeTab.value === id ? 'active' : ''} onClick={() => { activeTab.value = id; }}>{VIEW_LABELS[id]}</button>
+            <button key={id} class={activeTab.value === id ? 'active' : ''} onClick={() => { activeTab.value = id; }}>{id === 'global' ? '全局' : VIEW_LABELS[id]}</button>
           ))}
         </div>
         <button class="rbt-close" title="导出诊断文件，用来排查问题" onClick={() => { void exportDiagnostics(); }}>⤓</button>
@@ -109,8 +108,7 @@ export function Panel() {
         {activeTab.value === 'flow' && <FlowView />}
         {activeTab.value === 'vars' && <VarsView />}
         {activeTab.value === 'card' && <CardPage />}
-        {activeTab.value === 'global' && <GlobalPage />}
-        {activeTab.value === 'maintain' && <MaintainPage />}
+        {activeTab.value === 'global' && <><div class="rbt-dock-subtabs"><GlobalTabs /></div><GlobalToolbox /></>}
       </div>
     </aside>
   );

@@ -78,3 +78,34 @@ export function SwitchRow({ label, detail, checked, onChange }: { label: Compone
     </div>
   );
 }
+
+/**
+ * 可点的一行。规则：整行可点、悬停整行变亮；结尾 › = 在工具箱里打开详情，↗ = 去酒馆面板或网页。
+ * 不可点的东西不用这个组件，也不用彩色文字。
+ */
+export function NavRow({ title, sub, img, trailing, external, onClick, hint }: {
+  title: ComponentChildren;
+  sub?: ComponentChildren;
+  img?: string;
+  trailing?: ComponentChildren;
+  external?: boolean;
+  onClick: () => void;
+  hint?: string;
+}) {
+  return (
+    <button type="button" class="rbt-navrow" onClick={onClick} title={hint}>
+      {img && <img class="rbt-navrow-img" src={img} alt="" loading="lazy" />}
+      <span class="rbt-navrow-main">
+        <span class="rbt-navrow-title">{title}</span>
+        {sub && <span class="rbt-navrow-sub">{sub}</span>}
+      </span>
+      {trailing && <span class="rbt-navrow-trail">{trailing}</span>}
+      <i class={`fa-solid ${external ? 'fa-arrow-up-right-from-square' : 'fa-chevron-right'} rbt-navrow-icon`} />
+    </button>
+  );
+}
+
+/** A small neutral tag (e.g. 正在用 / 全局开着). `tone` only adds a coloured dot. */
+export function Tag({ children, tone }: { children: ComponentChildren; tone?: 'ok' | 'warn' | 'bad' | 'accent' }) {
+  return <span class={`rbt-tag ${tone ? `tone-${tone}` : ''}`}>{children}</span>;
+}

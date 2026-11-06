@@ -20,7 +20,7 @@ import { installEnvWatch } from './tools/env/env';
 import { captures, installFlowCapture } from './tools/flow/capture';
 import { installVarsWatch } from './tools/vars/vars';
 import { Panel, openPanel, panelOpen } from './ui/Panel';
-import { closeSheet, configureViews, openView, sheetView, VIEW_LABELS, type ViewId } from './ui/views';
+import { closeSheet, configureViews, GLOBAL_TAB_LABELS, GLOBAL_TABS, openGlobal, openView, resolveView, sheetOpen, shellActive, VIEW_LABELS, type GlobalTab, type ViewId } from './ui/views';
 
 const VIEW_IDS = Object.keys(VIEW_LABELS) as ViewId[];
 
@@ -50,7 +50,8 @@ function addSettingsDrawer(): void {
       </div>
       <div class="inline-drawer-content">
         <div class="flex-container flexGap5">
-          ${VIEW_IDS.map((v) => `<div class="menu_button" data-view="${v}">${VIEW_LABELS[v]}</div>`).join('')}
+          ${VIEW_IDS.filter((v) => v !== 'global').map((v) => `<div class="menu_button" data-view="${v}">${VIEW_LABELS[v]}</div>`).join('')}
+          ${GLOBAL_TABS.map((t) => `<div class="menu_button" data-gtab="${t}">全局 · ${GLOBAL_TAB_LABELS[t]}</div>`).join('')}
         </div>
         <label class="checkbox_label"><input type="checkbox" id="rbt_shell_switch" /> 三栏界面（电脑上用左栏和导航条代替酒馆原来的顶栏）</label>
         <label class="checkbox_label"><input type="checkbox" id="rbt_auto_switch" /> 换卡时自动切换世界书、正则和预设（关掉后只提醒）</label>
@@ -60,6 +61,7 @@ function addSettingsDrawer(): void {
     </div>`;
   host.appendChild(wrap);
   wrap.querySelectorAll<HTMLElement>('[data-view]').forEach((b) => b.addEventListener('click', () => openView(b.dataset.view as ViewId)));
+  wrap.querySelectorAll<HTMLElement>('[data-gtab]').forEach((b) => b.addEventListener('click', () => openGlobal(b.dataset.gtab as GlobalTab)));
   const bind = (id: string, get: () => boolean, set: (v: boolean) => void) => {
     const cb = wrap.querySelector<HTMLInputElement>(`#${id}`)!;
     cb.checked = get();
@@ -80,12 +82,13 @@ function addSlashCommand(): void {
       callback: (_args: unknown, tab: string) => {
         const arg = String(tab ?? '').trim();
         if (arg === 'shell') { setShellEnabled(!shellOn.value); return ''; }
-        const v = VIEW_IDS.find((x) => x === arg);
-        if (v) openView(v);
+        const r = arg ? resolveView(arg) : null;
+        if (r?.view === 'global') openGlobal(r.tab);
+        else if (r) openView(r.view);
         else panelOpen.value = !panelOpen.value;
         return '';
       },
-      helpString: '打开/关闭 RedBird 工具箱。参数：flow（信息流）/ vars（变量）/ card（角色档案）/ global（全局）/ maintain（维护）；/rbt shell 开关三栏外壳。',
+      helpString: '打开/关闭 RedBird 工具箱。参数：card（角色档案）/ flow（信息流）/ vars（变量）/ presets、worlds、regex、plugins、backup（全局工具箱的各标签）；/rbt shell 开关三栏界面。',
     }));
   } catch (e) {
     console.warn('[RedBird] slash command registration failed', e);
@@ -100,7 +103,7 @@ async function init(): Promise<void> {
     beforeSheet: () => { for (const k of openDrawers.value) closeDrawer(k); },
   });
   // Older call sites still name the former pages.
-  const legacy = (tab: string) => openView(tab === 'env' || tab === 'cards' ? 'card' : (tab as ViewId));
+  const legacy = (tab: string) => { const r = resolveView(tab); if (r?.view === 'global') openGlobal(r.tab); else if (r) openView(r.view); };
 
   installFlowCapture();
   installVarsWatch();
@@ -117,7 +120,9 @@ async function init(): Promise<void> {
   installCharactersWatch();
 
   // One focus at a time: an ST panel opening closes our overlay.
-  openDrawers.subscribe((open) => { if (open.length && sheetView.value) closeSheet(); });
+  openDrawers.subscribe((open) => { if (open.length && sheetOpen.value) closeSheet(); });
+  // 窄屏 / 关掉三栏时没有 overlay，全局工具箱改在侧边栏的标签里
+  shellActive.subscribe((on) => { if (!on && sheetOpen.value) closeSheet(); });
 
   // 换卡自动套用配套环境。必须排在所有监听者最前面并等它做完：酒馆按顺序 await 每个监听者，
   // 这样酒馆助手 / MVU 在初始化变量时看到的已经是切换好的世界书和预设。
@@ -141,7 +146,7 @@ async function init(): Promise<void> {
   addSettingsDrawer();
   addSlashCommand();
   // Debug handle for the browser console.
-  (window as unknown as { RedBirdTools: unknown }).RedBirdTools = { captures, openPanel, openView, setShellEnabled };
+  (window as unknown as { RedBirdTools: unknown }).RedBirdTools = { captures, openPanel, openView, openGlobal, setShellEnabled };
   console.log('[RedBird] 工具箱已加载');
 }
 

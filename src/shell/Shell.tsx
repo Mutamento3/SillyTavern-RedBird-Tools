@@ -6,7 +6,7 @@ import { signal } from '@preact/signals';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { ctx, currentCharacter, saveSettings, settings } from '../st/st';
 import { panelOpen } from '../ui/Panel';
-import { openView, sheetView, shellActive } from '../ui/views';
+import { openGlobal, sheetOpen, shellActive } from '../ui/views';
 import { DRAWERS, drawerButtonHandlers, openDrawers, type DrawerKey } from './drawers';
 import { ToolboxButton } from './EnvStatus';
 import { HomeGallery } from './Home';
@@ -101,7 +101,7 @@ function DrawerButton({ k, compact, label, title, dot }: { k: DrawerKey; compact
 /** Left-column button for the toolbox's own 「全局」 overlay. */
 function GlobalButton() {
   return (
-    <button type="button" class={`rbt-gtool ${sheetView.value ? 'active' : ''}`} title="全局工具箱：对所有卡都生效的世界书、正则、预设、插件，以及维护" onClick={() => openView('global')}>
+    <button type="button" class={`rbt-gtool ${sheetOpen.value ? 'active' : ''}`} title="全局工具箱：预设、世界书、正则、插件和备份" onClick={() => openGlobal()}>
       <i class="fa-solid fa-globe fa-fw" />
       <span>全局工具箱</span>
     </button>
