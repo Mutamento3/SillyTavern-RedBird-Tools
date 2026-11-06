@@ -8,6 +8,7 @@ import { cardInfo, currentPresetName, importCardWorld, presetApi, setRecommended
 import { enablePluginsAndReload, planFor } from '../tools/env/autoapply';
 import { currentBookScopes } from '../tools/flow/capture';
 import { buildEnvReport } from '../tools/env/env';
+import { currentModel, modelLabel, modelsApply, sameModel, setModel } from '../tools/model';
 import { panelOpen } from '../ui/Panel';
 import { chatTick } from './Shell';
 
@@ -67,6 +68,12 @@ function buildSections(char: Any): { sections: Section[]; issues: number } {
   }
   const presetRx = report.items.find((i) => i.id === 'rx:p');
   if (presetRx) pr.push({ level: 'info', text: presetRx.name, detail: '预设自带的正则，跟着预设走' });
+  // 推荐模型：这张卡的，否则它推荐的预设的
+  const wantModel = settings().profiles[info.avatar]?.model ?? (rec ? settings().presetInfo[rec.name]?.model : undefined);
+  const nowModel = currentModel();
+  if (wantModel && modelsApply() && !sameModel(wantModel, nowModel)) {
+    pr.push({ level: 'warn', text: `现在的模型是 ${nowModel ? modelLabel(nowModel) : '（没选）'}`, detail: `这张卡推荐 ${modelLabel(wantModel)}`, action: { label: '换上推荐的', run: async () => { await setModel(wantModel); bump(); } } });
+  }
   sections.push({ title: '预设', lines: pr });
 
   // ---- 正则

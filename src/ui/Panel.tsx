@@ -3,7 +3,7 @@ import { useEffect } from 'preact/hooks';
 import { exportDiagnostics } from '../tools/diag';
 import { FlowView } from './FlowView';
 import { CardPage } from './pages/CardPage';
-import { GlobalTabs, GlobalToolbox } from './pages/GlobalToolbox';
+import { DropHint, GlobalTabs, GlobalToolbox, ImportButton, useDropImport } from './pages/GlobalToolbox';
 import { VarsView } from './VarsView';
 import { shellActive, VIEW_LABELS, type ViewId } from './views';
 
@@ -108,8 +108,20 @@ export function Panel() {
         {activeTab.value === 'flow' && <FlowView />}
         {activeTab.value === 'vars' && <VarsView />}
         {activeTab.value === 'card' && <CardPage />}
-        {activeTab.value === 'global' && <><div class="rbt-dock-subtabs"><GlobalTabs /></div><GlobalToolbox /></>}
+        {activeTab.value === 'global' && <DockGlobal />}
       </div>
     </aside>
+  );
+}
+
+/** 全局工具箱 inside the dock (phones / no shell): sub-tabs + 导入, and drop-to-import. */
+function DockGlobal() {
+  const drop = useDropImport();
+  return (
+    <div class="rbt-dock-global" {...drop.handlers}>
+      <div class="rbt-dock-subtabs"><GlobalTabs /><ImportButton /></div>
+      <GlobalToolbox />
+      {drop.dragging && <DropHint />}
+    </div>
   );
 }

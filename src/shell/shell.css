@@ -928,3 +928,26 @@ body.rbt-shell #qr--bar #qr--popoutTrigger {
 /* 酒馆的 .menu_button 是 width: min-content，中文会一个字一行；按钮文字不换行 */
 #rbt_settings .menu_button,
 body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
+
+/* ===== 聊天里的状态栏（Mac 菜单栏右上角那种）：预设、模型 ===== */
+@media (min-width: 1001px) {
+  .rbt-statusbar { display: flex; align-items: center; gap: 2px; flex: 0 1 auto; min-width: 0; margin-right: 6px; }
+  .rbt-stat {
+    position: relative; display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 190px;
+    padding: 4px 9px; border: 0; border-radius: 6px; background: transparent;
+    color: var(--rbd-text2, #9ca1aa); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
+  }
+  .rbt-stat:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.06)); color: var(--SmartThemeBodyColor); }
+  .rbt-stat i { flex: none; font-size: 11px; opacity: 0.8; }
+  .rbt-stat-text { overflow: hidden; text-overflow: ellipsis; }
+  .rbt-stat.warn { color: var(--SmartThemeBodyColor); }
+  .rbt-stat-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: #e0a040; }
+  /* 窄的时候：只留预设（最常需要确认的），模型名藏到提示里 */
+  @container (max-width: 760px) {
+    .rbt-stat { max-width: 130px; }
+    .rbt-statusbar .rbt-stat:nth-child(2) .rbt-stat-text { display: none; }
+  }
+  @container (max-width: 560px) {
+    .rbt-statusbar .rbt-stat .rbt-stat-text { display: none; }
+  }
+}

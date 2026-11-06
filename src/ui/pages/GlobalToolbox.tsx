@@ -35,7 +35,11 @@ import { openDrawer } from '../../shell/drawers';
 import { openBookInEditor } from '../../shell/worldNote';
 import { Empty, NavRow, SwitchRow, Tag, Toggle } from '../common';
 import { SourceEditor } from '../SourceEditor';
+import { ModelPicker } from '../ModelPicker';
+import { currentModel, modelLabel, presetBindsConnection, presetConnection, SOURCE_LABEL } from '../../tools/model';
 import { currentDetail, detailStack, GLOBAL_TAB_LABELS, GLOBAL_TABS, globalTab, goBack, openDetail, setGlobalTab, type GlobalTab } from '../views';
+import { installPlugin } from '../../tools/importer';
+import { openImport } from '../ImportDialog';
 import { CardPage } from './CardPage';
 import { AddGlobalWorld, GlobalRegexList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
 import { Section } from './parts';
@@ -92,11 +96,13 @@ function SeriesSuggestions({ kind, names }: { kind: SourceKind; names: string[] 
  * 按系列分组的列表。平时每行是 ›（打开详情）；点「整理」后每行变成勾选框，
  * 选几个、写一个系列名，就能归到一组或移出。
  */
-function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filters }: {
+function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filters, defaultFilter = 0 }: {
   kind: SourceKind;
   names: string[];
   /** Optional quick filters shown as a segmented control (first one = all). */
   filters?: { label: string; test: (n: string) => boolean }[];
+  /** Index of the filter selected when the list opens. */
+  defaultFilter?: number;
   back: string;
   sub: (n: string) => string;
   trail?: (n: string) => preact.ComponentChildren;
@@ -106,7 +112,7 @@ function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filter
   const [organizing, setOrganizing] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [series, setSeriesName] = useState('');
-  const [fi, setFi] = useState(0);
+  const [fi, setFi] = useState(defaultFilter);
   const names = filters ? allNames.filter(filters[fi]?.test ?? (() => true)) : allNames;
   const groups = groupBySeries(kind, names);
   const listId = `rbt-org-${kind}`;
@@ -193,6 +199,17 @@ function SourceSection({ kind, id }: { kind: SourceKind; id: string }) {
   );
 }
 
+/** Up to three overlapping card avatars, then +N. */
+function AvatarStack({ cards }: { cards: CardInfo[] }) {
+  if (!cards.length) return null;
+  return (
+    <span class="rbt-avstack" title={cards.map((c) => c.name).join('、')}>
+      {cards.slice(0, 3).map((c) => <img key={c.avatar} src={thumbnailUrl(c.avatar)} alt="" loading="lazy" />)}
+      {cards.length > 3 && <span class="rbt-avstack-more">+{cards.length - 3}</span>}
+    </span>
+  );
+}
+
 function CardRows({ cards, back, empty }: { cards: CardInfo[]; back: string; empty: string }) {
   if (!cards.length) return <small class="rbt-muted">{empty}</small>;
   return <>{cards.map((c) => <NavRow key={c.avatar} img={thumbnailUrl(c.avatar)} title={c.name} onClick={() => openDetail({ kind: 'card', avatar: c.avatar }, back)} />)}</>;
@@ -230,7 +247,8 @@ function PresetsPage() {
               const v = sourceFor('preset', n);
               const rec = ov.byPreset.get(n);
               const rx = presetRegexCount(n);
-              return [v.version && `版本 ${v.version}`, v.author && `作者 ${v.author}`, rec?.length && `${rec.length} 张卡推荐`, rx && `${rx} 条正则`].filter(Boolean).join(' · ');
+              const m = settings().presetInfo[n]?.model;
+              return [v.version && `版本 ${v.version}`, m && `模型 ${m.model}`, v.author && `作者 ${v.author}`, rec?.length && `${rec.length} 张卡推荐`, rx && `${rx} 条正则`].filter(Boolean).join(' · ');
             }}
             trail={(n) => (n === cur ? <Tag tone="accent">正在用</Tag> : null)}
           />
@@ -262,6 +280,7 @@ function PresetDetail({ name }: { name: string }) {
           <VersionSection kind="preset" id={name} />
         </div>
         <div class="rbt-page-group">
+          <PresetModelSection name={name} isCurrent={name === cur} />
           <Section title="推荐它的卡" hint="切到这些卡时会自动换上这个预设">
             <CardRows cards={ov.byPreset.get(name) ?? []} back={name} empty="还没有卡推荐它。在角色档案的「推荐预设」里设置。" />
           </Section>
@@ -319,7 +338,13 @@ function WorldsPage() {
               { label: '已绑定角色', test: (n) => ov.byWorld.has(n) },
               { label: '未绑定角色', test: (n) => !ov.byWorld.has(n) },
             ]}
-            trail={(n) => (scopes.global.has(n) ? <Tag tone="warn">全局开着</Tag> : null)}
+            defaultFilter={2}
+            trail={(n) => (
+              <>
+                {scopes.global.has(n) && <Tag tone="warn">全局开着</Tag>}
+                <AvatarStack cards={ov.byWorld.get(n) ?? []} />
+              </>
+            )}
           />
         </div>
       </div>
@@ -408,7 +433,10 @@ function RegexPage() {
 function PluginsPage() {
   return (
     <div class="rbt-page">
-      <Section title="插件" hint="对所有卡生效；点名字看作者和链接">
+      <Section title="安装插件" hint="粘贴插件的 Git 链接，用酒馆自己的安装流程">
+        <InstallPlugin />
+      </Section>
+      <Section title="已安装" hint="对所有卡生效；点名字看作者和链接">
         <PluginList />
       </Section>
     </div>
@@ -504,4 +532,103 @@ export function GlobalToolbox() {
   if (t === 'plugins') return <PluginsPage />;
   if (t === 'backup') return <BackupPage />;
   return <Empty>没有这个标签。</Empty>;
+}
+
+// ------------------------------------------------------- quick import ---
+
+const ACCEPT = '.json,.settings,.lorebook,.png,.charx,.byaf,.yaml,.yml';
+
+async function runImport(files: File[]): Promise<void> {
+  await openImport(files);
+}
+
+/** 「导入」 in the toolbox header: pick files, they go to the right ST importer. */
+/** 「导入」: pick files → the import window asks what to do with each. `big`: the left-column style. */
+export function ImportButton({ big }: { big?: boolean } = {}) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <button type="button" class={big ? 'rbt-gtool rbt-gtool-import' : 'rbt-btn rbt-btn-small rbt-import-btn'} title="导入预设、世界书、正则或角色卡，也可以直接把文件拖进来" onClick={() => ref.current?.click()}>
+        <i class="fa-solid fa-file-import" /> 导入
+      </button>
+      <input ref={ref} type="file" multiple accept={ACCEPT} style={{ display: 'none' }} onChange={(e) => {
+        const input = e.currentTarget as HTMLInputElement;
+        const files = [...(input.files ?? [])];
+        input.value = '';
+        void runImport(files);
+      }} />
+    </>
+  );
+}
+
+/** Drag files anywhere over the toolbox to import them. */
+export function useDropImport(): { dragging: boolean; handlers: Record<string, (e: DragEvent) => void> } {
+  const [dragging, setDragging] = useState(false);
+  const depth = useRef(0);
+  const hasFiles = (e: DragEvent) => [...(e.dataTransfer?.types ?? [])].includes('Files');
+  return {
+    dragging,
+    handlers: {
+      onDragEnter: (e) => { if (!hasFiles(e)) return; e.preventDefault(); depth.current++; setDragging(true); },
+      onDragOver: (e) => { if (!hasFiles(e)) return; e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; },
+      onDragLeave: () => { depth.current = Math.max(0, depth.current - 1); if (!depth.current) setDragging(false); },
+      onDrop: (e) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        e.stopPropagation(); // ST's own page-wide drop handler would try to import it a second time
+        depth.current = 0;
+        setDragging(false);
+        void runImport([...(e.dataTransfer?.files ?? [])]);
+      },
+    },
+  };
+}
+
+export function DropHint() {
+  return (
+    <div class="rbt-drop-hint">
+      <i class="fa-solid fa-file-import" />
+      <b>松开就导入</b>
+      <span>预设、世界书、正则、角色卡都可以，会自动认出是哪种</span>
+    </div>
+  );
+}
+
+/** 插件 tab: install from a Git link. */
+function InstallPlugin() {
+  const [url, setUrl] = useState('');
+  const [busy, setBusy] = useState(false);
+  const ok = /^https?:\/\/\S+$/i.test(url.trim());
+  const go = async () => {
+    if (!ok) return;
+    setBusy(true);
+    try { if (await installPlugin(url)) setUrl(''); } finally { setBusy(false); }
+  };
+  return (
+    <div class="rbt-form-row">
+      <input class="text_pole rbt-input" placeholder="插件的 Git 链接，比如 https://github.com/作者/插件名" value={url} onInput={(e) => setUrl((e.currentTarget as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') void go(); }} />
+      <button type="button" class="rbt-btn rbt-btn-primary" disabled={!ok || busy} onClick={go}>{busy ? '正在安装…' : '安装'}</button>
+    </div>
+  );
+}
+
+/** 预设详情：推荐模型，以及预设文件里自己带的连接（「预设绑定连接」开着时换过去会生效）。 */
+function PresetModelSection({ name, isCurrent }: { name: string; isCurrent: boolean }) {
+  void sourcesTick.value;
+  const own = presetConnection(name);
+  const cur = currentModel();
+  const bound = presetBindsConnection();
+  return (
+    <Section title="推荐模型" hint="推荐了这个预设、又没单独指定模型的卡，换过去时会用这个模型">
+      <ModelPicker value={settings().presetInfo[name]?.model} onChange={(m) => updateSource('preset', name, { model: m ?? undefined })} offerSwitch={isCurrent} />
+      {own && (
+        <div class={bound && cur && own.source !== cur.source ? 'rbt-warn' : 'rbt-hint'}>
+          这个预设文件自己带着连接：{own.model ? modelLabel(own) : SOURCE_LABEL[own.source] ?? own.source}。
+          {bound
+            ? own.source !== cur?.source ? ' 酒馆开着「预设绑定连接」，换到这个预设时 API 也会跟着换过去。' : ' 酒馆开着「预设绑定连接」，换到这个预设时会用它带的模型（设了推荐模型的话，会再换成推荐的）。'
+            : ' 酒馆没开「预设绑定连接」，所以换预设不会改 API 和模型。'}
+        </div>
+      )}
+    </Section>
+  );
 }

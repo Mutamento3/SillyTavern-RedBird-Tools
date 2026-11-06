@@ -7,7 +7,7 @@ import { buildEnvReport } from './env/env';
 import { captures } from './flow/capture';
 import { collectFloors, floorDiffs } from './vars/vars';
 
-function toBase64Utf8(text: string): string {
+export function toBase64Utf8(text: string): string {
   const bytes = new TextEncoder().encode(text);
   let bin = '';
   const CHUNK = 0x8000;

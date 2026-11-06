@@ -6,6 +6,7 @@
 import { signal } from '@preact/signals';
 import type { CardLink, SourceRecord } from '../core/cards';
 import { loaded, saveSettings, settings } from '../st/st';
+import { markDeleted } from '../st/store';
 
 export type SourceKind = 'preset' | 'plugin' | 'world';
 
@@ -64,7 +65,7 @@ export function updateSource(kind: SourceKind, key: string, patch: Partial<Omit<
   const all = store(kind);
   const cur = all[key] ?? { author: '', links: [], updatedAt: '' };
   const next = { ...cur, ...patch, updatedAt: new Date().toISOString() };
-  if (!next.author.trim() && !next.links.length && !next.series?.trim() && !next.version?.trim() && !next.notes?.trim()) delete all[key];
+  if (!next.author.trim() && !next.links.length && !next.series?.trim() && !next.version?.trim() && !next.notes?.trim() && !next.model) { delete all[key]; markDeleted(kind === 'preset' ? 'presetInfo' : kind === 'world' ? 'worldSources' : 'pluginInfo', key); }
   else all[key] = next;
   saveSettings();
   sourcesTick.value++;

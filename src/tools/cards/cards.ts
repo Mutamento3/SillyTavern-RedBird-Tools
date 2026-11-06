@@ -25,12 +25,14 @@ import {
   type BookDiff,
   type CardRecord,
   type Contact,
+  type ModelChoice,
   type OrphanRecord,
   type RegexOwner,
   type RequiredExt,
 } from '../../core/cards';
 import { charaFileName, ctx, currentCharacter, loaded, runSlash, saveSettings, settings, slashQuote, thCharacterScriptsEnabled, toast, type Any, type EnvProfile } from '../../st/st';
 import { refreshEnv, thScripts } from '../env/env';
+import { markDeleted, syncStore } from '../../st/store';
 
 /** Avatar of the card shown in 档案; null = follow the current card. */
 export const archiveTarget = signal<string | null>(null);
@@ -190,7 +192,7 @@ export function requiredExtensions(info: CardInfo): { req: RequiredExt; reason?:
 export function updateRecord(avatar: string, cardName: string, patch: Partial<CardRecord>): void {
   const s = settings();
   const next: CardRecord = { ...(s.cards[avatar] ?? emptyRecord(cardName)), ...patch, cardName, updatedAt: new Date().toISOString() };
-  if (isRecordEmpty(next)) delete s.cards[avatar];
+  if (isRecordEmpty(next)) { delete s.cards[avatar]; markDeleted('cards', avatar); }
   else s.cards[avatar] = next;
   saveSettings();
   bump();
@@ -232,13 +234,29 @@ export function presetRegexCount(name: string): number {
 }
 
 /** Shared with the remembered card environment: the recommended preset is the `preset` part of the remembered environment. */
+/** The card's own recommended model (null = none; then its recommended preset's model is used). */
+export function setCardModel(avatar: string, cardName: string, model: ModelChoice | null): void {
+  const s = settings();
+  const p: EnvProfile = s.profiles[avatar] ?? { savedAt: new Date().toISOString(), cardName };
+  if (model) p.model = model;
+  else delete p.model;
+  p.cardName = cardName;
+  p.updatedAt = new Date().toISOString();
+  if (!p.preset && !p.model && !p.globalWorlds && !p.globalRegexEnabled) { delete s.profiles[avatar]; markDeleted('profiles', avatar); }
+  else s.profiles[avatar] = p;
+  saveSettings();
+  refreshEnv();
+  bump();
+}
+
 export function setRecommendedPreset(avatar: string, cardName: string, name: string | null): void {
   const s = settings();
   const p: EnvProfile = s.profiles[avatar] ?? { savedAt: new Date().toISOString(), cardName };
   if (name) p.preset = { api: presetApi(), name };
   else delete p.preset;
   p.cardName = cardName;
-  if (!p.preset && !p.globalWorlds && !p.globalRegexEnabled) delete s.profiles[avatar];
+  p.updatedAt = new Date().toISOString();
+  if (!p.preset && !p.model && !p.globalWorlds && !p.globalRegexEnabled) { delete s.profiles[avatar]; markDeleted('profiles', avatar); }
   else s.profiles[avatar] = p;
   saveSettings();
   refreshEnv();
@@ -343,8 +361,8 @@ export function globalRegexScripts(): Any[] {
 
 export function setRegexOwner(id: string, owner: RegexOwner | null): void {
   const s = settings();
-  if (owner) s.regexOwners[id] = owner;
-  else delete s.regexOwners[id];
+  if (owner) s.regexOwners[id] = { ...owner, at: new Date().toISOString() };
+  else { delete s.regexOwners[id]; markDeleted('regexOwners', id); }
   saveSettings();
   refreshEnv();
   bump();
@@ -390,9 +408,9 @@ export function buildOverview(): Overview {
 export function relink(oldAvatar: string, newAvatar: string): void {
   const s = settings();
   const f = findChar(newAvatar);
-  if (s.cards[oldAvatar]) { s.cards[newAvatar] = { ...s.cards[oldAvatar], cardName: f?.char?.name ?? s.cards[oldAvatar].cardName }; delete s.cards[oldAvatar]; }
-  if (s.profiles[oldAvatar]) { s.profiles[newAvatar] = s.profiles[oldAvatar]; delete s.profiles[oldAvatar]; }
-  for (const o of Object.values(s.regexOwners)) if (o.kind === 'card' && o.key === oldAvatar) o.key = newAvatar;
+  if (s.cards[oldAvatar]) { s.cards[newAvatar] = { ...s.cards[oldAvatar], cardName: f?.char?.name ?? s.cards[oldAvatar].cardName }; delete s.cards[oldAvatar]; markDeleted('cards', oldAvatar); s.cards[newAvatar].updatedAt = new Date().toISOString(); }
+  if (s.profiles[oldAvatar]) { s.profiles[newAvatar] = { ...s.profiles[oldAvatar], updatedAt: new Date().toISOString() }; delete s.profiles[oldAvatar]; markDeleted('profiles', oldAvatar); }
+  for (const o of Object.values(s.regexOwners)) if (o.kind === 'card' && o.key === oldAvatar) { o.key = newAvatar; o.at = new Date().toISOString(); }
   saveSettings();
   refreshEnv();
   bump();
@@ -402,6 +420,8 @@ export function dropRecord(avatar: string): void {
   const s = settings();
   delete s.cards[avatar];
   delete s.profiles[avatar];
+  markDeleted('cards', avatar);
+  markDeleted('profiles', avatar);
   saveSettings();
   refreshEnv();
   bump();
@@ -440,6 +460,8 @@ export async function importArchive(text: string, mode: 'merge' | 'overwrite'): 
   s.pluginInfo = mergeRecords(s.pluginInfo, inc.pluginInfo ?? {}, mode, (v) => v.updatedAt ?? '');
   s.worldSources = mergeRecords(s.worldSources, inc.worldSources ?? {}, mode, (v) => v.updatedAt ?? '');
   saveSettings();
+  // 覆盖导入：文件里的就是全部，直接写进工具箱自己的存档，不和旧的合并
+  if (mode === 'overwrite') { s.deleted = {}; void syncStore(true); }
   refreshEnv();
   bump();
   toast('success', `已导入 ${Object.keys(inc.cards).length} 张卡的档案（${mode === 'merge' ? '合并' : '覆盖'}）`, '角色档案');

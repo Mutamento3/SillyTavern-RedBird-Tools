@@ -16,6 +16,9 @@ export interface CardRecord {
   updatedAt: string;
 }
 
+/** A Chat Completion API (ST's chat_completion_source) and a model id on it. */
+export interface ModelChoice { source: string; model: string }
+
 /** Author and links for a preset or a plugin (tutorials, release posts…). */
 export interface SourceRecord {
   /** Empty = use what the plugin itself says (manifest). */
@@ -26,6 +29,8 @@ export interface SourceRecord {
   version?: string;
   /** What changed in this version, how to use it… */
   notes?: string;
+  /** Presets: the model to use with it. */
+  model?: ModelChoice;
   updatedAt: string;
 }
 
@@ -36,6 +41,8 @@ export interface RegexOwner {
   key: string;
   /** what to show, e.g. the card name */
   label: string;
+  /** when it was set (for merging copies) */
+  at?: string;
 }
 
 export function emptyRecord(cardName: string): CardRecord {
@@ -93,6 +100,14 @@ export function splitLinks(text: string): TextPart[] {
   }
   if (last < text.length) parts.push({ text: text.slice(last) });
   return parts;
+}
+
+/** "discord.com/channels/…" → "https://discord.com/channels/…"; anything that is not a link → "". */
+export function normalizeUrl(s: string): string {
+  const t = s.trim();
+  if (!t) return '';
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(t) ? t : (/^[^\s/]+\.[^\s/]+/.test(t) ? `https://${t}` : t);
+  return isHttpUrl(withScheme) ? withScheme : '';
 }
 
 export function isHttpUrl(s: string): boolean {

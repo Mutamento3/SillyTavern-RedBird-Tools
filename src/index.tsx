@@ -8,15 +8,18 @@ import { render } from 'preact';
 import './style.css';
 import './shell/shell.css';
 import { ctx, preloadModules, saveSettings, settings } from './st/st';
+import { installStore } from './st/store';
 import { installCharactersWatch } from './shell/characters';
 import { closeDrawer, installDrawers, openDrawers } from './shell/drawers';
 import { installWorldNote } from './shell/worldNote';
 import { installRecentWatch } from './shell/recent';
 import { SheetHost } from './shell/Sheet';
+import { ImportDialog } from './ui/ImportDialog';
 import { Shell, initShellState, setShellEnabled, shellOn } from './shell/Shell';
 import { installCardsWatch } from './tools/cards/cards';
 import { autoApplyOnSwitch } from './tools/env/autoapply';
-import { installEnvWatch } from './tools/env/env';
+import { installEnvWatch, refreshEnv } from './tools/env/env';
+import { refreshStatus } from './shell/EnvStatus';
 import { captures, installFlowCapture } from './tools/flow/capture';
 import { installVarsWatch } from './tools/vars/vars';
 import { Panel, openPanel, panelOpen } from './ui/Panel';
@@ -97,6 +100,8 @@ function addSlashCommand(): void {
 
 async function init(): Promise<void> {
   await preloadModules();
+  // 工具箱自己的存档：先把 settings.json 里旧了的部分补回来（见 st/store.ts）
+  await installStore();
 
   configureViews({
     openInDock: (v) => openPanel(v),
@@ -133,6 +138,12 @@ async function init(): Promise<void> {
   if (typeof es.makeFirst === 'function') es.makeFirst(ctx().eventTypes.CHAT_CHANGED, onSwitch);
   else es.on(ctx().eventTypes.CHAT_CHANGED, onSwitch);
 
+  // 模型 / API / 预设在酒馆里改了：刷新「需要注意」和工具箱按钮上的小点
+  for (const ev of ['CHATCOMPLETION_MODEL_CHANGED', 'CHATCOMPLETION_SOURCE_CHANGED', 'OAI_PRESET_CHANGED_AFTER', 'WORLDINFO_SETTINGS_UPDATED']) {
+    const name = ctx().eventTypes[ev];
+    if (name) es.on(name, () => { refreshStatus(); refreshEnv(); });
+  }
+
   // 世界书面板：标题栏列出实际加载的书（可点），换卡后第一次打开时自动打开这张卡的书
   installWorldNote();
 
@@ -140,7 +151,7 @@ async function init(): Promise<void> {
   const shellRoot = document.createElement('div');
   shellRoot.id = 'rbt-shell-root';
   document.body.appendChild(shellRoot);
-  render(<><Shell /><SheetHost /></>, shellRoot);
+  render(<><Shell /><SheetHost /><ImportDialog /></>, shellRoot);
 
   addMenuButton();
   addSettingsDrawer();

@@ -4,7 +4,7 @@
 import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
-import { isHttpUrl, splitLinks, type BookDiff, type RegexOwner } from '../../core/cards';
+import { normalizeUrl, splitLinks, type BookDiff, type RegexOwner } from '../../core/cards';
 import { ctx, currentCharacter, saveSettings, settings } from '../../st/st';
 import {
   allCharacters,
@@ -31,6 +31,7 @@ import {
   presetRegexCount,
   relink,
   requiredExtensions,
+  setCardModel,
   setRecommendedPreset,
   setRegexOwner,
   switchPreset,
@@ -42,6 +43,7 @@ import {
 } from '../../tools/cards/cards';
 import { Chip } from '../common';
 import { SourceLine } from '../SourceEditor';
+import { ModelPicker } from '../ModelPicker';
 
 export const OK = '#2fbf8f';
 export const WARN = '#f0a43a';
@@ -128,11 +130,11 @@ export function SourceSection({ info }: { info: CardInfo }) {
   const [url, setUrl] = useState('');
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
-  const urlOk = isHttpUrl(url);
+  const urlOk = !!normalizeUrl(url);
 
   const addLink = () => {
     if (!urlOk) return;
-    updateRecord(info.avatar, info.name, { links: [...links, { label: label.trim() || '链接', url: url.trim() }] });
+    updateRecord(info.avatar, info.name, { links: [...links, { label: label.trim() || '链接', url: normalizeUrl(url) }] });
     setLabel('');
     setUrl('');
   };
@@ -200,7 +202,7 @@ export function PresetSection({ info }: { info: CardInfo }) {
   const current = currentPresetName();
   const otherApi = rec && rec.api !== presetApi();
   return (
-    <Section title="推荐预设" hint="切到这张卡时自动换上">
+    <Section title="推荐预设和模型" hint="切到这张卡时自动换上">
       <div class="rbt-form-row">
         <select class="text_pole rbt-select" value={rec?.name ?? ''} onChange={(e) => setRecommendedPreset(info.avatar, info.name, (e.currentTarget as HTMLSelectElement).value || null)}>
           <option value="">不指定</option>
@@ -217,6 +219,15 @@ export function PresetSection({ info }: { info: CardInfo }) {
           <button class="rbt-btn rbt-btn-primary rbt-btn-small" onClick={() => switchPreset(rec.name)}>换上推荐的</button>
         </div>
       )}
+      <div class="rbt-card-sub">
+        <small class="rbt-muted">推荐模型：</small>
+        <ModelPicker
+          value={settings().profiles[info.avatar]?.model}
+          onChange={(m) => setCardModel(info.avatar, info.name, m)}
+          fallback={rec && settings().presetInfo[rec.name]?.model ? { text: '推荐预设的', model: settings().presetInfo[rec.name]!.model! } : undefined}
+          offerSwitch={info.isCurrent}
+        />
+      </div>
     </Section>
   );
 }
@@ -230,7 +241,7 @@ export function ExtSection({ info }: { info: CardInfo }) {
   const [url, setUrl] = useState('');
   const listed = new Set(list.map((l) => extStatus(l.req, installed).match?.id).filter(Boolean));
   const add = () => {
-    const req = pick === '__other' ? { name: name.trim(), url: isHttpUrl(url) ? url.trim() : undefined } : { name: pick };
+    const req = pick === '__other' ? { name: name.trim(), url: normalizeUrl(url) || undefined } : { name: pick };
     if (!req.name) return;
     updateRecord(info.avatar, info.name, { extensions: [...manual, req] });
     setPick('');

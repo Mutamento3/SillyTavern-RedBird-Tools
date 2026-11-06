@@ -18,6 +18,7 @@ import {
   type EnvProfile,
 } from '../../st/st';
 import { currentBookScopes } from '../flow/capture';
+import { markDeleted } from '../../st/store';
 
 export type Scope = 'global' | 'preset' | 'character' | 'chat' | 'persona';
 
@@ -311,7 +312,8 @@ export function refreshEnv(): EnvReport {
 export function rememberProfile(): void {
   const r = buildEnvReport();
   if (!r.avatar) return;
-  settings().profiles[r.avatar] = { savedAt: new Date().toISOString(), cardName: r.cardName, ...currentSnapshot(r) };
+  const now = new Date().toISOString();
+  settings().profiles[r.avatar] = { savedAt: now, updatedAt: now, cardName: r.cardName, ...currentSnapshot(r) };
   saveSettings();
   refreshEnv();
   toast('success', `已记住「${r.cardName}」现在的环境`);
@@ -321,6 +323,7 @@ export function forgetProfile(): void {
   const r = envReport.value;
   if (!r?.avatar) return;
   delete settings().profiles[r.avatar];
+  markDeleted('profiles', r.avatar);
   saveSettings();
   refreshEnv();
 }

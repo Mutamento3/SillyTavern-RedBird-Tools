@@ -97,3 +97,16 @@ describe('backupFileName', () => {
     expect(n.startsWith('rbt-world-backup-20261106-010203-')).toBe(true);
   });
 });
+
+import { normalizeUrl } from './cards';
+describe('normalizeUrl', () => {
+  it('keeps full links and adds https to bare ones', () => {
+    expect(normalizeUrl('https://a.com/x')).toBe('https://a.com/x');
+    expect(normalizeUrl('  discord.com/channels/1/2 ')).toBe('https://discord.com/channels/1/2');
+  });
+  it('rejects things that are not links', () => {
+    expect(normalizeUrl('发布帖')).toBe('');
+    expect(normalizeUrl('javascript:alert(1)')).toBe('');
+    expect(normalizeUrl('')).toBe('');
+  });
+});

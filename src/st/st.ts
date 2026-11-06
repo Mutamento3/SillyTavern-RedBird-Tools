@@ -9,7 +9,7 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { CardRecord, RegexOwner, SourceRecord } from '../core/cards';
+import type { CardRecord, ModelChoice, RegexOwner, SourceRecord } from '../core/cards';
 
 export type Any = any;
 
@@ -130,6 +130,8 @@ export interface RbtSettings {
   pluginInfo: Record<string, SourceRecord>;
   /** Author + links + series per worldbook name. */
   worldSources: Record<string, SourceRecord>;
+  /** When records were deleted, so a merge with an older copy does not bring them back (see core/store). */
+  deleted: Partial<Record<string, Record<string, string>>>;
   /** Lorebook backups written to data/<user>/user/files before overwriting. */
   worldBackups: { file: string; world: string; at: string }[];
 }
@@ -144,6 +146,10 @@ export interface EnvProfile {
   globalWorlds?: string[];
   globalRegexEnabled?: string[];
   preset?: { api: string; name: string };
+  /** The model this card plays best with (switched to on card change). */
+  model?: ModelChoice;
+  /** Last change of any part (savedAt is when the global setup was remembered). */
+  updatedAt?: string;
 }
 
 export function settings(): RbtSettings {
@@ -161,9 +167,17 @@ export function settings(): RbtSettings {
   s.presetInfo ??= {};
   s.pluginInfo ??= {};
   s.worldSources ??= {};
+  s.deleted ??= {};
   return s as RbtSettings;
+}
+
+let afterSave: (() => void) | null = null;
+/** store.ts hooks in here to mirror the toolbox data into its own file. */
+export function onSaveSettings(fn: () => void): void {
+  afterSave = fn;
 }
 
 export function saveSettings(): void {
   ctx().saveSettingsDebounced();
+  afterSave?.();
 }

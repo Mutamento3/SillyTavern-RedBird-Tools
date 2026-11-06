@@ -12,6 +12,7 @@ import { signal } from '@preact/signals';
 import { charaFileName, ctx, loaded, runSlash, saveSettings, settings, slashQuote, toast, type Any } from '../../st/st';
 import { cardInfo, currentPresetName, extStatus, importCardWorld, installedExtensions, presetApi, presetNames, requiredExtensions, switchPreset } from '../cards/cards';
 import { refreshEnv } from './env';
+import { currentModel, modelLabel, modelsApply, sameModel, setModel, type ModelChoice } from '../model';
 
 const GLOBAL = 0; // ST regex SCRIPT_TYPES.GLOBAL
 
@@ -21,6 +22,8 @@ export interface ApplyPlan {
   avatar: string;
   cardName: string;
   preset?: string;
+  /** Model to end up on (card's, else its preset's); checked again after the preset switch. */
+  model?: ModelChoice;
   worldsOn: string[];
   worldsOff: string[];
   regexOn: { id: string; name: string }[];
@@ -30,6 +33,7 @@ export interface ApplyPlan {
 
 interface Snapshot {
   preset: string;
+  model: ModelChoice | null;
   globalWorlds: string[];
   regexDisabled: Record<string, boolean>;
 }
@@ -94,6 +98,10 @@ export function planFor(char: Any): ApplyPlan {
   }
   const targetPreset = plan.preset ?? cur;
 
+  // --- model: the card's own, else the one recommended for its preset
+  const wantModel = profile?.model ?? s.presetInfo?.[targetPreset]?.model;
+  if (wantModel && modelsApply()) plan.model = wantModel;
+
   // --- global lorebooks
   const now = globalWorlds();
   const existing = new Set<string>(loaded.worldInfo?.world_names ?? []);
@@ -132,7 +140,7 @@ export function planFor(char: Any): ApplyPlan {
 }
 
 export function planHasChanges(p: ApplyPlan): boolean {
-  return !!p.preset || p.worldsOn.length > 0 || p.worldsOff.length > 0 || p.regexOn.length > 0 || p.regexOff.length > 0;
+  return !!p.preset || (!!p.model && !sameModel(p.model, currentModel())) || p.worldsOn.length > 0 || p.worldsOff.length > 0 || p.regexOn.length > 0 || p.regexOff.length > 0;
 }
 
 async function setRegexStates(changes: Record<string, boolean>): Promise<void> {
@@ -152,13 +160,22 @@ async function setWorlds(on: string[], off: string[]): Promise<void> {
 export async function applyPlan(plan: ApplyPlan): Promise<string[]> {
   const snapshot: Snapshot = {
     preset: currentPresetName(),
+    model: currentModel(),
     globalWorlds: globalWorlds(),
     regexDisabled: Object.fromEntries(globalRegex().map((r: Any) => [r.id, !!r.disabled])),
   };
   const changes: string[] = [];
   if (plan.preset) {
+    const before = currentModel();
     await switchPreset(plan.preset);
     changes.push(`预设换成「${plan.preset}」`);
+    const after = currentModel();
+    // 「预设绑定连接」开着时，预设自己带的 API / 模型会跟着换过来——说一声
+    if (!plan.model && after && !sameModel(before, after)) changes.push(`这个预设自带连接，模型跟着换成了 ${modelLabel(after)}`);
+  }
+  if (plan.model && !sameModel(plan.model, currentModel())) {
+    if (await setModel(plan.model)) changes.push(`模型换成 ${modelLabel(plan.model)}`);
+    else changes.push(`没能换成推荐的模型 ${modelLabel(plan.model)}（这个 API 可能还没填密钥）`);
   }
   if (plan.worldsOn.length || plan.worldsOff.length) {
     await setWorlds(plan.worldsOn, plan.worldsOff);
@@ -179,6 +196,7 @@ export async function undoLastApply(): Promise<void> {
   if (!a || a.undone) return;
   const s = a.snapshot;
   if (s.preset && s.preset !== currentPresetName()) await switchPreset(s.preset);
+  if (s.model && !sameModel(s.model, currentModel())) await setModel(s.model);
   const now = globalWorlds();
   await setWorlds(s.globalWorlds.filter((w) => !now.includes(w)), now.filter((w) => !s.globalWorlds.includes(w)));
   const rx: Record<string, boolean> = {};

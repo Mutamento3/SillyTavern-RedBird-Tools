@@ -2,7 +2,7 @@
  * 预设 / 插件的「作者和链接」：平时是一行（作者 + 可点的链接），点「编辑」就地改。
  */
 import { useState } from 'preact/hooks';
-import { isHttpUrl, type CardLink } from '../core/cards';
+import { normalizeUrl, type CardLink } from '../core/cards';
 import { hasSource, sourceFor, updateSource, type SourceKind } from '../tools/sources';
 
 function LinkChip({ l }: { l: CardLink }) {
@@ -30,21 +30,33 @@ export function SourceEditor({ kind, id }: { kind: SourceKind; id: string }) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState('');
   const [url, setUrl] = useState('');
-  const urlOk = isHttpUrl(url);
+  const fullUrl = normalizeUrl(url);
+  const urlOk = !!fullUrl;
+  const manualAuthor = v.author !== v.autoAuthor ? v.author : '';
+  const [authorDraft, setAuthorDraft] = useState(manualAuthor);
   const add = () => {
     if (!urlOk) return;
-    updateSource(kind, id, { links: [...v.links, { label: label.trim() || '链接', url: url.trim() }] });
+    updateSource(kind, id, { links: [...v.links, { label: label.trim() || '链接', url: fullUrl }] });
     setLabel('');
     setUrl('');
   };
-  const manualAuthor = v.author !== v.autoAuthor ? v.author : '';
+  const saveAuthor = () => { if (authorDraft.trim() !== manualAuthor) updateSource(kind, id, { author: authorDraft.trim() }); };
+  /** 「完成」 keeps whatever is still typed in: the author, and a link not yet added. */
+  const finish = () => {
+    const links = urlOk ? [...v.links, { label: label.trim() || '链接', url: fullUrl }] : v.links;
+    updateSource(kind, id, { author: authorDraft.trim(), links });
+    setLabel('');
+    setUrl('');
+    setEditing(false);
+  };
+  const startEdit = () => { setAuthorDraft(manualAuthor); setEditing(true); };
 
   if (!editing) {
     return (
       <div class="rbt-source-line">
         {v.author && <span class="rbt-source-author">作者 <b>{v.author}</b></span>}
         {[...v.autoLinks, ...v.links].map((l, i) => <LinkChip key={i} l={l} />)}
-        <button type="button" class="rbt-btn rbt-btn-small" onClick={() => setEditing(true)}>
+        <button type="button" class="rbt-btn rbt-btn-small" onClick={startEdit}>
           {hasSource(v) ? '编辑' : '添加作者和链接'}
         </button>
       </div>
@@ -58,8 +70,9 @@ export function SourceEditor({ kind, id }: { kind: SourceKind; id: string }) {
         <input
           class="text_pole rbt-input"
           placeholder={v.autoAuthor ? `${v.autoAuthor}（插件自带，可改）` : '作者名字'}
-          value={manualAuthor}
-          onChange={(e) => updateSource(kind, id, { author: (e.currentTarget as HTMLInputElement).value.trim() })}
+          value={authorDraft}
+          onInput={(e) => setAuthorDraft((e.currentTarget as HTMLInputElement).value)}
+          onBlur={saveAuthor}
         />
       </div>
       {v.autoLinks.map((l, i) => (
@@ -78,10 +91,13 @@ export function SourceEditor({ kind, id }: { kind: SourceKind; id: string }) {
       ))}
       <div class="rbt-form-row">
         <input class="text_pole rbt-input rbt-w-label" placeholder="名称，如：教程" value={label} onInput={(e) => setLabel((e.currentTarget as HTMLInputElement).value)} />
-        <input class="text_pole rbt-input" placeholder="https://…" value={url} onInput={(e) => setUrl((e.currentTarget as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') add(); }} />
-        <button type="button" class="rbt-btn" disabled={!urlOk} onClick={add}>添加</button>
+        <input class="text_pole rbt-input" placeholder="链接，比如 discord.com/channels/…" value={url} onInput={(e) => setUrl((e.currentTarget as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') add(); }} />
       </div>
-      <div class="rbt-row"><button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" onClick={() => setEditing(false)}>完成</button></div>
+      {url.trim() && !urlOk && <small class="rbt-warn-text">这不像一个网址。</small>}
+      <div class="rbt-row-between">
+        <small class="rbt-muted">要加好几条链接，填完一条按回车。</small>
+        <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={!!url.trim() && !urlOk} onClick={finish}>完成</button>
+      </div>
     </div>
   );
 }

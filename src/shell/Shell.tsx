@@ -9,6 +9,8 @@ import { panelOpen } from '../ui/Panel';
 import { openGlobal, sheetOpen, shellActive } from '../ui/views';
 import { DRAWERS, drawerButtonHandlers, openDrawers, type DrawerKey } from './drawers';
 import { ToolboxButton } from './EnvStatus';
+import { StatusBar, worldStatus } from './StatusBar';
+import { ImportButton } from '../ui/pages/GlobalToolbox';
 import { HomeGallery } from './Home';
 import {
   isCurrentChat,
@@ -196,7 +198,7 @@ function LeftColumn() {
         </button>
       </div>
 
-      <div class="rbt-gtool-row"><GlobalButton /></div>
+      <div class="rbt-gtool-row"><GlobalButton /><ImportButton big /></div>
       <nav class="rbt-globals" aria-label="酒馆设定">
         {ST_KEYS.map((k) => (
           <DrawerButton key={k} k={k} title={k === 'api' && !apiOnline.value ? 'API（没连上）' : undefined} dot={k === 'api' && !apiOnline.value ? '没连上 API' : undefined} />
@@ -235,6 +237,13 @@ function LeftColumn() {
 
 // ----------------------------------------------------------------- nav ---
 
+/** 「世界书」 with how many books are loaded; a dot when another card's book is on globally. */
+function WorldButton() {
+  const w = worldStatus();
+  return <DrawerButton k="worldinfo" compact label={w.count ? `世界书 ${w.count}` : '世界书'} title={w.warn ? `${w.title}
+${w.warn}` : w.title} dot={w.warn} />;
+}
+
 function NavBar() {
   void chatTick.value;
   const c = ctx();
@@ -270,9 +279,10 @@ function NavBar() {
           </>
         )}
       </div>
+      {char && <StatusBar />}
       <div class="rbt-nav-actions">
         {!home && <DrawerButton k="characters" compact label="编辑卡片" title="打开酒馆的角色卡编辑页" />}
-        {!home && <DrawerButton k="worldinfo" compact />}
+        {!home && <WorldButton />}
         {!home && <ToolboxButton />}
       </div>
     </header>
