@@ -4,6 +4,8 @@
 
 打开方式：输入框左边的魔法棒菜单 →「RedBird 工具箱」，或者输入 `/rbt`（`/rbt flow`、`/rbt vars`、`/rbt env` 直接打开对应页）。
 
+工具箱是右侧的侧边栏：电脑上（窗口宽于 1000px）聊天栏会自动让出位置，不会被挡住；拖动侧边栏左边缘可以调宽度。配合 RedBird Dark 这类按 `--rbd-left / --rbd-right` 排版的主题时，会接入主题的布局；用默认主题时会直接调整聊天栏。手机上放不下两栏，侧边栏会占满屏幕。
+
 ## 现在有的工具
 
 ### 信息流
@@ -52,7 +54,7 @@ npm run typecheck
 
 ```
 manifest.json        酒馆扩展清单（加载 dist/index.js、dist/style.css）
-src/index.tsx        入口：注册事件、菜单、/rbt 命令、浮动面板
+src/index.tsx        入口：注册事件、菜单、/rbt 命令、侧边栏
 src/st/st.ts         和酒馆打交道的唯一地方（getContext、动态 import 酒馆模块、斜杠命令）
 src/core/            纯逻辑，可单测：来源归因、消息对齐、变量对比
 src/tools/flow/      信息流：捕获提示词

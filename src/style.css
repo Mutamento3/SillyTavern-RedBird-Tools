@@ -1,39 +1,69 @@
 /* RedBird 工具箱 — every selector is prefixed with .rbt- to avoid clashing with ST themes. */
 
+/* ---- side dock ----
+   Wide screens: fixed on the right below the top bar; the chat column makes room (rules below).
+   Narrow screens: covers the area below the top bar. ST drawers (z 3000) open above it. */
 .rbt-panel {
   --rbt-fg: var(--SmartThemeBodyColor, #dcdcd2);
-  --rbt-bg: var(--SmartThemeBlurTintColor, rgba(23, 23, 28, 0.92));
-  --rbt-border: var(--SmartThemeBorderColor, rgba(255, 255, 255, 0.15));
+  --rbt-border: var(--rbd-line, var(--SmartThemeBorderColor, rgba(255, 255, 255, 0.15)));
   --rbt-muted: color-mix(in srgb, var(--rbt-fg) 55%, transparent);
   --rbt-soft: color-mix(in srgb, var(--rbt-fg) 7%, transparent);
+  /* Sized with viewport units, not insets: on mobile ST makes <html> position:fixed with a 0×0
+     box and a transform, which becomes the containing block and collapses right/bottom insets. */
   position: fixed;
-  z-index: 5000;
+  top: var(--topBarBlockSize, 40px);
+  left: calc(100dvw - var(--rbt-dock-w, 440px));
+  width: var(--rbt-dock-w, 440px);
+  height: calc(100dvh - var(--topBarBlockSize, 40px));
+  z-index: 2990;
   display: flex;
   flex-direction: column;
-  min-width: 320px;
-  min-height: 240px;
-  resize: both;
   overflow: hidden;
   color: var(--rbt-fg);
-  background: #15161a;
-  background: color-mix(in srgb, var(--rbt-bg) 100%, #15161a);
-  backdrop-filter: blur(var(--SmartThemeBlurStrength, 10px));
-  border: 1px solid var(--rbt-border);
-  border-radius: 10px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  background: var(--rbd-bg1, #15161a);
+  border-left: 1px solid var(--rbt-border);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.25);
   font-size: 13px;
   line-height: 1.45;
 }
 
-@media (max-width: 700px) {
-  .rbt-panel {
-    left: 0 !important;
-    top: 0 !important;
-    width: 100vw !important;
-    height: 100dvh !important;
-    border-radius: 0;
-    resize: none;
+.rbt-resize-handle {
+  position: absolute;
+  left: -3px;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: col-resize;
+  z-index: 1;
+  touch-action: none;
+}
+.rbt-resize-handle:hover, body.rbt-resizing .rbt-resize-handle { background: color-mix(in srgb, var(--rbd-accent, #3d8bfd) 45%, transparent); }
+body.rbt-resizing { cursor: col-resize; user-select: none; }
+body.rbt-resizing #sheld { transition: none !important; }
+
+@media (min-width: 1001px) {
+  /* RedBird Dark style themes: they centre #sheld between --rbd-left and --rbd-right. */
+  body.rbt-docked.rbt-theme-layout { --rbd-right: var(--rbt-dock-w, 440px); }
+  /* A right-side ST drawer opens above the dock: reserve whichever is wider. */
+  body.rbt-docked.rbt-theme-layout:has(#top-settings-holder .drawer-content.openDrawer:not(.pinnedOpen)) {
+    --rbd-right: max(var(--rbd-panel-w, 0px), var(--rbt-dock-w, 440px));
   }
+
+  /* Stock ST layout: #sheld is centred with left:0; right:0; margin:auto. Shrink and shift it. */
+  body.rbt-docked:not(.rbt-theme-layout) #sheld {
+    right: var(--rbt-dock-w, 440px) !important;
+    width: min(var(--sheldWidth), calc(100dvw - var(--rbt-dock-w, 440px) - 16px)) !important;
+  }
+}
+
+@media (max-width: 1000px) {
+  .rbt-panel {
+    left: 0;
+    width: 100dvw;
+    border-left: none;
+    box-shadow: none;
+  }
+  .rbt-resize-handle { display: none; }
 }
 
 .rbt-header {
@@ -42,9 +72,7 @@
   gap: 8px;
   padding: 6px 8px;
   border-bottom: 1px solid var(--rbt-border);
-  cursor: move;
   user-select: none;
-  touch-action: none;
 }
 .rbt-title { font-weight: 600; white-space: nowrap; }
 .rbt-tabs { display: flex; gap: 2px; flex: 1; overflow-x: auto; }

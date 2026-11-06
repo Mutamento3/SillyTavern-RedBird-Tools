@@ -38,7 +38,7 @@ function P(n2) {
     if (null != l2 && null != l2.__e) return n2.__e = n2.__c.base = l2.__e;
   }), P(n2);
 }
-function A$2(n2) {
+function A$1(n2) {
   (!n2.__d && (n2.__d = true) && i$2.push(n2) && !H.__r++ || r$2 != l$2.debounceRendering) && ((r$2 = l$2.debounceRendering) || o$2)(H);
 }
 function H() {
@@ -228,9 +228,9 @@ n$1 = w$3.slice, l$2 = { __e: function(n2, l2, u2, t2) {
   return null != n2 && void 0 === n2.constructor;
 }, C$1.prototype.setState = function(n2, l2) {
   var u2;
-  u2 = null != this.__s && this.__s != this.state ? this.__s : this.__s = m$3({}, this.state), "function" == typeof n2 && (n2 = n2(m$3({}, u2), this.props)), n2 && m$3(u2, n2), null != n2 && this.__v && (l2 && this._sb.push(l2), A$2(this));
+  u2 = null != this.__s && this.__s != this.state ? this.__s : this.__s = m$3({}, this.state), "function" == typeof n2 && (n2 = n2(m$3({}, u2), this.props)), n2 && m$3(u2, n2), null != n2 && this.__v && (l2 && this._sb.push(l2), A$1(this));
 }, C$1.prototype.forceUpdate = function(n2) {
-  this.__v && (this.__e = true, n2 && this.__h.push(n2), A$2(this));
+  this.__v && (this.__e = true, n2 && this.__h.push(n2), A$1(this));
 }, C$1.prototype.render = S$1, i$2 = [], o$2 = "function" == typeof Promise ? Promise.prototype.then.bind(Promise.resolve()) : setTimeout, e$2 = function(n2, l2) {
   return n2.__v.__b - l2.__v.__b;
 }, H.__r = 0, f$3 = Math.random().toString(8), c$2 = "__d" + f$3, a$2 = "__a" + f$3, s$2 = /(PointerCapture)$|Capture$/i, h$3 = 0, p$3 = V(false), v$2 = V(true);
@@ -365,11 +365,6 @@ function y$2(n2, u2, i2) {
 function h$2(n2, u2) {
   var i2 = s$1(t$1++, 3);
   !c$1.__s && C(i2.__H, u2) && (i2.__ = n2, i2.u = u2, r$1.__H.__h.push(i2));
-}
-function A$1(n2) {
-  return o$1 = 5, T(function() {
-    return { current: n2 };
-  }, []);
 }
 function T(n2, r2) {
   var u2 = s$1(t$1++, 7);
@@ -2601,87 +2596,66 @@ const TABS = [
   { id: "vars", label: "变量" },
   { id: "env", label: "换卡体检" }
 ];
-const POS_KEY = "rbt-panel-rect";
+const WIDTH_KEY = "rbt-dock-width";
 const MIN_W = 320;
-const MIN_H = 240;
-function viewport() {
-  const vw = window.innerWidth || document.documentElement.clientWidth || window.screen.width || 1024;
-  const vh = window.innerHeight || document.documentElement.clientHeight || window.screen.height || 768;
-  return { vw: Math.max(vw, MIN_W), vh: Math.max(vh, MIN_H) };
+const DEFAULT_W = 440;
+function maxWidth() {
+  const vw = window.innerWidth || document.documentElement.clientWidth || 1280;
+  return Math.max(MIN_W, Math.floor(vw * 0.5));
 }
-function defaultRect() {
-  const { vw, vh } = viewport();
-  const w2 = Math.min(560, vw - 20);
-  return { x: vw - w2 - 10, y: 50, w: w2, h: Math.min(760, vh - 70) };
+function clampWidth(w2) {
+  return Math.round(Math.min(Math.max(MIN_W, w2), maxWidth()));
 }
-function loadRect() {
-  try {
-    const r2 = JSON.parse(localStorage.getItem(POS_KEY) ?? "");
-    if (typeof r2?.x === "number" && r2.w >= MIN_W && r2.h >= MIN_H) return r2;
-  } catch {
-  }
-  return defaultRect();
+function loadWidth() {
+  const saved = Number(localStorage.getItem(WIDTH_KEY));
+  return clampWidth(Number.isFinite(saved) && saved > 0 ? saved : DEFAULT_W);
 }
-function clampRect(r2) {
-  const { vw, vh } = viewport();
-  const w2 = Math.min(Math.max(MIN_W, r2.w), vw);
-  const h2 = Math.min(Math.max(MIN_H, r2.h), vh);
-  return {
-    w: w2,
-    h: h2,
-    x: Math.max(0, Math.min(r2.x, vw - Math.min(w2, 120))),
-    y: Math.max(0, Math.min(r2.y, vh - 40))
-  };
+function setDockWidth(w2) {
+  document.body.style.setProperty("--rbt-dock-w", `${w2}px`);
 }
-function saveRect(el) {
-  if (el.offsetWidth < MIN_W || el.offsetHeight < MIN_H) return;
-  localStorage.setItem(POS_KEY, JSON.stringify({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }));
-}
-function applyRect(el, r2) {
-  Object.assign(el.style, { left: `${r2.x}px`, top: `${r2.y}px`, width: `${r2.w}px`, height: `${r2.h}px` });
+function detectThemeLayout() {
+  const themed = getComputedStyle(document.documentElement).getPropertyValue("--rbd-panel-w").trim() !== "";
+  document.body.classList.toggle("rbt-theme-layout", themed);
 }
 function openPanel(tab) {
   if (tab) activeTab.value = tab;
   panelOpen.value = true;
 }
 function Panel() {
-  const ref = A$1(null);
+  const open = panelOpen.value;
   h$2(() => {
-    const el = ref.current;
-    if (!el || !panelOpen.value) return;
-    applyRect(el, clampRect(loadRect()));
-    const ro = new ResizeObserver(() => saveRect(el));
-    ro.observe(el);
-    const onResize = () => applyRect(el, clampRect({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }));
+    document.body.classList.toggle("rbt-docked", open);
+    if (!open) return;
+    detectThemeLayout();
+    setDockWidth(loadWidth());
+    const onResize = () => {
+      detectThemeLayout();
+      setDockWidth(loadWidth());
+    };
     window.addEventListener("resize", onResize);
-    document.addEventListener("visibilitychange", onResize);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", onResize);
-      document.removeEventListener("visibilitychange", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [open]);
+  if (!open) return null;
+  const onResizeStart = (e2) => {
+    e2.preventDefault();
+    const handle = e2.currentTarget;
+    handle.setPointerCapture(e2.pointerId);
+    document.body.classList.add("rbt-resizing");
+    const move = (ev) => setDockWidth(clampWidth(window.innerWidth - ev.clientX));
+    const up = (ev) => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", up);
+      document.body.classList.remove("rbt-resizing");
+      const w2 = clampWidth(window.innerWidth - ev.clientX);
+      localStorage.setItem(WIDTH_KEY, String(w2));
+      setDockWidth(w2);
     };
-  }, [panelOpen.value]);
-  if (!panelOpen.value) return null;
-  const onDragStart = (e2) => {
-    const el = ref.current;
-    if (!el || e2.target.closest("button")) return;
-    const startX = e2.clientX - el.offsetLeft;
-    const startY = e2.clientY - el.offsetTop;
-    const move = (ev) => {
-      const r2 = clampRect({ x: ev.clientX - startX, y: ev.clientY - startY, w: el.offsetWidth, h: el.offsetHeight });
-      el.style.left = `${r2.x}px`;
-      el.style.top = `${r2.y}px`;
-    };
-    const up = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      saveRect(el);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", up);
   };
-  return /* @__PURE__ */ u$2("div", { class: "rbt-panel", ref, children: [
-    /* @__PURE__ */ u$2("div", { class: "rbt-header", onPointerDown: onDragStart, children: [
+  return /* @__PURE__ */ u$2("aside", { class: "rbt-panel rbt-dock", children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-resize-handle", title: "拖动调整宽度", onPointerDown: onResizeStart }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-header", children: [
       /* @__PURE__ */ u$2("span", { class: "rbt-title", children: "🐦 RedBird 工具箱" }),
       /* @__PURE__ */ u$2("div", { class: "rbt-tabs", children: TABS.map((t2) => /* @__PURE__ */ u$2("button", { class: activeTab.value === t2.id ? "active" : "", onClick: () => {
         activeTab.value = t2.id;
