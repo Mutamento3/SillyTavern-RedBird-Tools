@@ -8,7 +8,7 @@ import { archiveTarget, archiveVersion, cardInfo, ensureFullCharacter, findChar 
 import { lastApplied, undoLastApply } from '../../tools/env/autoapply';
 import { applyProfile, buildEnvReport, forgetProfile, rememberProfile } from '../../tools/env/env';
 import { cardIssues, LEVEL_ICON, statusTick } from '../../shell/EnvStatus';
-import { Empty, SwitchRow } from '../common';
+import { Empty, CheckRow } from '../common';
 import { CardHeader, ExtSection, PresetSection, RegexSection, Section, SourceSection, WorldSection } from './parts';
 
 function AttentionBox({ char }: { char: unknown }) {
@@ -52,7 +52,7 @@ function SwitchSection({ avatar, isCurrent }: { avatar: string; isCurrent: boole
 
   return (
     <Section title="换卡时" hint="切到这张卡时，把世界书、正则和预设换成它的配置">
-      <SwitchRow
+      <CheckRow
         label="自动切换"
         detail="对所有卡生效。关掉后只提醒，不会自动改。"
         checked={auto}

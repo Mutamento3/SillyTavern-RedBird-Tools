@@ -243,137 +243,6 @@ function u$2(e2, t2, n2, o2, i2, u2) {
   if ("function" == typeof e2 && (a2 = e2.defaultProps)) for (c2 in a2) void 0 === p2[c2] && (p2[c2] = a2[c2]);
   return l$2.vnode && l$2.vnode(l2), l2;
 }
-function ctx() {
-  const st = window.SillyTavern;
-  if (!st) throw new Error("SillyTavern context not available");
-  return st.getContext();
-}
-const moduleCache = /* @__PURE__ */ new Map();
-async function stModule(url) {
-  if (!moduleCache.has(url)) {
-    moduleCache.set(url, import(
-      /* @vite-ignore */
-      url
-    ).catch((e2) => {
-      console.warn("[RedBird] failed to import", url, e2);
-      return null;
-    }));
-  }
-  return moduleCache.get(url);
-}
-const ST_MODULES = {
-  openai: "/scripts/openai.js",
-  worldInfo: "/scripts/world-info.js",
-  extensions: "/scripts/extensions.js",
-  regexEngine: "/scripts/extensions/regex/engine.js"
-};
-const loaded = {};
-async function preloadModules() {
-  const [openai, worldInfo, extensions, regexEngine] = await Promise.all([
-    stModule(ST_MODULES.openai),
-    stModule(ST_MODULES.worldInfo),
-    stModule(ST_MODULES.extensions),
-    stModule(ST_MODULES.regexEngine)
-  ]);
-  Object.assign(loaded, { openai, worldInfo, extensions, regexEngine });
-}
-function currentCharacter() {
-  const c2 = ctx();
-  if (c2.groupId) return null;
-  const id = c2.characterId;
-  if (id === void 0 || id === null || id === "") return null;
-  return c2.characters?.[Number(id)] ?? null;
-}
-function charaFileName(avatar) {
-  return (avatar ?? "").replace(/\.[^/.]+$/, "");
-}
-function substitute(text) {
-  try {
-    return ctx().substituteParams(text);
-  } catch {
-    return text;
-  }
-}
-async function runSlash(command) {
-  const c2 = ctx();
-  if (typeof c2.executeSlashCommandsWithOptions === "function") {
-    await c2.executeSlashCommandsWithOptions(command, { handleParserErrors: true, handleExecutionErrors: true });
-  } else {
-    await c2.executeSlashCommands(command);
-  }
-}
-function slashQuote(v2) {
-  return `"${v2.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-}
-function toast(kind, msg, title = "RedBird 工具箱", opts = {}) {
-  window.toastr?.[kind]?.(msg, title, opts);
-}
-function thCharacterScriptsEnabled(es, char) {
-  const list = es?.tavern_helper?.script?.enabled?.characters ?? [];
-  return !!char && (list.includes(char.avatar) || list.includes(char.name));
-}
-const SETTINGS_KEY = "redbird_tools";
-function settings() {
-  const es = ctx().extensionSettings;
-  if (!es[SETTINGS_KEY]) es[SETTINGS_KEY] = {};
-  const s2 = es[SETTINGS_KEY];
-  s2.toastOnCardSwitch ??= true;
-  s2.shellEnabled ??= false;
-  s2.autoApplyEnv ??= true;
-  s2.profiles ??= {};
-  s2.cards ??= {};
-  s2.regexOwners ??= {};
-  s2.autoImportWorld ??= true;
-  s2.worldBackups ??= [];
-  s2.presetInfo ??= {};
-  s2.pluginInfo ??= {};
-  s2.worldSources ??= {};
-  s2.deleted ??= {};
-  return s2;
-}
-let afterSave = null;
-function onSaveSettings(fn) {
-  afterSave = fn;
-}
-function saveSettings() {
-  ctx().saveSettingsDebounced();
-  afterSave?.();
-}
-const STORE_SECTIONS = ["cards", "profiles", "regexOwners", "presetInfo", "pluginInfo", "worldSources"];
-function stampOf(section, rec) {
-  if (!rec) return "";
-  const v2 = section === "profiles" ? rec.updatedAt ?? rec.savedAt : section === "regexOwners" ? rec.at : rec.updatedAt;
-  return typeof v2 === "string" ? v2 : "";
-}
-function mergeStores(local, remote) {
-  const data = {};
-  const deleted = {};
-  for (const sec of STORE_SECTIONS) {
-    const a2 = local.data[sec] ?? {};
-    const b2 = remote.data[sec] ?? {};
-    const ta = local.deleted[sec] ?? {};
-    const tb = remote.deleted[sec] ?? {};
-    const tomb = { ...tb };
-    for (const [k2, t2] of Object.entries(ta)) if (!tomb[k2] || t2 > tomb[k2]) tomb[k2] = t2;
-    const out = {};
-    for (const k2 of /* @__PURE__ */ new Set([...Object.keys(a2), ...Object.keys(b2)])) {
-      const ra = a2[k2];
-      const rb = b2[k2];
-      const pick = !ra ? rb : !rb ? ra : stampOf(sec, rb) > stampOf(sec, ra) ? rb : ra;
-      if (!pick) continue;
-      if (tomb[k2] && tomb[k2] >= stampOf(sec, pick)) continue;
-      out[k2] = pick;
-    }
-    const cutoff = new Date(Date.now() - 30 * 864e5).toISOString();
-    for (const [k2, t2] of Object.entries(tomb)) if (t2 < cutoff && !(k2 in a2) && !(k2 in b2)) delete tomb[k2];
-    data[sec] = out;
-    deleted[sec] = tomb;
-  }
-  return { data, deleted };
-}
-function sameStore(a2, b2) {
-  return JSON.stringify(a2.data) === JSON.stringify(b2.data);
-}
 var t$1, r$1, u$1, i$1, o$1 = 0, f$1 = [], c$1 = l$2, e$1 = c$1.__b, a$1 = c$1.__r, v$1 = c$1.diffed, l$1 = c$1.__c, m$2 = c$1.unmount, p$2 = c$1.__;
 function s$1(n2, t2) {
   c$1.__h && c$1.__h(r$1, n2, o$1 || t2), o$1 = 0;
@@ -1097,6 +966,195 @@ function F() {
 }
 function M() {
   if (1 === g.push(this)) (l$2.requestAnimationFrame || A)(F);
+}
+function ctx() {
+  const st = window.SillyTavern;
+  if (!st) throw new Error("SillyTavern context not available");
+  return st.getContext();
+}
+const moduleCache = /* @__PURE__ */ new Map();
+async function stModule(url) {
+  if (!moduleCache.has(url)) {
+    moduleCache.set(url, import(
+      /* @vite-ignore */
+      url
+    ).catch((e2) => {
+      console.warn("[RedBird] failed to import", url, e2);
+      return null;
+    }));
+  }
+  return moduleCache.get(url);
+}
+const ST_MODULES = {
+  openai: "/scripts/openai.js",
+  worldInfo: "/scripts/world-info.js",
+  extensions: "/scripts/extensions.js",
+  regexEngine: "/scripts/extensions/regex/engine.js"
+};
+const loaded = {};
+async function preloadModules() {
+  const [openai, worldInfo, extensions, regexEngine] = await Promise.all([
+    stModule(ST_MODULES.openai),
+    stModule(ST_MODULES.worldInfo),
+    stModule(ST_MODULES.extensions),
+    stModule(ST_MODULES.regexEngine)
+  ]);
+  Object.assign(loaded, { openai, worldInfo, extensions, regexEngine });
+}
+function currentCharacter() {
+  const c2 = ctx();
+  if (c2.groupId) return null;
+  const id = c2.characterId;
+  if (id === void 0 || id === null || id === "") return null;
+  return c2.characters?.[Number(id)] ?? null;
+}
+function charaFileName(avatar) {
+  return (avatar ?? "").replace(/\.[^/.]+$/, "");
+}
+function substitute(text) {
+  try {
+    return ctx().substituteParams(text);
+  } catch {
+    return text;
+  }
+}
+async function runSlash(command) {
+  const c2 = ctx();
+  if (typeof c2.executeSlashCommandsWithOptions === "function") {
+    await c2.executeSlashCommandsWithOptions(command, { handleParserErrors: true, handleExecutionErrors: true });
+  } else {
+    await c2.executeSlashCommands(command);
+  }
+}
+function slashQuote(v2) {
+  return `"${v2.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+function toast(kind, msg, title = "RedBird 工具箱", opts = {}) {
+  window.toastr?.[kind]?.(msg, title, opts);
+}
+function thCharacterScriptsEnabled(es, char) {
+  const list = es?.tavern_helper?.script?.enabled?.characters ?? [];
+  return !!char && (list.includes(char.avatar) || list.includes(char.name));
+}
+const SETTINGS_KEY = "redbird_tools";
+function settings() {
+  const es = ctx().extensionSettings;
+  if (!es[SETTINGS_KEY]) es[SETTINGS_KEY] = {};
+  const s2 = es[SETTINGS_KEY];
+  s2.toastOnCardSwitch ??= true;
+  s2.shellEnabled ??= false;
+  s2.autoApplyEnv ??= true;
+  s2.profiles ??= {};
+  s2.cards ??= {};
+  s2.regexOwners ??= {};
+  s2.autoImportWorld ??= true;
+  s2.worldBackups ??= [];
+  s2.presetInfo ??= {};
+  s2.pluginInfo ??= {};
+  s2.worldSources ??= {};
+  s2.deleted ??= {};
+  if (s2.look === void 0) {
+    const css = String(ctx().powerUserSettings?.custom_css ?? "");
+    s2.look = !css.trim() || css.includes("RedBird Dark");
+  }
+  return s2;
+}
+let afterSave = null;
+function onSaveSettings(fn) {
+  afterSave = fn;
+}
+function saveSettings() {
+  ctx().saveSettingsDebounced();
+  afterSave?.();
+}
+const ACCENTS = [
+  { id: "blue", label: "蓝", color: "#0a84ff" },
+  { id: "coral", label: "珊瑚", color: "#e2725b" },
+  { id: "pink", label: "粉", color: "#ff375f" },
+  { id: "purple", label: "紫", color: "#bf5af2" },
+  { id: "green", label: "绿", color: "#30d158" },
+  { id: "graphite", label: "石墨", color: "#8e8e93" }
+];
+const lookOn = y$1(false);
+const accentId = y$1("blue");
+function accentColor(id = accentId.value) {
+  return (ACCENTS.find((a2) => a2.id === id) ?? ACCENTS[0]).color;
+}
+function applyLook() {
+  const s2 = settings();
+  lookOn.value = !!s2.look;
+  accentId.value = s2.accent ?? "blue";
+  const root = document.documentElement;
+  root.classList.toggle("rbt-look", lookOn.value);
+  root.style.setProperty("--rbd-accent", accentColor());
+}
+function setLook(on) {
+  settings().look = on;
+  saveSettings();
+  applyLook();
+}
+function setAccent(id) {
+  settings().accent = id;
+  saveSettings();
+  applyLook();
+}
+async function useStTheme(name) {
+  const $2 = window.jQuery;
+  if (!$2) return;
+  $2("#themes").val(name).trigger("change");
+  if (lookOn.value) setLook(false);
+}
+function retireOldTheme() {
+  const pu = ctx().powerUserSettings;
+  const css = String(pu?.custom_css ?? "");
+  if (!css.includes("RedBird Dark")) return;
+  const $2 = window.jQuery;
+  if ($2 && $2("#customCSS").length) $2("#customCSS").val("").trigger("input");
+  else pu.custom_css = "";
+  if (pu.theme === "RedBird Dark") {
+    pu.theme = "Dark V 1.0";
+    if ($2) {
+      $2("#themes").val("Dark V 1.0");
+      $2('#themes option[value="RedBird Dark"]').remove();
+    }
+  }
+  ctx().saveSettingsDebounced();
+  console.info("[RedBird] 旧美化 RedBird Dark 的自定义 CSS 已清除（备份在 data/<用户>/backups/redbird-old-theme）");
+}
+const STORE_SECTIONS = ["cards", "profiles", "regexOwners", "presetInfo", "pluginInfo", "worldSources"];
+function stampOf(section, rec) {
+  if (!rec) return "";
+  const v2 = section === "profiles" ? rec.updatedAt ?? rec.savedAt : section === "regexOwners" ? rec.at : rec.updatedAt;
+  return typeof v2 === "string" ? v2 : "";
+}
+function mergeStores(local, remote) {
+  const data = {};
+  const deleted = {};
+  for (const sec of STORE_SECTIONS) {
+    const a2 = local.data[sec] ?? {};
+    const b2 = remote.data[sec] ?? {};
+    const ta = local.deleted[sec] ?? {};
+    const tb = remote.deleted[sec] ?? {};
+    const tomb = { ...tb };
+    for (const [k2, t2] of Object.entries(ta)) if (!tomb[k2] || t2 > tomb[k2]) tomb[k2] = t2;
+    const out = {};
+    for (const k2 of /* @__PURE__ */ new Set([...Object.keys(a2), ...Object.keys(b2)])) {
+      const ra = a2[k2];
+      const rb = b2[k2];
+      const pick = !ra ? rb : !rb ? ra : stampOf(sec, rb) > stampOf(sec, ra) ? rb : ra;
+      if (!pick) continue;
+      if (tomb[k2] && tomb[k2] >= stampOf(sec, pick)) continue;
+      out[k2] = pick;
+    }
+    const cutoff = new Date(Date.now() - 30 * 864e5).toISOString();
+    for (const [k2, t2] of Object.entries(tomb)) if (t2 < cutoff && !(k2 in a2) && !(k2 in b2)) delete tomb[k2];
+    data[sec] = out;
+    deleted[sec] = tomb;
+  }
+  return { data, deleted };
+}
+function sameStore(a2, b2) {
+  return JSON.stringify(a2.data) === JSON.stringify(b2.data);
 }
 function estimateTokens(text) {
   if (!text) return 0;
@@ -3462,17 +3520,20 @@ function Empty({ children }) {
 }
 function Toggle({ checked, onChange, title }) {
   return /* @__PURE__ */ u$2("label", { class: "rbt-switch", title, children: [
-    /* @__PURE__ */ u$2("input", { type: "checkbox", checked, onChange: (e2) => onChange(e2.currentTarget.checked) }),
+    /* @__PURE__ */ u$2("input", { type: "checkbox", role: "switch", checked, onChange: (e2) => onChange(e2.currentTarget.checked) }),
     /* @__PURE__ */ u$2("span", {})
   ] });
 }
-function SwitchRow({ label, detail, checked, onChange }) {
-  return /* @__PURE__ */ u$2("div", { class: "rbt-switch-row", children: [
-    /* @__PURE__ */ u$2("div", { class: "rbt-switch-text", children: [
+function CheckMark({ checked, onChange }) {
+  return /* @__PURE__ */ u$2("input", { type: "checkbox", class: "rbt-cb", checked, onChange: (e2) => onChange(e2.currentTarget.checked) });
+}
+function CheckRow({ label, detail, checked, onChange }) {
+  return /* @__PURE__ */ u$2("label", { class: "rbt-check-row", children: [
+    /* @__PURE__ */ u$2(CheckMark, { checked, onChange }),
+    /* @__PURE__ */ u$2("span", { class: "rbt-check-text", children: [
       /* @__PURE__ */ u$2("span", { children: label }),
       detail && /* @__PURE__ */ u$2("small", { children: detail })
-    ] }),
-    /* @__PURE__ */ u$2(Toggle, { checked, onChange })
+    ] })
   ] });
 }
 function NavRow({ title, sub, img, trailing, external, onClick, hint }) {
@@ -3836,6 +3897,7 @@ function detectJson(j2) {
   const data = o2.data;
   if (String(o2.spec ?? "").startsWith("chara_card") || "first_mes" in o2 || data && "first_mes" in data) return "character";
   if ("entries" in o2 && typeof o2.entries === "object") return "world";
+  if (typeof o2.name === "string" && ("main_text_color" in o2 || "blur_tint_color" in o2 || "custom_css" in o2)) return "theme";
   if ("prompts" in o2 || "prompt_order" in o2 || "chat_completion_source" in o2 || "openai_max_tokens" in o2) return "preset";
   return "unknown";
 }
@@ -3908,6 +3970,7 @@ const KIND_LABEL$2 = {
   world: "世界书",
   regex: "正则",
   character: "角色卡",
+  theme: "美化",
   unknown: "认不出的文件"
 };
 const KIND_TAB = { preset: "presets", world: "worlds", regex: "regex" };
@@ -3946,13 +4009,21 @@ async function installPlugin(url) {
 async function prepareImport(files) {
   const out = [];
   for (const file of files) {
-    const it = { file, kind: await detectKind(file), activate: false, author: "", linkLabel: "", url: "", notes: "" };
+    const it = { file, kind: await detectKind(file), title: baseName(file), activate: false, author: "", linkLabel: "", url: "", notes: "" };
     try {
       if (it.kind === "character") {
         const data = /.png$/i.test(file.name) ? cardFromPng(new Uint8Array(await file.arrayBuffer())) : /.json$/i.test(file.name) ? JSON.parse(await file.text()) : null;
         it.card = summarizeCard(data) ?? void 0;
+        if (it.card) it.title = it.card.name;
       }
       if (it.kind === "world") it.entries = worldEntryCount(JSON.parse(await file.text()));
+      if (it.kind === "theme") it.title = String(JSON.parse(await file.text()).name ?? it.title);
+      if (it.kind === "regex") {
+        const j2 = JSON.parse(await file.text());
+        const list = Array.isArray(j2) ? j2 : [j2];
+        if (list.length === 1 && list[0]?.scriptName) it.title = String(list[0].scriptName);
+        else if (list.length > 1) it.entries = list.length;
+      }
     } catch {
     }
     out.push(it);
@@ -3967,7 +4038,8 @@ function relate(items) {
     const keep = group.find((g2) => /.png$/i.test(g2.file.name)) ?? group[0];
     for (const g2 of group) if (g2 !== keep) {
       g2.skip = true;
-      g2.note = `和「${keep.file.name}」是同一张卡（${name}）。PNG 带头像，导入它就够了。`;
+      g2.dupOf = keep.file.name;
+      g2.note = `和「${keep.file.name}」是同一张卡（${name}），只导入 PNG 就够了，它带头像。`;
     }
   }
   const cards = items.filter((i2) => i2.kind === "character" && !i2.skip);
@@ -3977,10 +4049,11 @@ function relate(items) {
     if (it.kind === "world") {
       if (looksLikeCardBook(card, baseName(it.file), it.entries ?? 0)) {
         it.skip = true;
-        it.note = `看起来就是「${card.name}」卡里自带的那本世界书（卡里 ${card.bookEntries} 条，这个文件 ${it.entries ?? "?"} 条）。打开这张卡时会自动导入，不用单独导入。`;
+        it.dupOf = card.name;
+        it.note = `就是「${card.name}」卡里自带的那本（卡里 ${card.bookEntries} 条，这个文件 ${it.entries ?? "?"} 条），打开这张卡时会自动导入。`;
       } else {
         it.toCard = true;
-        it.note = card.bookEntries ? `「${card.name}」卡里已经自带一本世界书，这本会作为附加世界书绑上。` : `和「${card.name}」一起发布的世界书。`;
+        it.note = card.bookEntries ? "卡里已经自带一本世界书，这本作为附加世界书绑上" : "";
       }
     }
     if (it.kind === "preset") it.toCard = true;
@@ -4031,6 +4104,27 @@ async function runImport$1(items, hooks) {
     if (name && it.activate) await hooks.switchPreset(name);
     if (name && it.toCard) toCardPreset = name;
     done.push({ item: it, name });
+  }
+  for (const it of items.filter((i2) => i2.kind === "theme")) {
+    let name = "";
+    try {
+      name = String(JSON.parse(await it.file.text()).name ?? "");
+    } catch {
+    }
+    const has = () => !!name && [...document.querySelectorAll("#themes option")].some((o2) => o2.value === name);
+    if (has()) {
+      toast("warning", `已经有叫「${name}」的美化了，酒馆不会覆盖。要更新的话，先在「用户设置 › 界面主题」里删掉旧的。`, "导入");
+      done.push({ item: it, name: null });
+      continue;
+    }
+    if (!feed("ui_preset_import_file", [it.file], "change")) {
+      toast("error", "找不到酒馆的美化导入入口。", "导入");
+      break;
+    }
+    const t0 = Date.now();
+    while (!has() && Date.now() - t0 < 15e3) await wait(300);
+    if (has() && it.activate) await hooks.useTheme(name);
+    done.push({ item: it, name: has() ? name : null });
   }
   const rx = items.filter((i2) => i2.kind === "regex");
   if (rx.length) {
@@ -4883,7 +4977,7 @@ function SwitchSection({ avatar, isCurrent }) {
   const remembered = profile && (profile.globalWorlds || profile.globalRegexEnabled);
   return /* @__PURE__ */ u$2(Section, { title: "换卡时", hint: "切到这张卡时，把世界书、正则和预设换成它的配置", children: [
     /* @__PURE__ */ u$2(
-      SwitchRow,
+      CheckRow,
       {
         label: "自动切换",
         detail: "对所有卡生效。关掉后只提醒，不会自动改。",
@@ -5236,7 +5330,7 @@ function DockGlobal() {
     drop.dragging && /* @__PURE__ */ u$2(DropHint, {})
   ] });
 }
-function Item({ icon, text, title, warn, onClick }) {
+function Item$1({ icon, text, title, warn, onClick }) {
   return /* @__PURE__ */ u$2("button", { type: "button", class: `rbt-stat ${warn ? "warn" : ""}`, title: warn ? `${title}
 ${warn}` : title, onClick, children: [
     warn && /* @__PURE__ */ u$2("span", { class: "rbt-stat-dot" }),
@@ -5260,8 +5354,8 @@ function StatusBar() {
   const modelWarn = !apiOnline.value ? "API 没连上" : wantModel && !sameModel(wantModel, model) ? `这张卡推荐 ${modelLabel(wantModel)}` : void 0;
   const conn = activeConnection();
   return /* @__PURE__ */ u$2("div", { class: "rbt-statusbar", "aria-label": "现在用的预设和模型", children: [
-    /* @__PURE__ */ u$2(Item, { icon: "fa-sliders", text: preset || "没有预设", title: `预设：${preset || "（没有）"}`, warn: presetWarn, onClick: () => openDrawer("preset") }),
-    /* @__PURE__ */ u$2(Item, { icon: "fa-plug", text: conn.model ? `${conn.api} · ${conn.model.split("/").pop()}` : `${conn.api} · 没选模型`, title: `API：${conn.api}
+    /* @__PURE__ */ u$2(Item$1, { icon: "fa-sliders", text: preset || "没有预设", title: `预设：${preset || "（没有）"}`, warn: presetWarn, onClick: () => openDrawer("preset") }),
+    /* @__PURE__ */ u$2(Item$1, { icon: "fa-plug", text: conn.model ? `${conn.api} · ${conn.model.split("/").pop()}` : `${conn.api} · 没选模型`, title: `API：${conn.api}
 模型：${conn.model || "（没选）"}`, warn: modelWarn, onClick: () => openDrawer("api") })
   ] });
 }
@@ -5484,6 +5578,9 @@ const COLLAPSE_KEY = "rbt-shell-left-collapsed";
 const ST_KEYS = ["preset", "extensions", "api", "persona", "settings", "backgrounds", "formatting"];
 const apiOnline = y$1(true);
 const homeActive = y$1(false);
+const compact = y$1(false);
+const navOpen = y$1(false);
+const COMPACT_MAX = 1e3;
 function readOnline() {
   const st = String(ctx().onlineStatus ?? "");
   apiOnline.value = !!st && st !== "no_connection";
@@ -5491,17 +5588,25 @@ function readOnline() {
 function applyBodyClasses() {
   const b2 = document.body.classList;
   b2.toggle("rbt-shell", shellOn.value);
-  b2.toggle("rbt-shell-lcollapsed", leftCollapsed.value);
+  compact.value = (window.innerWidth || 1280) <= COMPACT_MAX;
+  if (!compact.value) navOpen.value = false;
+  b2.toggle("rbt-compact", compact.value);
+  b2.toggle("rbt-nav-open", navOpen.value);
+  b2.toggle("rbt-shell-lcollapsed", leftCollapsed.value && !compact.value);
   const c2 = ctx();
   const home = (c2.characterId === void 0 || c2.characterId === null) && !c2.groupId;
   b2.toggle("rbt-home", home);
   homeActive.value = home;
-  shellActive.value = shellOn.value && (window.innerWidth || 1280) > 1e3;
+  shellActive.value = shellOn.value;
 }
 function setShellEnabled(on) {
   shellOn.value = on;
   settings().shellEnabled = on;
   saveSettings();
+  applyBodyClasses();
+}
+function setNavOpen(v2) {
+  navOpen.value = v2;
   applyBodyClasses();
 }
 function setCollapsed(v2) {
@@ -5527,10 +5632,10 @@ function goHome() {
 function newChat() {
   if (inChat()) trigger("#option_start_new_chat");
 }
-function DrawerButton({ k: k2, compact, label, title, dot }) {
+function DrawerButton({ k: k2, compact: compact2, label, title, dot }) {
   const d2 = DRAWERS.find((x2) => x2.key === k2);
   const active = openDrawers.value.includes(k2);
-  return /* @__PURE__ */ u$2("button", { type: "button", class: `rbt-gbtn ${active ? "active" : ""} ${compact ? "compact" : ""}`, title: title ?? d2.label, ...drawerButtonHandlers(k2), children: [
+  return /* @__PURE__ */ u$2("button", { type: "button", class: `rbt-gbtn ${active ? "active" : ""} ${compact2 ? "compact" : ""}`, title: title ?? d2.label, ...drawerButtonHandlers(k2), children: [
     /* @__PURE__ */ u$2("i", { class: `fa-solid ${d2.icon} fa-fw` }),
     /* @__PURE__ */ u$2("span", { children: label ?? d2.label }),
     dot && /* @__PURE__ */ u$2("span", { class: "rbt-dot", title: dot })
@@ -5607,17 +5712,47 @@ function loadVersion() {
   }).catch(() => {
   });
 }
+function CurrentCharacter() {
+  void chatTick.value;
+  const c2 = ctx();
+  const char = currentCharacter();
+  const group = c2.groupId ? c2.groups?.find((g2) => g2.id === c2.groupId) : null;
+  if (!char && !group) return null;
+  const name = char?.name ?? group?.name ?? "";
+  return /* @__PURE__ */ u$2("div", { class: "rbt-left-current", children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-left-title", children: name }),
+    /* @__PURE__ */ u$2("nav", { class: "rbt-globals rbt-globals-current", "aria-label": "当前角色", children: [
+      char && /* @__PURE__ */ u$2(DrawerButton, { k: "characters", label: "编辑卡片", title: `编辑「${name}」的角色卡` }),
+      /* @__PURE__ */ u$2(WorldButton, { grid: true }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-gbtn", title: "切换 / 管理这个角色的存档", onClick: () => trigger("#option_select_chat"), children: [
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-clock-rotate-left fa-fw" }),
+        /* @__PURE__ */ u$2("span", { children: "存档" })
+      ] })
+    ] })
+  ] });
+}
 function LeftColumn() {
   const [q2, setQ] = d$1("");
   const version = stVersion.value;
-  return /* @__PURE__ */ u$2("aside", { class: "rbt-left", "aria-label": "RedBird 左栏", children: [
+  const phone = compact.value;
+  const autoClose = (e2) => {
+    if (!phone) return;
+    const el2 = e2.target.closest("button, a");
+    if (!el2 || el2.closest(".rbt-left-head")) return;
+    setTimeout(() => setNavOpen(false), 0);
+  };
+  return /* @__PURE__ */ u$2("aside", { class: "rbt-left", "aria-label": "RedBird 左栏", onClickCapture: autoClose, children: [
     /* @__PURE__ */ u$2("div", { class: "rbt-left-head", children: [
-      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-brand", title: "回到首页", onClick: goHome, children: [
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-brand", title: "回到首页", onClick: () => {
+        goHome();
+        if (phone) setNavOpen(false);
+      }, children: [
         /* @__PURE__ */ u$2("span", { class: "rbt-brand-mark", children: "🐦" }),
         /* @__PURE__ */ u$2("span", { children: "首页" })
       ] }),
-      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn", title: "收起左栏", onClick: () => setCollapsed(true), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-angles-left" }) })
+      phone ? /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn", title: "关闭", "aria-label": "关闭", onClick: () => setNavOpen(false), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-xmark" }) }) : /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn", title: "收起左栏", onClick: () => setCollapsed(true), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-angles-left" }) })
     ] }),
+    phone && /* @__PURE__ */ u$2(CurrentCharacter, {}),
     /* @__PURE__ */ u$2("div", { class: "rbt-gtool-row", children: [
       /* @__PURE__ */ u$2(GlobalButton, {}),
       /* @__PURE__ */ u$2(ImportButton, { big: true })
@@ -5665,9 +5800,9 @@ function LeftColumn() {
     ] })
   ] });
 }
-function WorldButton() {
+function WorldButton({ grid }) {
   const w2 = worldStatus();
-  return /* @__PURE__ */ u$2(DrawerButton, { k: "worldinfo", compact: true, label: `世界书（${w2.count}）`, title: w2.warn ? `${w2.title}
+  return /* @__PURE__ */ u$2(DrawerButton, { k: "worldinfo", compact: !grid, label: `世界书（${w2.count}）`, title: w2.warn ? `${w2.title}
 ${w2.warn}` : w2.title, dot: w2.warn });
 }
 function NavBar() {
@@ -5678,6 +5813,20 @@ function NavBar() {
   const chatId = String(c2.getCurrentChatId?.() ?? "");
   const home = !char && !group;
   const name = char?.name ?? group?.name ?? "";
+  if (compact.value) {
+    return /* @__PURE__ */ u$2("header", { class: "rbt-nav rbt-nav-phone", children: [
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn rbt-nav-menu", title: "菜单", "aria-label": "菜单", onClick: () => setNavOpen(true), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-bars" }) }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-nav-title", children: home ? /* @__PURE__ */ u$2("span", { class: "rbt-nav-name", children: "首页" }) : /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-nav-who", title: "切换 / 管理存档", onClick: () => trigger("#option_select_chat"), children: [
+        char && /* @__PURE__ */ u$2("img", { class: "rbt-nav-avatar", src: c2.getThumbnailUrl("avatar", char.avatar), alt: "" }),
+        /* @__PURE__ */ u$2("span", { class: "rbt-nav-name", children: name }),
+        chatId && /* @__PURE__ */ u$2("i", { class: "fa-solid fa-chevron-down" })
+      ] }) }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-nav-actions", children: [
+        !home && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn", title: `给「${name}」开一个新存档`, "aria-label": "新聊天", onClick: newChat, children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-pen-to-square" }) }),
+        !home && /* @__PURE__ */ u$2(ToolboxButton, {})
+      ] })
+    ] });
+  }
   return /* @__PURE__ */ u$2("header", { class: "rbt-nav", children: [
     leftCollapsed.value && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn", title: "展开左栏", onClick: () => setCollapsed(false), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-angles-right" }) }),
     /* @__PURE__ */ u$2("div", { class: "rbt-nav-title", children: home ? /* @__PURE__ */ u$2("span", { class: "rbt-nav-name", children: "首页" }) : /* @__PURE__ */ u$2(S$1, { children: [
@@ -5703,8 +5852,10 @@ function NavBar() {
 }
 function Shell() {
   if (!shellOn.value) return null;
+  const phone = compact.value;
   return /* @__PURE__ */ u$2(S$1, { children: [
-    !leftCollapsed.value && /* @__PURE__ */ u$2(LeftColumn, {}),
+    phone && navOpen.value && /* @__PURE__ */ u$2("div", { class: "rbt-left-scrim", onClick: () => setNavOpen(false) }),
+    (phone || !leftCollapsed.value) && /* @__PURE__ */ u$2(LeftColumn, {}),
     /* @__PURE__ */ u$2(NavBar, {}),
     homeActive.value && shellActive.value && /* @__PURE__ */ u$2(HomeGallery, {})
   ] });
@@ -5881,72 +6032,116 @@ async function openImport(files) {
   if (!files.length) return;
   draft.value = await prepareImport(files);
 }
-const ACTIVATE = {
-  preset: "导入后换成这个预设",
-  world: "导入后作为全局世界书打开（对所有卡生效）",
-  character: "导入后打开这张卡"
+const KIND_ICON = {
+  character: "fa-user",
+  preset: "fa-sliders",
+  world: "fa-book",
+  regex: "fa-code",
+  theme: "fa-palette",
+  unknown: "fa-file-circle-question"
 };
-function Row({ it, onChange, cardName }) {
-  const [more, setMore] = d$1(false);
-  const canExtra = !it.skip && (it.kind === "preset" || it.kind === "world" || it.kind === "character");
-  const bad = it.url.trim() && !normalizeUrl(it.url);
-  return /* @__PURE__ */ u$2("div", { class: `rbt-imp-row ${it.kind === "unknown" ? "off" : ""}`, children: [
-    /* @__PURE__ */ u$2("div", { class: "rbt-imp-head", children: [
-      /* @__PURE__ */ u$2(Tag, { tone: it.kind === "unknown" ? "bad" : void 0, children: KIND_LABEL$2[it.kind] }),
-      /* @__PURE__ */ u$2("span", { class: "rbt-imp-name", children: it.file.name })
+const ACTIVATE = {
+  preset: { label: "导入后换成这个预设" },
+  world: { label: "导入后作为全局世界书打开", detail: "对所有卡生效" },
+  character: { label: "导入后打开这张卡" },
+  theme: { label: "导入后换成这个美化", detail: "会关掉工具箱自带的美化" }
+};
+function facts(it) {
+  const k2 = KIND_LABEL$2[it.kind];
+  if (it.kind === "character" && it.card) return [k2, it.card.bookEntries ? `自带世界书 ${it.card.bookEntries} 条` : "", it.card.regexCount ? `自带正则 ${it.card.regexCount} 条` : ""].filter(Boolean).join(" · ");
+  if (it.kind === "world" && it.entries !== void 0) return `${k2} · ${it.entries} 条`;
+  if (it.kind === "regex") return `${k2}${it.entries ? ` · ${it.entries} 条` : ""} · 导入时酒馆会问放到哪里`;
+  if (it.kind === "theme") return `${k2} · 以后也能在「用户设置 › 界面主题」里换`;
+  return k2;
+}
+function useThumb(it) {
+  const url = T(() => it.kind === "character" && /\.png$/i.test(it.file.name) ? URL.createObjectURL(it.file) : null, [it.file]);
+  h$2(() => () => {
+    if (url) URL.revokeObjectURL(url);
+  }, [url]);
+  return url;
+}
+function Item({ it, onChange, cardName, nested, children }) {
+  const thumb = useThumb(it);
+  const unknown = it.kind === "unknown";
+  const act = !it.skip && !unknown ? ACTIVATE[it.kind] : void 0;
+  const bindWorld = !it.skip && it.kind === "world" && it.toCard !== void 0 && !!cardName;
+  const bindPreset = !it.skip && it.kind === "preset" && it.toCard !== void 0 && !!cardName;
+  const off = it.skip || unknown;
+  if (it.dupOf && it.skip) {
+    return /* @__PURE__ */ u$2("div", { class: `rbt-imp-item compact ${nested ? "nested" : ""}`, children: /* @__PURE__ */ u$2("div", { class: "rbt-imp-alert", children: [
+      /* @__PURE__ */ u$2("i", { class: "fa-solid fa-circle-exclamation" }),
+      /* @__PURE__ */ u$2("div", { children: [
+        /* @__PURE__ */ u$2("p", { children: [
+          "不导入 ",
+          it.file.name
+        ] }),
+        /* @__PURE__ */ u$2("small", { children: it.note }),
+        /* @__PURE__ */ u$2(CheckRow, { label: "仍然导入", checked: false, onChange: (v2) => onChange({ skip: !v2 }) })
+      ] })
+    ] }) });
+  }
+  return /* @__PURE__ */ u$2("div", { class: `rbt-imp-item ${nested ? "nested" : ""} ${off ? "off" : ""}`, children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-imp-top", children: [
+      thumb ? /* @__PURE__ */ u$2("img", { class: "rbt-imp-thumb", src: thumb, alt: "" }) : /* @__PURE__ */ u$2("span", { class: "rbt-imp-ico", children: /* @__PURE__ */ u$2("i", { class: `fa-solid ${KIND_ICON[it.kind]}` }) }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-imp-id", children: [
+        /* @__PURE__ */ u$2("div", { class: "rbt-imp-title", children: unknown ? it.file.name : it.title }),
+        /* @__PURE__ */ u$2("div", { class: "rbt-imp-facts", children: facts(it) }),
+        !unknown && it.file.name !== it.title && /* @__PURE__ */ u$2("div", { class: "rbt-imp-file", children: it.file.name })
+      ] })
     ] }),
-    it.kind === "unknown" && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "认不出是什么，会跳过。支持预设、世界书、正则和角色卡。" }),
-    it.card && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
-      "角色「",
-      it.card.name,
-      "」",
-      it.card.bookEntries ? ` · 自带世界书 ${it.card.bookEntries} 条` : "",
-      it.card.regexCount ? ` · 自带正则 ${it.card.regexCount} 条` : ""
+    unknown && /* @__PURE__ */ u$2("div", { class: "rbt-imp-alert", children: [
+      /* @__PURE__ */ u$2("i", { class: "fa-solid fa-circle-exclamation" }),
+      /* @__PURE__ */ u$2("div", { children: [
+        /* @__PURE__ */ u$2("p", { children: "认不出是什么文件，会跳过。" }),
+        /* @__PURE__ */ u$2("small", { children: "支持预设、世界书、正则、角色卡和美化。" })
+      ] })
     ] }),
-    it.kind === "world" && it.entries !== void 0 && !it.note && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
-      it.entries,
-      " 条"
+    it.dupOf && /* @__PURE__ */ u$2("div", { class: `rbt-imp-alert ${it.skip ? "" : "resolved"}`, children: [
+      /* @__PURE__ */ u$2("i", { class: "fa-solid fa-circle-exclamation" }),
+      /* @__PURE__ */ u$2("div", { children: [
+        /* @__PURE__ */ u$2("p", { children: it.skip ? "不会导入" : "会照样导入" }),
+        /* @__PURE__ */ u$2("small", { children: it.note }),
+        /* @__PURE__ */ u$2(CheckRow, { label: "仍然导入", checked: !it.skip, onChange: (v2) => onChange({ skip: !v2 }) })
+      ] })
     ] }),
-    it.note && /* @__PURE__ */ u$2("small", { class: it.skip ? "rbt-imp-note skip" : "rbt-imp-note", children: it.note }),
-    (it.note?.includes("同一张卡") || it.note?.includes("自带的那本")) && /* @__PURE__ */ u$2("label", { class: "rbt-imp-check", children: [
-      /* @__PURE__ */ u$2("input", { type: "checkbox", checked: !it.skip, onChange: (e2) => onChange({ skip: !e2.currentTarget.checked }) }),
-      "仍然导入"
+    (bindWorld || bindPreset || act) && /* @__PURE__ */ u$2("div", { class: "rbt-imp-actions", children: [
+      bindWorld && /* @__PURE__ */ u$2(CheckRow, { label: `绑到「${cardName}」上`, detail: it.note || void 0, checked: !!it.toCard, onChange: (v2) => onChange({ toCard: v2 }) }),
+      bindPreset && /* @__PURE__ */ u$2(CheckRow, { label: `设为「${cardName}」的推荐预设`, detail: "切到这张卡时自动换成它", checked: !!it.toCard, onChange: (v2) => onChange({ toCard: v2 }) }),
+      act && /* @__PURE__ */ u$2(CheckRow, { label: act.label, detail: act.detail, checked: it.activate, onChange: (v2) => onChange({ activate: v2 }) })
     ] }),
-    !it.skip && it.toCard && it.kind === "world" && cardName && /* @__PURE__ */ u$2("label", { class: "rbt-imp-check", children: [
-      /* @__PURE__ */ u$2("input", { type: "checkbox", checked: !!it.toCard, onChange: (e2) => onChange({ toCard: e2.currentTarget.checked }) }),
-      "绑定到「",
-      cardName,
-      "」"
+    children
+  ] });
+}
+const NO_SOURCE = { author: "", linkLabel: "", url: "", notes: "" };
+function SourceFields({ src, set, count }) {
+  const [open, setOpen] = d$1(false);
+  const bad = src.url.trim() && !normalizeUrl(src.url);
+  if (!open) return /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-linkbtn rbt-imp-more", onClick: () => setOpen(true), children: "＋ 记下作者、链接和备注（选填）" });
+  return /* @__PURE__ */ u$2("div", { class: "rbt-imp-source", children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-imp-source-head", children: [
+      /* @__PURE__ */ u$2("b", { children: "来源" }),
+      /* @__PURE__ */ u$2("small", { children: count > 1 ? `会记在这次导入的 ${count} 个东西上，以后在全局工具箱和角色档案里能看到` : "以后在全局工具箱和角色档案里能看到" })
     ] }),
-    it.kind === "preset" && cardName && /* @__PURE__ */ u$2("label", { class: "rbt-imp-check", children: [
-      /* @__PURE__ */ u$2("input", { type: "checkbox", checked: !!it.toCard, onChange: (e2) => onChange({ toCard: e2.currentTarget.checked }) }),
-      "设为「",
-      cardName,
-      "」的推荐预设"
+    /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted rbt-source-k", children: "作者" }),
+      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: "作者名字", value: src.author, onInput: (e2) => set({ ...src, author: e2.currentTarget.value }) })
     ] }),
-    it.kind === "regex" && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "导入时酒馆会问放到哪里：全局、当前这张卡，还是当前预设。" }),
-    ACTIVATE[it.kind] && !it.skip && /* @__PURE__ */ u$2("label", { class: "rbt-imp-check", children: [
-      /* @__PURE__ */ u$2("input", { type: "checkbox", checked: it.activate, onChange: (e2) => onChange({ activate: e2.currentTarget.checked }) }),
-      ACTIVATE[it.kind]
+    /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
+      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input rbt-w-label", placeholder: "名称，如：发布帖", value: src.linkLabel, onInput: (e2) => set({ ...src, linkLabel: e2.currentTarget.value }) }),
+      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: "链接，比如 discord.com/channels/…", value: src.url, onInput: (e2) => set({ ...src, url: e2.currentTarget.value }) })
     ] }),
-    canExtra && !more && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-linkbtn rbt-imp-more", onClick: () => setMore(true), children: "＋ 作者、链接和备注（选填）" }),
-    canExtra && more && /* @__PURE__ */ u$2("div", { class: "rbt-source-edit", children: [
-      it.kind !== "character" && /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
-        /* @__PURE__ */ u$2("small", { class: "rbt-muted rbt-source-k", children: "作者" }),
-        /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: "作者名字", value: it.author, onInput: (e2) => onChange({ author: e2.currentTarget.value }) })
-      ] }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
-        /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input rbt-w-label", placeholder: "名称，如：发布帖", value: it.linkLabel, onInput: (e2) => onChange({ linkLabel: e2.currentTarget.value }) }),
-        /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: "链接，比如 discord.com/channels/…", value: it.url, onInput: (e2) => onChange({ url: e2.currentTarget.value }) })
-      ] }),
-      bad && /* @__PURE__ */ u$2("small", { class: "rbt-warn-text", children: "这不像一个网址。" }),
-      /* @__PURE__ */ u$2("textarea", { class: "text_pole rbt-textarea", rows: 2, placeholder: it.kind === "character" ? "作者说明：推荐设置、玩法、注意事项" : "备注：这一版改了什么、怎么用", value: it.notes, onInput: (e2) => onChange({ notes: e2.currentTarget.value }) })
-    ] })
+    bad && /* @__PURE__ */ u$2("small", { class: "rbt-warn-text", children: "这不像一个网址。" }),
+    /* @__PURE__ */ u$2("textarea", { class: "text_pole rbt-textarea", rows: 2, placeholder: "备注：推荐设置、这一版改了什么、怎么用", value: src.notes, onInput: (e2) => set({ ...src, notes: e2.currentTarget.value }) })
   ] });
 }
 function ImportDialog() {
   const items = draft.value;
   const [busy, setBusy] = d$1(false);
+  const [src, setSrc] = d$1(NO_SOURCE);
+  h$2(() => {
+    if (!items) setSrc(NO_SOURCE);
+  }, [items]);
   h$2(() => {
     if (!items) return;
     const onKey = (e2) => {
@@ -5959,13 +6154,18 @@ function ImportDialog() {
   const usable = items.filter((i2) => i2.kind !== "unknown" && !i2.skip);
   const theCard = items.filter((i2) => i2.kind === "character" && !i2.skip);
   const cardName = theCard.length === 1 ? theCard[0].card?.name : void 0;
-  const set = (idx, patch) => {
-    draft.value = items.map((it, i2) => i2 === idx ? { ...it, ...patch } : it);
+  const set = (it, patch) => {
+    draft.value = items.map((x2) => x2 === it ? { ...x2, ...patch } : x2);
   };
+  const main = theCard.length === 1 && theCard[0].card ? theCard[0] : null;
+  const related = (it) => it !== main && (it.toCard !== void 0 || !!it.dupOf && (it.kind === "character" ? it.card?.name === main?.card?.name : true));
+  const companions = main ? items.filter(related).sort((a2, b2) => Number(!!a2.skip) - Number(!!b2.skip)) : [];
+  const others = items.filter((it) => it !== main && !companions.includes(it));
+  const withSource = usable.filter((i2) => i2.kind === "preset" || i2.kind === "world" || i2.kind === "character").length;
   const go = async () => {
     setBusy(true);
     try {
-      const done = await runImport$1(usable, {
+      const done = await runImport$1(usable.map((it) => ({ ...it, ...src })), {
         presetNames,
         worldNames,
         characterAvatars: () => (ctx().characters ?? []).map((c2) => c2.avatar),
@@ -6003,6 +6203,7 @@ function ImportDialog() {
           if (!e2.extraBooks.includes(world)) e2.extraBooks.push(world);
           ctx().saveSettingsDebounced();
         },
+        useTheme: useStTheme,
         setCardPreset: (avatar, preset) => {
           const ch = (ctx().characters ?? []).find((c2) => c2.avatar === avatar);
           setRecommendedPreset(avatar, ch?.name ?? avatar, preset);
@@ -6035,9 +6236,20 @@ function ImportDialog() {
           draft.value = null;
         }, children: "✕" })
       ] }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-sheet-body", children: items.map((it, i2) => /* @__PURE__ */ u$2(Row, { it, cardName, onChange: (p2) => set(i2, p2) }, `${it.file.name}${i2}`)) }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-sheet-body", children: [
+        main && /* @__PURE__ */ u$2(Item, { it: main, onChange: (p2) => set(main, p2), children: companions.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-imp-group", children: [
+          /* @__PURE__ */ u$2("div", { class: "rbt-imp-group-title", children: [
+            "一起发布的 ",
+            companions.length,
+            " 个文件"
+          ] }),
+          companions.map((it) => /* @__PURE__ */ u$2(Item, { it, nested: true, cardName, onChange: (p2) => set(it, p2) }, it.file.name))
+        ] }) }),
+        others.map((it) => /* @__PURE__ */ u$2(Item, { it, cardName, onChange: (p2) => set(it, p2) }, it.file.name)),
+        withSource > 0 && /* @__PURE__ */ u$2(SourceFields, { src, set: setSrc, count: withSource })
+      ] }),
       /* @__PURE__ */ u$2("footer", { class: "rbt-imp-foot", children: [
-        /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "都不勾不填，就是普通导入。用的是酒馆自己的导入，重名时酒馆会问要不要覆盖。" }),
+        /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "用的是酒馆自己的导入，重名时酒馆会问要不要覆盖。" }),
         /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn", disabled: busy, onClick: () => {
           draft.value = null;
         }, children: "取消" }),
@@ -6115,9 +6327,9 @@ function SubItemList({ items, groupOff }) {
     groupOff && /* @__PURE__ */ u$2("div", { class: "rbt-hint", children: "上面的总开关关着，所以下面这些都不会运行。" }),
     items.length > 10 && /* @__PURE__ */ u$2("div", { class: "rbt-sub-tools", children: [
       /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: "搜索正则…", value: filter, onInput: (e2) => setFilter(e2.currentTarget.value) }),
-      /* @__PURE__ */ u$2("label", { class: "rbt-check", children: [
-        /* @__PURE__ */ u$2("input", { type: "checkbox", checked: onlyOn, onChange: (e2) => setOnlyOn(e2.currentTarget.checked) }),
-        "只看开着的"
+      /* @__PURE__ */ u$2("label", { class: "rbt-check-row rbt-check-inline", children: [
+        /* @__PURE__ */ u$2(CheckMark, { checked: onlyOn, onChange: setOnlyOn }),
+        /* @__PURE__ */ u$2("span", { class: "rbt-check-text", children: /* @__PURE__ */ u$2("span", { children: "只看开着的" }) })
       ] })
     ] }),
     shown.map((s2) => /* @__PURE__ */ u$2(SubItemRow, { sub: s2 }, s2.id)),
@@ -6529,7 +6741,7 @@ function WorldsPage() {
             "。"
           ] })
         ] }),
-        /* @__PURE__ */ u$2(Section, { title: "设置", children: /* @__PURE__ */ u$2(SwitchRow, { label: "自动导入卡里的世界书", detail: "打开一张卡时，如果它自带的世界书还没导入，就自动导入并绑定。不会覆盖已有的同名世界书。", checked: auto, onChange: (x2) => {
+        /* @__PURE__ */ u$2(Section, { title: "设置", children: /* @__PURE__ */ u$2(CheckRow, { label: "自动导入卡里的世界书", detail: "打开一张卡时，如果它自带的世界书还没导入，就自动导入并绑定。不会覆盖已有的同名世界书。", checked: auto, onChange: (x2) => {
           settings().autoImportWorld = x2;
           saveSettings();
           setAuto(x2);
@@ -6742,7 +6954,7 @@ async function runImport(files) {
 function ImportButton({ big } = {}) {
   const ref = A$1(null);
   return /* @__PURE__ */ u$2(S$1, { children: [
-    /* @__PURE__ */ u$2("button", { type: "button", class: big ? "rbt-gtool rbt-gtool-import" : "rbt-btn rbt-btn-small rbt-import-btn", title: "导入预设、世界书、正则或角色卡，也可以直接把文件拖进来", onClick: () => ref.current?.click(), children: [
+    /* @__PURE__ */ u$2("button", { type: "button", class: big ? "rbt-gtool rbt-gtool-import" : "rbt-btn rbt-btn-small rbt-import-btn", title: "导入预设、世界书、正则、角色卡或美化，也可以直接把文件拖进来", onClick: () => ref.current?.click(), children: [
       /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-import" }),
       " 导入"
     ] }),
@@ -6791,7 +7003,7 @@ function DropHint() {
   return /* @__PURE__ */ u$2("div", { class: "rbt-drop-hint", children: [
     /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-import" }),
     /* @__PURE__ */ u$2("b", { children: "松开就导入" }),
-    /* @__PURE__ */ u$2("span", { children: "预设、世界书、正则、角色卡都可以，会自动认出是哪种" })
+    /* @__PURE__ */ u$2("span", { children: "预设、世界书、正则、角色卡、美化都可以，会自动认出是哪种" })
   ] });
 }
 function InstallPlugin() {
@@ -6860,7 +7072,6 @@ function SheetHost() {
     ] })
   ] });
 }
-const VIEW_IDS = Object.keys(VIEW_LABELS);
 function addMenuButton() {
   const menu = document.getElementById("extensionsMenu");
   if (!menu || document.getElementById("rbt_menu_button")) return;
@@ -6879,36 +7090,55 @@ function addSettingsDrawer() {
   if (!host || document.getElementById("rbt_settings")) return;
   const wrap = document.createElement("div");
   wrap.id = "rbt_settings";
+  const row = (id, title, desc) => `<label class="rbt-check-row rbt-set-row"><input type="checkbox" class="rbt-cb" id="${id}" /><span class="rbt-check-text"><span>${title}</span><small>${desc}</small></span></label>`;
   wrap.innerHTML = `
     <div class="inline-drawer">
       <div class="inline-drawer-toggle inline-drawer-header">
         <b>RedBird 工具箱</b>
         <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
       </div>
-      <div class="inline-drawer-content">
-        <div class="flex-container flexGap5">
-          ${VIEW_IDS.filter((v2) => v2 !== "global").map((v2) => `<div class="menu_button" data-view="${v2}">${VIEW_LABELS[v2]}</div>`).join("")}
-          ${GLOBAL_TABS.map((t2) => `<div class="menu_button" data-gtab="${t2}">全局 · ${GLOBAL_TAB_LABELS[t2]}</div>`).join("")}
+      <div class="inline-drawer-content rbt-set">
+        <div class="rbt-set-open">
+          <div class="menu_button" id="rbt_open_global"><i class="fa-solid fa-globe"></i>全局工具箱</div>
+          <div class="menu_button" id="rbt_open_chat"><i class="fa-solid fa-feather-pointed"></i>聊天工具箱</div>
         </div>
-        <label class="checkbox_label"><input type="checkbox" id="rbt_shell_switch" /> 三栏界面（电脑上用左栏和导航条代替酒馆原来的顶栏）</label>
-        <label class="checkbox_label"><input type="checkbox" id="rbt_auto_switch" /> 换卡时自动切换世界书、正则和预设（关掉后只提醒）</label>
-        <label class="checkbox_label"><input type="checkbox" id="rbt_auto_world" /> 卡里自带的世界书还没导入时，自动导入并绑定</label>
-        <small>也可以从输入框左边的魔法棒菜单打开，或发送 <code>/rbt</code>。发送 <code>/rbt shell</code> 开关三栏界面。</small>
-        <div class="flex-container alignItemsCenter flexGap5">
-          <small>版本 <b id="rbt_version"></b></small>
-          <div class="menu_button" id="rbt_check_update">检查更新</div>
+        <div class="rbt-set-group">
+          <div class="rbt-set-title">界面</div>
+          ${row("rbt_shell_switch", "三栏界面", "电脑上用左栏和顶部导航代替酒馆原来的图标栏")}
+          ${row("rbt_look_switch", "美化", "酒馆和工具箱用同一套深色配色和字体")}
+          <div class="rbt-accents" id="rbt_accents"><small>强调色</small>${ACCENTS.map((a2) => `<button type="button" class="rbt-accent" data-accent="${a2.id}" title="${a2.label}" aria-label="${a2.label}" style="--c:${a2.color}"></button>`).join("")}</div>
+        </div>
+        <div class="rbt-set-group">
+          <div class="rbt-set-title">换卡时</div>
+          ${row("rbt_auto_switch", "自动换成这张卡的预设、世界书和正则", "每次都能撤销；关掉后只提醒，不自动换")}
+          ${row("rbt_auto_world", "自动导入卡里自带的世界书", "卡里带着、但酒馆里还没有的世界书，导入后绑到这张卡上")}
+        </div>
+        <div class="rbt-set-foot">
+          <small>版本 <span id="rbt_version"></span></small>
+          <button type="button" class="rbt-set-link" id="rbt_check_update">检查更新</button>
         </div>
       </div>
     </div>`;
   host.appendChild(wrap);
-  wrap.querySelectorAll("[data-view]").forEach((b2) => b2.addEventListener("click", () => openView(b2.dataset.view)));
-  wrap.querySelectorAll("[data-gtab]").forEach((b2) => b2.addEventListener("click", () => openGlobal(b2.dataset.gtab)));
+  wrap.querySelector("#rbt_open_global")?.addEventListener("click", () => openGlobal());
+  wrap.querySelector("#rbt_open_chat")?.addEventListener("click", () => openPanel());
   const bind = (id, get, set) => {
     const cb = wrap.querySelector(`#${id}`);
     cb.checked = get();
     cb.addEventListener("change", () => set(cb.checked));
     return cb;
   };
+  const lookCb = bind("rbt_look_switch", () => lookOn.value, (v2) => setLook(v2));
+  lookOn.subscribe((v2) => {
+    lookCb.checked = v2;
+  });
+  const accents = wrap.querySelectorAll("[data-accent]");
+  accents.forEach((b2) => b2.addEventListener("click", () => setAccent(b2.dataset.accent)));
+  accentId.subscribe((id) => accents.forEach((b2) => b2.classList.toggle("on", b2.dataset.accent === id)));
+  const accentRow = wrap.querySelector("#rbt_accents");
+  lookOn.subscribe((v2) => {
+    accentRow.hidden = !v2;
+  });
   const shellCb = bind("rbt_shell_switch", () => shellOn.value, (v2) => setShellEnabled(v2));
   shellOn.subscribe((v2) => {
     shellCb.checked = v2;
@@ -6951,6 +7181,8 @@ function addSlashCommand() {
   }
 }
 async function init() {
+  applyLook();
+  retireOldTheme();
   await preloadModules();
   await installStore();
   configureViews({

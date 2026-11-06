@@ -1,0 +1,272 @@
+/* =====================================================================
+   RedBird 美化：苹果风深色。只改「长什么样」——颜色、字体、字号、间距、圆角；
+   不改布局（布局由三栏界面负责），不碰消息里卡片自己渲染的 HTML 的样式。
+
+   两层：
+   1. 颜色变量（--rbd-*）一直都在：工具箱和三栏界面都用它，所以两边永远是同一套颜色。
+      用 :where(:root) 写，优先级为 0，别的主题自己定义了同名变量时让给它。
+   2. html.rbt-look：「美化」开关打开时，才把酒馆自己的界面（面板、按钮、输入框、
+      消息、弹窗、提示）换成同一套颜色和质感。关掉就是酒馆主题本来的样子。
+
+   层级只靠底色深浅 + 留白 + 字重/字色；线只用在有意义的地方（面板和聊天的分界、输入焦点）。
+   ===================================================================== */
+
+/* ---------- 1. 颜色变量 ---------- */
+:where(:root) {
+  /* 底色：越往上越亮 */
+  --rbd-canvas: #161618;     /* 聊天区 */
+  --rbd-bg1: #1e1e21;        /* 左栏、顶栏、面板、弹窗 */
+  --rbd-bg2: #2a2a2e;        /* 面板里的分组、卡片、按钮 */
+  --rbd-bg2-hover: #343439;
+  --rbd-bg3: rgba(118, 118, 128, 0.16);  /* 输入框、开关底：半透明填充，放在哪层上都比那层亮一点 */
+  /* 文字：三级 */
+  --rbd-text1: #ececf1;
+  --rbd-text2: rgba(235, 235, 245, 0.64);
+  --rbd-text3: rgba(235, 235, 245, 0.4);
+  /* 线：很淡 */
+  --rbd-hairline: rgba(255, 255, 255, 0.07);
+  --rbd-line: rgba(255, 255, 255, 0.1);
+  /* 唯一强调色：当前 / 焦点 / 可操作。设置里可以换，脚本会把它写在 <html> 上 */
+  --rbd-accent: #0a84ff;
+  --rbd-accent-soft: color-mix(in srgb, var(--rbd-accent) 18%, transparent);
+  --rbd-user-tint: color-mix(in srgb, var(--rbd-accent) 8%, transparent);  /* 你的消息的底色 */
+  /* 正文里的斜体（动作、旁白）和引号里的话（对白） */
+  --rbd-em: #b9b9c3;
+  --rbd-quote: color-mix(in srgb, var(--rbd-accent) 38%, #f2f2f7);
+  --rbd-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", "Noto Sans", sans-serif;
+}
+
+/* ---------- 2. 把酒馆的主题变量换成这一套 ----------
+   酒馆把主题颜色直接写在 <html style="…"> 上，所以这里要 !important 才压得过。
+   酒馆里由这些变量算出来的颜色（思考过程的字色等）会跟着一起变。 */
+html.rbt-look {
+  --SmartThemeBodyColor: var(--rbd-text1) !important;
+  --SmartThemeEmColor: var(--rbd-em) !important;
+  --SmartThemeUnderlineColor: var(--rbd-text1) !important;
+  --SmartThemeQuoteColor: var(--rbd-quote) !important;
+  --SmartThemeBlurTintColor: var(--rbd-bg1) !important;
+  --SmartThemeChatTintColor: var(--rbd-canvas) !important;
+  --SmartThemeUserMesBlurTintColor: var(--rbd-user-tint) !important;
+  --SmartThemeBotMesBlurTintColor: transparent !important;
+  --SmartThemeShadowColor: transparent !important;
+  --SmartThemeBorderColor: var(--rbd-hairline) !important;
+  --SmartThemeFastUIBGColor: var(--rbd-bg1) !important;
+  --interactable-outline-color: var(--rbd-accent);
+  --mainFontFamily: var(--rbd-font);
+}
+
+html.rbt-look body {
+  background-color: var(--rbd-canvas);
+  -webkit-font-smoothing: antialiased;
+}
+html.rbt-look ::selection { background-color: color-mix(in srgb, var(--rbd-accent) 40%, transparent); }
+
+/* ---------- 3. 顶栏和面板 ---------- */
+html.rbt-look #top-bar {
+  background-color: var(--rbd-bg1);
+  border-color: transparent;
+  box-shadow: none;
+}
+html.rbt-look #top-settings-holder .drawer-icon { color: var(--rbd-text2); }
+html.rbt-look #top-settings-holder .drawer-icon:hover { color: var(--rbd-text1); }
+html.rbt-look #top-settings-holder .drawer-icon.openIcon { color: var(--rbd-accent); }
+
+html.rbt-look .drawer-content,
+html.rbt-look #left-nav-panel,
+html.rbt-look #right-nav-panel {
+  background-color: var(--rbd-bg1);
+  border-color: var(--rbd-hairline);
+  box-shadow: none;
+}
+html.rbt-look .drawer-content h3,
+html.rbt-look .drawer-content h4 { font-weight: 600; letter-spacing: 0; }
+
+/* 分组标题条（扩展列表、用户设置的栏目）：去掉渐变和描边，只用第 2 层底色 */
+html.rbt-look :is(#extensions_settings, #extensions_settings2) .inline-drawer-toggle.inline-drawer-header,
+html.rbt-look #user-settings-block h4,
+html.rbt-look .standoutHeader {
+  background-image: none;
+  background-color: var(--rbd-bg2);
+  border-color: transparent;
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-weight: 600;
+}
+html.rbt-look :is(#extensions_settings, #extensions_settings2) .inline-drawer-toggle.inline-drawer-header:hover,
+html.rbt-look .standoutHeader.inline-drawer-header:hover {
+  filter: none;
+  background-color: var(--rbd-bg2-hover);
+}
+html.rbt-look .inline-drawer-header .inline-drawer-icon { filter: none; color: var(--rbd-text3); }
+html.rbt-look .standoutHeader ~ .inline-drawer-content { border-color: transparent; background-color: transparent; }
+html.rbt-look hr,
+html.rbt-look .sysHR {
+  border: 0;
+  border-top: 1px solid var(--rbd-hairline);
+  background: none;
+  opacity: 1;
+}
+
+/* ---------- 4. 控件 ---------- */
+/* 输入框：填充色就是它的形状；获得焦点时出现强调色的细圈 */
+html.rbt-look .text_pole,
+html.rbt-look select,
+html.rbt-look textarea:not(#send_textarea) {
+  background-color: var(--rbd-bg3);
+  border-color: transparent;
+  border-radius: 8px;
+  color: var(--rbd-text1);
+}
+html.rbt-look .text_pole::placeholder,
+html.rbt-look textarea::placeholder { color: var(--rbd-text3); }
+html.rbt-look .text_pole:focus,
+html.rbt-look select:focus,
+html.rbt-look textarea:not(#send_textarea):focus {
+  outline: none;
+  border-color: var(--rbd-accent);
+  box-shadow: 0 0 0 3px var(--rbd-accent-soft);
+}
+html.rbt-look select option { background-color: var(--rbd-bg1); color: var(--rbd-text1); }
+
+/* 按钮：底色即形状，悬停变亮；不再整体变灰 */
+html.rbt-look .menu_button {
+  filter: none;
+  background-color: var(--rbd-bg2);
+  border-color: transparent;
+  border-radius: 8px;
+  color: var(--rbd-text1);
+}
+html.rbt-look .menu_button:not(.disabled):not([disabled]):hover,
+html.rbt-look .menu_button:not(.disabled):not([disabled]).active {
+  background-color: var(--rbd-bg2-hover);
+}
+html.rbt-look .menu_button.redWarningBG,
+html.rbt-look .menu_button.caution { background-color: color-mix(in srgb, #ff453a 70%, var(--rbd-bg2)); }
+
+/* 勾选框：没勾是浅填充，勾上是强调色 + 白勾 */
+html.rbt-look input[type='checkbox'] {
+  background-color: var(--rbd-bg3);
+  border-color: var(--rbd-line);
+  outline: none;
+  box-shadow: none;
+  filter: none;
+  border-radius: 4px;
+}
+html.rbt-look input[type='checkbox']:checked {
+  background-color: var(--rbd-accent);
+  border-color: transparent;
+}
+html.rbt-look input[type='checkbox']::before { box-shadow: inset 1em 1em #fff; }
+html.rbt-look input[type='range'],
+html.rbt-look input[type='radio'] { accent-color: var(--rbd-accent); }
+
+/* 细滚动条 */
+html.rbt-look ::-webkit-scrollbar { width: 8px; height: 8px; }
+html.rbt-look ::-webkit-scrollbar-track { background: transparent; }
+html.rbt-look ::-webkit-scrollbar-thumb {
+  background-color: var(--rbd-bg2-hover);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background-clip: padding-box;
+}
+html.rbt-look ::-webkit-scrollbar-thumb:hover { background-color: rgba(235, 235, 245, 0.3); }
+
+/* ---------- 5. 聊天 ---------- */
+/* AI 的消息不加底，正文直接排在底色上；你的消息用很淡的强调色底区分轮次 */
+html.rbt-look #chat .mes {
+  padding: 14px 16px 10px;
+  margin-bottom: 4px;
+  border-color: transparent;
+  border-radius: 14px;
+}
+html.rbt-look #chat .mes[is_user="true"] { background-color: var(--rbd-user-tint); }
+html.rbt-look #chat .mes .name_text {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--rbd-text1);
+}
+html.rbt-look #chat .mes .timestamp,
+html.rbt-look #chat .mes .mesIDDisplay,
+html.rbt-look #chat .mes .tokenCounterDisplay,
+html.rbt-look #chat .mes .mes_timer {
+  font-size: 11.5px;
+  color: var(--rbd-text3);
+}
+/* 消息操作按钮是次要的：平时淡，移到消息上才清楚 */
+html.rbt-look #chat .mes .mes_buttons,
+html.rbt-look #chat .mes .extraMesButtonsHint { opacity: 0.4; transition: opacity 0.15s; }
+html.rbt-look #chat .mes:hover .mes_buttons,
+html.rbt-look #chat .mes:hover .extraMesButtonsHint { opacity: 1; }
+/* 正文：只调段落的行距和段距，卡片自己的 HTML 不碰 */
+html.rbt-look #chat .mes_text > p { line-height: 1.8; margin: 0 0 0.75em; }
+html.rbt-look #chat .mes_text > p:last-child { margin-bottom: 0; }
+html.rbt-look #chat .mes_text > pre,
+html.rbt-look #chat .mes_text > p > code {
+  border-radius: 8px;
+  background-color: var(--rbd-bg2);
+}
+html.rbt-look #chat .mes.smallSysMes { color: var(--rbd-text3); }
+html.rbt-look .mes_reasoning_details { border-radius: 10px; }
+
+/* 输入区：底色即形状，四角都圆 */
+html.rbt-look #send_form {
+  background-color: var(--rbd-bg1);
+  border-color: var(--rbd-hairline);
+  border-radius: 16px;
+}
+html.rbt-look #send_form.no-connection { border-color: color-mix(in srgb, #ff453a 50%, transparent); }
+html.rbt-look #send_textarea { background-color: transparent; border-color: transparent; }
+html.rbt-look #send_textarea::placeholder { color: var(--rbd-text3); }
+html.rbt-look #leftSendForm .fa-solid,
+html.rbt-look #rightSendForm .fa-solid { color: var(--rbd-text2); }
+html.rbt-look #leftSendForm .fa-solid:hover,
+html.rbt-look #rightSendForm .fa-solid:hover { color: var(--rbd-text1); }
+
+/* ---------- 6. 角色列表、首页 ---------- */
+html.rbt-look .character_select,
+html.rbt-look .group_select,
+html.rbt-look .bogus_folder_select { border-radius: 10px; }
+html.rbt-look .character_select:hover,
+html.rbt-look .group_select:hover,
+html.rbt-look .bogus_folder_select:hover { background-color: var(--rbd-bg2); }
+html.rbt-look .character_select.selected,
+html.rbt-look .group_select.selected { background-color: var(--rbd-accent-soft); }
+html.rbt-look .ch_name { font-weight: 600; }
+
+html.rbt-look .welcomePanel { background: transparent; border-color: transparent; }
+html.rbt-look .welcomePanel .recentChat {
+  padding: 12px 14px;
+  background-color: var(--rbd-bg2);
+  border-color: transparent;
+  border-radius: 12px;
+}
+html.rbt-look .welcomePanel .recentChat:hover { background-color: var(--rbd-bg2-hover); }
+html.rbt-look .welcomePanel .recentChat .chatDate,
+html.rbt-look .welcomePanel .recentChat .chatStats { color: var(--rbd-text3); }
+html.rbt-look .welcomePanel .recentChat .chatMessage { color: var(--rbd-text2); }
+
+/* ---------- 7. 弹窗和提示 ---------- */
+/* 弹窗浮在最上层：这里的阴影是「它在上面」的意思，不是装饰 */
+html.rbt-look .popup {
+  background-color: var(--rbd-bg1);
+  border-color: var(--rbd-hairline);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+html.rbt-look .popup::backdrop { background-color: rgba(0, 0, 0, 0.5); }
+
+html.rbt-look #toast-container > div {
+  background-color: var(--rbd-bg2);
+  color: var(--rbd-text1);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  opacity: 1;
+  font-family: var(--rbd-font);
+}
+html.rbt-look #toast-container > div:hover { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55); }
+html.rbt-look #toast-container .toast-title { font-weight: 600; }
+/* 类型只用左边一条颜色表示 */
+html.rbt-look #toast-container > .toast-success { box-shadow: inset 3px 0 0 #30d158, 0 12px 32px rgba(0, 0, 0, 0.45); }
+html.rbt-look #toast-container > .toast-info { box-shadow: inset 3px 0 0 var(--rbd-accent), 0 12px 32px rgba(0, 0, 0, 0.45); }
+html.rbt-look #toast-container > .toast-warning { box-shadow: inset 3px 0 0 #ff9f0a, 0 12px 32px rgba(0, 0, 0, 0.45); }
+html.rbt-look #toast-container > .toast-error { box-shadow: inset 3px 0 0 #ff453a, 0 12px 32px rgba(0, 0, 0, 0.45); }

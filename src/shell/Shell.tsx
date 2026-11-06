@@ -1,6 +1,7 @@
 /**
- * 三栏外壳：左栏（全局设定 + 聊天 / 角色列表）+ 中间顶部导航条。
- * 右栏第二阶段再做；现在「角色 / 世界书 / 工具箱」暂时放在导航条右侧。
+ * 三栏外壳：左栏（全局设定 + 最近的聊天）+ 中间顶部导航条 + 右侧聊天工具箱。
+ * 手机（≤ 1000px，body.rbt-compact）：同一套东西换个排法——左栏变成 ☰ 打开的抽屉，
+ * 导航条只留 ☰、角色名（点了切换存档）、新聊天和聊天工具箱；状态栏不显示。
  */
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useState } from 'preact/hooks';
@@ -37,6 +38,10 @@ const ST_KEYS: DrawerKey[] = ['preset', 'extensions', 'api', 'persona', 'setting
 export const apiOnline = signal(true);
 /** True on the home screen (no character or group open). */
 export const homeActive = signal(false);
+/** Phone / narrow window: the left column becomes a drawer opened from ☰. */
+export const compact = signal(false);
+export const navOpen = signal(false);
+const COMPACT_MAX = 1000;
 function readOnline(): void {
   const st = String(ctx().onlineStatus ?? '');
   apiOnline.value = !!st && st !== 'no_connection';
@@ -45,18 +50,27 @@ function readOnline(): void {
 function applyBodyClasses(): void {
   const b = document.body.classList;
   b.toggle('rbt-shell', shellOn.value);
-  b.toggle('rbt-shell-lcollapsed', leftCollapsed.value);
+  compact.value = (window.innerWidth || 1280) <= COMPACT_MAX;
+  if (!compact.value) navOpen.value = false;
+  b.toggle('rbt-compact', compact.value);
+  b.toggle('rbt-nav-open', navOpen.value);
+  b.toggle('rbt-shell-lcollapsed', leftCollapsed.value && !compact.value);
   const c = ctx();
   const home = (c.characterId === undefined || c.characterId === null) && !c.groupId;
   b.toggle('rbt-home', home);
   homeActive.value = home;
-  shellActive.value = shellOn.value && (window.innerWidth || 1280) > 1000;
+  shellActive.value = shellOn.value;
 }
 
 export function setShellEnabled(on: boolean): void {
   shellOn.value = on;
   settings().shellEnabled = on;
   saveSettings();
+  applyBodyClasses();
+}
+
+export function setNavOpen(v: boolean): void {
+  navOpen.value = v;
   applyBodyClasses();
 }
 
@@ -182,21 +196,60 @@ function loadVersion(): void {
   fetch('/version').then((r) => r.json()).then((v: { pkgVersion?: string }) => { if (v?.pkgVersion) stVersion.value = v.pkgVersion; }).catch(() => { /* ignore */ });
 }
 
+/** 手机上：当前这张卡的入口（电脑上它们在导航条里）。 */
+function CurrentCharacter() {
+  void chatTick.value;
+  const c = ctx();
+  const char = currentCharacter();
+  const group = c.groupId ? c.groups?.find((g: { id: string }) => g.id === c.groupId) : null;
+  if (!char && !group) return null;
+  const name = char?.name ?? group?.name ?? '';
+  return (
+    <div class="rbt-left-current">
+      <div class="rbt-left-title">{name}</div>
+      <nav class="rbt-globals rbt-globals-current" aria-label="当前角色">
+        {char && <DrawerButton k="characters" label="编辑卡片" title={`编辑「${name}」的角色卡`} />}
+        <WorldButton grid />
+        <button type="button" class="rbt-gbtn" title="切换 / 管理这个角色的存档" onClick={() => trigger('#option_select_chat')}>
+          <i class="fa-solid fa-clock-rotate-left fa-fw" />
+          <span>存档</span>
+        </button>
+      </nav>
+    </div>
+  );
+}
+
 function LeftColumn() {
   const [q, setQ] = useState('');
   const version = stVersion.value;
+  const phone = compact.value;
+  // 手机上：选了聊天、面板或工具箱之后，抽屉自己收起来（搜索框除外）
+  const autoClose = (e: MouseEvent) => {
+    if (!phone) return;
+    const el = (e.target as HTMLElement).closest('button, a');
+    if (!el || el.closest('.rbt-left-head')) return;
+    setTimeout(() => setNavOpen(false), 0);
+  };
 
   return (
-    <aside class="rbt-left" aria-label="RedBird 左栏">
+    <aside class="rbt-left" aria-label="RedBird 左栏" onClickCapture={autoClose}>
       <div class="rbt-left-head">
-        <button type="button" class="rbt-brand" title="回到首页" onClick={goHome}>
+        <button type="button" class="rbt-brand" title="回到首页" onClick={() => { goHome(); if (phone) setNavOpen(false); }}>
           <span class="rbt-brand-mark">🐦</span>
           <span>首页</span>
         </button>
-        <button type="button" class="rbt-icon-btn" title="收起左栏" onClick={() => setCollapsed(true)}>
-          <i class="fa-solid fa-angles-left" />
-        </button>
+        {phone ? (
+          <button type="button" class="rbt-icon-btn" title="关闭" aria-label="关闭" onClick={() => setNavOpen(false)}>
+            <i class="fa-solid fa-xmark" />
+          </button>
+        ) : (
+          <button type="button" class="rbt-icon-btn" title="收起左栏" onClick={() => setCollapsed(true)}>
+            <i class="fa-solid fa-angles-left" />
+          </button>
+        )}
       </div>
+
+      {phone && <CurrentCharacter />}
 
       <div class="rbt-gtool-row"><GlobalButton /><ImportButton big /></div>
       <nav class="rbt-globals" aria-label="酒馆设定">
@@ -238,9 +291,9 @@ function LeftColumn() {
 // ----------------------------------------------------------------- nav ---
 
 /** 「世界书（N）」: N = how many books are loaded in this chat (card, extra, chat, persona, global); a dot when another card's book is on globally. */
-function WorldButton() {
+function WorldButton({ grid }: { grid?: boolean }) {
   const w = worldStatus();
-  return <DrawerButton k="worldinfo" compact label={`世界书（${w.count}）`} title={w.warn ? `${w.title}
+  return <DrawerButton k="worldinfo" compact={!grid} label={`世界书（${w.count}）`} title={w.warn ? `${w.title}
 ${w.warn}` : w.title} dot={w.warn} />;
 }
 
@@ -252,6 +305,35 @@ function NavBar() {
   const chatId = String(c.getCurrentChatId?.() ?? '');
   const home = !char && !group;
   const name = char?.name ?? group?.name ?? '';
+
+  if (compact.value) {
+    return (
+      <header class="rbt-nav rbt-nav-phone">
+        <button type="button" class="rbt-icon-btn rbt-nav-menu" title="菜单" aria-label="菜单" onClick={() => setNavOpen(true)}>
+          <i class="fa-solid fa-bars" />
+        </button>
+        <div class="rbt-nav-title">
+          {home ? (
+            <span class="rbt-nav-name">首页</span>
+          ) : (
+            <button type="button" class="rbt-nav-who" title="切换 / 管理存档" onClick={() => trigger('#option_select_chat')}>
+              {char && <img class="rbt-nav-avatar" src={c.getThumbnailUrl('avatar', char.avatar)} alt="" />}
+              <span class="rbt-nav-name">{name}</span>
+              {chatId && <i class="fa-solid fa-chevron-down" />}
+            </button>
+          )}
+        </div>
+        <div class="rbt-nav-actions">
+          {!home && (
+            <button type="button" class="rbt-icon-btn" title={`给「${name}」开一个新存档`} aria-label="新聊天" onClick={newChat}>
+              <i class="fa-solid fa-pen-to-square" />
+            </button>
+          )}
+          {!home && <ToolboxButton />}
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header class="rbt-nav">
@@ -291,9 +373,11 @@ function NavBar() {
 
 export function Shell() {
   if (!shellOn.value) return null;
+  const phone = compact.value;
   return (
     <>
-      {!leftCollapsed.value && <LeftColumn />}
+      {phone && navOpen.value && <div class="rbt-left-scrim" onClick={() => setNavOpen(false)} />}
+      {(phone || !leftCollapsed.value) && <LeftColumn />}
       <NavBar />
       {homeActive.value && shellActive.value && <HomeGallery />}
     </>

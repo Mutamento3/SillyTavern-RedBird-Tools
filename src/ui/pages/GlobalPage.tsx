@@ -8,7 +8,7 @@ import { allCharacters, archiveVersion, currentPresetName, findChar, globalRegex
 import { currentBookScopes } from '../../tools/flow/capture';
 import { openDrawer } from '../../shell/drawers';
 import { envReport, refreshEnv, type EnvItem, type EnvSubItem } from '../../tools/env/env';
-import { Chip, Toggle } from '../common';
+import { Chip, CheckMark, Toggle } from '../common';
 import { SourceEditor } from '../SourceEditor';
 import { sourceFor } from '../../tools/sources';
 import { OK, Section } from './parts';
@@ -83,7 +83,7 @@ function SubItemList({ items, groupOff }: { items: EnvSubItem[]; groupOff: boole
       {items.length > 10 && (
         <div class="rbt-sub-tools">
           <input class="text_pole rbt-input" placeholder="搜索正则…" value={filter} onInput={(e) => setFilter((e.currentTarget as HTMLInputElement).value)} />
-          <label class="rbt-check"><input type="checkbox" checked={onlyOn} onChange={(e) => setOnlyOn((e.currentTarget as HTMLInputElement).checked)} />只看开着的</label>
+          <label class="rbt-check-row rbt-check-inline"><CheckMark checked={onlyOn} onChange={setOnlyOn} /><span class="rbt-check-text"><span>只看开着的</span></span></label>
         </div>
       )}
       {shown.map((s) => <SubItemRow key={s.id} sub={s} />)}

@@ -7,6 +7,8 @@
 import { render } from 'preact';
 import './style.css';
 import './shell/shell.css';
+import './look/look.css';
+import { ACCENTS, accentId, applyLook, lookOn, retireOldTheme, setAccent, setLook } from './look/look';
 import { ctx, preloadModules, saveSettings, settings } from './st/st';
 import { installStore } from './st/store';
 import { checkForUpdate, installedVersion, installUpdateCheck } from './tools/update';
@@ -46,36 +48,53 @@ function addSettingsDrawer(): void {
   if (!host || document.getElementById('rbt_settings')) return;
   const wrap = document.createElement('div');
   wrap.id = 'rbt_settings';
+  const row = (id: string, title: string, desc: string) =>
+    `<label class="rbt-check-row rbt-set-row"><input type="checkbox" class="rbt-cb" id="${id}" /><span class="rbt-check-text"><span>${title}</span><small>${desc}</small></span></label>`;
   wrap.innerHTML = `
     <div class="inline-drawer">
       <div class="inline-drawer-toggle inline-drawer-header">
         <b>RedBird 工具箱</b>
         <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
       </div>
-      <div class="inline-drawer-content">
-        <div class="flex-container flexGap5">
-          ${VIEW_IDS.filter((v) => v !== 'global').map((v) => `<div class="menu_button" data-view="${v}">${VIEW_LABELS[v]}</div>`).join('')}
-          ${GLOBAL_TABS.map((t) => `<div class="menu_button" data-gtab="${t}">全局 · ${GLOBAL_TAB_LABELS[t]}</div>`).join('')}
+      <div class="inline-drawer-content rbt-set">
+        <div class="rbt-set-open">
+          <div class="menu_button" id="rbt_open_global"><i class="fa-solid fa-globe"></i>全局工具箱</div>
+          <div class="menu_button" id="rbt_open_chat"><i class="fa-solid fa-feather-pointed"></i>聊天工具箱</div>
         </div>
-        <label class="checkbox_label"><input type="checkbox" id="rbt_shell_switch" /> 三栏界面（电脑上用左栏和导航条代替酒馆原来的顶栏）</label>
-        <label class="checkbox_label"><input type="checkbox" id="rbt_auto_switch" /> 换卡时自动切换世界书、正则和预设（关掉后只提醒）</label>
-        <label class="checkbox_label"><input type="checkbox" id="rbt_auto_world" /> 卡里自带的世界书还没导入时，自动导入并绑定</label>
-        <small>也可以从输入框左边的魔法棒菜单打开，或发送 <code>/rbt</code>。发送 <code>/rbt shell</code> 开关三栏界面。</small>
-        <div class="flex-container alignItemsCenter flexGap5">
-          <small>版本 <b id="rbt_version"></b></small>
-          <div class="menu_button" id="rbt_check_update">检查更新</div>
+        <div class="rbt-set-group">
+          <div class="rbt-set-title">界面</div>
+          ${row('rbt_shell_switch', '三栏界面', '电脑上用左栏和顶部导航代替酒馆原来的图标栏')}
+          ${row('rbt_look_switch', '美化', '酒馆和工具箱用同一套深色配色和字体')}
+          <div class="rbt-accents" id="rbt_accents"><small>强调色</small>${ACCENTS.map((a) => `<button type="button" class="rbt-accent" data-accent="${a.id}" title="${a.label}" aria-label="${a.label}" style="--c:${a.color}"></button>`).join('')}</div>
+        </div>
+        <div class="rbt-set-group">
+          <div class="rbt-set-title">换卡时</div>
+          ${row('rbt_auto_switch', '自动换成这张卡的预设、世界书和正则', '每次都能撤销；关掉后只提醒，不自动换')}
+          ${row('rbt_auto_world', '自动导入卡里自带的世界书', '卡里带着、但酒馆里还没有的世界书，导入后绑到这张卡上')}
+        </div>
+        <div class="rbt-set-foot">
+          <small>版本 <span id="rbt_version"></span></small>
+          <button type="button" class="rbt-set-link" id="rbt_check_update">检查更新</button>
         </div>
       </div>
     </div>`;
   host.appendChild(wrap);
-  wrap.querySelectorAll<HTMLElement>('[data-view]').forEach((b) => b.addEventListener('click', () => openView(b.dataset.view as ViewId)));
-  wrap.querySelectorAll<HTMLElement>('[data-gtab]').forEach((b) => b.addEventListener('click', () => openGlobal(b.dataset.gtab as GlobalTab)));
+  wrap.querySelector('#rbt_open_global')?.addEventListener('click', () => openGlobal());
+  wrap.querySelector('#rbt_open_chat')?.addEventListener('click', () => openPanel());
   const bind = (id: string, get: () => boolean, set: (v: boolean) => void) => {
     const cb = wrap.querySelector<HTMLInputElement>(`#${id}`)!;
     cb.checked = get();
     cb.addEventListener('change', () => set(cb.checked));
     return cb;
   };
+  const lookCb = bind('rbt_look_switch', () => lookOn.value, (v) => setLook(v));
+  lookOn.subscribe((v) => { lookCb.checked = v; });
+  const accents = wrap.querySelectorAll<HTMLElement>('[data-accent]');
+  accents.forEach((b) => b.addEventListener('click', () => setAccent(b.dataset.accent!)));
+  accentId.subscribe((id) => accents.forEach((b) => b.classList.toggle('on', b.dataset.accent === id)));
+  // 强调色只在美化开着时有意义
+  const accentRow = wrap.querySelector<HTMLElement>('#rbt_accents')!;
+  lookOn.subscribe((v) => { accentRow.hidden = !v; });
   const shellCb = bind('rbt_shell_switch', () => shellOn.value, (v) => setShellEnabled(v));
   shellOn.subscribe((v) => { shellCb.checked = v; });
   bind('rbt_auto_switch', () => settings().autoApplyEnv, (v) => { settings().autoApplyEnv = v; saveSettings(); });
@@ -107,6 +126,8 @@ function addSlashCommand(): void {
 }
 
 async function init(): Promise<void> {
+  applyLook();
+  retireOldTheme();
   await preloadModules();
   // 工具箱自己的存档：先把 settings.json 里旧了的部分补回来（见 st/store.ts）
   await installStore();

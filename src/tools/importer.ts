@@ -12,7 +12,7 @@ import { cardFromPng, looksLikeCardBook, summarizeCard, worldEntryCount, type Ca
 export type { ImportKind };
 
 export const KIND_LABEL: Record<ImportKind, string> = {
-  preset: '预设', world: '世界书', regex: '正则', character: '角色卡', unknown: '认不出的文件',
+  preset: '预设', world: '世界书', regex: '正则', character: '角色卡', theme: '美化', unknown: '认不出的文件',
 };
 
 export const KIND_TAB: Partial<Record<ImportKind, GlobalTab>> = { preset: 'presets', world: 'worlds', regex: 'regex' };
@@ -54,6 +54,8 @@ export async function installPlugin(url: string): Promise<boolean> {
 export interface ImportItem {
   file: File;
   kind: ImportKind;
+  /** What to call it: the card's name, the preset / worldbook name it will get, the theme's name. */
+  title: string;
   /** After import: switch to this preset / turn this book on globally / open this card. */
   activate: boolean;
   author: string;
@@ -66,8 +68,10 @@ export interface ImportItem {
   entries?: number;
   /** Left out unless the user ticks it back on (e.g. the JSON copy of a PNG card). */
   skip?: boolean;
-  /** Why it was left out / what we suggest. */
+  /** Why it was left out (when skipped), or a detail for binding it to the card. */
   note?: string;
+  /** Left out because it repeats this (a file name or the card name). */
+  dupOf?: string;
   /** Worldbook: bind to the card imported in the same batch. Preset: make it that card's recommended preset. */
   toCard?: boolean;
 }
@@ -75,13 +79,21 @@ export interface ImportItem {
 export async function prepareImport(files: File[]): Promise<ImportItem[]> {
   const out: ImportItem[] = [];
   for (const file of files) {
-    const it: ImportItem = { file, kind: await detectKind(file), activate: false, author: '', linkLabel: '', url: '', notes: '' };
+    const it: ImportItem = { file, kind: await detectKind(file), title: baseName(file), activate: false, author: '', linkLabel: '', url: '', notes: '' };
     try {
       if (it.kind === 'character') {
         const data = /.png$/i.test(file.name) ? cardFromPng(new Uint8Array(await file.arrayBuffer())) : /.json$/i.test(file.name) ? JSON.parse(await file.text()) : null;
         it.card = summarizeCard(data) ?? undefined;
+        if (it.card) it.title = it.card.name;
       }
       if (it.kind === 'world') it.entries = worldEntryCount(JSON.parse(await file.text()));
+      if (it.kind === 'theme') it.title = String(JSON.parse(await file.text()).name ?? it.title);
+      if (it.kind === 'regex') {
+        const j = JSON.parse(await file.text());
+        const list = Array.isArray(j) ? j : [j];
+        if (list.length === 1 && list[0]?.scriptName) it.title = String(list[0].scriptName);
+        else if (list.length > 1) it.entries = list.length;
+      }
     } catch { /* unreadable: import as-is */ }
     out.push(it);
   }
@@ -99,7 +111,7 @@ export function relate(items: ImportItem[]): ImportItem[] {
   for (const [name, group] of byName) {
     if (group.length < 2) continue;
     const keep = group.find((g) => /.png$/i.test(g.file.name)) ?? group[0];
-    for (const g of group) if (g !== keep) { g.skip = true; g.note = `和「${keep.file.name}」是同一张卡（${name}）。PNG 带头像，导入它就够了。`; }
+    for (const g of group) if (g !== keep) { g.skip = true; g.dupOf = keep.file.name; g.note = `和「${keep.file.name}」是同一张卡（${name}），只导入 PNG 就够了，它带头像。`; }
   }
   const cards = items.filter((i) => i.kind === 'character' && !i.skip);
   if (cards.length !== 1 || !cards[0].card) return items;
@@ -108,10 +120,11 @@ export function relate(items: ImportItem[]): ImportItem[] {
     if (it.kind === 'world') {
       if (looksLikeCardBook(card, baseName(it.file), it.entries ?? 0)) {
         it.skip = true;
-        it.note = `看起来就是「${card.name}」卡里自带的那本世界书（卡里 ${card.bookEntries} 条，这个文件 ${it.entries ?? '?'} 条）。打开这张卡时会自动导入，不用单独导入。`;
+        it.dupOf = card.name;
+        it.note = `就是「${card.name}」卡里自带的那本（卡里 ${card.bookEntries} 条，这个文件 ${it.entries ?? '?'} 条），打开这张卡时会自动导入。`;
       } else {
         it.toCard = true;
-        it.note = card.bookEntries ? `「${card.name}」卡里已经自带一本世界书，这本会作为附加世界书绑上。` : `和「${card.name}」一起发布的世界书。`;
+        it.note = card.bookEntries ? '卡里已经自带一本世界书，这本作为附加世界书绑上' : '';
       }
     }
     if (it.kind === 'preset') it.toCard = true;
@@ -152,6 +165,8 @@ export async function runImport(items: ImportItem[], hooks: {
   bindWorld: (avatar: string, world: string, extra: boolean) => Promise<void>;
   setCardPreset: (avatar: string, preset: string) => void;
   normalizeUrl: (s: string) => string;
+  /** Switch ST's UI theme to this one (and turn the toolbox's own look off). */
+  useTheme: (name: string) => Promise<void>;
 }): Promise<ImportDone[]> {
   const done: ImportDone[] = [];
   items = items.filter((i) => !i.skip);
@@ -177,6 +192,17 @@ export async function runImport(items: ImportItem[], hooks: {
     if (name && it.activate) await hooks.switchPreset(name);
     if (name && it.toCard) toCardPreset = name;
     done.push({ item: it, name });
+  }
+  for (const it of items.filter((i) => i.kind === 'theme')) {
+    let name = '';
+    try { name = String(JSON.parse(await it.file.text()).name ?? ''); } catch { /* unreadable */ }
+    const has = () => !!name && [...document.querySelectorAll<HTMLOptionElement>('#themes option')].some((o) => o.value === name);
+    if (has()) { toast('warning', `已经有叫「${name}」的美化了，酒馆不会覆盖。要更新的话，先在「用户设置 › 界面主题」里删掉旧的。`, '导入'); done.push({ item: it, name: null }); continue; }
+    if (!feed('ui_preset_import_file', [it.file], 'change')) { toast('error', '找不到酒馆的美化导入入口。', '导入'); break; }
+    const t0 = Date.now();
+    while (!has() && Date.now() - t0 < 15000) await wait(300);
+    if (has() && it.activate) await hooks.useTheme(name);
+    done.push({ item: it, name: has() ? name : null });
   }
   const rx = items.filter((i) => i.kind === 'regex');
   if (rx.length) { feed('import_regex_file', rx.map((i) => i.file), 'change'); for (const it of rx) done.push({ item: it, name: baseName(it.file) }); }

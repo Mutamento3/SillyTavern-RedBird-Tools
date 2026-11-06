@@ -60,22 +60,27 @@ export function Empty({ children }: { children: ComponentChildren }) {
 export function Toggle({ checked, onChange, title }: { checked: boolean; onChange: (v: boolean) => void; title?: string }) {
   return (
     <label class="rbt-switch" title={title}>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange((e.currentTarget as HTMLInputElement).checked)} />
+      <input type="checkbox" role="switch" checked={checked} onChange={(e) => onChange((e.currentTarget as HTMLInputElement).checked)} />
       <span />
     </label>
   );
 }
 
-/** 设置行：左边名字（下面一行灰色说明），右边开关。 */
-export function SwitchRow({ label, detail, checked, onChange }: { label: ComponentChildren; detail?: ComponentChildren; checked: boolean; onChange: (v: boolean) => void }) {
+/** 勾选框本身（18px，清楚的边框和勾），放进整行都能点的 <label> 里用。 */
+export function CheckMark({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return <input type="checkbox" class="rbt-cb" checked={checked} onChange={(e) => onChange((e.currentTarget as HTMLInputElement).checked)} />;
+}
+
+/** 选项行：勾选框紧挨着名字（下面一行灰色说明）；整行都能点，悬停整行变亮。 */
+export function CheckRow({ label, detail, checked, onChange }: { label: ComponentChildren; detail?: ComponentChildren; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <div class="rbt-switch-row">
-      <div class="rbt-switch-text">
+    <label class="rbt-check-row">
+      <CheckMark checked={checked} onChange={onChange} />
+      <span class="rbt-check-text">
         <span>{label}</span>
         {detail && <small>{detail}</small>}
-      </div>
-      <Toggle checked={checked} onChange={onChange} />
-    </div>
+      </span>
+    </label>
   );
 }
 

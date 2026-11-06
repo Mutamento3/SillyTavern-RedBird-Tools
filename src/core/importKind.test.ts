@@ -19,6 +19,10 @@ describe('detectJson', () => {
   it('does not take a card with an embedded book for a worldbook', () => {
     expect(detectJson({ spec: 'chara_card_v2', data: { first_mes: '' }, entries: {} })).toBe('character');
   });
+  it('recognises a UI theme (美化)', () => {
+    expect(detectJson({ name: 'X', main_text_color: 'rgb(1,1,1)', custom_css: '' })).toBe('theme');
+    expect(detectJson({ name: 'X', custom_css: 'body{}' })).toBe('theme');
+  });
   it('returns unknown otherwise', () => {
     expect(detectJson({ foo: 1 })).toBe('unknown');
     expect(detectJson(null)).toBe('unknown');

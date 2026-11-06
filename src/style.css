@@ -302,7 +302,7 @@ body.rbt-resizing #sheld { transition: none !important; }
 }
 .rbt-drift { margin: 4px 0; padding-left: 18px; }
 .rbt-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.rbt-check { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; cursor: pointer; }
+.rbt-check { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; cursor: pointer; }
 
 .rbt-env-scope { margin-bottom: 10px; }
 .rbt-env-scope-head { margin-bottom: 4px; }
@@ -344,29 +344,32 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-btn-small { padding: 1px 8px; font-size: 11px; }
 .rbt-btn-primary { background: rgba(61, 139, 253, 0.3); border-color: rgba(61, 139, 253, 0.6); }
 
-.rbt-switch { position: relative; display: inline-block; width: 30px; height: 17px; flex-shrink: 0; }
-.rbt-switch input { opacity: 0; width: 0; height: 0; }
+/* 开关：比勾选框好点（36×20），整行都能点的地方把它放在右边 */
+.rbt-switch { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; cursor: pointer; }
+.rbt-switch input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
 .rbt-switch span {
   position: absolute;
   inset: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(120, 120, 128, 0.36);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.18s;
 }
 .rbt-switch span::before {
   content: '';
   position: absolute;
   left: 2px;
   top: 2px;
-  width: 13px;
-  height: 13px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: #fff;
-  transition: transform 0.15s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform 0.18s;
 }
-.rbt-switch input:checked + span { background: #3d8bfd; }
-.rbt-switch input:checked + span::before { transform: translateX(13px); }
+.rbt-switch input:checked + span { background: var(--rbd-accent, #0a84ff); }
+.rbt-switch input:checked + span::before { transform: translateX(16px); }
+.rbt-switch input:focus-visible + span { outline: 2px solid var(--rbd-accent, #0a84ff); outline-offset: 2px; }
 
 /* per-script toggles inside a group (preset / card regex) */
 .rbt-sub-list { margin: 0 0 8px 12px; padding-left: 8px; border-left: 2px solid var(--rbt-border); }
@@ -620,8 +623,6 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-btn-small { padding: 2px 10px; font-size: 12px; }
 .rbt-btn-primary { border: 0; background: var(--accent); color: #fff; }
 .rbt-btn-primary:hover { background: color-mix(in srgb, var(--accent) 88%, #fff); }
-.rbt-switch input:checked + span { background: var(--accent); }
-.rbt-switch span { background: rgba(255, 255, 255, 0.16); }
 .rbt-panel .text_pole,
 .rbt-scope .text_pole,
 .rbt-panel select,
@@ -705,12 +706,10 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-panel .rbt-vartree-row span, .rbt-scope .rbt-vartree-row span { color: var(--t1); }
 
 /* 设置行：名字 + 灰色说明，开关靠右 */
-.rbt-switch-row { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
 .rbt-switch-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .rbt-switch-text > span { color: var(--t1); }
 .rbt-switch-text > small { color: var(--t3); font-size: 11px; line-height: 1.45; }
 .rbt-switch-row .rbt-switch { flex: none; }
-.rbt-check input { accent-color: var(--accent); }
 
 /* 输入框和正文同一字号，不要比周围大一圈 */
 .rbt-panel .text_pole, .rbt-scope .text_pole,
@@ -838,7 +837,15 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-pickrow + .rbt-pickrow { box-shadow: 0 -1px 0 var(--hair); }
 .rbt-pickrow:hover { background: var(--g2h); }
 .rbt-pickrow.on { background: var(--accent-soft); }
-.rbt-pickrow input { flex: none; margin: 0; accent-color: var(--accent); }
+/* 多选：圆形勾选标记（整行都能点） */
+.rbt-pickrow.rbt-pickrow input[type='checkbox'] {
+  flex: none; margin: 0; width: 20px; height: 20px; border-radius: 50%;
+  appearance: none; display: grid; place-content: center;
+  border: 1.5px solid var(--t3); outline: none; box-shadow: none; filter: none;
+  background: transparent; transform: none; cursor: pointer;
+}
+.rbt-pickrow.rbt-pickrow input[type='checkbox']:checked { background: var(--accent); border-color: var(--accent); }
+.rbt-pickrow.rbt-pickrow input[type='checkbox']::before { width: 0.6em; height: 0.6em; box-shadow: inset 1em 1em #fff; }
 
 .rbt-list-filter { margin-bottom: 10px; }
 
@@ -879,22 +886,108 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-imp .rbt-sheet-title { flex: 1; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
 .rbt-imp .rbt-sheet-close { border: 0; background: none; color: var(--t2, #9ca1aa); font-size: 15px; cursor: pointer; }
 .rbt-imp .rbt-sheet-body { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
-.rbt-imp-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; background: var(--g2, rgba(255, 255, 255, 0.04)); }
-.rbt-imp-row.off { opacity: 0.6; }
-.rbt-imp-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.rbt-imp-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rbt-imp-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; }
-.rbt-imp-check input { margin: 0; accent-color: var(--accent, #e2725b); }
-.rbt-imp-more { align-self: flex-start; font-size: 12px; padding: 0; }
 .rbt-imp-foot { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--hair, rgba(255, 255, 255, 0.06)); }
 .rbt-imp-foot > small { flex: 1; }
 
 /* 左栏：「全局工具箱」和「导入」并排 */
-@media (min-width: 1001px) {
-  .rbt-gtool-row { display: flex; gap: 6px; }
-  .rbt-gtool-row .rbt-gtool:first-child { flex: 1; min-width: 0; }
-  .rbt-gtool.rbt-gtool-import { width: auto; flex: none; font-weight: 500; }
-}
+.rbt-gtool-row { display: flex; gap: 6px; }
+.rbt-gtool-row .rbt-gtool:first-child { flex: 1; min-width: 0; }
+.rbt-gtool.rbt-gtool-import { width: auto; flex: none; font-weight: 500; }
 
-.rbt-imp-note { font-size: 12px; color: var(--t2, #9ca1aa); line-height: 1.5; }
-.rbt-imp-note.skip { color: var(--warnc, #e0a040); }
+
+/* 扩展设置里的「RedBird 工具箱」：两个打开按钮 + 分组的开关（整行都能点，开关在右边） */
+#rbt_settings .rbt-set { display: flex; flex-direction: column; gap: 14px; padding: 8px 4px 4px; max-width: 560px; }
+#rbt_settings .rbt-set-open { display: flex; gap: 8px; flex-wrap: wrap; }
+#rbt_settings .rbt-set-open .menu_button { margin: 0; padding: 6px 14px; gap: 6px; white-space: nowrap; }
+#rbt_settings .rbt-set-group { display: flex; flex-direction: column; border-radius: 10px; background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); padding: 2px 8px 6px; }
+#rbt_settings .rbt-set-title { margin: 8px 6px 2px; font-size: 12px; font-weight: 600; color: var(--rbd-text3, rgba(235, 235, 245, 0.4)); }
+#rbt_settings .rbt-set-foot { display: flex; align-items: center; gap: 10px; color: var(--rbd-text3, rgba(235, 235, 245, 0.4)); }
+#rbt_settings .rbt-set-link { border: 0; background: none; padding: 0; font: inherit; font-size: 12px; color: var(--rbd-accent, #0a84ff); cursor: pointer; }
+#rbt_settings .rbt-set-link:hover { text-decoration: underline; }
+
+/* 设置里的强调色色块（属于「美化」那一行） */
+#rbt_settings .rbt-accents { display: flex; align-items: center; gap: 10px; padding: 2px 0 8px 36px; }
+#rbt_settings .rbt-accents[hidden] { display: none; }
+#rbt_settings .rbt-accents small { margin-right: 2px; font-size: 12px; color: var(--rbd-text2, rgba(235, 235, 245, 0.64)); }
+#rbt_settings .rbt-accent {
+  width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%;
+  background: var(--c); cursor: pointer;
+}
+#rbt_settings .rbt-accent.on { box-shadow: 0 0 0 2px var(--rbd-bg2, #2a2a2e), 0 0 0 4px var(--c); }
+
+
+/* 勾选框：18px、清楚的边框和白勾；整行都能点，悬停整行变亮（压过酒馆和美化里的勾选框样式） */
+input.rbt-cb.rbt-cb[type='checkbox'] {
+  appearance: none; -webkit-appearance: none;
+  flex: none; width: 18px; height: 18px; margin: 1px 0 0; padding: 0;
+  display: grid; place-content: center;
+  border: 1.5px solid rgba(235, 235, 245, 0.5); border-radius: 5px;
+  background: transparent; outline: none; box-shadow: none; filter: none; transform: none;
+  cursor: pointer; transition: background-color 0.12s, border-color 0.12s;
+}
+input.rbt-cb.rbt-cb[type='checkbox']:hover { border-color: rgba(235, 235, 245, 0.8); }
+input.rbt-cb.rbt-cb[type='checkbox']:checked { background: var(--rbd-accent, #0a84ff); border-color: var(--rbd-accent, #0a84ff); }
+input.rbt-cb.rbt-cb[type='checkbox']::before {
+  content: ''; width: 11px; height: 11px; transform: scale(0); transition: transform 0.12s;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  box-shadow: inset 1em 1em #fff;
+}
+input.rbt-cb.rbt-cb[type='checkbox']:checked::before { transform: scale(1); }
+input.rbt-cb.rbt-cb[type='checkbox']:focus-visible { outline: 2px solid var(--rbd-accent, #0a84ff); outline-offset: 2px; }
+
+.rbt-check-row { display: flex; align-items: flex-start; gap: 10px; margin: 0 -8px; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
+.rbt-check-row:hover { background: rgba(255, 255, 255, 0.05); }
+.rbt-check-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; line-height: 1.45; }
+.rbt-check-text > span { color: var(--rbd-text1, #ececf1); }
+.rbt-check-text > small { font-size: 12px; color: var(--rbd-text2, rgba(235, 235, 245, 0.64)); }
+.rbt-check-inline { margin: 0; padding: 4px 6px; white-space: nowrap; font-size: 12px; }
+#rbt_settings .rbt-set-row { margin: 0; }
+
+/* ---- 导入窗口 ----
+   层级：名字（15px 粗、正文色）> 类型和事实（12.5px 次要色）> 文件名（11.5px 辅助色）。
+   提醒块（琥珀色底）把「为什么不导入」和「仍然导入」放在一起；勾选项和提醒都和名字左对齐。 */
+.rbt-imp { --imp-ico: 40px; }
+.rbt-imp .rbt-sheet-body { gap: 12px; }
+.rbt-imp-item { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 14px; background: var(--g2, rgba(255, 255, 255, 0.045)); flex: none; }
+.rbt-imp-item.nested { --imp-ico: 32px; padding: 12px 0 2px; border-radius: 0; background: none; gap: 8px; }
+.rbt-imp-item.nested + .rbt-imp-item.nested { border-top: 1px solid var(--hair, rgba(255, 255, 255, 0.07)); }
+.rbt-imp-top { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.rbt-imp-thumb { flex: none; width: var(--imp-ico); height: calc(var(--imp-ico) * 1.33); border-radius: 8px; object-fit: cover; }
+.rbt-imp-ico { flex: none; display: grid; place-items: center; width: var(--imp-ico); height: var(--imp-ico); border-radius: 10px; background: rgba(255, 255, 255, 0.07); color: var(--t2); font-size: 15px; }
+.rbt-imp-item.nested .rbt-imp-ico { border-radius: 8px; font-size: 13px; }
+.rbt-imp-id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rbt-imp-title { font-size: 15px; font-weight: 600; color: var(--t1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbt-imp-item.nested .rbt-imp-title { font-size: 14px; }
+.rbt-imp-facts { font-size: 12.5px; color: var(--t2); }
+.rbt-imp-file { font-size: 11.5px; color: var(--t3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbt-imp-item.off > .rbt-imp-top .rbt-imp-title { color: var(--t2); }
+.rbt-imp-item.off > .rbt-imp-top .rbt-imp-thumb, .rbt-imp-item.off > .rbt-imp-top .rbt-imp-ico { opacity: 0.5; }
+
+/* 勾选项、提醒：和名字左对齐（缩进 = 图标宽 + 间距） */
+.rbt-imp-actions, .rbt-imp-alert, .rbt-imp-group { margin-left: calc(var(--imp-ico) + 12px); }
+.rbt-imp-actions { display: flex; flex-direction: column; }
+.rbt-imp-actions .rbt-check-row { font-size: 13px; padding: 6px 8px; }
+
+.rbt-imp-alert { display: flex; gap: 10px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--warnc, #e0a040) 12%, transparent); }
+.rbt-imp-alert > i { margin-top: 2px; color: var(--warnc, #e0a040); }
+.rbt-imp-alert > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rbt-imp-alert p { margin: 0; font-size: 13px; font-weight: 600; color: var(--t1); }
+.rbt-imp-alert small { font-size: 12px; line-height: 1.5; color: var(--t2); }
+.rbt-imp-alert .rbt-check-row { margin: 4px -8px -4px; font-size: 13px; }
+.rbt-imp-alert.resolved { background: rgba(255, 255, 255, 0.04); }
+.rbt-imp-alert.resolved > i { color: var(--t3); }
+
+/* 一起发布的文件：挂在卡下面 */
+.rbt-imp-group { padding-top: 10px; border-top: 1px solid var(--hair, rgba(255, 255, 255, 0.07)); }
+.rbt-imp-group-title { font-size: 11.5px; font-weight: 600; color: var(--t3); }
+
+/* 来源：整批一次，默认收起 */
+.rbt-imp-more { align-self: flex-start; padding: 2px 0; font-size: 12.5px; }
+.rbt-imp-source { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: 14px; background: var(--g2, rgba(255, 255, 255, 0.045)); flex: none; }
+.rbt-imp-source-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 4px; }
+.rbt-imp-source-head b { font-size: 14px; font-weight: 600; color: var(--t1); }
+.rbt-imp-source-head small { font-size: 12px; color: var(--t3); }
+.rbt-imp-item.compact { padding: 0; background: none; }
+.rbt-imp-item.compact.nested { padding-top: 12px; }
+.rbt-imp-item.compact .rbt-imp-alert { margin-left: 0; }
+.rbt-imp-item.compact .rbt-imp-alert p { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

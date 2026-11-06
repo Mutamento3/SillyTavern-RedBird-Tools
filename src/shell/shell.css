@@ -1,6 +1,6 @@
 /* =====================================================================
-   三栏外壳（第一阶段）：左栏 + 导航条 + 酒馆面板的位置
-   只在宽于 1000px 时生效；更窄时保持酒馆原样。
+   三栏外壳：左栏 + 导航条 + 酒馆面板的位置。
+   电脑上是三栏；≤ 1000px 时（文件最后）换成手机排法：☰ 抽屉 + 一行导航 + 全屏面板。
    颜色全部走主题变量（--rbd-*），没有 RedBird Dark 时用回退值。
    选择器统一带 `body.rbt-shell #top-settings-holder #面板id`（两个 id），
    这样能稳定压过主题里 `#top-settings-holder #…` 一类的规则。
@@ -9,666 +9,654 @@
 .rbt-left, .rbt-nav { display: none; }
 .rbt-sheet-head { display: none; }
 
-@media (min-width: 1001px) {
-  body.rbt-shell {
-    --rbt-nav-h: 48px;
-    --rbt-L: 260px;
-    --rbt-R: 0px;
-    --rbt-chat-w: calc(100dvw - var(--rbt-L) - var(--rbt-R));
-    --topBarBlockSize: var(--rbt-nav-h);
-    --sheldWidth: var(--rbt-chat-w);
-  }
-  body.rbt-shell.rbt-shell-lcollapsed { --rbt-L: 0px; }
-  /* 右侧只给工具箱侧边栏留位置（面板都是 overlay，不占位置） */
-  body.rbt-shell.rbt-docked { --rbt-R: var(--rbt-dock-w, 440px); }
+body.rbt-shell {
+  --rbt-nav-h: 48px;
+  --rbt-L: 260px;
+  --rbt-R: 0px;
+  --rbt-chat-w: calc(100dvw - var(--rbt-L) - var(--rbt-R));
+  --topBarBlockSize: var(--rbt-nav-h);
+  --sheldWidth: var(--rbt-chat-w);
+}
+body.rbt-shell.rbt-shell-lcollapsed { --rbt-L: 0px; }
+/* 右侧只给工具箱侧边栏留位置（面板都是 overlay，不占位置） */
+body.rbt-shell.rbt-docked { --rbt-R: var(--rbt-dock-w, 440px); }
 
-  /* ---- 原顶栏：图标不显示，面板本身保留（它们都在 #top-settings-holder 里） ---- */
-  body.rbt-shell #top-bar {
-    height: 0 !important;
-    min-height: 0 !important;
-    padding: 0 !important;
-    border: 0 !important;
-    background: none !important;
-    box-shadow: none !important;
-    backdrop-filter: none !important;
-  }
-  body.rbt-shell #top-settings-holder {
-    height: 0 !important;
-    padding: 0 !important;
-  }
-  body.rbt-shell #top-settings-holder > .drawer > .drawer-toggle { display: none !important; }
+/* ---- 原顶栏：图标不显示，面板本身保留（它们都在 #top-settings-holder 里） ---- */
+body.rbt-shell #top-bar {
+  height: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+body.rbt-shell #top-settings-holder {
+  height: 0 !important;
+  padding: 0 !important;
+}
+body.rbt-shell #top-settings-holder > .drawer > .drawer-toggle { display: none !important; }
 
-  /* ---- 聊天栏：占左栏和工具箱之外的全部宽度 ---- */
-  body.rbt-shell #sheld {
-    top: var(--rbt-nav-h) !important;
-    left: var(--rbt-L) !important;
-    right: auto !important;
-    margin: 0 !important;
-    width: var(--rbt-chat-w) !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    height: calc(100dvh - var(--rbt-nav-h)) !important;
-    max-height: calc(100dvh - var(--rbt-nav-h)) !important;
-    transition: none;
-  }
-  body.rbt-shell.rbt-resizing #sheld { transition: none !important; }
-  /* 首页不显示输入框 */
-  body.rbt-shell.rbt-home #form_sheld { display: none !important; }
+/* ---- 聊天栏：占左栏和工具箱之外的全部宽度 ---- */
+body.rbt-shell #sheld {
+  top: var(--rbt-nav-h) !important;
+  left: var(--rbt-L) !important;
+  right: auto !important;
+  margin: 0 !important;
+  width: var(--rbt-chat-w) !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: calc(100dvh - var(--rbt-nav-h)) !important;
+  max-height: calc(100dvh - var(--rbt-nav-h)) !important;
+  transition: none;
+}
+body.rbt-shell.rbt-resizing #sheld { transition: none !important; }
+/* 首页不显示输入框 */
+body.rbt-shell.rbt-home #form_sheld { display: none !important; }
 
-  /* ---- 工具箱侧边栏：外壳里从屏幕顶部开始 ---- */
-  body.rbt-shell .rbt-dock { top: 0; height: 100dvh; }
+/* ---- 工具箱侧边栏：外壳里从屏幕顶部开始 ---- */
+body.rbt-shell .rbt-dock { top: 0; height: 100dvh; }
 
-  /* ---- 面板通用：标题栏 ---- */
-  body.rbt-shell .rbt-sheet-head {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin: 0 0 8px;
-    padding: 10px 14px;
-    background: var(--rbd-bg1, var(--SmartThemeBlurTintColor, #17191e));
-    border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.06));
-  }
-  .rbt-sheet-title {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--SmartThemeBodyColor);
-  }
-  .rbt-sheet-title i { color: var(--rbd-text3, #6b707a); }
-  .rbt-sheet-close {
-    width: 28px;
-    height: 28px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--rbd-text2, #9ca1aa);
-    font-size: 14px;
-    cursor: pointer;
-  }
-  .rbt-sheet-close:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.08)); color: var(--SmartThemeBodyColor); }
+/* ---- 面板通用：标题栏 ---- */
+body.rbt-shell .rbt-sheet-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 10px 14px;
+  background: var(--rbd-bg1, var(--SmartThemeBlurTintColor, #17191e));
+  border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.06));
+}
+.rbt-sheet-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--SmartThemeBodyColor);
+}
+.rbt-sheet-title i { color: var(--rbd-text3, #6b707a); }
+.rbt-sheet-close {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rbd-text2, #9ca1aa);
+  font-size: 14px;
+  cursor: pointer;
+}
+.rbt-sheet-close:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.08)); color: var(--SmartThemeBodyColor); }
 
-  /* ---- 所有面板：居中的大 overlay ----
-     每个时刻用户只关注一件事：打开面板就是要专心调它，所以给足空间，不和聊天挤在一起。
-     API 是单栏表单，用窄的；其余都用宽的，酒馆面板内部的分栏才排得开。 */
-  body.rbt-shell #top-settings-holder #left-nav-panel,
-  body.rbt-shell #top-settings-holder #PersonaManagement,
-  body.rbt-shell #top-settings-holder #rm_extensions_block,
-  body.rbt-shell #top-settings-holder #right-nav-panel,
-  body.rbt-shell #top-settings-holder #WorldInfo,
-  body.rbt-shell #top-settings-holder #rm_api_block,
-  body.rbt-shell #top-settings-holder #user-settings-block,
-  body.rbt-shell #top-settings-holder #Backgrounds,
-  body.rbt-shell #top-settings-holder #AdvancedFormatting {
-    --rbt-sheet-w: min(1320px, calc(100dvw - 96px));
-    --sheldWidth: var(--rbt-sheet-w);
-    position: fixed !important;
-    top: 50% !important;
-    left: 50% !important;
-    right: auto !important;
-    bottom: auto !important;
-    transform: translate(-50%, -50%) !important;
-    width: var(--rbt-sheet-w) !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    height: min(90dvh, 1040px) !important;
-    max-height: min(90dvh, 1040px) !important;
-    margin: 0 !important;
-    padding-top: 0 !important;
-    border: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.08)) !important;
-    border-radius: 14px !important;
-    box-shadow: none !important;
-    background: var(--rbd-bg1, var(--SmartThemeBlurTintColor, #17191e)) !important;
-  }
-  /* API：单栏表单，太宽反而难填；高度跟内容走 */
-  body.rbt-shell #top-settings-holder #rm_api_block {
-    --rbt-sheet-w: min(760px, calc(100dvw - 64px));
-    height: auto !important;
-  }
-  /* 面板变成 overlay 后"钉住"就没有意义了，隐藏酒馆的钉住按钮 */
-  body.rbt-shell #lm_button_panel_pin_div,
-  body.rbt-shell #rm_button_panel_pin_div,
-  body.rbt-shell #WI_panel_pin_div { display: none !important; }
-  /* 压暗背景。点它就是"点在面板外"，酒馆自己会把面板关掉。 */
-  body.rbt-shell.rbt-open-modal::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 3004;
-    background: rgba(0, 0, 0, 0.6);
-  }
-
-  /* =================================================== 左栏 === */
-  body.rbt-shell .rbt-left {
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 40;
-    display: flex;
-    flex-direction: column;
-    width: var(--rbt-L);
-    height: 100dvh;
-    color: var(--SmartThemeBodyColor);
-    background: var(--rbd-bg1, var(--SmartThemeBlurTintColor, #17191e));
-    border-right: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.06));
-    font-family: var(--rbd-font, inherit);
-    font-size: 13px;
-  }
-  body.rbt-shell.rbt-shell-lcollapsed .rbt-left { display: none; }
-
-  .rbt-left-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: var(--rbt-nav-h);
-    padding: 0 8px 0 12px;
-    flex-shrink: 0;
-  }
-  .rbt-brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
-    margin-left: -8px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--SmartThemeBodyColor);
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .rbt-brand:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); }
-  .rbt-brand-mark { font-size: 16px; }
-
-  .rbt-icon-btn {
-    width: 30px;
-    height: 30px;
-    flex-shrink: 0;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--rbd-text2, #9ca1aa);
-    cursor: pointer;
-  }
-  .rbt-icon-btn:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); color: var(--SmartThemeBodyColor); }
-
-  /* 全局设定：4 列图标 + 文字 */
-  .rbt-globals {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 4px;
-    padding: 4px 12px 12px;
-    flex-shrink: 0;
-  }
-  .rbt-gbtn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    min-width: 0;
-    padding: 8px 2px 6px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--rbd-text2, #9ca1aa);
-    font: inherit;
-    font-size: 11px;
-    line-height: 1.2;
-    white-space: nowrap;
-    cursor: pointer;
-  }
-  .rbt-gbtn i { font-size: 15px; }
-  .rbt-gbtn:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); color: var(--SmartThemeBodyColor); }
-  .rbt-gbtn.active { background: var(--rbd-accent-soft, rgba(226, 114, 91, 0.14)); color: var(--rbd-accent, #e2725b); }
-  .rbt-gbtn.compact { flex-direction: row; gap: 6px; padding: 6px 10px; font-size: 13px; }
-  .rbt-gbtn.compact i { font-size: 13px; }
-
-  .rbt-left-actions { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 8px; flex-shrink: 0; }
-  .rbt-newchat { display: flex; gap: 4px; }
-  .rbt-newchat-main, .rbt-newchat-alt {
-    border: 0;
-    border-radius: 6px;
-    background: var(--rbd-bg2, rgba(255, 255, 255, 0.06));
-    color: var(--SmartThemeBodyColor);
-    font: inherit;
-    cursor: pointer;
-  }
-  .rbt-newchat-main { flex: 1; display: flex; align-items: center; gap: 8px; padding: 9px 12px; font-weight: 600; }
-  .rbt-newchat-alt { width: 38px; color: var(--rbd-text2, #9ca1aa); }
-  .rbt-newchat-main:hover, .rbt-newchat-alt:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.1)); color: var(--SmartThemeBodyColor); }
-
-  .rbt-search {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0 10px;
-    border-radius: 6px;
-    background: var(--rbd-bg3, rgba(0, 0, 0, 0.25));
-    color: var(--rbd-text3, #6b707a);
-  }
-  .rbt-search:focus-within { box-shadow: 0 0 0 1px var(--rbd-accent, #e2725b); }
-  .rbt-search input {
-    flex: 1;
-    min-width: 0;
-    height: 32px;
-    border: 0;
-    outline: 0;
-    background: transparent;
-    color: var(--SmartThemeBodyColor);
-    font: inherit;
-  }
-
-  .rbt-recent { flex: 1; overflow-y: auto; padding: 4px 8px 12px; }
-  .rbt-recent-group h4 {
-    margin: 12px 8px 4px;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--rbd-text3, #6b707a);
-  }
-  .rbt-recent-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 6px 8px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--SmartThemeBodyColor);
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-  }
-  .rbt-recent-row:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); }
-  .rbt-recent-row.current { background: var(--rbd-accent-soft, rgba(226, 114, 91, 0.14)); }
-  .rbt-recent-avatar { width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; object-fit: cover; }
-  .rbt-recent-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-  .rbt-recent-line1 { display: flex; align-items: baseline; gap: 6px; }
-  .rbt-recent-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-  .rbt-recent-row.current .rbt-recent-name { color: var(--rbd-accent, #e2725b); }
-  .rbt-recent-time { flex-shrink: 0; font-size: 11px; color: var(--rbd-text3, #6b707a); }
-  .rbt-recent-preview {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 12px;
-    color: var(--rbd-text2, #9ca1aa);
-  }
-  .rbt-recent-empty { padding: 24px 8px; text-align: center; color: var(--rbd-text3, #6b707a); }
-
-  .rbt-left-foot {
-    flex-shrink: 0;
-    padding: 8px 12px;
-    border-top: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.06));
-  }
-  .rbt-foot-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
-    margin-left: -8px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--rbd-text3, #6b707a);
-    font: inherit;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .rbt-foot-btn:hover { color: var(--SmartThemeBodyColor); background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); }
-
-  /* =================================================== 导航条 === */
-  body.rbt-shell .rbt-nav {
-    position: fixed;
-    top: 0;
-    left: var(--rbt-L);
-    z-index: 40;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: var(--rbt-chat-w);
-    height: var(--rbt-nav-h);
-    padding: 0 12px;
-    box-sizing: border-box;
-    color: var(--SmartThemeBodyColor);
-    background: var(--rbd-canvas, var(--SmartThemeBlurTintColor, #0f1013));
-    border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.06));
-    font-family: var(--rbd-font, inherit);
-    font-size: 13px;
-    transition: none;
-  }
-  .rbt-nav-title { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
-  .rbt-nav-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-  .rbt-nav-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .rbt-nav-save {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    padding: 4px 8px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--rbd-text2, #9ca1aa);
-    font: inherit;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    cursor: pointer;
-  }
-  .rbt-nav-save i { font-size: 10px; }
-  .rbt-nav-save:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); color: var(--SmartThemeBodyColor); }
-  .rbt-nav-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+/* ---- 所有面板：居中的大 overlay ----
+   每个时刻用户只关注一件事：打开面板就是要专心调它，所以给足空间，不和聊天挤在一起。
+   API 是单栏表单，用窄的；其余都用宽的，酒馆面板内部的分栏才排得开。 */
+body.rbt-shell #top-settings-holder #left-nav-panel,
+body.rbt-shell #top-settings-holder #PersonaManagement,
+body.rbt-shell #top-settings-holder #rm_extensions_block,
+body.rbt-shell #top-settings-holder #right-nav-panel,
+body.rbt-shell #top-settings-holder #WorldInfo,
+body.rbt-shell #top-settings-holder #rm_api_block,
+body.rbt-shell #top-settings-holder #user-settings-block,
+body.rbt-shell #top-settings-holder #Backgrounds,
+body.rbt-shell #top-settings-holder #AdvancedFormatting {
+  --rbt-sheet-w: min(1320px, calc(100dvw - 96px));
+  --sheldWidth: var(--rbt-sheet-w);
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) !important;
+  width: var(--rbt-sheet-w) !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: min(90dvh, 1040px) !important;
+  max-height: min(90dvh, 1040px) !important;
+  margin: 0 !important;
+  padding-top: 0 !important;
+  border: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.08)) !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+  background: var(--rbd-bg1, var(--SmartThemeBlurTintColor, #17191e)) !important;
+}
+/* API：单栏表单，太宽反而难填；高度跟内容走 */
+body.rbt-shell #top-settings-holder #rm_api_block {
+  --rbt-sheet-w: min(760px, calc(100dvw - 64px));
+  height: auto !important;
+}
+/* 面板变成 overlay 后"钉住"就没有意义了，隐藏酒馆的钉住按钮 */
+body.rbt-shell #lm_button_panel_pin_div,
+body.rbt-shell #rm_button_panel_pin_div,
+body.rbt-shell #WI_panel_pin_div { display: none !important; }
+/* 压暗背景。点它就是"点在面板外"，酒馆自己会把面板关掉。 */
+body.rbt-shell.rbt-open-modal::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 3004;
+  background: rgba(0, 0, 0, 0.6);
 }
 
-@media (min-width: 1001px) {
-  /* 导航条变窄时（右侧开着面板）：右边按钮只留图标，把位置让给角色名和存档名 */
-  body.rbt-shell .rbt-nav { container-type: inline-size; }
-  @container (max-width: 680px) {
-    .rbt-nav-actions .rbt-gbtn span { display: none; }
-    .rbt-nav-actions .rbt-gbtn.compact { padding: 6px 8px; }
-  }
-  @container (max-width: 460px) {
-    .rbt-nav-avatar { display: none; }
-  }
-  .rbt-nav-name { flex-shrink: 0; max-width: 50%; }
+/* =================================================== 左栏 === */
+body.rbt-shell .rbt-left {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  width: var(--rbt-L);
+  height: 100dvh;
+  color: var(--SmartThemeBodyColor);
+  background: var(--rbd-bg1, var(--SmartThemeBlurTintColor, #17191e));
+  border-right: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.06));
+  font-family: var(--rbd-font, inherit);
+  font-size: 13px;
+}
+body.rbt-shell.rbt-shell-lcollapsed .rbt-left { display: none; }
 
-  /* 鼠标点击不显示焦点框，只有键盘操作时显示 */
-  .rbt-left button:focus, .rbt-nav button:focus, .rbt-sheet-close:focus { outline: none; }
-  .rbt-left button:focus-visible, .rbt-nav button:focus-visible, .rbt-sheet-close:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 1px var(--rbd-accent, #e2725b);
-  }
+.rbt-left-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--rbt-nav-h);
+  padding: 0 8px 0 12px;
+  flex-shrink: 0;
+}
+.rbt-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  margin-left: -8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--SmartThemeBodyColor);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rbt-brand:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); }
+.rbt-brand-mark { font-size: 16px; }
+
+.rbt-icon-btn {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rbd-text2, #9ca1aa);
+  cursor: pointer;
+}
+.rbt-icon-btn:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); color: var(--SmartThemeBodyColor); }
+
+/* 全局设定：4 列图标 + 文字 */
+.rbt-globals {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 4px 12px 12px;
+  flex-shrink: 0;
+}
+.rbt-gbtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rbd-text2, #9ca1aa);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.rbt-gbtn i { font-size: 15px; }
+.rbt-gbtn:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); color: var(--SmartThemeBodyColor); }
+.rbt-gbtn.active { background: var(--rbd-accent-soft, rgba(226, 114, 91, 0.14)); color: var(--rbd-accent, #e2725b); }
+.rbt-gbtn.compact { flex-direction: row; gap: 6px; padding: 6px 10px; font-size: 13px; }
+.rbt-gbtn.compact i { font-size: 13px; }
+
+.rbt-left-actions { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 8px; flex-shrink: 0; }
+.rbt-newchat { display: flex; gap: 4px; }
+.rbt-newchat-main, .rbt-newchat-alt {
+  border: 0;
+  border-radius: 6px;
+  background: var(--rbd-bg2, rgba(255, 255, 255, 0.06));
+  color: var(--SmartThemeBodyColor);
+  font: inherit;
+  cursor: pointer;
+}
+.rbt-newchat-main { flex: 1; display: flex; align-items: center; gap: 8px; padding: 9px 12px; font-weight: 600; }
+.rbt-newchat-alt { width: 38px; color: var(--rbd-text2, #9ca1aa); }
+.rbt-newchat-main:hover, .rbt-newchat-alt:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.1)); color: var(--SmartThemeBodyColor); }
+
+.rbt-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 6px;
+  background: var(--rbd-bg3, rgba(0, 0, 0, 0.25));
+  color: var(--rbd-text3, #6b707a);
+}
+.rbt-search:focus-within { box-shadow: 0 0 0 1px var(--rbd-accent, #e2725b); }
+.rbt-search input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--SmartThemeBodyColor);
+  font: inherit;
 }
 
-@media (min-width: 1001px) {
-  body.rbt-shell.rbt-shell-ready #sheld,
-  body.rbt-shell.rbt-shell-ready .rbt-nav { transition: left 0.18s ease, width 0.18s ease; }
+.rbt-recent { flex: 1; overflow-y: auto; padding: 4px 8px 12px; }
+.rbt-recent-group h4 {
+  margin: 12px 8px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rbd-text3, #6b707a);
 }
+.rbt-recent-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--SmartThemeBodyColor);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rbt-recent-row:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); }
+.rbt-recent-row.current { background: var(--rbd-accent-soft, rgba(226, 114, 91, 0.14)); }
+.rbt-recent-avatar { width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; object-fit: cover; }
+.rbt-recent-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.rbt-recent-line1 { display: flex; align-items: baseline; gap: 6px; }
+.rbt-recent-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.rbt-recent-row.current .rbt-recent-name { color: var(--rbd-accent, #e2725b); }
+.rbt-recent-time { flex-shrink: 0; font-size: 11px; color: var(--rbd-text3, #6b707a); }
+.rbt-recent-preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--rbd-text2, #9ca1aa);
+}
+.rbt-recent-empty { padding: 24px 8px; text-align: center; color: var(--rbd-text3, #6b707a); }
+
+.rbt-left-foot {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-top: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.06));
+}
+.rbt-foot-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  margin-left: -8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rbd-text3, #6b707a);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.rbt-foot-btn:hover { color: var(--SmartThemeBodyColor); background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); }
+
+/* =================================================== 导航条 === */
+body.rbt-shell .rbt-nav {
+  position: fixed;
+  top: 0;
+  left: var(--rbt-L);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: var(--rbt-chat-w);
+  height: var(--rbt-nav-h);
+  padding: 0 12px;
+  box-sizing: border-box;
+  color: var(--SmartThemeBodyColor);
+  background: var(--rbd-canvas, var(--SmartThemeBlurTintColor, #0f1013));
+  border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.06));
+  font-family: var(--rbd-font, inherit);
+  font-size: 13px;
+  transition: none;
+}
+.rbt-nav-title { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.rbt-nav-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.rbt-nav-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rbt-nav-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rbd-text2, #9ca1aa);
+  font: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.rbt-nav-save i { font-size: 10px; }
+.rbt-nav-save:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); color: var(--SmartThemeBodyColor); }
+.rbt-nav-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+
+/* 导航条变窄时（右侧开着面板）：右边按钮只留图标，把位置让给角色名和存档名 */
+body.rbt-shell .rbt-nav { container-type: inline-size; }
+@container (max-width: 680px) {
+  .rbt-nav-actions .rbt-gbtn span { display: none; }
+  .rbt-nav-actions .rbt-gbtn.compact { padding: 6px 8px; }
+}
+@container (max-width: 460px) {
+  .rbt-nav-avatar { display: none; }
+}
+.rbt-nav-name { flex-shrink: 0; max-width: 50%; }
+
+/* 鼠标点击不显示焦点框，只有键盘操作时显示 */
+.rbt-left button:focus, .rbt-nav button:focus, .rbt-sheet-close:focus { outline: none; }
+.rbt-left button:focus-visible, .rbt-nav button:focus-visible, .rbt-sheet-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--rbd-accent, #e2725b);
+}
+
+body.rbt-shell.rbt-shell-ready #sheld,
+body.rbt-shell.rbt-shell-ready .rbt-nav { transition: left 0.18s ease, width 0.18s ease; }
 
 /* ============================================ 左栏：聊天 / 角色 === */
-@media (min-width: 1001px) {
-  .rbt-left-actions .rbt-newchat-main { width: 100%; }
+.rbt-left-actions .rbt-newchat-main { width: 100%; }
 
-  .rbt-segctl {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2px;
-    padding: 2px;
-    border-radius: 8px;
-    background: var(--rbd-bg3, rgba(0, 0, 0, 0.25));
-  }
-  .rbt-segctl button {
-    padding: 5px 0;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--rbd-text2, #9ca1aa);
-    font: inherit;
-    cursor: pointer;
-  }
-  .rbt-segctl button:hover { color: var(--SmartThemeBodyColor); }
-  .rbt-segctl button.active { background: var(--rbd-bg2, rgba(255, 255, 255, 0.08)); color: var(--SmartThemeBodyColor); font-weight: 600; }
-
-  .rbt-char-tools { display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 0 12px 6px; flex-shrink: 0; }
-  .rbt-mini-select {
-    min-width: 0;
-    height: 28px;
-    margin: 0 !important;
-    padding: 0 6px;
-    border: 0;
-    border-radius: 6px;
-    background: var(--rbd-bg2, rgba(255, 255, 255, 0.06));
-    color: var(--rbd-text2, #9ca1aa);
-    font: inherit;
-    font-size: 12px;
-  }
-  .rbt-char-lib { display: flex; gap: 4px; padding: 0 12px 4px; flex-shrink: 0; }
-  .rbt-lib-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    flex: 1;
-    height: 28px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--rbd-text2, #9ca1aa);
-    font: inherit;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .rbt-lib-btn.icon { flex: 0 0 30px; }
-  .rbt-lib-btn:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.06)); color: var(--SmartThemeBodyColor); }
-
-  .rbt-char-row { position: relative; display: flex; align-items: center; border-radius: 6px; }
-  .rbt-char-row:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); }
-  .rbt-char-row.current { background: var(--rbd-accent-soft, rgba(226, 114, 91, 0.14)); }
-  .rbt-char-row.current .rbt-recent-name { color: var(--rbd-accent, #e2725b); }
-  .rbt-char-open {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 1;
-    min-width: 0;
-    padding: 6px 8px;
-    border: 0;
-    background: transparent;
-    color: var(--SmartThemeBodyColor);
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-  }
-  .rbt-char-open .rbt-recent-name { display: block; }
-  .rbt-char-favmark { margin-right: 4px; font-size: 10px; color: var(--rbd-accent, #e2725b); }
-  .rbt-char-tags { display: flex; gap: 4px; margin-top: 2px; overflow: hidden; }
-  .rbt-char-tag {
-    flex-shrink: 0;
-    max-width: 90px;
-    padding: 0 6px;
-    border-radius: 4px;
-    background: var(--rbd-bg2, rgba(255, 255, 255, 0.06));
-    color: var(--rbd-text3, #6b707a);
-    font-size: 11px;
-    line-height: 17px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  /* 行内操作：平时隐藏，鼠标移上去才出现，浮在行的右侧 */
-  .rbt-char-actions {
-    position: absolute;
-    right: 4px;
-    top: 50%;
-    display: none;
-    gap: 2px;
-    transform: translateY(-50%);
-    padding-left: 12px;
-    background: linear-gradient(90deg, transparent, var(--rbd-bg2, #1f2228) 12px);
-  }
-  .rbt-char-row.current .rbt-char-actions { background: linear-gradient(90deg, transparent, var(--rbd-bg2, #1f2228) 12px); }
-  .rbt-char-row:hover .rbt-char-actions,
-  .rbt-char-row:focus-within .rbt-char-actions { display: flex; }
-  .rbt-row-act {
-    width: 26px;
-    height: 26px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--rbd-text2, #9ca1aa);
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .rbt-row-act:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.1)); color: var(--SmartThemeBodyColor); }
-  .rbt-row-act.on { color: var(--rbd-accent, #e2725b); }
+.rbt-segctl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--rbd-bg3, rgba(0, 0, 0, 0.25));
 }
+.rbt-segctl button {
+  padding: 5px 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rbd-text2, #9ca1aa);
+  font: inherit;
+  cursor: pointer;
+}
+.rbt-segctl button:hover { color: var(--SmartThemeBodyColor); }
+.rbt-segctl button.active { background: var(--rbd-bg2, rgba(255, 255, 255, 0.08)); color: var(--SmartThemeBodyColor); font-weight: 600; }
+
+.rbt-char-tools { display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 0 12px 6px; flex-shrink: 0; }
+.rbt-mini-select {
+  min-width: 0;
+  height: 28px;
+  margin: 0 !important;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--rbd-bg2, rgba(255, 255, 255, 0.06));
+  color: var(--rbd-text2, #9ca1aa);
+  font: inherit;
+  font-size: 12px;
+}
+.rbt-char-lib { display: flex; gap: 4px; padding: 0 12px 4px; flex-shrink: 0; }
+.rbt-lib-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rbd-text2, #9ca1aa);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.rbt-lib-btn.icon { flex: 0 0 30px; }
+.rbt-lib-btn:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.06)); color: var(--SmartThemeBodyColor); }
+
+.rbt-char-row { position: relative; display: flex; align-items: center; border-radius: 6px; }
+.rbt-char-row:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); }
+.rbt-char-row.current { background: var(--rbd-accent-soft, rgba(226, 114, 91, 0.14)); }
+.rbt-char-row.current .rbt-recent-name { color: var(--rbd-accent, #e2725b); }
+.rbt-char-open {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--SmartThemeBodyColor);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rbt-char-open .rbt-recent-name { display: block; }
+.rbt-char-favmark { margin-right: 4px; font-size: 10px; color: var(--rbd-accent, #e2725b); }
+.rbt-char-tags { display: flex; gap: 4px; margin-top: 2px; overflow: hidden; }
+.rbt-char-tag {
+  flex-shrink: 0;
+  max-width: 90px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--rbd-bg2, rgba(255, 255, 255, 0.06));
+  color: var(--rbd-text3, #6b707a);
+  font-size: 11px;
+  line-height: 17px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 行内操作：平时隐藏，鼠标移上去才出现，浮在行的右侧 */
+.rbt-char-actions {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  display: none;
+  gap: 2px;
+  transform: translateY(-50%);
+  padding-left: 12px;
+  background: linear-gradient(90deg, transparent, var(--rbd-bg2, #1f2228) 12px);
+}
+.rbt-char-row.current .rbt-char-actions { background: linear-gradient(90deg, transparent, var(--rbd-bg2, #1f2228) 12px); }
+.rbt-char-row:hover .rbt-char-actions,
+.rbt-char-row:focus-within .rbt-char-actions { display: flex; }
+.rbt-row-act {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rbd-text2, #9ca1aa);
+  font-size: 12px;
+  cursor: pointer;
+}
+.rbt-row-act:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.1)); color: var(--SmartThemeBodyColor); }
+.rbt-row-act.on { color: var(--rbd-accent, #e2725b); }
 
 /* ============================================ 当前环境 === */
-@media (min-width: 1001px) {
-  .rbt-chip-ok { color: var(--rbd-text3, #6b707a); }
-  .rbt-chip-warn { color: #e0a040; }
+.rbt-chip-ok { color: var(--rbd-text3, #6b707a); }
+.rbt-chip-warn { color: #e0a040; }
 
-  /* 标题栏里的说明：比如世界书面板写清楚这张卡实际加载了哪些书 */
-  .rbt-sheet-note {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 12px;
-    color: var(--rbd-text2, #9ca1aa);
-  }
-  .rbt-sheet-note:empty { display: none; }
-
-  .rbt-status {
-    position: fixed;
-    top: calc(var(--rbt-nav-h) + 4px);
-    right: calc(var(--rbt-R) + 12px);
-    z-index: 3010;
-    width: min(440px, calc(100dvw - var(--rbt-L) - 24px));
-    max-height: calc(100dvh - var(--rbt-nav-h) - 24px);
-    overflow-y: auto;
-    padding: 4px 0 8px;
-    color: var(--SmartThemeBodyColor);
-    background: var(--rbd-bg1, #17191e);
-    border: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.08));
-    border-radius: 10px;
-    font-family: var(--rbd-font, inherit);
-    font-size: 13px;
-  }
-  .rbt-status-head {
-    position: sticky;
-    top: -4px;
-    z-index: 1;
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 10px 16px 8px;
-    background: var(--rbd-bg1, #17191e);
-    font-size: 15px;
-  }
-  .rbt-status-sum { flex-shrink: 0; font-size: 12px; }
-  .rbt-status-sum.ok { color: var(--rbd-text3, #6b707a); }
-  .rbt-status-sum.warn { color: #e0a040; }
-  .rbt-status-applied {
-    margin: 0 12px 8px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: var(--rbd-bg2, rgba(255, 255, 255, 0.05));
-  }
-  .rbt-status-applied-title { font-weight: 600; margin-bottom: 4px; }
-  .rbt-status-applied ul { margin: 0 0 6px; padding-left: 18px; color: var(--rbd-text2, #9ca1aa); }
-  .rbt-status-sec { padding: 4px 16px; }
-  .rbt-status-sec h5 {
-    margin: 8px 0 2px;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--rbd-text3, #6b707a);
-  }
-  .rbt-status-line {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 5px 0;
-    border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.05));
-  }
-  .rbt-status-sec .rbt-status-line:last-child { border-bottom: 0; }
-  .rbt-status-line > i { margin-top: 3px; font-size: 12px; }
-  .rbt-status-line.ok > i { color: #4cb782; }
-  .rbt-status-line.warn > i { color: #e0a040; }
-  .rbt-status-line.info > i { color: var(--rbd-text3, #6b707a); }
-  .rbt-status-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  .rbt-status-text small { font-size: 12px; color: var(--rbd-text3, #6b707a); }
-  .rbt-status-btn {
-    flex-shrink: 0;
-    padding: 3px 10px;
-    border: 0;
-    border-radius: 6px;
-    background: var(--rbd-bg2, rgba(255, 255, 255, 0.08));
-    color: var(--SmartThemeBodyColor);
-    font: inherit;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .rbt-status-btn:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.12)); }
-  .rbt-status-btn:disabled { opacity: 0.5; cursor: default; }
-  .rbt-status-foot {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 6px;
-    padding: 10px 16px 4px;
-    border-top: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.06));
-  }
-  .rbt-status-auto { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--rbd-text2, #9ca1aa); cursor: pointer; }
-  .rbt-status-link {
-    margin-left: auto;
-    border: 0;
-    background: transparent;
-    color: var(--rbd-text2, #9ca1aa);
-    font: inherit;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .rbt-status-link:hover { color: var(--SmartThemeBodyColor); }
+/* 标题栏里的说明：比如世界书面板写清楚这张卡实际加载了哪些书 */
+.rbt-sheet-note {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--rbd-text2, #9ca1aa);
 }
+.rbt-sheet-note:empty { display: none; }
+
+.rbt-status {
+  position: fixed;
+  top: calc(var(--rbt-nav-h) + 4px);
+  right: calc(var(--rbt-R) + 12px);
+  z-index: 3010;
+  width: min(440px, calc(100dvw - var(--rbt-L) - 24px));
+  max-height: calc(100dvh - var(--rbt-nav-h) - 24px);
+  overflow-y: auto;
+  padding: 4px 0 8px;
+  color: var(--SmartThemeBodyColor);
+  background: var(--rbd-bg1, #17191e);
+  border: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+  font-family: var(--rbd-font, inherit);
+  font-size: 13px;
+}
+.rbt-status-head {
+  position: sticky;
+  top: -4px;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 16px 8px;
+  background: var(--rbd-bg1, #17191e);
+  font-size: 15px;
+}
+.rbt-status-sum { flex-shrink: 0; font-size: 12px; }
+.rbt-status-sum.ok { color: var(--rbd-text3, #6b707a); }
+.rbt-status-sum.warn { color: #e0a040; }
+.rbt-status-applied {
+  margin: 0 12px 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--rbd-bg2, rgba(255, 255, 255, 0.05));
+}
+.rbt-status-applied-title { font-weight: 600; margin-bottom: 4px; }
+.rbt-status-applied ul { margin: 0 0 6px; padding-left: 18px; color: var(--rbd-text2, #9ca1aa); }
+.rbt-status-sec { padding: 4px 16px; }
+.rbt-status-sec h5 {
+  margin: 8px 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rbd-text3, #6b707a);
+}
+.rbt-status-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.05));
+}
+.rbt-status-sec .rbt-status-line:last-child { border-bottom: 0; }
+.rbt-status-line > i { margin-top: 3px; font-size: 12px; }
+.rbt-status-line.ok > i { color: #4cb782; }
+.rbt-status-line.warn > i { color: #e0a040; }
+.rbt-status-line.info > i { color: var(--rbd-text3, #6b707a); }
+.rbt-status-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rbt-status-text small { font-size: 12px; color: var(--rbd-text3, #6b707a); }
+.rbt-status-btn {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--rbd-bg2, rgba(255, 255, 255, 0.08));
+  color: var(--SmartThemeBodyColor);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.rbt-status-btn:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.12)); }
+.rbt-status-btn:disabled { opacity: 0.5; cursor: default; }
+.rbt-status-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 10px 16px 4px;
+  border-top: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.06));
+}
+.rbt-status-auto { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--rbd-text2, #9ca1aa); cursor: pointer; }
+.rbt-status-link {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--rbd-text2, #9ca1aa);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.rbt-status-link:hover { color: var(--SmartThemeBodyColor); }
 
 /* ============================ 工具箱自己的大 overlay（这张卡 / 全局 / 维护） === */
-@media (min-width: 1001px) {
-  .rbt-sheet-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 3004;
-    background: rgba(0, 0, 0, 0.6);
-  }
-  .rbt-sheet {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    z-index: 3006;
-    display: flex;
-    flex-direction: column;
-    width: min(1320px, calc(100dvw - 96px));
-    /* 跟内容走，最高到屏幕的 90%：内容少的页面不留一大块空白 */
-    max-height: min(90dvh, 1040px);
-    transform: translate(-50%, -50%);
-    background: var(--rbd-bg1, var(--SmartThemeBlurTintColor, #17191e));
-    border: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.08));
-    border-radius: 14px;
-    overflow: hidden;
-    font-family: var(--rbd-font, inherit);
-    container-type: inline-size;
-  }
-  .rbt-sheet-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.06));
-    flex-shrink: 0;
-  }
-  .rbt-sheet-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 20px 24px; }
-
-  .rbt-char-problem {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 11px;
-    color: #e0a040;
-  }
-  .rbt-globals .rbt-gbtn span { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.rbt-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3004;
+  background: rgba(0, 0, 0, 0.6);
 }
+.rbt-sheet {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 3006;
+  display: flex;
+  flex-direction: column;
+  width: min(1320px, calc(100dvw - 96px));
+  /* 跟内容走，最高到屏幕的 90%：内容少的页面不留一大块空白 */
+  max-height: min(90dvh, 1040px);
+  transform: translate(-50%, -50%);
+  background: var(--rbd-bg1, var(--SmartThemeBlurTintColor, #17191e));
+  border: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.08));
+  border-radius: 14px;
+  overflow: hidden;
+  font-family: var(--rbd-font, inherit);
+  container-type: inline-size;
+}
+.rbt-sheet-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.06));
+  flex-shrink: 0;
+}
+.rbt-sheet-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 20px 24px; }
+
+.rbt-char-problem {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: #e0a040;
+}
+.rbt-globals .rbt-gbtn span { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 
 /* ============================ 输入框上方的快捷按钮：收成一行 ===
    酒馆的快速回复组和酒馆助手脚本按钮，每一组默认各占一整行，输入框会被顶得很高。
@@ -702,252 +690,371 @@ body.rbt-shell #qr--bar #qr--popoutTrigger {
 }
 
 /* ============================ 状态点（例如 API 没连上） === */
-@media (min-width: 1001px) {
-  .rbt-gbtn { position: relative; }
-  .rbt-dot {
-    position: absolute;
-    top: 5px;
-    right: calc(50% - 16px);
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #e0a040;
-    box-shadow: 0 0 0 2px var(--rbd-bg1, #17191e);
-  }
-  .rbt-nav-new { color: var(--rbd-text2, #9ca1aa); }
+.rbt-gbtn { position: relative; }
+.rbt-dot {
+  position: absolute;
+  top: 5px;
+  right: calc(50% - 16px);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e0a040;
+  box-shadow: 0 0 0 2px var(--rbd-bg1, #17191e);
 }
+.rbt-nav-new { color: var(--rbd-text2, #9ca1aa); }
 
 /* 世界书面板标题栏里的书名：可以点，点了在编辑器里打开 */
-@media (min-width: 1001px) {
-  .rbt-note-book {
-    padding: 0 4px;
-    border: 0;
-    border-radius: 4px;
-    background: transparent;
-    color: var(--SmartThemeBodyColor);
-    font: inherit;
-    cursor: pointer;
-  }
-  .rbt-note-book:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.06)); }
-  .rbt-note-book.active { color: var(--rbd-accent, #e2725b); }
+.rbt-note-book {
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--SmartThemeBodyColor);
+  font: inherit;
+  cursor: pointer;
 }
+.rbt-note-book:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.06)); }
+.rbt-note-book.active { color: var(--rbd-accent, #e2725b); }
 
 /* 全局工具箱的两个标签（全局 / 维护） */
-@media (min-width: 1001px) {
-  .rbt-sheet-bar .rbt-sheet-title { flex-shrink: 0; }
-  .rbt-sheet-tabs { display: inline-flex; gap: 2px; margin: 0 auto 0 14px; padding: 2px; border-radius: 8px; background: var(--rbd-bg3, rgba(0, 0, 0, 0.22)); }
-  .rbt-sheet-tabs button {
-    padding: 3px 14px;
-    font-size: 12px !important;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--rbd-text2, #9ca1aa);
-    font: inherit;
-    cursor: pointer;
-  }
-  .rbt-sheet-tabs button:hover { color: var(--SmartThemeBodyColor); }
-  .rbt-sheet-tabs button.active { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.08)); color: var(--SmartThemeBodyColor); font-weight: 600; }
+.rbt-sheet-bar .rbt-sheet-title { flex-shrink: 0; }
+.rbt-sheet-tabs { display: inline-flex; gap: 2px; margin: 0 auto 0 14px; padding: 2px; border-radius: 8px; background: var(--rbd-bg3, rgba(0, 0, 0, 0.22)); }
+.rbt-sheet-tabs button {
+  padding: 3px 14px;
+  font-size: 12px !important;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rbd-text2, #9ca1aa);
+  font: inherit;
+  cursor: pointer;
 }
+.rbt-sheet-tabs button:hover { color: var(--SmartThemeBodyColor); }
+.rbt-sheet-tabs button.active { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.08)); color: var(--SmartThemeBodyColor); font-weight: 600; }
 
 /* 「全局工具箱」：工具箱自己的入口，单独一行，和下面酒馆自带的入口分开 */
-@media (min-width: 1001px) {
-  .rbt-gtool-row { padding: 0 12px 8px; flex-shrink: 0; }
-  .rbt-gtool {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 8px 12px;
-    border: 0;
-    border-radius: 6px;
-    background: var(--rbd-bg2, rgba(255, 255, 255, 0.06));
-    color: var(--SmartThemeBodyColor);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .rbt-gtool:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.1)); }
-  .rbt-gtool.active { background: var(--rbd-accent-soft, rgba(226, 114, 91, 0.14)); color: var(--rbd-accent, #e2725b); }
+.rbt-gtool-row { padding: 0 12px 8px; flex-shrink: 0; }
+.rbt-gtool {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--rbd-bg2, rgba(255, 255, 255, 0.06));
+  color: var(--SmartThemeBodyColor);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
 }
+.rbt-gtool:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.1)); }
+.rbt-gtool.active { background: var(--rbd-accent-soft, rgba(226, 114, 91, 0.14)); color: var(--rbd-accent, #e2725b); }
 
 /* =================================================== 首页：角色画廊 ===
    图片是视觉中心：竖版大卡片、立绘铺满；底部用图片自己的颜色渐变 + 模糊托住名字。
    层级只靠图片、底色和字重，没有边框和阴影。 */
-@media (min-width: 1001px) {
-  body.rbt-shell.rbt-home #sheld { visibility: hidden; }
+body.rbt-shell.rbt-home #sheld { visibility: hidden; }
 
-  .rbt-home-gallery {
-    position: fixed;
-    top: var(--rbt-nav-h);
-    left: var(--rbt-L);
-    width: var(--rbt-chat-w);
-    height: calc(100dvh - var(--rbt-nav-h));
-    z-index: 31;
-    overflow-y: auto;
-    padding: 28px clamp(20px, 3vw, 44px) 48px;
-    box-sizing: border-box;
-    background: var(--rbd-canvas, #0f1012);
-    color: var(--SmartThemeBodyColor);
-  }
-
-  .rbt-home-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
-  .rbt-home-head h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; }
-  .rbt-home-head h1 small { margin-left: 6px; font-size: 15px; font-weight: 500; color: var(--rbd-text3, #6b707a); }
-  .rbt-home-search { width: 260px; }
-  .rbt-home-actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
-  .rbt-home-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 7px 14px; border: 0; border-radius: 999px;
-    background: var(--rbd-bg2, rgba(255, 255, 255, 0.07));
-    color: var(--SmartThemeBodyColor); font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap;
-  }
-  .rbt-home-btn:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.12)); }
-  .rbt-home-btn.primary { background: var(--rbd-accent, #e2725b); color: #fff; }
-  .rbt-home-btn.primary:hover { filter: brightness(1.08); }
-  .rbt-home-btn i { font-size: 12px; opacity: 0.85; }
-
-  .rbt-home-filters { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
-  .rbt-home-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; }
-  .rbt-home-pills button {
-    padding: 5px 14px; border: 0; border-radius: 999px; background: transparent;
-    color: var(--rbd-text2, #9ca1aa); font: inherit; font-size: 13px; cursor: pointer;
-  }
-  .rbt-home-pills button:hover { color: var(--SmartThemeBodyColor); background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); }
-  .rbt-home-pills button.active { background: var(--SmartThemeBodyColor, #e8e8e8); color: var(--rbd-canvas, #0f1012); font-weight: 600; }
-  .rbt-home-select {
-    width: auto !important; min-width: 0; margin: 0 !important;
-    padding: 5px 10px !important; border: 0 !important; border-radius: 999px !important;
-    background: var(--rbd-bg2, rgba(255, 255, 255, 0.06)) !important;
-    color: var(--rbd-text2, #9ca1aa) !important; font-size: 13px !important; cursor: pointer;
-  }
-  .rbt-home-select.active { color: var(--SmartThemeBodyColor) !important; background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.12)) !important; }
-  .rbt-home-note { margin: -8px 0 20px; font-size: 13px; color: var(--rbd-text2, #9ca1aa); line-height: 1.6; }
-  .rbt-linkbtn { padding: 0 2px; border: 0; background: none; color: var(--rbd-accent, #e2725b); font: inherit; cursor: pointer; }
-  .rbt-home-empty { padding: 80px 0; text-align: center; color: var(--rbd-text3, #6b707a); }
-
-  /* ---- 卡片 ---- */
-  .rbt-home-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
-    gap: 22px 18px;
-  }
-  .rbt-hcard {
-    --tint: hsl(225 12% 16%);
-    position: relative;
-    aspect-ratio: 2 / 3;
-    border-radius: 22px;
-    overflow: hidden;
-    background: var(--tint);
-    isolation: isolate;
-    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-  .rbt-hcard:hover { transform: translateY(-4px) scale(1.015); }
-  .rbt-hcard-hit {
-    position: absolute; inset: 0; display: block; width: 100%; height: 100%;
-    padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: center; cursor: pointer;
-  }
-  .rbt-hcard-hit:focus-visible { outline: 2px solid var(--rbd-accent, #e2725b); outline-offset: -2px; border-radius: 22px; }
-  .rbt-hcard-img {
-    position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: cover; object-position: 50% 18%;
-    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-  .rbt-hcard:hover .rbt-hcard-img { transform: scale(1.04); }
-  /* 底部：先模糊，再叠图片自己的颜色，渐渐托出名字 */
-  .rbt-hcard-shade {
-    position: absolute; inset: 0;
-    -webkit-backdrop-filter: blur(22px) saturate(1.2);
-    backdrop-filter: blur(22px) saturate(1.2);
-    -webkit-mask-image: linear-gradient(to bottom, transparent 48%, #000 76%);
-    mask-image: linear-gradient(to bottom, transparent 48%, #000 76%);
-    background: linear-gradient(to bottom, transparent 40%, color-mix(in srgb, var(--tint) 70%, transparent) 70%, var(--tint) 100%);
-  }
-  .rbt-hcard-text {
-    position: absolute; left: 0; right: 0; bottom: 0;
-    display: flex; flex-direction: column; align-items: center; gap: 3px;
-    padding: 0 16px 20px;
-    color: #fff;
-  }
-  .rbt-hcard-name {
-    font-size: 19px; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-    text-wrap: balance;
-  }
-  .rbt-hcard-meta {
-    max-width: 100%; font-size: 12px; color: rgba(255, 255, 255, 0.68);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  /* 左上角：毛玻璃小标签 */
-  .rbt-hcard-pill {
-    position: absolute; top: 12px; left: 12px;
-    display: inline-flex; align-items: center; gap: 6px; max-width: calc(100% - 24px);
-    padding: 5px 11px 5px 9px; border-radius: 999px;
-    background: rgba(20, 20, 24, 0.42);
-    -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
-    color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .rbt-hcard-pill.warn > i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #f0a43a; }
-  .rbt-hcard-pill > i.fa-solid { font-size: 11px; opacity: 0.9; }
-  /* 右上角：收藏标记；悬停时换成收藏 / 编辑按钮 */
-  .rbt-hcard-favmark {
-    position: absolute; top: 12px; right: 12px;
-    display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
-    background: rgba(20, 20, 24, 0.42);
-    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-    color: #ffd45e; font-size: 12px; pointer-events: none;
-    transition: opacity 0.15s;
-  }
-  .rbt-hcard-acts {
-    position: absolute; top: 12px; right: 12px; z-index: 2;
-    display: flex; gap: 6px; opacity: 0; transition: opacity 0.15s;
-  }
-  .rbt-hcard:hover .rbt-hcard-acts, .rbt-hcard:focus-within .rbt-hcard-acts { opacity: 1; }
-  .rbt-hcard:hover .rbt-hcard-favmark, .rbt-hcard:focus-within .rbt-hcard-favmark { opacity: 0; }
-  .rbt-hcard-act {
-    display: grid; place-items: center; width: 30px; height: 30px; padding: 0;
-    border: 0; border-radius: 50%;
-    background: rgba(20, 20, 24, 0.5);
-    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-    color: #fff; font-size: 12px; cursor: pointer;
-  }
-  .rbt-hcard-act:hover { background: rgba(20, 20, 24, 0.72); }
-  .rbt-hcard-act.on { color: #ffd45e; }
-
-  /* ---- 左栏：标题、底部的酒馆链接 ---- */
-  .rbt-left-title { font-size: 12px; font-weight: 600; color: var(--rbd-text2, #9ca1aa); padding: 2px 2px 0; }
-  .rbt-left-foot { display: flex; flex-direction: column; gap: 2px; }
-  .rbt-foot-links { display: flex; gap: 12px; padding: 2px 0 2px; }
-  .rbt-foot-links a { font-size: 12px; color: var(--rbd-text3, #6b707a); text-decoration: none; white-space: nowrap; }
-  .rbt-foot-links a:hover { color: var(--SmartThemeBodyColor); }
-  .rbt-foot-links i { margin-right: 3px; }
-  .rbt-foot-row { display: flex; align-items: center; justify-content: space-between; }
-  .rbt-foot-version { font-size: 11px; color: var(--rbd-text3, #6b707a); opacity: 0.7; }
+.rbt-home-gallery {
+  position: fixed;
+  top: var(--rbt-nav-h);
+  left: var(--rbt-L);
+  width: var(--rbt-chat-w);
+  height: calc(100dvh - var(--rbt-nav-h));
+  z-index: 31;
+  overflow-y: auto;
+  padding: 28px clamp(20px, 3vw, 44px) 48px;
+  box-sizing: border-box;
+  background: var(--rbd-canvas, #0f1012);
+  color: var(--SmartThemeBodyColor);
 }
+
+.rbt-home-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.rbt-home-head h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; }
+.rbt-home-head h1 small { margin-left: 6px; font-size: 15px; font-weight: 500; color: var(--rbd-text3, #6b707a); }
+.rbt-home-search { width: 260px; }
+.rbt-home-actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.rbt-home-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border: 0; border-radius: 999px;
+  background: var(--rbd-bg2, rgba(255, 255, 255, 0.07));
+  color: var(--SmartThemeBodyColor); font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+.rbt-home-btn:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.12)); }
+.rbt-home-btn.primary { background: var(--rbd-accent, #e2725b); color: #fff; }
+.rbt-home-btn.primary:hover { filter: brightness(1.08); }
+.rbt-home-btn i { font-size: 12px; opacity: 0.85; }
+
+.rbt-home-filters { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.rbt-home-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; }
+.rbt-home-pills button {
+  padding: 5px 14px; border: 0; border-radius: 999px; background: transparent;
+  color: var(--rbd-text2, #9ca1aa); font: inherit; font-size: 13px; cursor: pointer;
+}
+.rbt-home-pills button:hover { color: var(--SmartThemeBodyColor); background: var(--rbd-bg2, rgba(255, 255, 255, 0.05)); }
+.rbt-home-pills button.active { background: var(--SmartThemeBodyColor, #e8e8e8); color: var(--rbd-canvas, #0f1012); font-weight: 600; }
+.rbt-home-select {
+  width: auto !important; min-width: 0; margin: 0 !important;
+  padding: 5px 10px !important; border: 0 !important; border-radius: 999px !important;
+  background: var(--rbd-bg2, rgba(255, 255, 255, 0.06)) !important;
+  color: var(--rbd-text2, #9ca1aa) !important; font-size: 13px !important; cursor: pointer;
+}
+.rbt-home-select.active { color: var(--SmartThemeBodyColor) !important; background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.12)) !important; }
+.rbt-home-note { margin: -8px 0 20px; font-size: 13px; color: var(--rbd-text2, #9ca1aa); line-height: 1.6; }
+.rbt-linkbtn { padding: 0 2px; border: 0; background: none; color: var(--rbd-accent, #e2725b); font: inherit; cursor: pointer; }
+.rbt-home-empty { padding: 80px 0; text-align: center; color: var(--rbd-text3, #6b707a); }
+
+/* ---- 卡片 ---- */
+.rbt-home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: 22px 18px;
+}
+.rbt-hcard {
+  --tint: hsl(225 12% 16%);
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border-radius: 22px;
+  overflow: hidden;
+  background: var(--tint);
+  isolation: isolate;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.rbt-hcard:hover { transform: translateY(-4px) scale(1.015); }
+.rbt-hcard-hit {
+  position: absolute; inset: 0; display: block; width: 100%; height: 100%;
+  padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: center; cursor: pointer;
+}
+.rbt-hcard-hit:focus-visible { outline: 2px solid var(--rbd-accent, #e2725b); outline-offset: -2px; border-radius: 22px; }
+.rbt-hcard-img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: 50% 18%;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.rbt-hcard:hover .rbt-hcard-img { transform: scale(1.04); }
+/* 底部：先模糊，再叠图片自己的颜色，渐渐托出名字 */
+.rbt-hcard-shade {
+  position: absolute; inset: 0;
+  -webkit-backdrop-filter: blur(22px) saturate(1.2);
+  backdrop-filter: blur(22px) saturate(1.2);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 48%, #000 76%);
+  mask-image: linear-gradient(to bottom, transparent 48%, #000 76%);
+  background: linear-gradient(to bottom, transparent 40%, color-mix(in srgb, var(--tint) 70%, transparent) 70%, var(--tint) 100%);
+}
+.rbt-hcard-text {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 0 16px 20px;
+  color: #fff;
+}
+.rbt-hcard-name {
+  font-size: 19px; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  text-wrap: balance;
+}
+.rbt-hcard-meta {
+  max-width: 100%; font-size: 12px; color: rgba(255, 255, 255, 0.68);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* 左上角：毛玻璃小标签 */
+.rbt-hcard-pill {
+  position: absolute; top: 12px; left: 12px;
+  display: inline-flex; align-items: center; gap: 6px; max-width: calc(100% - 24px);
+  padding: 5px 11px 5px 9px; border-radius: 999px;
+  background: rgba(20, 20, 24, 0.42);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
+  color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rbt-hcard-pill.warn > i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #f0a43a; }
+.rbt-hcard-pill > i.fa-solid { font-size: 11px; opacity: 0.9; }
+/* 右上角：收藏标记；悬停时换成收藏 / 编辑按钮 */
+.rbt-hcard-favmark {
+  position: absolute; top: 12px; right: 12px;
+  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(20, 20, 24, 0.42);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  color: #ffd45e; font-size: 12px; pointer-events: none;
+  transition: opacity 0.15s;
+}
+.rbt-hcard-acts {
+  position: absolute; top: 12px; right: 12px; z-index: 2;
+  display: flex; gap: 6px; opacity: 0; transition: opacity 0.15s;
+}
+.rbt-hcard:hover .rbt-hcard-acts, .rbt-hcard:focus-within .rbt-hcard-acts { opacity: 1; }
+.rbt-hcard:hover .rbt-hcard-favmark, .rbt-hcard:focus-within .rbt-hcard-favmark { opacity: 0; }
+.rbt-hcard-act {
+  display: grid; place-items: center; width: 30px; height: 30px; padding: 0;
+  border: 0; border-radius: 50%;
+  background: rgba(20, 20, 24, 0.5);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  color: #fff; font-size: 12px; cursor: pointer;
+}
+.rbt-hcard-act:hover { background: rgba(20, 20, 24, 0.72); }
+.rbt-hcard-act.on { color: #ffd45e; }
+
+/* ---- 左栏：标题、底部的酒馆链接 ---- */
+.rbt-left-title { font-size: 12px; font-weight: 600; color: var(--rbd-text2, #9ca1aa); padding: 2px 2px 0; }
+.rbt-left-foot { display: flex; flex-direction: column; gap: 2px; }
+.rbt-foot-links { display: flex; gap: 12px; padding: 2px 0 2px; }
+.rbt-foot-links a { font-size: 12px; color: var(--rbd-text3, #6b707a); text-decoration: none; white-space: nowrap; }
+.rbt-foot-links a:hover { color: var(--SmartThemeBodyColor); }
+.rbt-foot-links i { margin-right: 3px; }
+.rbt-foot-row { display: flex; align-items: center; justify-content: space-between; }
+.rbt-foot-version { font-size: 11px; color: var(--rbd-text3, #6b707a); opacity: 0.7; }
 
 /* 酒馆的 .menu_button 是 width: min-content，中文会一个字一行；按钮文字不换行 */
 #rbt_settings .menu_button,
 body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
 
 /* ===== 聊天里的状态栏（Mac 菜单栏右上角那种）：预设、模型 ===== */
-@media (min-width: 1001px) {
-  .rbt-statusbar { display: flex; align-items: center; gap: 2px; flex: 0 1 auto; min-width: 0; margin-right: 6px; }
-  .rbt-stat {
-    position: relative; display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 190px;
-    padding: 4px 9px; border: 0; border-radius: 6px; background: transparent;
-    color: var(--rbd-text2, #9ca1aa); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
+.rbt-statusbar { display: flex; align-items: center; gap: 2px; flex: 0 1 auto; min-width: 0; margin-right: 6px; }
+.rbt-stat {
+  position: relative; display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 190px;
+  padding: 4px 9px; border: 0; border-radius: 6px; background: transparent;
+  color: var(--rbd-text2, #9ca1aa); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
+}
+.rbt-stat:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.06)); color: var(--SmartThemeBodyColor); }
+.rbt-stat i { flex: none; font-size: 11px; opacity: 0.8; }
+.rbt-stat-text { overflow: hidden; text-overflow: ellipsis; }
+.rbt-stat.warn { color: var(--SmartThemeBodyColor); }
+.rbt-stat-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: #e0a040; }
+/* 窄的时候：只留预设（最常需要确认的），模型名藏到提示里 */
+@container (max-width: 760px) {
+  .rbt-stat { max-width: 130px; }
+  .rbt-statusbar .rbt-stat:nth-child(2) .rbt-stat-text { display: none; }
+}
+@container (max-width: 560px) {
+  .rbt-statusbar .rbt-stat .rbt-stat-text { display: none; }
+}
+
+/* =================================================== 手机 ===
+   同一套界面换个排法（参考 ChatGPT / Claude 手机版）：
+   - 左栏变成 ☰ 打开的抽屉；导航条只有一行：☰、角色名（点了切换存档）、新聊天、聊天工具箱；
+   - 酒馆面板、聊天工具箱、全局工具箱、导入窗口都全屏，标题栏带 ✕；
+   - 双栏变单栏；状态栏不显示。
+   注意：手机上酒馆会把 <html> 设成 position:fixed + transform，right/bottom/inset 会塌掉，
+   所以这里一律用 top/left + dvw/dvh 定尺寸。 */
+@media (max-width: 1000px) {
+  body.rbt-shell { --rbt-nav-h: 52px; --rbt-L: 0px; --rbt-R: 0px; }
+  body.rbt-shell.rbt-docked { --rbt-R: 0px; }
+
+  /* ---- 左栏 → 抽屉 ---- */
+  body.rbt-shell .rbt-left {
+    display: flex !important;
+    width: min(86dvw, 330px);
+    z-index: 3200;
+    transform: translateX(-102%);
+    transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+    border-right: 0;
+    font-size: 14px;
   }
-  .rbt-stat:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.06)); color: var(--SmartThemeBodyColor); }
-  .rbt-stat i { flex: none; font-size: 11px; opacity: 0.8; }
-  .rbt-stat-text { overflow: hidden; text-overflow: ellipsis; }
-  .rbt-stat.warn { color: var(--SmartThemeBodyColor); }
-  .rbt-stat-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: #e0a040; }
-  /* 窄的时候：只留预设（最常需要确认的），模型名藏到提示里 */
-  @container (max-width: 760px) {
-    .rbt-stat { max-width: 130px; }
-    .rbt-statusbar .rbt-stat:nth-child(2) .rbt-stat-text { display: none; }
+  body.rbt-shell.rbt-nav-open .rbt-left { transform: none; }
+  .rbt-left-scrim { position: fixed; top: 0; left: 0; width: 100dvw; height: 100dvh; z-index: 3150; background: rgba(0, 0, 0, 0.5); }
+  .rbt-left-head { height: 52px; }
+  .rbt-left .rbt-icon-btn { width: 40px; height: 40px; font-size: 17px; }
+  .rbt-left-current { padding: 4px 12px 0; flex-shrink: 0; }
+  .rbt-left-current .rbt-left-title { padding: 0 2px 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rbt-globals-current { padding: 4px 0 8px; border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.07)); margin-bottom: 8px; }
+  /* 手指比鼠标粗：按钮和行都加高 */
+  .rbt-gbtn { padding: 10px 2px 8px; font-size: 12px; }
+  .rbt-gbtn i { font-size: 17px; }
+  .rbt-gtool { padding: 11px 12px; }
+  .rbt-recent-row { padding: 9px 8px; }
+  .rbt-recent-avatar { width: 38px; height: 38px; }
+  .rbt-search input { height: 38px; font-size: 16px; } /* 16px：iPhone 点进输入框时不会自动放大页面 */
+  .rbt-foot-btn { padding: 9px 8px; font-size: 13px; }
+
+  /* ---- 导航条：一行 ---- */
+  body.rbt-shell .rbt-nav { left: 0; width: 100dvw; padding: 0 4px; gap: 2px; z-index: 50; }
+  .rbt-nav-phone .rbt-icon-btn { width: 40px; height: 40px; font-size: 17px; }
+  .rbt-nav-phone .rbt-nav-title { justify-content: flex-start; }
+  .rbt-nav-phone > .rbt-nav-title > .rbt-nav-name { padding-left: 6px; }
+  .rbt-nav-who {
+    display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%;
+    padding: 6px 8px; border: 0; border-radius: 8px; background: transparent;
+    color: var(--SmartThemeBodyColor); font: inherit; cursor: pointer;
   }
-  @container (max-width: 560px) {
-    .rbt-statusbar .rbt-stat .rbt-stat-text { display: none; }
+  .rbt-nav-who > i { flex: none; font-size: 10px; color: var(--rbd-text3, rgba(235, 235, 245, 0.4)); }
+  .rbt-nav-phone .rbt-nav-avatar { display: block; width: 28px; height: 28px; }
+  .rbt-nav-phone .rbt-nav-name { max-width: none; flex-shrink: 1; min-width: 0; font-size: 16px; }
+  .rbt-nav-phone .rbt-nav-actions .rbt-gbtn.compact { width: 40px; height: 40px; padding: 0; justify-content: center; }
+  .rbt-nav-phone .rbt-nav-actions .rbt-gbtn.compact i { font-size: 17px; }
+  .rbt-nav-phone .rbt-nav-actions .rbt-gbtn > span:not(.rbt-dot) { display: none; }
+  .rbt-nav-phone .rbt-dot { top: 6px; right: 6px; }
+
+  /* ---- 酒馆的面板：全屏 ---- */
+  body.rbt-shell #top-settings-holder #left-nav-panel,
+  body.rbt-shell #top-settings-holder #PersonaManagement,
+  body.rbt-shell #top-settings-holder #rm_extensions_block,
+  body.rbt-shell #top-settings-holder #right-nav-panel,
+  body.rbt-shell #top-settings-holder #WorldInfo,
+  body.rbt-shell #top-settings-holder #rm_api_block,
+  body.rbt-shell #top-settings-holder #user-settings-block,
+  body.rbt-shell #top-settings-holder #Backgrounds,
+  body.rbt-shell #top-settings-holder #AdvancedFormatting {
+    --rbt-sheet-w: 100dvw;
+    top: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+    width: 100dvw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border: 0 !important;
+    border-radius: 0 !important;
   }
+  body.rbt-shell #top-settings-holder #rm_api_block { height: 100dvh !important; }
+  body.rbt-shell .rbt-sheet-head { padding: 6px 6px 6px 14px; }
+  body.rbt-shell .rbt-sheet-close { width: 40px; height: 40px; font-size: 17px; }
+  body.rbt-shell.rbt-open-modal::after { inset: auto; top: 0; left: 0; width: 100dvw; height: 100dvh; }
+
+  /* ---- 全局工具箱：全屏，标签单独一行 ---- */
+  .rbt-sheet-backdrop { inset: auto; top: 0; left: 0; width: 100dvw; height: 100dvh; }
+  .rbt-sheet {
+    top: 0; left: 0; transform: none;
+    width: 100dvw; height: 100dvh; max-height: none;
+    border: 0; border-radius: 0;
+  }
+  .rbt-sheet-bar { flex-wrap: wrap; row-gap: 8px; padding: 6px 6px 10px 14px; }
+  .rbt-sheet-bar .rbt-sheet-title { flex: 1; }
+  .rbt-sheet-tabs { order: 3; display: flex; width: calc(100% - 8px); margin: 0; overflow-x: auto; }
+  .rbt-sheet-tabs button { flex: 1 0 auto; padding: 7px 10px; font-size: 13px !important; }
+  .rbt-sheet-body { padding: 12px 12px 32px; }
+
+  /* ---- 导入窗口：全屏 ---- */
+  .rbt-sheet.rbt-imp { top: 0; left: 0; transform: none; width: 100dvw; height: 100dvh; max-height: none; border-radius: 0; }
+  .rbt-imp-backdrop { inset: auto; top: 0; left: 0; width: 100dvw; height: 100dvh; }
+  .rbt-imp .rbt-sheet-bar { flex-wrap: nowrap; }
+  .rbt-imp .rbt-sheet-close { width: 40px; height: 40px; font-size: 17px; }
+  .rbt-imp .rbt-sheet-body { padding: 12px; }
+  .rbt-imp-item { padding: 14px; }
+  .rbt-imp-foot > small { display: none; }
+  .rbt-imp-foot { justify-content: flex-end; }
+  .rbt-imp-foot .rbt-btn { padding: 9px 18px; font-size: 14px; }
+
+  /* ---- 首页：角色画廊一行两张 ---- */
+  .rbt-home-gallery { padding: 16px 12px 40px; }
+  .rbt-home-head { gap: 10px; }
+  .rbt-home-head h1 { font-size: 22px; }
+  .rbt-home-search { order: 3; width: 100%; }
+  .rbt-home-actions { order: 4; width: 100%; margin-left: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .rbt-home-actions::-webkit-scrollbar { display: none; }
+  .rbt-home-filters { flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .rbt-home-pills { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; flex: 1 1 100%; }
+  .rbt-home-pills button { flex: none; white-space: nowrap; }
+  .rbt-home-btn { flex: none; }
+  .rbt-home-pills::-webkit-scrollbar { display: none; }
+  .rbt-home-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .rbt-hcard { border-radius: 16px; }
+  .rbt-hcard:hover { transform: none; }
+  .rbt-hcard:hover .rbt-hcard-img { transform: none; }
+  .rbt-hcard-text { padding: 0 10px 14px; }
+  .rbt-hcard-name { font-size: 16px; }
+  .rbt-hcard-pill { top: 8px; left: 8px; padding: 4px 9px 4px 8px; font-size: 11px; }
+  .rbt-hcard-favmark { top: 8px; right: 8px; }
+  .rbt-hcard-acts { display: none; }
+
+  /* ---- 状态：手机上不显示状态栏；「需要注意」浮层占满宽度 ---- */
+  .rbt-statusbar { display: none; }
+  .rbt-status { right: auto; left: 8px; width: calc(100dvw - 16px); }
 }

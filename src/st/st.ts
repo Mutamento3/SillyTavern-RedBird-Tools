@@ -132,6 +132,9 @@ export interface RbtSettings {
   worldSources: Record<string, SourceRecord>;
   /** When records were deleted, so a merge with an older copy does not bring them back (see core/store). */
   deleted: Partial<Record<string, Record<string, string>>>;
+  /** RedBird 美化 (look.css) on/off, and its accent colour id. */
+  look: boolean;
+  accent?: string;
   /** Lorebook backups written to data/<user>/user/files before overwriting. */
   worldBackups: { file: string; world: string; at: string }[];
 }
@@ -169,6 +172,11 @@ export function settings(): RbtSettings {
   s.pluginInfo ??= {};
   s.worldSources ??= {};
   s.deleted ??= {};
+  // 美化默认开着；已经在用别人的美化（酒馆主题带自定义 CSS）的，默认不开，免得两套打架
+  if (s.look === undefined) {
+    const css = String(ctx().powerUserSettings?.custom_css ?? '');
+    s.look = !css.trim() || css.includes('RedBird Dark');
+  }
   return s as RbtSettings;
 }
 

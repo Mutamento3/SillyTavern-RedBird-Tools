@@ -33,7 +33,7 @@ import { currentBookScopes } from '../../tools/flow/capture';
 import { allSeries, compareVersions, setSeries, sourceFor, sourcesTick, suggestSeries, updateSource, type SourceKind } from '../../tools/sources';
 import { openDrawer } from '../../shell/drawers';
 import { openBookInEditor } from '../../shell/worldNote';
-import { Empty, NavRow, SwitchRow, Tag, Toggle } from '../common';
+import { Empty, NavRow, CheckRow, Tag, Toggle } from '../common';
 import { SourceEditor } from '../SourceEditor';
 import { ModelPicker } from '../ModelPicker';
 import { currentModel, modelLabel, presetBindsConnection, presetConnection, SOURCE_LABEL } from '../../tools/model';
@@ -323,7 +323,7 @@ function WorldsPage() {
             {viaChat.length > 0 && <small class="rbt-muted">现在的聊天还通过角色卡加载了：{viaChat.join('、')}。</small>}
           </Section>
           <Section title="设置">
-            <SwitchRow label="自动导入卡里的世界书" detail="打开一张卡时，如果它自带的世界书还没导入，就自动导入并绑定。不会覆盖已有的同名世界书。" checked={auto} onChange={(x) => { settings().autoImportWorld = x; saveSettings(); setAuto(x); }} />
+            <CheckRow label="自动导入卡里的世界书" detail="打开一张卡时，如果它自带的世界书还没导入，就自动导入并绑定。不会覆盖已有的同名世界书。" checked={auto} onChange={(x) => { settings().autoImportWorld = x; saveSettings(); setAuto(x); }} />
           </Section>
         </div>
         <div class="rbt-page-group">
@@ -548,7 +548,7 @@ export function ImportButton({ big }: { big?: boolean } = {}) {
   const ref = useRef<HTMLInputElement>(null);
   return (
     <>
-      <button type="button" class={big ? 'rbt-gtool rbt-gtool-import' : 'rbt-btn rbt-btn-small rbt-import-btn'} title="导入预设、世界书、正则或角色卡，也可以直接把文件拖进来" onClick={() => ref.current?.click()}>
+      <button type="button" class={big ? 'rbt-gtool rbt-gtool-import' : 'rbt-btn rbt-btn-small rbt-import-btn'} title="导入预设、世界书、正则、角色卡或美化，也可以直接把文件拖进来" onClick={() => ref.current?.click()}>
         <i class="fa-solid fa-file-import" /> 导入
       </button>
       <input ref={ref} type="file" multiple accept={ACCEPT} style={{ display: 'none' }} onChange={(e) => {
@@ -589,7 +589,7 @@ export function DropHint() {
     <div class="rbt-drop-hint">
       <i class="fa-solid fa-file-import" />
       <b>松开就导入</b>
-      <span>预设、世界书、正则、角色卡都可以，会自动认出是哪种</span>
+      <span>预设、世界书、正则、角色卡、美化都可以，会自动认出是哪种</span>
     </div>
   );
 }
