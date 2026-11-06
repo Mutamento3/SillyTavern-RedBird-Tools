@@ -384,3 +384,36 @@ body.rbt-resizing #sheld { transition: none !important; }
 }
 .rbt-sub-item.off > :not(.rbt-env-toggle) { opacity: 0.5; }
 .rbt-sub-name { word-break: break-all; }
+
+/* ---- 角色档案 ---- */
+.rbt-cards { display: flex; flex-direction: column; gap: 8px; }
+.rbt-cards a { color: #7ab8ff; cursor: pointer; word-break: break-all; }
+.rbt-card-head { display: flex; gap: 10px; align-items: flex-start; padding: 8px; border: 1px solid var(--rbt-border); border-radius: 6px; background: var(--rbt-soft); }
+.rbt-avatar { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.rbt-avatar-sm { width: 34px; height: 34px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+.rbt-card-head-main, .rbt-card-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rbt-card-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; word-break: break-all; }
+.rbt-chips { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+.rbt-card-section { border: 1px solid var(--rbt-border); border-radius: 6px; padding: 6px 8px; display: flex; flex-direction: column; gap: 5px; }
+.rbt-card-section-head { margin-bottom: 1px; }
+.rbt-card-sub { display: flex; flex-direction: column; gap: 3px; }
+.rbt-pre { white-space: pre-wrap; word-break: break-word; padding: 6px 8px; border-radius: 4px; background: var(--rbt-soft); max-height: 420px; overflow-y: auto; }
+.rbt-pre-line { white-space: pre-line; word-break: break-all; }
+.rbt-link-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.rbt-ellipsis { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbt-push { margin-left: auto; }
+.rbt-form-row { display: flex; gap: 6px; align-items: center; }
+.rbt-form-row .rbt-btn { flex-shrink: 0; }
+.rbt-w-label { flex: 0 0 34%; }
+.rbt-w-filter { flex: 0 0 32%; }
+.rbt-textarea { width: 100%; min-height: 160px; resize: vertical; margin: 0 !important; font-size: 13px; }
+.rbt-row-between { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.rbt-inline-details > summary { cursor: pointer; }
+.rbt-diff-list { margin: 4px 0; padding-left: 18px; max-height: 220px; overflow-y: auto; }
+.rbt-card-row { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--rbt-border); border-radius: 6px; cursor: pointer; }
+.rbt-card-row:hover { background: var(--rbt-soft); }
+.rbt-card-row.current { border-color: rgba(61, 139, 253, 0.6); }
+.rbt-lookup-row { padding: 2px 0; word-break: break-all; }
+.rbt-owner-row { padding: 5px 0; border-bottom: 1px solid var(--rbt-border); display: flex; flex-direction: column; gap: 4px; }
+.rbt-owner-row:last-child { border-bottom: none; }
+.rbt-cards .rbt-warn, .rbt-cards .rbt-hint { margin: 0; }

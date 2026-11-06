@@ -5,6 +5,7 @@
 import { render } from 'preact';
 import './style.css';
 import { ctx, preloadModules, saveSettings, settings } from './st/st';
+import { installCardsWatch } from './tools/cards/cards';
 import { installEnvWatch } from './tools/env/env';
 import { captures, installFlowCapture } from './tools/flow/capture';
 import { installVarsWatch } from './tools/vars/vars';
@@ -38,6 +39,7 @@ function addSettingsDrawer(): void {
           <div class="menu_button" data-tab="flow">信息流</div>
           <div class="menu_button" data-tab="vars">变量</div>
           <div class="menu_button" data-tab="env">换卡体检</div>
+          <div class="menu_button" data-tab="cards">角色档案</div>
         </div>
         <label class="checkbox_label"><input type="checkbox" id="rbt_toast_switch" /> 换卡时弹出体检提示</label>
         <small>也可以从输入框左边的魔法棒菜单打开，或输入 <code>/rbt</code>。</small>
@@ -56,12 +58,12 @@ function addSlashCommand(): void {
     c.SlashCommandParser.addCommandObject(c.SlashCommand.fromProps({
       name: 'rbt',
       callback: (_args: unknown, tab: string) => {
-        const t = (['flow', 'vars', 'env'] as const).find((x) => x === String(tab ?? '').trim());
+        const t = (['flow', 'vars', 'env', 'cards'] as const).find((x) => x === String(tab ?? '').trim());
         if (t) openPanel(t);
         else panelOpen.value = !panelOpen.value;
         return '';
       },
-      helpString: '打开/关闭 RedBird 工具箱。可加参数 flow / vars / env 直接打开对应页。',
+      helpString: '打开/关闭 RedBird 工具箱。可加参数 flow / vars / env / cards 直接打开对应页。',
     }));
   } catch (e) {
     console.warn('[RedBird] slash command registration failed', e);
@@ -73,6 +75,7 @@ async function init(): Promise<void> {
   installFlowCapture();
   installVarsWatch();
   installEnvWatch((tab) => openPanel(tab as TabId));
+  installCardsWatch((tab) => openPanel(tab as TabId));
 
   const root = document.createElement('div');
   root.id = 'rbt-root';

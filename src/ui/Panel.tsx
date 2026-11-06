@@ -1,10 +1,11 @@
 import { signal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
+import { CardsView } from './CardsView';
 import { EnvView } from './EnvView';
 import { FlowView } from './FlowView';
 import { VarsView } from './VarsView';
 
-export type TabId = 'flow' | 'vars' | 'env';
+export type TabId = 'flow' | 'vars' | 'env' | 'cards';
 
 export const panelOpen = signal(false);
 export const activeTab = signal<TabId>('flow');
@@ -13,6 +14,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'flow', label: '信息流' },
   { id: 'vars', label: '变量' },
   { id: 'env', label: '换卡体检' },
+  { id: 'cards', label: '角色档案' },
 ];
 
 /**
@@ -104,6 +106,7 @@ export function Panel() {
         {activeTab.value === 'flow' && <FlowView />}
         {activeTab.value === 'vars' && <VarsView />}
         {activeTab.value === 'env' && <EnvView />}
+        {activeTab.value === 'cards' && <CardsView />}
       </div>
     </aside>
   );

@@ -32,6 +32,7 @@ function ItemRow({ item }: { item: EnvItem }) {
       <Chip>{KIND_LABEL[item.kind]}</Chip>
       <span class="rbt-env-name">{item.name}</span>
       {item.leaks && item.enabled && <Chip color="#e5484d" title="换卡后它还会继续生效">会串味</Chip>}
+      {item.misplaced && <Chip color="#f0a43a" title={`在「角色档案」里标记为${item.misplaced}`}>不属于这张卡</Chip>}
       {item.detail && <small class="rbt-muted">{item.detail}</small>}
       {item.toggle && (
         <span class="rbt-env-toggle">
@@ -120,7 +121,7 @@ export function EnvView() {
             {profile ? (
               <>
                 <div>
-                  已记住这张卡的环境（{new Date(profile.savedAt).toLocaleString()}）。
+                  {profile.globalWorlds ? <>已记住这张卡的环境（{new Date(profile.savedAt).toLocaleString()}）。</> : <>只记了推荐预设「{profile.preset?.name}」（在「角色档案」里设的）。</>}
                   {drift?.count ? <b class="rbt-danger">和现在有 {drift.count} 处不同：</b> : <span class="rbt-ok">和现在一致 ✓</span>}
                 </div>
                 {drift && drift.count > 0 && (

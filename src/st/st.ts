@@ -9,6 +9,8 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { CardRecord, RegexOwner } from '../core/cards';
+
 export type Any = any;
 
 declare global {
@@ -103,13 +105,25 @@ const SETTINGS_KEY = 'redbird_tools';
 export interface RbtSettings {
   toastOnCardSwitch: boolean;
   profiles: Record<string, EnvProfile>;
+  /** 角色档案: hand-filled info per card avatar. */
+  cards: Record<string, CardRecord>;
+  /** 角色档案: which extension / card / preset a global regex script belongs to, by script id. */
+  regexOwners: Record<string, RegexOwner>;
+  /** Import a card's embedded lorebook automatically when its bound world file is missing. */
+  autoImportWorld: boolean;
+  /** Lorebook backups written to data/<user>/user/files before overwriting. */
+  worldBackups: { file: string; world: string; at: string }[];
 }
 
+/**
+ * The environment remembered for one card. Every part is optional: a profile may only carry the
+ * recommended preset (set from 角色档案), in which case global lorebooks/regex are not compared.
+ */
 export interface EnvProfile {
   savedAt: string;
   cardName: string;
-  globalWorlds: string[];
-  globalRegexEnabled: string[];
+  globalWorlds?: string[];
+  globalRegexEnabled?: string[];
   preset?: { api: string; name: string };
 }
 
@@ -119,6 +133,10 @@ export function settings(): RbtSettings {
   const s = es[SETTINGS_KEY];
   s.toastOnCardSwitch ??= true;
   s.profiles ??= {};
+  s.cards ??= {};
+  s.regexOwners ??= {};
+  s.autoImportWorld ??= true;
+  s.worldBackups ??= [];
   return s as RbtSettings;
 }
 

@@ -29,6 +29,8 @@ export interface EnvItem {
   enabled: boolean;
   /** Leaks into every card → worth a look when switching cards. */
   leaks: boolean;
+  /** Tagged (in 角色档案) as belonging to another card / preset, but still on. */
+  misplaced?: string;
   toggle?: (on: boolean) => Promise<void>;
   children?: string[];
   /** Individually switchable children (e.g. each regex script of a preset). */
@@ -119,7 +121,7 @@ export interface Drift {
 
 export const envReport = signal<EnvReport | null>(null);
 
-function thScripts(node: Any, out: { name: string; enabled: boolean }[] = []): { name: string; enabled: boolean }[] {
+export function thScripts(node: Any, out: { name: string; enabled: boolean }[] = []): { name: string; enabled: boolean }[] {
   if (!node) return out;
   // Card extensions store tavern_helper as [[key, value], ...] pairs.
   if (Array.isArray(node) && node.every((x) => Array.isArray(x) && x.length === 2 && typeof x[0] === 'string')) {
@@ -168,6 +170,8 @@ export function buildEnvReport(): EnvReport {
   const avatar: string = char?.avatar ?? '';
   const scopes = currentBookScopes();
   const items: EnvItem[] = [];
+  const preset = presetInfo();
+  const owners = settings().regexOwners;
 
   // --- global lorebooks
   for (const name of scopes.global) {
@@ -180,10 +184,14 @@ export function buildEnvReport(): EnvReport {
   }
   // --- global regex
   for (const r of (es.regex ?? []) as Any[]) {
+    const owner = owners[r.id];
+    const ownerText = owner ? `属于${owner.kind === 'extension' ? '扩展' : owner.kind === 'card' ? '角色卡' : '预设'}「${owner.label}」` : '';
+    const elsewhere = owner && ((owner.kind === 'card' && owner.key !== avatar) || (owner.kind === 'preset' && owner.key !== preset.name));
     items.push({
       id: `rx:g:${r.id ?? r.scriptName}`, scope: 'global', kind: 'regex', name: r.scriptName || '(未命名正则)',
       enabled: !r.disabled, leaks: !r.disabled,
-      detail: regexEffectLabel(r),
+      misplaced: elsewhere && !r.disabled ? ownerText : undefined,
+      detail: [regexEffectLabel(r), ownerText].filter(Boolean).join(' · '),
       toggle: (on) => setRegexEnabled(RX.GLOBAL, r.id, on),
     });
   }
@@ -207,7 +215,6 @@ export function buildEnvReport(): EnvReport {
   }
 
   // --- preset
-  const preset = presetInfo();
   if (preset.name) {
     items.push({ id: 'preset', scope: 'preset', kind: 'preset', name: preset.name, enabled: true, leaks: false, detail: `API：${preset.api}` });
   }
@@ -277,11 +284,16 @@ function currentSnapshot(report: EnvReport): Omit<EnvProfile, 'savedAt' | 'cardN
 export function computeDrift(report: EnvReport, profile: EnvProfile): Drift {
   const now = currentSnapshot(report);
   const allRegex = new Set(report.items.filter((i) => i.scope === 'global' && i.kind === 'regex').map((i) => i.name));
+  const nowWorlds = now.globalWorlds ?? [];
+  const nowRegex = now.globalRegexEnabled ?? [];
+  const pw = profile.globalWorlds;
+  const pr = profile.globalRegexEnabled;
   const drift: Drift = {
-    worldsOn: profile.globalWorlds.filter((w) => !now.globalWorlds.includes(w)),
-    worldsOff: now.globalWorlds.filter((w) => !profile.globalWorlds.includes(w)),
-    regexOn: profile.globalRegexEnabled.filter((r) => allRegex.has(r) && !now.globalRegexEnabled.includes(r)),
-    regexOff: now.globalRegexEnabled.filter((r) => !profile.globalRegexEnabled.includes(r)),
+    // Parts the profile did not record (e.g. only a recommended preset) are not compared.
+    worldsOn: pw ? pw.filter((w) => !nowWorlds.includes(w)) : [],
+    worldsOff: pw ? nowWorlds.filter((w) => !pw.includes(w)) : [],
+    regexOn: pr ? pr.filter((r) => allRegex.has(r) && !nowRegex.includes(r)) : [],
+    regexOff: pr ? nowRegex.filter((r) => !pr.includes(r)) : [],
     preset: profile.preset && profile.preset.api === report.presetApi && profile.preset.name !== report.presetName ? profile.preset.name : undefined,
     count: 0,
   };
@@ -347,6 +359,10 @@ export function installEnvWatch(openPanel: (tab: string) => void): void {
       lastAvatar = r.avatar;
       if (!settings().toastOnCardSwitch) return;
       const open = { onclick: () => openPanel('env'), timeOut: 8000 };
+      const misplaced = r.items.filter((i) => i.misplaced);
+      if (misplaced.length) {
+        toast('warning', `${misplaced.map((i) => `全局正则「${i.name}」${i.misplaced}`).join('；')}，但现在还开着。点这里查看。`, '换卡体检', open);
+      }
       if (r.drift?.count) {
         toast('warning', `「${r.cardName}」的环境和上次记住的不一样（${r.drift.count} 项）。点这里查看并一键恢复。`, '换卡体检', open);
         return;
