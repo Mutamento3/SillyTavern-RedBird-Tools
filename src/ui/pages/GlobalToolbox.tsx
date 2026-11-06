@@ -44,7 +44,7 @@ import { CardPage } from './CardPage';
 import { AddGlobalWorld, GlobalRegexList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
 import { Section } from './parts';
 import {
-  ACCENTS, accentId, currentStTheme, deleteStTheme, loadThemes, lookOn, setAccent, setLook, stThemes, themeHasCss, themesLoading,
+  ACCENTS, accentId, currentStTheme, deleteStTheme, loadThemes, LOOKS, lookId, lookOn, setAccent, setLook, stThemes, themeHasCss, themesLoading,
   useBuiltInLook, useStTheme, type StTheme,
 } from '../../look/look';
 
@@ -528,6 +528,24 @@ function useThemes(): void {
   useEffect(() => { if (!stThemes.value.length && !themesLoading.value) void loadThemes(); }, []);
 }
 
+/** 工具箱自带的一套：一张小样（纸色、卡片、两行字、强调色点）+ 名字 + 一句话。点了就换上。 */
+function LookCard({ l, on }: { l: (typeof LOOKS)[number]; on: boolean }) {
+  const p = l.preview;
+  return (
+    <button type="button" class={`rbt-lookcard ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => { void useBuiltInLook(l.id); }}>
+      <span class="rbt-lookcard-art" style={{ background: p.canvas }}>
+        <span class="rbt-lookcard-panel" style={{ background: p.panel }}>
+          <i style={{ background: p.text }} />
+          <i style={{ background: p.sub }} />
+          <b style={{ background: 'var(--rbd-accent)' }} />
+        </span>
+      </span>
+      <span class="rbt-lookcard-name">{l.label}{on && <i class="fa-solid fa-circle-check" />}</span>
+      <span class="rbt-lookcard-desc">{l.desc}</span>
+    </button>
+  );
+}
+
 function LooksPage() {
   useThemes();
   void sourcesTick.value;
@@ -540,13 +558,17 @@ function LooksPage() {
     <div class="rbt-page">
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
-          <Section title="正在用" hint={builtIn ? '工具箱自带的美化' : '酒馆里装的美化'}>
-            {builtIn ? (
+          {!builtIn && (
+            <Section title="正在用" hint="酒馆里装的美化">
+              <NavRow title={cur || '酒馆默认'} sub={themeHasCss(curTheme) ? '带自定义样式' : '只换颜色'} trailing={curTheme ? <Swatches t={curTheme} /> : undefined} onClick={() => cur && openDetail({ kind: 'theme', name: cur }, back)} />
+            </Section>
+          )}
+          <Section title="工具箱自带" hint="按三栏界面做的，布局不会冲突">
+            <div class="rbt-lookcards">
+              {LOOKS.map((l) => <LookCard key={l.id} l={l} on={builtIn && lookId.value === l.id} />)}
+            </div>
+            {builtIn && (
               <>
-                <div class="rbt-look-now">
-                  <span class="rbt-look-now-mark"><i class="fa-solid fa-feather-pointed" /></span>
-                  <span class="rbt-look-now-text"><b>工具箱自带</b><small>苹果风深色，只改颜色、字体和间距</small></span>
-                </div>
                 <div class="rbt-look-accents">
                   <small>强调色</small>
                   {ACCENTS.map((a) => (
@@ -555,16 +577,12 @@ function LooksPage() {
                 </div>
                 <button type="button" class="rbt-btn rbt-btn-small rbt-self-start" onClick={() => setLook(false)}>关掉，用酒馆主题「{cur || '默认'}」</button>
               </>
-            ) : (
-              <>
-                <NavRow title={cur || '酒馆默认'} sub={themeHasCss(curTheme) ? '带自定义样式' : '只换颜色'} trailing={curTheme ? <Swatches t={curTheme} /> : undefined} onClick={() => cur && openDetail({ kind: 'theme', name: cur }, back)} />
-                <button type="button" class="rbt-btn rbt-btn-small rbt-self-start" onClick={() => { void useBuiltInLook(); }}>换成工具箱自带的美化</button>
-              </>
             )}
-            <small class="rbt-muted">换美化时，酒馆面板、三栏界面和工具箱会一起换。两套美化不会同时开着。</small>
+            {!builtIn && <small class="rbt-muted">点一套就换上。换美化时，酒馆面板、三栏界面和工具箱会一起换。</small>}
           </Section>
         </div>
         <div class="rbt-page-group">
+          <small class="rbt-muted rbt-looks-note">下面是装在酒馆里的美化，是别人按酒馆原版界面做的。在三栏界面里布局以工具箱为准，个别地方可能不协调。</small>
           {themesLoading.value && !list.length ? <small class="rbt-muted">读取中…</small> : (
             <SeriesList
               kind="theme"

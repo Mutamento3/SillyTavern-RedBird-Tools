@@ -8,7 +8,7 @@ import { render } from 'preact';
 import './style.css';
 import './shell/shell.css';
 import './look/look.css';
-import { applyLook, lookOn, retireOldTheme, setLook, useBuiltInLook } from './look/look';
+import { applyLook, lookOn, retireOldTheme, setLook, useBuiltInLook, watchStThemeSwitch } from './look/look';
 import { ctx, preloadModules, saveSettings, settings } from './st/st';
 import { installStore } from './st/store';
 import { checkForUpdate, installedVersion, installUpdateCheck } from './tools/update';
@@ -64,7 +64,7 @@ function addSettingsDrawer(): void {
         <div class="rbt-set-group">
           <div class="rbt-set-title">界面</div>
           ${row('rbt_shell_switch', '三栏界面', '电脑上用左栏和顶部导航代替酒馆原来的图标栏')}
-          ${row('rbt_look_switch', '美化', '酒馆和工具箱用同一套深色配色和字体。强调色和别的美化在「全局工具箱 › 美化」里')}
+          ${row('rbt_look_switch', '美化', '酒馆和工具箱用同一套配色和字体。深色、浅色、护眼三套和强调色在「全局工具箱 › 美化」里选')}
         </div>
         <div class="rbt-set-group">
           <div class="rbt-set-title">换卡时</div>
@@ -121,6 +121,7 @@ function addSlashCommand(): void {
 async function init(): Promise<void> {
   applyLook();
   retireOldTheme();
+  watchStThemeSwitch();
   await preloadModules();
   // 工具箱自己的存档：先把 settings.json 里旧了的部分补回来（见 st/store.ts）
   await installStore();

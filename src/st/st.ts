@@ -137,6 +137,10 @@ export interface RbtSettings {
   /** RedBird 美化 (look.css) on/off, and its accent colour id. */
   look: boolean;
   accent?: string;
+  /** Which built-in look: dark / light / warm. */
+  lookId?: string;
+  /** Don't warn again before switching to someone else's look. */
+  themeWarnOff?: boolean;
   /** Lorebook backups written to data/<user>/user/files before overwriting. */
   worldBackups: { file: string; world: string; at: string }[];
 }

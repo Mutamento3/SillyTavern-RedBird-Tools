@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "全局工具箱新增「美化」标签：切换、记作者和链接、删除（先自动备份）；强调色也挪到了那里。"
+  "rbt_whats_new": "三套自带美化（深色、浅色、护眼）；聊天正文排成一栏居中、输入栏对齐，消息不加圆角；左栏可以切到「最近导入」找刚导入的卡；酒馆的聊天记录等弹窗不再被拉成一长条；全局工具箱换标签时大小不变。"
 }

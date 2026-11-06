@@ -13,6 +13,7 @@ import { ToolboxButton } from './EnvStatus';
 import { StatusBar, worldStatus } from './StatusBar';
 import { ImportButton } from '../ui/pages/GlobalToolbox';
 import { HomeGallery } from './Home';
+import { charsTick, isCurrent as isCurrentChar, listCharacters, openCharacter, sortCharacters, type CharItem } from './characters';
 import {
   isCurrentChat,
   loadRecentChats,
@@ -171,6 +172,61 @@ function ChatList({ q }: { q: string }) {
   );
 }
 
+// 左栏列表：最近聊过的聊天，或者最近导入的角色卡（刚导入、还没聊过的卡在「最近聊过」里看不到）
+type LeftMode = 'chats' | 'added';
+const LEFT_MODE_KEY = 'rbt-left-mode';
+const leftMode = signal<LeftMode>((() => { try { return localStorage.getItem(LEFT_MODE_KEY) === 'added' ? 'added' : 'chats'; } catch { return 'chats'; } })());
+function setLeftMode(m: LeftMode): void {
+  leftMode.value = m;
+  try { localStorage.setItem(LEFT_MODE_KEY, m); } catch { /* ignore */ }
+}
+
+function AddedRow({ it }: { it: CharItem }) {
+  const current = isCurrentChar(it);
+  return (
+    <button type="button" class={`rbt-recent-row ${current ? 'current' : ''}`} onClick={() => { void openCharacter(it); }} title={it.name}>
+      <img class="rbt-recent-avatar" src={it.thumb} alt="" loading="lazy" />
+      <span class="rbt-recent-main">
+        <span class="rbt-recent-line1">
+          <span class="rbt-recent-name">{it.name}</span>
+          <span class="rbt-recent-time">{shortTime(it.added)}</span>
+        </span>
+        <span class="rbt-recent-preview">{it.lastChat ? `上次聊过 ${shortTime(it.lastChat)}` : '还没聊过'}</span>
+      </span>
+    </button>
+  );
+}
+
+/** Characters by when they were imported, newest first, grouped like the chat list. */
+function AddedList({ q }: { q: string }) {
+  void charsTick.value;
+  void chatTick.value;
+  const groups = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    const items = sortCharacters(listCharacters().filter((i) => i.kind === 'character'), 'added')
+      .filter((i) => !query || i.name.toLowerCase().includes(query) || i.note.toLowerCase().includes(query));
+    const out: { label: string; items: CharItem[] }[] = [];
+    for (const it of items) {
+      const label = it.added ? timeGroup({ time: it.added } as RecentChat) : '更早';
+      const last = out[out.length - 1];
+      if (last?.label === label) last.items.push(it);
+      else out.push({ label, items: [it] });
+    }
+    return out;
+  }, [q, charsTick.value, chatTick.value]);
+  return (
+    <div class="rbt-recent">
+      {groups.map((g) => (
+        <section key={g.label} class="rbt-recent-group">
+          <h4>{g.label}导入</h4>
+          {g.items.map((it) => <AddedRow key={it.key} it={it} />)}
+        </section>
+      ))}
+      {!groups.length && <div class="rbt-recent-empty">{q ? '没有匹配的角色' : '还没有角色卡'}</div>}
+    </div>
+  );
+}
+
 /** 酒馆欢迎页上的东西（临时聊天、文档、版本号），首页中间换成了角色画廊，就挪到左栏底部。 */
 function openTemporaryChat(): void {
   const click = () => trigger('.openTemporaryChat');
@@ -227,7 +283,7 @@ function LeftColumn() {
   const autoClose = (e: MouseEvent) => {
     if (!phone) return;
     const el = (e.target as HTMLElement).closest('button, a');
-    if (!el || el.closest('.rbt-left-head')) return;
+    if (!el || el.closest('.rbt-left-head, .rbt-segctl')) return;
     setTimeout(() => setNavOpen(false), 0);
   };
 
@@ -259,14 +315,17 @@ function LeftColumn() {
       </nav>
 
       <div class="rbt-left-actions">
-        <div class="rbt-left-title">最近的聊天</div>
+        <div class="rbt-segctl" role="tablist" aria-label="左栏列表">
+          <button type="button" role="tab" class={leftMode.value === 'chats' ? 'active' : ''} aria-selected={leftMode.value === 'chats'} onClick={() => setLeftMode('chats')}>最近聊过</button>
+          <button type="button" role="tab" class={leftMode.value === 'added' ? 'active' : ''} aria-selected={leftMode.value === 'added'} onClick={() => setLeftMode('added')}>最近导入</button>
+        </div>
         <label class="rbt-search">
           <i class="fa-solid fa-magnifying-glass" />
-          <input type="search" placeholder="搜索聊天" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
+          <input type="search" placeholder={leftMode.value === 'chats' ? '搜索聊天' : '搜索角色'} value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
         </label>
       </div>
 
-      <ChatList q={q} />
+      {leftMode.value === 'chats' ? <ChatList q={q} /> : <AddedList q={q} />}
 
       <div class="rbt-left-foot">
         <button type="button" class="rbt-foot-btn" title="和酒馆助手临时聊几句，不会保存" onClick={openTemporaryChat}>

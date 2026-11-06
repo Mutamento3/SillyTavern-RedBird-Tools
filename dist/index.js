@@ -1076,7 +1076,14 @@ const ACCENTS = [
   { id: "green", label: "绿", color: "#30d158" },
   { id: "graphite", label: "石墨", color: "#8e8e93" }
 ];
+const LOOKS = [
+  { id: "dark", label: "深色", desc: "苹果风深色，晚上玩不刺眼", preview: { canvas: "#161618", panel: "#2a2a2e", text: "#ececf1", sub: "#8e8e93" } },
+  { id: "light", label: "浅色", desc: "米白书页，白天读长文舒服", preview: { canvas: "#faf9f6", panel: "#ffffff", text: "#1d1d1f", sub: "#8e8e93" } },
+  { id: "warm", label: "护眼", desc: "暖黄纸色，久看不累", preview: { canvas: "#f4ecd8", panel: "#faf4e4", text: "#3b2f22", sub: "#9a8a72" } }
+];
+const lookId = y$1("dark");
 const lookOn = y$1(false);
+let switching = false;
 const themeTick = y$1(0);
 const accentId = y$1("blue");
 function accentColor(id = accentId.value) {
@@ -1086,8 +1093,10 @@ function applyLook() {
   const s2 = settings();
   lookOn.value = !!s2.look;
   accentId.value = s2.accent ?? "blue";
+  lookId.value = LOOKS.some((l2) => l2.id === s2.lookId) ? s2.lookId : "dark";
   const root = document.documentElement;
   root.classList.toggle("rbt-look", lookOn.value);
+  for (const l2 of LOOKS) root.classList.toggle(`rbt-look-${l2.id}`, lookOn.value && lookId.value === l2.id && l2.id !== "dark");
   root.style.setProperty("--rbd-accent", accentColor());
 }
 function setLook(on) {
@@ -1100,10 +1109,36 @@ function setAccent(id) {
   saveSettings();
   applyLook();
 }
+const WARN$1 = "这套美化是别人按酒馆原版界面做的。在三栏界面里，布局以工具箱为准，个别地方可能不协调。";
+async function warnThirdParty(name) {
+  if (settings().themeWarnOff) return true;
+  const t2 = stThemes.value.find((x2) => x2.name === name);
+  if (t2 && !themeHasCss(t2)) return true;
+  const c2 = ctx();
+  if (!c2.Popup || !c2.POPUP_TYPE) return true;
+  const popup = new c2.Popup(`<h3>换成「${name}」？</h3><p>${WARN$1}</p><p>随时可以在「全局工具箱 › 美化」里换回工具箱自带的。</p>`, c2.POPUP_TYPE.CONFIRM, "", {
+    okButton: "换过去",
+    cancelButton: "取消",
+    customInputs: [{ id: "rbt_theme_warn_off", label: "以后不再提醒" }]
+  });
+  const res = await popup.show();
+  if (!res) return false;
+  if (popup.inputResults?.get("rbt_theme_warn_off")) {
+    settings().themeWarnOff = true;
+    saveSettings();
+  }
+  return true;
+}
 async function useStTheme(name) {
   const $2 = window.jQuery;
   if (!$2) return;
-  $2("#themes").val(name).trigger("change");
+  if (!await warnThirdParty(name)) return;
+  switching = true;
+  try {
+    $2("#themes").val(name).trigger("change");
+  } finally {
+    switching = false;
+  }
   if (lookOn.value) setLook(false);
   themeTick.value++;
 }
@@ -1156,12 +1191,20 @@ function plainTheme() {
   if (cur && !themeHasCss(cur)) return cur.name;
   return (list.find((t2) => t2.name === "Dark V 1.0" && !themeHasCss(t2)) ?? list.find((t2) => !themeHasCss(t2)))?.name ?? null;
 }
-async function useBuiltInLook() {
+async function useBuiltInLook(id) {
+  if (id) settings().lookId = id;
   if (stThemeHasCss()) {
     if (!stThemes.value.length) await loadThemes();
     const plain = plainTheme();
     const $2 = window.jQuery;
-    if (plain && $2) $2("#themes").val(plain).trigger("change");
+    if (plain && $2) {
+      switching = true;
+      try {
+        $2("#themes").val(plain).trigger("change");
+      } finally {
+        switching = false;
+      }
+    }
   }
   setLook(true);
   themeTick.value++;
@@ -1196,6 +1239,20 @@ async function deleteStTheme(name) {
   stThemes.value = stThemes.value.filter((x2) => x2.name !== name);
   toast("success", `已删除「${name}」，备份在 user/files/${file}`, "美化");
   return file;
+}
+function watchStThemeSwitch() {
+  const $2 = window.jQuery;
+  if (!$2) return;
+  $2(document).on("change", "#themes", () => {
+    if (switching) return;
+    themeTick.value++;
+    if (!lookOn.value) return;
+    setLook(false);
+    const name = String($2("#themes").val() ?? "");
+    const extra = stThemeHasCss() && !settings().themeWarnOff ? `
+${WARN$1}` : "";
+    toast("info", `已改用「${name}」，工具箱自带的美化先关掉了。想换回来：全局工具箱 › 美化。${extra}`, "美化", { timeOut: extra ? 9e3 : 5e3 });
+  });
 }
 const STORE_SECTIONS = ["cards", "profiles", "regexOwners", "presetInfo", "pluginInfo", "worldSources", "themeInfo"];
 function stampOf(section, rec) {
@@ -3289,6 +3346,11 @@ function allTags(items) {
   }
   return [...m2.values()].sort((a2, b2) => b2.count - a2.count || a2.tag.name.localeCompare(b2.tag.name));
 }
+function isCurrent(it) {
+  const c2 = ctx();
+  if (it.kind === "group") return c2.groupId === it.ref;
+  return !c2.groupId && String(c2.characterId) === it.ref;
+}
 async function openCharacter(it) {
   const c2 = ctx();
   try {
@@ -5039,12 +5101,12 @@ function AttentionBox({ char }) {
     ] }, i2))
   ] });
 }
-function SwitchSection({ avatar, isCurrent }) {
+function SwitchSection({ avatar, isCurrent: isCurrent2 }) {
   void statusTick.value;
   const [auto, setAuto] = d$1(settings().autoApplyEnv);
   const [busy, setBusy] = d$1(false);
   const profile = settings().profiles[avatar];
-  const report = isCurrent ? buildEnvReport() : null;
+  const report = isCurrent2 ? buildEnvReport() : null;
   const drift = report?.drift;
   const applied = lastApplied.value?.avatar === avatar ? lastApplied.value : null;
   const run = async (f2) => {
@@ -5097,7 +5159,7 @@ function SwitchSection({ avatar, isCurrent }) {
           profile.preset.name
         ] })
       ] }),
-      isCurrent && (drift?.count ? /* @__PURE__ */ u$2("div", { class: "rbt-warn rbt-row-between", children: [
+      isCurrent2 && (drift?.count ? /* @__PURE__ */ u$2("div", { class: "rbt-warn rbt-row-between", children: [
         /* @__PURE__ */ u$2("span", { children: [
           "现在的设置和记住的有 ",
           drift.count,
@@ -5105,13 +5167,13 @@ function SwitchSection({ avatar, isCurrent }) {
         ] }),
         /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small rbt-btn-primary", disabled: busy, onClick: () => run(applyProfile), children: "恢复记住的" })
       ] }) : /* @__PURE__ */ u$2("small", { class: "rbt-ok", children: "和现在的设置一致 ✓" })),
-      isCurrent && /* @__PURE__ */ u$2("div", { class: "rbt-row", children: [
+      isCurrent2 && /* @__PURE__ */ u$2("div", { class: "rbt-row", children: [
         /* @__PURE__ */ u$2("button", { class: "rbt-btn", disabled: busy, onClick: () => run(rememberProfile), children: "改为记住现在的" }),
         /* @__PURE__ */ u$2("button", { class: "rbt-btn", disabled: busy, onClick: () => run(forgetProfile), children: "不再记住" })
       ] })
     ] }) : /* @__PURE__ */ u$2(S$1, { children: [
       /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "还没记住这张卡的配置。现在切到这张卡时，只会关掉别的卡的世界书和正则，并换上推荐预设。" }),
-      isCurrent ? /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-primary", disabled: busy, onClick: () => run(rememberProfile), children: "记住现在的配置" }) }) : /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "打开这张卡后才能记住它的配置。" })
+      isCurrent2 ? /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-primary", disabled: busy, onClick: () => run(rememberProfile), children: "记住现在的配置" }) }) : /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "打开这张卡后才能记住它的配置。" })
     ] }) })
   ] });
 }
@@ -5770,6 +5832,62 @@ function ChatList({ q: q2 }) {
     !groups.length && /* @__PURE__ */ u$2("div", { class: "rbt-recent-empty", children: recentLoading.value ? "读取中…" : q2 ? "没有匹配的聊天" : "还没有聊天" })
   ] });
 }
+const LEFT_MODE_KEY = "rbt-left-mode";
+const leftMode = y$1((() => {
+  try {
+    return localStorage.getItem(LEFT_MODE_KEY) === "added" ? "added" : "chats";
+  } catch {
+    return "chats";
+  }
+})());
+function setLeftMode(m2) {
+  leftMode.value = m2;
+  try {
+    localStorage.setItem(LEFT_MODE_KEY, m2);
+  } catch {
+  }
+}
+function AddedRow({ it }) {
+  const current = isCurrent(it);
+  return /* @__PURE__ */ u$2("button", { type: "button", class: `rbt-recent-row ${current ? "current" : ""}`, onClick: () => {
+    void openCharacter(it);
+  }, title: it.name, children: [
+    /* @__PURE__ */ u$2("img", { class: "rbt-recent-avatar", src: it.thumb, alt: "", loading: "lazy" }),
+    /* @__PURE__ */ u$2("span", { class: "rbt-recent-main", children: [
+      /* @__PURE__ */ u$2("span", { class: "rbt-recent-line1", children: [
+        /* @__PURE__ */ u$2("span", { class: "rbt-recent-name", children: it.name }),
+        /* @__PURE__ */ u$2("span", { class: "rbt-recent-time", children: shortTime(it.added) })
+      ] }),
+      /* @__PURE__ */ u$2("span", { class: "rbt-recent-preview", children: it.lastChat ? `上次聊过 ${shortTime(it.lastChat)}` : "还没聊过" })
+    ] })
+  ] });
+}
+function AddedList({ q: q2 }) {
+  void charsTick.value;
+  void chatTick.value;
+  const groups = T(() => {
+    const query = q2.trim().toLowerCase();
+    const items = sortCharacters(listCharacters().filter((i2) => i2.kind === "character"), "added").filter((i2) => !query || i2.name.toLowerCase().includes(query) || i2.note.toLowerCase().includes(query));
+    const out = [];
+    for (const it of items) {
+      const label = it.added ? timeGroup({ time: it.added }) : "更早";
+      const last = out[out.length - 1];
+      if (last?.label === label) last.items.push(it);
+      else out.push({ label, items: [it] });
+    }
+    return out;
+  }, [q2, charsTick.value, chatTick.value]);
+  return /* @__PURE__ */ u$2("div", { class: "rbt-recent", children: [
+    groups.map((g2) => /* @__PURE__ */ u$2("section", { class: "rbt-recent-group", children: [
+      /* @__PURE__ */ u$2("h4", { children: [
+        g2.label,
+        "导入"
+      ] }),
+      g2.items.map((it) => /* @__PURE__ */ u$2(AddedRow, { it }, it.key))
+    ] }, g2.label)),
+    !groups.length && /* @__PURE__ */ u$2("div", { class: "rbt-recent-empty", children: q2 ? "没有匹配的角色" : "还没有角色卡" })
+  ] });
+}
 function openTemporaryChat() {
   const click = () => trigger(".openTemporaryChat");
   if (!inChat()) {
@@ -5821,7 +5939,7 @@ function LeftColumn() {
   const autoClose = (e2) => {
     if (!phone) return;
     const el2 = e2.target.closest("button, a");
-    if (!el2 || el2.closest(".rbt-left-head")) return;
+    if (!el2 || el2.closest(".rbt-left-head, .rbt-segctl")) return;
     setTimeout(() => setNavOpen(false), 0);
   };
   return /* @__PURE__ */ u$2("aside", { class: "rbt-left", "aria-label": "RedBird 左栏", onClickCapture: autoClose, children: [
@@ -5842,13 +5960,16 @@ function LeftColumn() {
     ] }),
     /* @__PURE__ */ u$2("nav", { class: "rbt-globals", "aria-label": "酒馆设定", children: ST_KEYS.map((k2) => /* @__PURE__ */ u$2(DrawerButton, { k: k2, title: k2 === "api" && !apiOnline.value ? "API（没连上）" : void 0, dot: k2 === "api" && !apiOnline.value ? "没连上 API" : void 0 }, k2)) }),
     /* @__PURE__ */ u$2("div", { class: "rbt-left-actions", children: [
-      /* @__PURE__ */ u$2("div", { class: "rbt-left-title", children: "最近的聊天" }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-segctl", role: "tablist", "aria-label": "左栏列表", children: [
+        /* @__PURE__ */ u$2("button", { type: "button", role: "tab", class: leftMode.value === "chats" ? "active" : "", "aria-selected": leftMode.value === "chats", onClick: () => setLeftMode("chats"), children: "最近聊过" }),
+        /* @__PURE__ */ u$2("button", { type: "button", role: "tab", class: leftMode.value === "added" ? "active" : "", "aria-selected": leftMode.value === "added", onClick: () => setLeftMode("added"), children: "最近导入" })
+      ] }),
       /* @__PURE__ */ u$2("label", { class: "rbt-search", children: [
         /* @__PURE__ */ u$2("i", { class: "fa-solid fa-magnifying-glass" }),
-        /* @__PURE__ */ u$2("input", { type: "search", placeholder: "搜索聊天", value: q2, onInput: (e2) => setQ(e2.currentTarget.value) })
+        /* @__PURE__ */ u$2("input", { type: "search", placeholder: leftMode.value === "chats" ? "搜索聊天" : "搜索角色", value: q2, onInput: (e2) => setQ(e2.currentTarget.value) })
       ] })
     ] }),
-    /* @__PURE__ */ u$2(ChatList, { q: q2 }),
+    leftMode.value === "chats" ? /* @__PURE__ */ u$2(ChatList, { q: q2 }) : /* @__PURE__ */ u$2(AddedList, { q: q2 }),
     /* @__PURE__ */ u$2("div", { class: "rbt-left-foot", children: [
       /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-foot-btn", title: "和酒馆助手临时聊几句，不会保存", onClick: openTemporaryChat, children: [
         /* @__PURE__ */ u$2("i", { class: "fa-solid fa-comment-dots fa-fw" }),
@@ -7024,6 +7145,23 @@ function useThemes() {
     if (!stThemes.value.length && !themesLoading.value) void loadThemes();
   }, []);
 }
+function LookCard({ l: l2, on }) {
+  const p2 = l2.preview;
+  return /* @__PURE__ */ u$2("button", { type: "button", class: `rbt-lookcard ${on ? "on" : ""}`, "aria-pressed": on, onClick: () => {
+    void useBuiltInLook(l2.id);
+  }, children: [
+    /* @__PURE__ */ u$2("span", { class: "rbt-lookcard-art", style: { background: p2.canvas }, children: /* @__PURE__ */ u$2("span", { class: "rbt-lookcard-panel", style: { background: p2.panel }, children: [
+      /* @__PURE__ */ u$2("i", { style: { background: p2.text } }),
+      /* @__PURE__ */ u$2("i", { style: { background: p2.sub } }),
+      /* @__PURE__ */ u$2("b", { style: { background: "var(--rbd-accent)" } })
+    ] }) }),
+    /* @__PURE__ */ u$2("span", { class: "rbt-lookcard-name", children: [
+      l2.label,
+      on && /* @__PURE__ */ u$2("i", { class: "fa-solid fa-circle-check" })
+    ] }),
+    /* @__PURE__ */ u$2("span", { class: "rbt-lookcard-desc", children: l2.desc })
+  ] });
+}
 function LooksPage() {
   useThemes();
   void sourcesTick.value;
@@ -7033,53 +7171,48 @@ function LooksPage() {
   const builtIn = lookOn.value;
   const back = GLOBAL_TAB_LABELS.looks;
   return /* @__PURE__ */ u$2("div", { class: "rbt-page", children: /* @__PURE__ */ u$2("div", { class: "rbt-page-cols", children: [
-    /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: /* @__PURE__ */ u$2(Section, { title: "正在用", hint: builtIn ? "工具箱自带的美化" : "酒馆里装的美化", children: [
-      builtIn ? /* @__PURE__ */ u$2(S$1, { children: [
-        /* @__PURE__ */ u$2("div", { class: "rbt-look-now", children: [
-          /* @__PURE__ */ u$2("span", { class: "rbt-look-now-mark", children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-feather-pointed" }) }),
-          /* @__PURE__ */ u$2("span", { class: "rbt-look-now-text", children: [
-            /* @__PURE__ */ u$2("b", { children: "工具箱自带" }),
-            /* @__PURE__ */ u$2("small", { children: "苹果风深色，只改颜色、字体和间距" })
+    /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
+      !builtIn && /* @__PURE__ */ u$2(Section, { title: "正在用", hint: "酒馆里装的美化", children: /* @__PURE__ */ u$2(NavRow, { title: cur || "酒馆默认", sub: themeHasCss(curTheme) ? "带自定义样式" : "只换颜色", trailing: curTheme ? /* @__PURE__ */ u$2(Swatches, { t: curTheme }) : void 0, onClick: () => cur && openDetail({ kind: "theme", name: cur }, back) }) }),
+      /* @__PURE__ */ u$2(Section, { title: "工具箱自带", hint: "按三栏界面做的，布局不会冲突", children: [
+        /* @__PURE__ */ u$2("div", { class: "rbt-lookcards", children: LOOKS.map((l2) => /* @__PURE__ */ u$2(LookCard, { l: l2, on: builtIn && lookId.value === l2.id }, l2.id)) }),
+        builtIn && /* @__PURE__ */ u$2(S$1, { children: [
+          /* @__PURE__ */ u$2("div", { class: "rbt-look-accents", children: [
+            /* @__PURE__ */ u$2("small", { children: "强调色" }),
+            ACCENTS.map((a2) => /* @__PURE__ */ u$2("button", { type: "button", class: `rbt-accent-dot ${accentId.value === a2.id ? "on" : ""}`, title: a2.label, "aria-label": a2.label, style: { "--c": a2.color }, onClick: () => setAccent(a2.id) }, a2.id))
+          ] }),
+          /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-self-start", onClick: () => setLook(false), children: [
+            "关掉，用酒馆主题「",
+            cur || "默认",
+            "」"
           ] })
         ] }),
-        /* @__PURE__ */ u$2("div", { class: "rbt-look-accents", children: [
-          /* @__PURE__ */ u$2("small", { children: "强调色" }),
-          ACCENTS.map((a2) => /* @__PURE__ */ u$2("button", { type: "button", class: `rbt-accent-dot ${accentId.value === a2.id ? "on" : ""}`, title: a2.label, "aria-label": a2.label, style: { "--c": a2.color }, onClick: () => setAccent(a2.id) }, a2.id))
-        ] }),
-        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-self-start", onClick: () => setLook(false), children: [
-          "关掉，用酒馆主题「",
-          cur || "默认",
-          "」"
-        ] })
-      ] }) : /* @__PURE__ */ u$2(S$1, { children: [
-        /* @__PURE__ */ u$2(NavRow, { title: cur || "酒馆默认", sub: themeHasCss(curTheme) ? "带自定义样式" : "只换颜色", trailing: curTheme ? /* @__PURE__ */ u$2(Swatches, { t: curTheme }) : void 0, onClick: () => cur && openDetail({ kind: "theme", name: cur }, back) }),
-        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-self-start", onClick: () => {
-          void useBuiltInLook();
-        }, children: "换成工具箱自带的美化" })
-      ] }),
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "换美化时，酒馆面板、三栏界面和工具箱会一起换。两套美化不会同时开着。" })
-    ] }) }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: themesLoading.value && !list.length ? /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "读取中…" }) : /* @__PURE__ */ u$2(
-      SeriesList,
-      {
-        kind: "theme",
-        names: list.map((t2) => t2.name),
-        back,
-        restTitle: "美化",
-        sub: (n2) => {
-          const t2 = list.find((x2) => x2.name === n2);
-          const v2 = sourceFor("theme", n2);
-          return [themeHasCss(t2) ? "带自定义样式" : "只换颜色", v2.version && `版本 ${v2.version}`, v2.author && `作者 ${v2.author}`].filter(Boolean).join(" · ");
-        },
-        trail: (n2) => {
-          const t2 = list.find((x2) => x2.name === n2);
-          return /* @__PURE__ */ u$2(S$1, { children: [
-            !builtIn && n2 === cur && /* @__PURE__ */ u$2(Tag, { tone: "accent", children: "正在用" }),
-            t2 && /* @__PURE__ */ u$2(Swatches, { t: t2 })
-          ] });
+        !builtIn && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "点一套就换上。换美化时，酒馆面板、三栏界面和工具箱会一起换。" })
+      ] })
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted rbt-looks-note", children: "下面是装在酒馆里的美化，是别人按酒馆原版界面做的。在三栏界面里布局以工具箱为准，个别地方可能不协调。" }),
+      themesLoading.value && !list.length ? /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "读取中…" }) : /* @__PURE__ */ u$2(
+        SeriesList,
+        {
+          kind: "theme",
+          names: list.map((t2) => t2.name),
+          back,
+          restTitle: "美化",
+          sub: (n2) => {
+            const t2 = list.find((x2) => x2.name === n2);
+            const v2 = sourceFor("theme", n2);
+            return [themeHasCss(t2) ? "带自定义样式" : "只换颜色", v2.version && `版本 ${v2.version}`, v2.author && `作者 ${v2.author}`].filter(Boolean).join(" · ");
+          },
+          trail: (n2) => {
+            const t2 = list.find((x2) => x2.name === n2);
+            return /* @__PURE__ */ u$2(S$1, { children: [
+              !builtIn && n2 === cur && /* @__PURE__ */ u$2(Tag, { tone: "accent", children: "正在用" }),
+              t2 && /* @__PURE__ */ u$2(Swatches, { t: t2 })
+            ] });
+          }
         }
-      }
-    ) })
+      )
+    ] })
   ] }) });
 }
 function ThemeDetail({ name }) {
@@ -7241,13 +7374,13 @@ function InstallPlugin() {
     /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-primary", disabled: !ok || busy, onClick: go, children: busy ? "正在安装…" : "安装" })
   ] });
 }
-function PresetModelSection({ name, isCurrent }) {
+function PresetModelSection({ name, isCurrent: isCurrent2 }) {
   void sourcesTick.value;
   const own = presetConnection(name);
   const cur = currentModel();
   const bound = presetBindsConnection();
   return /* @__PURE__ */ u$2(Section, { title: "推荐模型", hint: "推荐了这个预设、又没单独指定模型的卡，换过去时会用这个模型", children: [
-    /* @__PURE__ */ u$2(ModelPicker, { value: settings().presetInfo[name]?.model, onChange: (m2) => updateSource("preset", name, { model: m2 ?? void 0 }), offerSwitch: isCurrent }),
+    /* @__PURE__ */ u$2(ModelPicker, { value: settings().presetInfo[name]?.model, onChange: (m2) => updateSource("preset", name, { model: m2 ?? void 0 }), offerSwitch: isCurrent2 }),
     own && /* @__PURE__ */ u$2("div", { class: bound && cur && own.source !== cur.source ? "rbt-warn" : "rbt-hint", children: [
       "这个预设文件自己带着连接：",
       own.model ? modelLabel(own) : SOURCE_LABEL[own.source] ?? own.source,
@@ -7320,7 +7453,7 @@ function addSettingsDrawer() {
         <div class="rbt-set-group">
           <div class="rbt-set-title">界面</div>
           ${row("rbt_shell_switch", "三栏界面", "电脑上用左栏和顶部导航代替酒馆原来的图标栏")}
-          ${row("rbt_look_switch", "美化", "酒馆和工具箱用同一套深色配色和字体。强调色和别的美化在「全局工具箱 › 美化」里")}
+          ${row("rbt_look_switch", "美化", "酒馆和工具箱用同一套配色和字体。深色、浅色、护眼三套和强调色在「全局工具箱 › 美化」里选")}
         </div>
         <div class="rbt-set-group">
           <div class="rbt-set-title">换卡时</div>
@@ -7393,6 +7526,7 @@ function addSlashCommand() {
 async function init() {
   applyLook();
   retireOldTheme();
+  watchStThemeSwitch();
   await preloadModules();
   await installStore();
   configureViews({

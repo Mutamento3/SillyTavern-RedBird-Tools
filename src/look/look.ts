@@ -15,7 +15,17 @@ export const ACCENTS: { id: string; label: string; color: string }[] = [
   { id: 'graphite', label: '石墨', color: '#8e8e93' },
 ];
 
+/** 工具箱自带的三套美化。preview 只用来在「美化」标签里画小样。 */
+export const LOOKS: { id: string; label: string; desc: string; preview: { canvas: string; panel: string; text: string; sub: string } }[] = [
+  { id: 'dark', label: '深色', desc: '苹果风深色，晚上玩不刺眼', preview: { canvas: '#161618', panel: '#2a2a2e', text: '#ececf1', sub: '#8e8e93' } },
+  { id: 'light', label: '浅色', desc: '米白书页，白天读长文舒服', preview: { canvas: '#faf9f6', panel: '#ffffff', text: '#1d1d1f', sub: '#8e8e93' } },
+  { id: 'warm', label: '护眼', desc: '暖黄纸色，久看不累', preview: { canvas: '#f4ecd8', panel: '#faf4e4', text: '#3b2f22', sub: '#9a8a72' } },
+];
+export const lookId = signal('dark');
+
 export const lookOn = signal(false);
+/** Set while the toolbox itself switches ST's theme dropdown, so the watcher below ignores it. */
+let switching = false;
 /** Bumped when the ST theme in use changes, so views re-read it. */
 export const themeTick = signal(0);
 export const accentId = signal('blue');
@@ -28,8 +38,10 @@ export function applyLook(): void {
   const s = settings();
   lookOn.value = !!s.look;
   accentId.value = s.accent ?? 'blue';
+  lookId.value = LOOKS.some((l) => l.id === s.lookId) ? s.lookId! : 'dark';
   const root = document.documentElement;
   root.classList.toggle('rbt-look', lookOn.value);
+  for (const l of LOOKS) root.classList.toggle(`rbt-look-${l.id}`, lookOn.value && lookId.value === l.id && l.id !== 'dark');
   root.style.setProperty('--rbd-accent', accentColor());
 }
 
@@ -45,11 +57,31 @@ export function setAccent(id: string): void {
   applyLook();
 }
 
+const WARN = '这套美化是别人按酒馆原版界面做的。在三栏界面里，布局以工具箱为准，个别地方可能不协调。';
+
+/** Before switching to a theme with its own CSS: say what to expect, with 「以后不再提醒」. */
+async function warnThirdParty(name: string): Promise<boolean> {
+  if (settings().themeWarnOff) return true;
+  const t = stThemes.value.find((x) => x.name === name);
+  if (t && !themeHasCss(t)) return true; // 只换颜色的主题不会和布局打架
+  const c = ctx();
+  if (!c.Popup || !c.POPUP_TYPE) return true;
+  const popup = new c.Popup(`<h3>换成「${name}」？</h3><p>${WARN}</p><p>随时可以在「全局工具箱 › 美化」里换回工具箱自带的。</p>`, c.POPUP_TYPE.CONFIRM, '', {
+    okButton: '换过去', cancelButton: '取消', customInputs: [{ id: 'rbt_theme_warn_off', label: '以后不再提醒' }],
+  });
+  const res = await popup.show();
+  if (!res) return false;
+  if (popup.inputResults?.get('rbt_theme_warn_off')) { settings().themeWarnOff = true; saveSettings(); }
+  return true;
+}
+
 /** Switch ST's UI theme (美化) by name; two looks at once fight, so the toolbox's own goes off. */
 export async function useStTheme(name: string): Promise<void> {
   const $ = window.jQuery;
   if (!$) return;
-  $('#themes').val(name).trigger('change');
+  if (!(await warnThirdParty(name))) return;
+  switching = true;
+  try { $('#themes').val(name).trigger('change'); } finally { switching = false; }
   if (lookOn.value) setLook(false);
   themeTick.value++;
 }
@@ -129,13 +161,14 @@ function plainTheme(): string | null {
   return (list.find((t) => t.name === 'Dark V 1.0' && !themeHasCss(t)) ?? list.find((t) => !themeHasCss(t)))?.name ?? null;
 }
 
-/** Turn the toolbox's own look on; if the ST theme in use carries its own CSS, switch to a plain one. */
-export async function useBuiltInLook(): Promise<void> {
+/** Turn the toolbox's own look on (optionally a given one of the three); if the ST theme in use carries its own CSS, switch to a plain one. */
+export async function useBuiltInLook(id?: string): Promise<void> {
+  if (id) settings().lookId = id;
   if (stThemeHasCss()) {
     if (!stThemes.value.length) await loadThemes();
     const plain = plainTheme();
     const $ = window.jQuery;
-    if (plain && $) $('#themes').val(plain).trigger('change');
+    if (plain && $) { switching = true; try { $('#themes').val(plain).trigger('change'); } finally { switching = false; } }
   }
   setLook(true);
   themeTick.value++;
@@ -165,4 +198,22 @@ export async function deleteStTheme(name: string): Promise<string | null> {
   stThemes.value = stThemes.value.filter((x) => x.name !== name);
   toast('success', `已删除「${name}」，备份在 user/files/${file}`, '美化');
   return file;
+}
+
+/**
+ * 在酒馆自己的「用户设置 › 界面主题」里换主题，也算「换成别人的美化」：自带美化的颜色优先级更高，
+ * 不关掉的话换了也看不出来。所以自动关掉，并说一声怎么换回来。
+ */
+export function watchStThemeSwitch(): void {
+  const $ = window.jQuery;
+  if (!$) return;
+  $(document).on('change', '#themes', () => {
+    if (switching) return;
+    themeTick.value++;
+    if (!lookOn.value) return;
+    setLook(false);
+    const name = String($('#themes').val() ?? '');
+    const extra = stThemeHasCss() && !settings().themeWarnOff ? `\n${WARN}` : '';
+    toast('info', `已改用「${name}」，工具箱自带的美化先关掉了。想换回来：全局工具箱 › 美化。${extra}`, '美化', { timeOut: extra ? 9000 : 5000 });
+  });
 }

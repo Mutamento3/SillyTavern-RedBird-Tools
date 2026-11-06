@@ -11,30 +11,95 @@
    层级只靠底色深浅 + 留白 + 字重/字色；线只用在有意义的地方（面板和聊天的分界、输入焦点）。
    ===================================================================== */
 
-/* ---------- 1. 颜色变量 ---------- */
+/* ---------- 1. 颜色变量 ----------
+   默认（没开美化、用的是别人的主题）：从酒馆主题自己的颜色算出来——浅色主题就是浅底深字，
+   这样三栏界面和工具箱永远和主题一致，不会出现深底深字。
+   开着美化时（下面 html.rbt-look）：换成固定的苹果风深色。 */
 :where(:root) {
-  /* 底色：越往上越亮 */
+  --rbd-canvas: var(--SmartThemeChatTintColor);
+  --rbd-bg1: var(--SmartThemeBlurTintColor);
+  --rbd-bg2: color-mix(in srgb, var(--SmartThemeBodyColor) 7%, transparent);
+  --rbd-bg2-hover: color-mix(in srgb, var(--SmartThemeBodyColor) 12%, transparent);
+  --rbd-bg3: color-mix(in srgb, var(--SmartThemeBodyColor) 8%, transparent);
+  --rbd-text1: var(--SmartThemeBodyColor);
+  --rbd-text2: color-mix(in srgb, var(--SmartThemeBodyColor) 66%, transparent);
+  --rbd-text3: color-mix(in srgb, var(--SmartThemeBodyColor) 45%, transparent);
+  --rbd-hairline: color-mix(in srgb, var(--SmartThemeBodyColor) 10%, transparent);
+  --rbd-line: color-mix(in srgb, var(--SmartThemeBodyColor) 15%, transparent);
+  /* 唯一强调色：当前 / 焦点 / 可操作。脚本会把它写在 <html> 上 */
+  --rbd-accent: #0a84ff;
+  --rbd-accent-soft: color-mix(in srgb, var(--rbd-accent) 18%, transparent);
+  /* 你的消息的底色：中性的一点点，只用来分清轮次。不用强调色——强调色只表示「当前 / 可以点」 */
+  --rbd-user-tint: color-mix(in srgb, var(--SmartThemeBodyColor) 5%, transparent);
+  /* 圆角只有这一套：小标记 4 / 按钮、输入框、列表行 8 / 卡片、消息、提示 12 / 弹窗、大面板、输入栏 16 / 首页角色卡 20。
+     嵌套时里面一层 = 外层 − 间距（同心），比如分段标签：外框 8、内边距 2、按钮 6。 */
+  --rbd-r-xs: 4px;
+  --rbd-r-s: 8px;
+  --rbd-r-m: 12px;
+  --rbd-r-l: 16px;
+  --rbd-r-xl: 20px;
+  /* 阅读栏：正文一行 44 个字左右（再宽眼睛换行时容易找错行），加上头像那一列 */
+  --rbd-read-w: calc(44em + 96px);
+  --rbd-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", "Noto Sans", sans-serif;
+}
+
+/* 工具箱自带的美化，三套：深色（默认）/ 浅色 / 护眼。
+   深色：底色越往上越亮；浅色和护眼：底色是纸，卡片比纸更白。文字三级，线很淡。 */
+html.rbt-look {
+  color-scheme: dark;
   --rbd-canvas: #161618;     /* 聊天区 */
   --rbd-bg1: #1e1e21;        /* 左栏、顶栏、面板、弹窗 */
   --rbd-bg2: #2a2a2e;        /* 面板里的分组、卡片、按钮 */
   --rbd-bg2-hover: #343439;
-  --rbd-bg3: rgba(118, 118, 128, 0.16);  /* 输入框、开关底：半透明填充，放在哪层上都比那层亮一点 */
-  /* 文字：三级 */
+  --rbd-bg3: rgba(118, 118, 128, 0.16);  /* 输入框：半透明填充，放在哪层上都比那层亮一点 */
   --rbd-text1: #ececf1;
   --rbd-text2: rgba(235, 235, 245, 0.64);
   --rbd-text3: rgba(235, 235, 245, 0.4);
-  /* 线：很淡 */
   --rbd-hairline: rgba(255, 255, 255, 0.07);
   --rbd-line: rgba(255, 255, 255, 0.1);
-  /* 唯一强调色：当前 / 焦点 / 可操作。设置里可以换，脚本会把它写在 <html> 上 */
-  --rbd-accent: #0a84ff;
-  --rbd-accent-soft: color-mix(in srgb, var(--rbd-accent) 18%, transparent);
-  --rbd-user-tint: color-mix(in srgb, var(--rbd-accent) 8%, transparent);  /* 你的消息的底色 */
-  /* 正文里的斜体（动作、旁白）和引号里的话（对白） */
+  --rbd-user-tint: rgba(255, 255, 255, 0.045);
+  /* 正文里的斜体（动作、旁白）浅一级，引号里的话（对白）用正文色。
+     聊天内容区全是中性色：强调色只用在工具栏、面板这些「可以点」的地方 */
   --rbd-em: #b9b9c3;
-  --rbd-quote: color-mix(in srgb, var(--rbd-accent) 38%, #f2f2f7);
-  --rbd-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", "Noto Sans", sans-serif;
+  --rbd-quote: #f5f5f7;
 }
+/* 浅色：米白书页，白天读长文 */
+html.rbt-look.rbt-look-light {
+  color-scheme: light;
+  --rbd-canvas: #faf9f6;
+  --rbd-bg1: #f2f1ed;
+  --rbd-bg2: #ffffff;
+  --rbd-bg2-hover: #f6f5f2;
+  --rbd-bg3: rgba(118, 118, 128, 0.12);
+  --rbd-text1: #1d1d1f;
+  --rbd-text2: rgba(60, 60, 67, 0.72);
+  --rbd-text3: rgba(60, 60, 67, 0.46);
+  --rbd-hairline: rgba(0, 0, 0, 0.08);
+  --rbd-line: rgba(0, 0, 0, 0.12);
+  --rbd-user-tint: rgba(0, 0, 0, 0.035);
+  --rbd-em: #6e6e73;
+  --rbd-quote: #1d1d1f;
+}
+/* 护眼：暖黄纸色，对比度低一点，久看不累 */
+html.rbt-look.rbt-look-warm {
+  color-scheme: light;
+  --rbd-canvas: #f4ecd8;
+  --rbd-bg1: #ece2ca;
+  --rbd-bg2: #faf4e4;
+  --rbd-bg2-hover: #f3ebd6;
+  --rbd-bg3: rgba(91, 70, 40, 0.1);
+  --rbd-text1: #3b2f22;
+  --rbd-text2: rgba(59, 47, 34, 0.72);
+  --rbd-text3: rgba(59, 47, 34, 0.48);
+  --rbd-hairline: rgba(59, 47, 34, 0.1);
+  --rbd-line: rgba(59, 47, 34, 0.16);
+  --rbd-user-tint: rgba(91, 70, 40, 0.07);
+  --rbd-em: #7a6a55;
+  --rbd-quote: #3b2f22;
+}
+/* 浅底上，提醒 / 正常 / 出错这几个状态色要深一点才看得清 */
+html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-scope,
+html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-panel { --ok: #248a3d; --warnc: #b25000; --bad: #d70015; }
 
 /* ---------- 2. 把酒馆的主题变量换成这一套 ----------
    酒馆把主题颜色直接写在 <html style="…"> 上，所以这里要 !important 才压得过。
@@ -88,7 +153,7 @@ html.rbt-look .standoutHeader {
   background-image: none;
   background-color: var(--rbd-bg2);
   border-color: transparent;
-  border-radius: 10px;
+  border-radius: var(--rbd-r-m);
   padding: 7px 12px;
   font-weight: 600;
 }
@@ -114,7 +179,7 @@ html.rbt-look select,
 html.rbt-look textarea:not(#send_textarea) {
   background-color: var(--rbd-bg3);
   border-color: transparent;
-  border-radius: 8px;
+  border-radius: var(--rbd-r-s);
   color: var(--rbd-text1);
 }
 html.rbt-look .text_pole::placeholder,
@@ -133,7 +198,7 @@ html.rbt-look .menu_button {
   filter: none;
   background-color: var(--rbd-bg2);
   border-color: transparent;
-  border-radius: 8px;
+  border-radius: var(--rbd-r-s);
   color: var(--rbd-text1);
 }
 html.rbt-look .menu_button:not(.disabled):not([disabled]):hover,
@@ -150,7 +215,7 @@ html.rbt-look input[type='checkbox'] {
   outline: none;
   box-shadow: none;
   filter: none;
-  border-radius: 4px;
+  border-radius: var(--rbd-r-xs);
 }
 html.rbt-look input[type='checkbox']:checked {
   background-color: var(--rbd-accent);
@@ -166,20 +231,24 @@ html.rbt-look ::-webkit-scrollbar-track { background: transparent; }
 html.rbt-look ::-webkit-scrollbar-thumb {
   background-color: var(--rbd-bg2-hover);
   border: 2px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--rbd-r-s);
   background-clip: padding-box;
 }
-html.rbt-look ::-webkit-scrollbar-thumb:hover { background-color: rgba(235, 235, 245, 0.3); }
+html.rbt-look ::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--rbd-text1) 30%, transparent); }
 
 /* ---------- 5. 聊天 ---------- */
 /* AI 的消息不加底，正文直接排在底色上；你的消息用很淡的强调色底区分轮次 */
+/* 聊天是一篇连续的文字，不是一张张卡片：消息不加圆角（气泡模式也一样） */
 html.rbt-look #chat .mes {
   padding: 14px 16px 10px;
   margin-bottom: 4px;
   border-color: transparent;
-  border-radius: 14px;
+  border-radius: 0;
 }
 html.rbt-look #chat .mes[is_user="true"] { background-color: var(--rbd-user-tint); }
+/* 阅读栏：整条消息（头像、名字、正文）作为一栏居中，名字和正文左边对齐；卡片自己画的界面也在这一栏里 */
+html.rbt-look #chat .mes { max-width: var(--rbd-read-w); margin-left: auto; margin-right: auto; }
+html.rbt-look #chat .mes .mes_block { min-width: 0; }
 html.rbt-look #chat .mes .name_text {
   font-size: 13.5px;
   font-weight: 600;
@@ -202,20 +271,27 @@ html.rbt-look #chat .mes_text > p { line-height: 1.8; margin: 0 0 0.75em; }
 html.rbt-look #chat .mes_text > p:last-child { margin-bottom: 0; }
 html.rbt-look #chat .mes_text > pre,
 html.rbt-look #chat .mes_text > p > code {
-  border-radius: 8px;
+  border-radius: var(--rbd-r-s);
   background-color: var(--rbd-bg2);
 }
 html.rbt-look #chat .mes.smallSysMes { color: var(--rbd-text3); }
-html.rbt-look .mes_reasoning_details { border-radius: 10px; }
+html.rbt-look .mes_reasoning_details { border-radius: var(--rbd-r-m); }
 
-/* 输入区：底色即形状，四角都圆 */
+/* 输入区：和阅读栏对齐，四周留白、四角都圆，像一条浮着的输入栏（不贴屏幕边） */
+html.rbt-look #form_sheld {
+  padding: 4px max(12px, calc((100% - var(--rbd-read-w)) / 2)) 12px !important;
+  box-sizing: border-box;
+  background-color: var(--rbd-canvas);
+}
 html.rbt-look #send_form {
   background-color: var(--rbd-bg1);
   border-color: var(--rbd-hairline);
-  border-radius: 16px;
+  border-radius: var(--rbd-r-l);
 }
 html.rbt-look #send_form.no-connection { border-color: color-mix(in srgb, #ff453a 50%, transparent); }
 html.rbt-look #send_textarea { background-color: transparent; border-color: transparent; }
+/* 输入栏两边的图标保持一行，不要因为栏变窄就挤成两行把输入栏撑高 */
+html.rbt-look #leftSendForm, html.rbt-look #rightSendForm { flex-wrap: nowrap; flex-shrink: 0; width: auto; }
 html.rbt-look #send_textarea::placeholder { color: var(--rbd-text3); }
 html.rbt-look #leftSendForm .fa-solid,
 html.rbt-look #rightSendForm .fa-solid { color: var(--rbd-text2); }
@@ -225,7 +301,7 @@ html.rbt-look #rightSendForm .fa-solid:hover { color: var(--rbd-text1); }
 /* ---------- 6. 角色列表、首页 ---------- */
 html.rbt-look .character_select,
 html.rbt-look .group_select,
-html.rbt-look .bogus_folder_select { border-radius: 10px; }
+html.rbt-look .bogus_folder_select { border-radius: var(--rbd-r-m); }
 html.rbt-look .character_select:hover,
 html.rbt-look .group_select:hover,
 html.rbt-look .bogus_folder_select:hover { background-color: var(--rbd-bg2); }
@@ -238,7 +314,7 @@ html.rbt-look .welcomePanel .recentChat {
   padding: 12px 14px;
   background-color: var(--rbd-bg2);
   border-color: transparent;
-  border-radius: 12px;
+  border-radius: var(--rbd-r-m);
 }
 html.rbt-look .welcomePanel .recentChat:hover { background-color: var(--rbd-bg2-hover); }
 html.rbt-look .welcomePanel .recentChat .chatDate,
@@ -250,7 +326,7 @@ html.rbt-look .welcomePanel .recentChat .chatMessage { color: var(--rbd-text2); 
 html.rbt-look .popup {
   background-color: var(--rbd-bg1);
   border-color: var(--rbd-hairline);
-  border-radius: 16px;
+  border-radius: var(--rbd-r-l);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
 }
 html.rbt-look .popup::backdrop { background-color: rgba(0, 0, 0, 0.5); }
@@ -258,7 +334,7 @@ html.rbt-look .popup::backdrop { background-color: rgba(0, 0, 0, 0.5); }
 html.rbt-look #toast-container > div {
   background-color: var(--rbd-bg2);
   color: var(--rbd-text1);
-  border-radius: 12px;
+  border-radius: var(--rbd-r-m);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
   opacity: 1;
   font-family: var(--rbd-font);
