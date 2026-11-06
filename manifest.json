@@ -6,7 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.2.0",
-  "auto_update": false,
-  "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools"
+  "version": "0.2.1",
+  "auto_update": true,
+  "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
+  "rbt_whats_new": "工具箱会提醒新版本了；推荐模型、聊天状态栏、导入窗口。"
 }

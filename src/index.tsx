@@ -9,6 +9,7 @@ import './style.css';
 import './shell/shell.css';
 import { ctx, preloadModules, saveSettings, settings } from './st/st';
 import { installStore } from './st/store';
+import { checkForUpdate, installedVersion, installUpdateCheck } from './tools/update';
 import { installCharactersWatch } from './shell/characters';
 import { closeDrawer, installDrawers, openDrawers } from './shell/drawers';
 import { installWorldNote } from './shell/worldNote';
@@ -60,6 +61,10 @@ function addSettingsDrawer(): void {
         <label class="checkbox_label"><input type="checkbox" id="rbt_auto_switch" /> 换卡时自动切换世界书、正则和预设（关掉后只提醒）</label>
         <label class="checkbox_label"><input type="checkbox" id="rbt_auto_world" /> 卡里自带的世界书还没导入时，自动导入并绑定</label>
         <small>也可以从输入框左边的魔法棒菜单打开，或发送 <code>/rbt</code>。发送 <code>/rbt shell</code> 开关三栏界面。</small>
+        <div class="flex-container alignItemsCenter flexGap5">
+          <small>版本 <b id="rbt_version"></b></small>
+          <div class="menu_button" id="rbt_check_update">检查更新</div>
+        </div>
       </div>
     </div>`;
   host.appendChild(wrap);
@@ -75,6 +80,9 @@ function addSettingsDrawer(): void {
   shellOn.subscribe((v) => { shellCb.checked = v; });
   bind('rbt_auto_switch', () => settings().autoApplyEnv, (v) => { settings().autoApplyEnv = v; saveSettings(); });
   bind('rbt_auto_world', () => settings().autoImportWorld, (v) => { settings().autoImportWorld = v; saveSettings(); });
+  const ver = wrap.querySelector<HTMLElement>('#rbt_version');
+  if (ver) ver.textContent = installedVersion() || '?';
+  wrap.querySelector('#rbt_check_update')?.addEventListener('click', () => { void checkForUpdate(true); });
 }
 
 function addSlashCommand(): void {
@@ -156,6 +164,8 @@ async function init(): Promise<void> {
   addMenuButton();
   addSettingsDrawer();
   addSlashCommand();
+  // 有新版本时提醒（每天最多一次）
+  installUpdateCheck();
   // Debug handle for the browser console.
   (window as unknown as { RedBirdTools: unknown }).RedBirdTools = { captures, openPanel, openView, openGlobal, setShellEnabled };
   console.log('[RedBird] 工具箱已加载');

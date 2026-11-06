@@ -2228,6 +2228,86 @@ async function installStore() {
   onSaveSettings(scheduleSync);
   return changed;
 }
+function compareVersion(a2, b2) {
+  const pa = String(a2).split(".").map((x2) => parseInt(x2, 10) || 0);
+  const pb = String(b2).split(".").map((x2) => parseInt(x2, 10) || 0);
+  for (let i2 = 0; i2 < Math.max(pa.length, pb.length); i2++) {
+    const d2 = (pa[i2] ?? 0) - (pb[i2] ?? 0);
+    if (d2) return d2;
+  }
+  return 0;
+}
+const REMOTE = "https://raw.githubusercontent.com/RebBirdTD/SillyTavern-RedBird-Tools/main/manifest.json";
+const DAY_KEY = "rbt-update-checked";
+const SKIP_KEY = "rbt-update-skip";
+function installedManifest() {
+  const names = loaded.extensions?.extensionNames ?? [];
+  for (const n2 of names) {
+    if (!n2.startsWith("third-party/")) continue;
+    try {
+      const m2 = loaded.extensions?.getExtensionManifest?.(n2);
+      if (m2 && (m2.display_name === "RedBird 工具箱" || String(m2.homePage ?? "").includes("SillyTavern-RedBird-Tools"))) return m2;
+    } catch {
+    }
+  }
+  return null;
+}
+function installedVersion() {
+  return installedManifest()?.version ?? "";
+}
+async function fetchLatest() {
+  try {
+    const res = await fetch(`${REMOTE}?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const m2 = await res.json();
+    return m2?.version ? { version: String(m2.version), whatsNew: String(m2.rbt_whats_new ?? "") } : null;
+  } catch {
+    return null;
+  }
+}
+function openManager() {
+  document.getElementById("extensions_details")?.click();
+}
+async function checkForUpdate(force = false) {
+  const current = installedVersion();
+  if (!current) return null;
+  const today = (/* @__PURE__ */ new Date()).toDateString();
+  if (!force) {
+    try {
+      if (localStorage.getItem(DAY_KEY) === today) return null;
+      localStorage.setItem(DAY_KEY, today);
+    } catch {
+    }
+  }
+  const latest = await fetchLatest();
+  if (!latest) {
+    if (force) toast("warning", "连不上 GitHub，没法检查更新。", "RedBird 工具箱");
+    return null;
+  }
+  if (compareVersion(latest.version, current) <= 0) {
+    if (force) toast("success", `已经是最新版本（${current}）。`, "RedBird 工具箱");
+    return null;
+  }
+  let skipped = "";
+  try {
+    skipped = localStorage.getItem(SKIP_KEY) ?? "";
+  } catch {
+  }
+  if (!force && skipped === latest.version) return null;
+  toast("info", `有新版本 ${latest.version}（你装的是 ${current}）。${latest.whatsNew ? `
+${latest.whatsNew}
+` : ""}点这里打开「管理扩展程序」，在 RedBird 工具箱那一行点更新，然后刷新页面。`, "RedBird 工具箱有更新", {
+    onclick: openManager,
+    timeOut: 15e3,
+    extendedTimeOut: 8e3
+  });
+  return { current, latest: latest.version, whatsNew: latest.whatsNew };
+}
+function installUpdateCheck() {
+  setTimeout(() => {
+    void checkForUpdate(false);
+  }, 8e3);
+}
 const recentChats = y$1([]);
 const recentLoading = y$1(false);
 function pinnedState() {
@@ -6613,6 +6693,10 @@ function addSettingsDrawer() {
         <label class="checkbox_label"><input type="checkbox" id="rbt_auto_switch" /> 换卡时自动切换世界书、正则和预设（关掉后只提醒）</label>
         <label class="checkbox_label"><input type="checkbox" id="rbt_auto_world" /> 卡里自带的世界书还没导入时，自动导入并绑定</label>
         <small>也可以从输入框左边的魔法棒菜单打开，或发送 <code>/rbt</code>。发送 <code>/rbt shell</code> 开关三栏界面。</small>
+        <div class="flex-container alignItemsCenter flexGap5">
+          <small>版本 <b id="rbt_version"></b></small>
+          <div class="menu_button" id="rbt_check_update">检查更新</div>
+        </div>
       </div>
     </div>`;
   host.appendChild(wrap);
@@ -6635,6 +6719,11 @@ function addSettingsDrawer() {
   bind("rbt_auto_world", () => settings().autoImportWorld, (v2) => {
     settings().autoImportWorld = v2;
     saveSettings();
+  });
+  const ver = wrap.querySelector("#rbt_version");
+  if (ver) ver.textContent = installedVersion() || "?";
+  wrap.querySelector("#rbt_check_update")?.addEventListener("click", () => {
+    void checkForUpdate(true);
   });
 }
 function addSlashCommand() {
@@ -6721,6 +6810,7 @@ async function init() {
   addMenuButton();
   addSettingsDrawer();
   addSlashCommand();
+  installUpdateCheck();
   window.RedBirdTools = { captures, openPanel, openView, openGlobal, setShellEnabled };
   console.log("[RedBird] 工具箱已加载");
 }
