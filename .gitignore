@@ -1,0 +1,5 @@
+node_modules/
+*.log
+.DS_Store
+.vite/
+# dist/ 要提交：酒馆从 GitHub 安装扩展时直接用里面的 index.js / style.css

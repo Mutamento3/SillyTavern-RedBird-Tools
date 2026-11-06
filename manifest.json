@@ -1,0 +1,11 @@
+{
+  "display_name": "RedBird 工具箱",
+  "loading_order": 200,
+  "requires": [],
+  "optional": [],
+  "js": "dist/index.js",
+  "css": "dist/style.css",
+  "author": "RedBird",
+  "version": "0.1.0",
+  "auto_update": false
+}
