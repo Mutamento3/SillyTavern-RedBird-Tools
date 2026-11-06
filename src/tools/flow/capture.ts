@@ -35,6 +35,24 @@ export interface Capture {
   result: AttributionResult;
   wi: ActivatedWI[];
   rawChat: { role: string; content: string }[];
+  /** The API's limits when this turn was sent (Chat Completion settings). */
+  budget?: Budget;
+}
+
+/** 上下文上限（这一轮能发多少 + 回复）和回复上限，以及当时聊天记录有几楼。 */
+export interface Budget {
+  context: number;
+  reply: number;
+  chatLength: number;
+}
+
+function readBudget(): Budget | undefined {
+  const s = loaded.openai?.oai_settings;
+  if (!s) return undefined;
+  const context = Number(s.openai_max_context) || 0;
+  const reply = Number(s.openai_max_tokens) || 0;
+  if (!context && !reply) return undefined;
+  return { context, reply, chatLength: (ctx().chat ?? []).length };
 }
 
 export const captures = signal<Capture[]>([]);
@@ -274,10 +292,12 @@ export function installFlowCapture(): void {
     const structured = flattenCollection(loaded.openai?.promptManager?.messages);
     const wiRaw = pendingWI;
     const gen = data.dryRun ? { type: 'preview', quiet: false } : lastGen;
+    const budget = readBudget();
     pendingWI = [];
     setTimeout(() => {
       try {
         const cap = buildCapture(chatOut, structured, wiRaw, gen);
+        cap.budget = budget;
         captures.value = [cap, ...captures.value].slice(0, MAX_CAPTURES);
       } catch (e) {
         console.error('[RedBird] failed to analyse prompt', e);

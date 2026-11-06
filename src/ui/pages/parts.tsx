@@ -1,6 +1,7 @@
 /**
  * 「这张卡」页面用到的各个分区（原「角色档案 · 这张卡」）。
  */
+import { EditButton, editRegex, openRegexManager, openScriptManager } from './GlobalPage';
 import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
@@ -371,16 +372,18 @@ export function RegexSection({ info }: { info: CardInfo }) {
       <div class="rbt-link-row">
         <span>卡里的正则 <b>{info.regex.total}</b> 条{info.regex.total > 0 && `，开着 ${info.regex.enabled} 条`}</span>
         {info.regex.total > 0 && (info.regex.allowed ? <Chip color={OK}>已允许运行</Chip> : <Chip color={BAD}>未允许运行</Chip>)}
+        {info.regex.total > 0 && info.isCurrent && <EditButton title="在正则面板里编辑这张卡的正则" onClick={() => openRegexManager('scoped')} />}
       </div>
       <div class="rbt-link-row">
         <span>酒馆助手角色脚本 <b>{info.scripts.total}</b> 个</span>
         {info.scripts.total > 0 && (info.scripts.enabled ? <Chip color={OK}>已启用</Chip> : <Chip color={BAD}>未启用</Chip>)}
+        {info.scripts.total > 0 && info.isCurrent && <EditButton title="在酒馆助手里编辑脚本" onClick={openScriptManager} />}
       </div>
       {info.scripts.names.length > 0 && <div class="rbt-chips">{info.scripts.names.map((n, i) => <Chip key={i}>{n}</Chip>)}</div>}
       {owned.length > 0 && (
         <div class="rbt-card-sub">
           <small class="rbt-muted">标为属于这张卡的全局正则：</small>
-          {owned.map((r) => <div key={r.id} class="rbt-link-row"><span>{r.scriptName}</span>{r.disabled ? <Chip>关</Chip> : <Chip color={OK}>开</Chip>}</div>)}
+          {owned.map((r) => <div key={r.id} class="rbt-link-row"><span>{r.scriptName}</span>{r.disabled ? <Chip>关</Chip> : <Chip color={OK}>开</Chip>}<EditButton title="编辑这条正则" onClick={() => editRegex(r.id)} /></div>)}
         </div>
       )}
       {preset && presetRx > 0 && <small class="rbt-muted">另外，正在用的预设「{preset}」带了 {presetRx} 条正则，对所有卡生效。</small>}

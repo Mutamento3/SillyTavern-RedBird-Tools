@@ -12,6 +12,7 @@ import { applyLook, lookOn, retireOldTheme, setLook, useBuiltInLook, watchStThem
 import { ctx, preloadModules, saveSettings, settings } from './st/st';
 import { installStore } from './st/store';
 import { checkForUpdate, installedVersion, installUpdateCheck } from './tools/update';
+import { installModelGuard } from './tools/model';
 import { installCharactersWatch } from './shell/characters';
 import { closeDrawer, installDrawers, openDrawers } from './shell/drawers';
 import { installWorldNote } from './shell/worldNote';
@@ -125,6 +126,7 @@ async function init(): Promise<void> {
   await preloadModules();
   // 工具箱自己的存档：先把 settings.json 里旧了的部分补回来（见 st/store.ts）
   await installStore();
+  installModelGuard();
 
   configureViews({
     openInDock: (v) => openPanel(v),

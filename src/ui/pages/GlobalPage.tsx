@@ -17,6 +17,15 @@ const KIND_LABEL: Record<EnvItem['kind'], string> = {
   worldbook: '世界书', regex: '正则', script: '脚本', extension: '插件', preset: '预设',
 };
 
+/** Where to edit what a row shows: one regex → its editor; a group of regex → that list; scripts → 酒馆助手. */
+function editFor(item: EnvItem) {
+  if (item.kind === 'regex' && item.id.startsWith('rx:g:')) return <EditButton title="编辑这条正则" onClick={() => editRegex(item.id.slice(5))} />;
+  if (item.kind === 'regex' && item.id === 'rx:p') return <EditButton title="在正则面板里编辑预设的正则" onClick={() => openRegexManager('preset')} />;
+  if (item.kind === 'regex' && item.id === 'rx:c') return <EditButton title="在正则面板里编辑这张卡的正则" onClick={() => openRegexManager('scoped')} />;
+  if (item.kind === 'script') return <EditButton title="在酒馆助手里编辑脚本" onClick={openScriptManager} />;
+  return null;
+}
+
 export function ItemRow({ item }: { item: EnvItem }) {
   const [busy, setBusy] = useState(false);
   const onToggle = async (on: boolean) => {
@@ -30,6 +39,7 @@ export function ItemRow({ item }: { item: EnvItem }) {
       <span class="rbt-env-name">{item.name}</span>
       {item.misplaced && <Chip color="#f0a43a" title={`标为${item.misplaced}`}>不属于这张卡</Chip>}
       {item.detail && <small class="rbt-muted">{item.detail}</small>}
+      {editFor(item)}
       {item.toggle && (
         <span class="rbt-env-toggle">
           {busy && <small class="rbt-muted">…</small>}
@@ -65,6 +75,7 @@ function SubItemRow({ sub }: { sub: EnvSubItem }) {
     <div class={`rbt-sub-item ${sub.enabled ? '' : 'off'}`}>
       <span class="rbt-sub-name">{sub.name}</span>
       {sub.detail && <small class="rbt-muted">{sub.detail}</small>}
+      <EditButton title="编辑这条正则" onClick={() => editRegex(sub.id)} />
       <span class="rbt-env-toggle">
         {busy && <small class="rbt-muted">…</small>}
         <Toggle checked={sub.enabled} onChange={onToggle} title="点击开 / 关这一条" />
@@ -145,14 +156,46 @@ export function GlobalRegexList({ items }: { items: EnvItem[] }) {
 }
 
 /** Open ST's own regex manager (create / edit / import) inside the 扩展·正则 panel. */
-export function openRegexManager(): void {
+/** Open an extension's section in 扩展 (expand it and scroll to it). */
+function openExtensionSection(selector: string, then?: (box: HTMLElement) => void): void {
   openDrawer('extensions');
   setTimeout(() => {
-    const box = document.querySelector<HTMLElement>('.regex_settings');
-    const content = box?.querySelector<HTMLElement>('.inline-drawer-content');
-    if (content && getComputedStyle(content).display === 'none') box?.querySelector<HTMLElement>('.inline-drawer-toggle')?.click();
-    box?.scrollIntoView({ block: 'start' });
+    const box = document.querySelector<HTMLElement>(selector);
+    if (!box) return;
+    const content = box.querySelector<HTMLElement>('.inline-drawer-content');
+    if (content && getComputedStyle(content).display === 'none') box.querySelector<HTMLElement>('.inline-drawer-toggle')?.click();
+    box.scrollIntoView({ block: 'start' });
+    then?.(box);
   }, 350);
+}
+
+/** 酒馆的「正则」面板；`list` 指定滚到全局 / 这张卡 / 预设哪一组。 */
+export function openRegexManager(list?: 'global' | 'scoped' | 'preset'): void {
+  const id = list === 'scoped' ? '#saved_scoped_scripts' : list === 'preset' ? '#saved_preset_scripts' : list === 'global' ? '#saved_regex_scripts' : '';
+  openExtensionSection('.regex_settings', () => { if (id) document.querySelector<HTMLElement>(id)?.scrollIntoView({ block: 'start' }); });
+}
+
+/** Open ST's own editor for one regex script (the same as its ✎ in 扩展 › 正则); falls back to the regex panel. */
+export function editRegex(id: string): void {
+  for (const list of ['#saved_regex_scripts', '#saved_scoped_scripts', '#saved_preset_scripts']) {
+    const btn = document.querySelector<HTMLElement>(`${list} [id="${CSS.escape(id)}"] .edit_existing_regex`);
+    if (btn) { btn.click(); return; }
+  }
+  openRegexManager();
+}
+
+/** 酒馆助手的面板（脚本库在里面）。 */
+export function openScriptManager(): void {
+  openExtensionSection('#tavern_helper');
+}
+
+/** A small ✎ button for a row: opens the right editor. */
+export function EditButton({ title, onClick }: { title: string; onClick: () => void }) {
+  return (
+    <button type="button" class="rbt-row-edit" title={title} aria-label={title} onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClick(); }}>
+      <i class="fa-solid fa-pen" />
+    </button>
+  );
 }
 
 export function AddGlobalWorld() {

@@ -424,7 +424,7 @@ function RegexPage() {
         <div class="rbt-page-group">
           <Section title="全局正则" hint="对所有卡生效">
             <GlobalRegexList items={regex} />
-            <div class="rbt-row"><button type="button" class="rbt-btn" onClick={openRegexManager}>新建、编辑或导入正则 <i class="fa-solid fa-arrow-up-right-from-square" /></button></div>
+            <div class="rbt-row"><button type="button" class="rbt-btn" onClick={() => openRegexManager()}>新建、编辑或导入正则 <i class="fa-solid fa-arrow-up-right-from-square" /></button></div>
           </Section>
           {scripts.length > 0 && <Section title="酒馆助手全局脚本" hint="对所有卡生效">{scripts.map((i) => <ItemRow key={i.id} item={i} />)}</Section>}
         </div>

@@ -1023,3 +1023,58 @@ input.rbt-cb.rbt-cb[type='checkbox']:focus-visible { outline: 2px solid var(--rb
 .rbt-lookcard-name i { color: var(--accent); font-size: 12px; }
 .rbt-lookcard-desc { font-size: 11.5px; line-height: 1.4; color: var(--t2); }
 .rbt-looks-note { display: block; margin: 0 2px 10px; line-height: 1.5; }
+
+/* 信息流 › 额度：上下文用了多少、留给回复多少；截断 / 聊天被挤掉时的提醒 */
+.rbt-budget { display: flex; flex-direction: column; gap: 8px; margin: 0 0 12px; padding: 12px 14px; border-radius: var(--rbd-r-m); background: var(--g2); }
+.rbt-budget-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.rbt-budget-head b { font-size: 13.5px; color: var(--t1); }
+.rbt-budget-head small { flex: 1; min-width: 0; font-size: 12px; color: var(--t2); }
+.rbt-budget-head .rbt-linkbtn { font-size: 12px; }
+.rbt-budget-bar { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--t1) 10%, transparent); }
+.rbt-budget-bar span { display: block; height: 100%; }
+.rbt-budget-bar .used, .rbt-budget-legend i.used { background: var(--t1); opacity: 0.75; }
+.rbt-budget-bar .reply, .rbt-budget-legend i.reply { background: var(--t1); opacity: 0.3; }
+.rbt-budget-legend i.free { background: color-mix(in srgb, var(--t1) 10%, transparent); }
+.rbt-budget-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--t2); }
+.rbt-budget-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.rbt-budget-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.rbt-budget-alert { display: flex; gap: 10px; padding: 10px 12px; border-radius: var(--rbd-r-s); background: color-mix(in srgb, var(--warnc, #e0a040) 12%, transparent); }
+.rbt-budget-alert > i { margin-top: 2px; color: var(--warnc, #e0a040); }
+.rbt-budget-alert > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rbt-budget-alert p { margin: 0; font-size: 13px; font-weight: 600; color: var(--t1); }
+.rbt-budget-alert small { font-size: 12px; line-height: 1.55; color: var(--t2); }
+.rbt-budget-note { font-size: 12px; color: var(--t2); }
+
+/* 行内的 ✎：打开对应的编辑界面（单条正则 → 酒馆的正则编辑窗口；一组 → 正则面板；脚本 → 酒馆助手） */
+.rbt-row-edit {
+  flex: none; display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0;
+  border: 0; border-radius: var(--rbd-r-s); background: transparent; color: var(--t3); font-size: 11px; cursor: pointer;
+}
+.rbt-row-edit:hover { background: var(--g2h); color: var(--t1); }
+.rbt-env-item .rbt-row-edit, .rbt-sub-item .rbt-row-edit { margin-left: auto; }
+.rbt-env-item .rbt-row-edit + .rbt-env-toggle, .rbt-sub-item .rbt-row-edit + .rbt-env-toggle { margin-left: 4px; }
+
+/* ---- 信息流的层级 ----
+   卡片：标题（13.5px 粗、正文色）+ 同一行的灰色说明。
+   每一行：标题（正文色、粗）+ 右边 token 数（浅、等宽数字）；下一行小一号的说明（序号 · 角色 · 类型）；再下一行内容预览。 */
+.rbt-card-titlerow { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.rbt-card-titlerow > b { font-size: 13.5px; font-weight: 600; color: var(--t1); }
+.rbt-card-titlerow > b { flex: 1; min-width: 0; }
+/* 说明固定在标题下面一行，不跟标题挤在一行里断开 */
+.rbt-card-titlerow > small { order: 3; flex: 1 1 100%; min-width: 0; font-size: 12px; line-height: 1.5; color: var(--t2); }
+.rbt-summary .rbt-card-titlerow { margin-bottom: 8px; }
+.rbt-legend-item small { color: var(--t3); font-variant-numeric: tabular-nums; }
+.rbt-legend-name { color: var(--t2); }
+
+.rbt-msg-head { padding: 9px 0 1px; gap: 8px; align-items: center; cursor: pointer; }
+.rbt-msg-head::before { order: 0; }
+.rbt-msg-head > .rbt-msg-label { order: 1; flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: var(--t1); }
+.rbt-msg-head > .rbt-msg-tokens { order: 2; font-size: 11.5px; color: var(--t3); font-variant-numeric: tabular-nums; }
+.rbt-msg-meta { padding: 0 0 2px 16px; font-size: 11.5px; color: var(--t3); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbt-msg-preview { padding: 0 0 9px 16px; font-size: 12px; color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbt-chatgroup-head { gap: 8px; padding: 9px 0; color: var(--t2); }
+.rbt-chatgroup-head .rbt-caret { width: 8px; font-size: 9px; color: var(--t3); }
+.rbt-chatgroup-title { font-size: 13px; font-weight: 600; color: var(--t1); }
+.rbt-chatgroup-sub { flex: 1; min-width: 0; font-size: 11.5px; color: var(--t3); }
+.rbt-chatgroup-head .rbt-msg-tokens { font-size: 11.5px; color: var(--t3); font-variant-numeric: tabular-nums; }
+.rbt-budget-legend span, .rbt-budget-head small { font-variant-numeric: tabular-nums; }

@@ -20,7 +20,11 @@ export function RoleBadge({ role }: { role: string }) {
 }
 
 export function fmtTokens(n: number): string {
-  return n >= 10000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+  const trim = (x: number, d: number) => x.toFixed(d).replace(/\.0+$/, '');
+  if (n >= 1_000_000) return `${trim(n / 1_000_000, 1)}M`;
+  if (n >= 100_000) return `${Math.round(n / 1000)}k`;
+  if (n >= 10_000) return `${trim(n / 1000, 1)}k`;
+  return String(n);
 }
 
 export function StackBar({ totals, total }: { totals: Record<Category, number>; total: number }) {
@@ -45,8 +49,8 @@ export function Legend({ totals, total }: { totals: Record<Category, number>; to
       {CATEGORY_ORDER.filter((c) => totals[c] > 0).map((c) => (
         <span key={c} class="rbt-legend-item">
           <i style={{ background: CATEGORY_META[c].color }} />
-          {CATEGORY_META[c].label} <b>{fmtTokens(totals[c])}</b>
-          <small>{((totals[c] / total) * 100).toFixed(0)}%</small>
+          <span class="rbt-legend-name">{CATEGORY_META[c].label}</span>
+          <small>{fmtTokens(totals[c])} · {((totals[c] / total) * 100).toFixed(0)}%</small>
         </span>
       ))}
     </div>

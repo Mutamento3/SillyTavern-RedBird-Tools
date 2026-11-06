@@ -12,7 +12,7 @@ import { signal } from '@preact/signals';
 import { charaFileName, ctx, loaded, runSlash, saveSettings, settings, slashQuote, toast, type Any } from '../../st/st';
 import { cardInfo, currentPresetName, extStatus, importCardWorld, installedExtensions, presetApi, presetNames, requiredExtensions, switchPreset } from '../cards/cards';
 import { refreshEnv } from './env';
-import { currentModel, modelLabel, modelsApply, sameModel, setModel, type ModelChoice } from '../model';
+import { currentModel, modelLabel, modelsApply, sameModel, setModel, withoutModelGuard, type ModelChoice } from '../model';
 
 const GLOBAL = 0; // ST regex SCRIPT_TYPES.GLOBAL
 
@@ -166,12 +166,10 @@ export async function applyPlan(plan: ApplyPlan): Promise<string[]> {
   };
   const changes: string[] = [];
   if (plan.preset) {
-    const before = currentModel();
-    await switchPreset(plan.preset);
+    // 这张卡有推荐模型：预设带过来的模型马上会被换成推荐的，不用提示；没有的话，模型被预设换掉会单独提示（能换回去）
+    if (plan.model) await withoutModelGuard(() => switchPreset(plan.preset!));
+    else await switchPreset(plan.preset);
     changes.push(`预设换成「${plan.preset}」`);
-    const after = currentModel();
-    // 「预设绑定连接」开着时，预设自己带的 API / 模型会跟着换过来——说一声
-    if (!plan.model && after && !sameModel(before, after)) changes.push(`这个预设自带连接，模型跟着换成了 ${modelLabel(after)}`);
   }
   if (plan.model && !sameModel(plan.model, currentModel())) {
     if (await setModel(plan.model)) changes.push(`模型换成 ${modelLabel(plan.model)}`);
@@ -195,8 +193,10 @@ export async function undoLastApply(): Promise<void> {
   const a = lastApplied.value;
   if (!a || a.undone) return;
   const s = a.snapshot;
-  if (s.preset && s.preset !== currentPresetName()) await switchPreset(s.preset);
-  if (s.model && !sameModel(s.model, currentModel())) await setModel(s.model);
+  await withoutModelGuard(async () => {
+    if (s.preset && s.preset !== currentPresetName()) await switchPreset(s.preset);
+    if (s.model && !sameModel(s.model, currentModel())) await setModel(s.model);
+  });
   const now = globalWorlds();
   await setWorlds(s.globalWorlds.filter((w) => !now.includes(w)), now.filter((w) => !s.globalWorlds.includes(w)));
   const rx: Record<string, boolean> = {};

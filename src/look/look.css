@@ -120,6 +120,13 @@ html.rbt-look {
   --mainFontFamily: var(--rbd-font);
 }
 
+/* 背景模糊：自带美化的底色都是不透明的实色，模糊看不出来，却让每打一个字都要重新模糊一遍输入栏背后的内容，
+   打字会卡（实测每个字到画面刷新从约 25ms 变成 38–69ms）。所以全部关掉。 */
+html.rbt-look :is(#chat, #send_form, #form_sheld, #top-bar, .drawer-content, #left-nav-panel, #right-nav-panel, .popup, #shadow_popup, #select_chat_popup, #character_popup, .mes) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
 html.rbt-look body {
   background-color: var(--rbd-canvas);
   -webkit-font-smoothing: antialiased;
