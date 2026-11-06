@@ -10,6 +10,11 @@ import { installEnvWatch } from './tools/env/env';
 import { captures, installFlowCapture } from './tools/flow/capture';
 import { installVarsWatch } from './tools/vars/vars';
 import { Panel, openPanel, panelOpen, type TabId } from './ui/Panel';
+import { installDrawers } from './shell/drawers';
+import { installCharactersWatch } from './shell/characters';
+import { installRecentWatch } from './shell/recent';
+import { Shell, initShellState, setShellEnabled, shellOn } from './shell/Shell';
+import './shell/shell.css';
 
 function addMenuButton(): void {
   const menu = document.getElementById('extensionsMenu');
@@ -41,6 +46,7 @@ function addSettingsDrawer(): void {
           <div class="menu_button" data-tab="env">换卡体检</div>
           <div class="menu_button" data-tab="cards">角色档案</div>
         </div>
+        <label class="checkbox_label"><input type="checkbox" id="rbt_shell_switch" /> 三栏外壳（电脑上用左栏和导航条代替原顶栏）</label>
         <label class="checkbox_label"><input type="checkbox" id="rbt_toast_switch" /> 换卡时弹出体检提示</label>
         <small>也可以从输入框左边的魔法棒菜单打开，或输入 <code>/rbt</code>。</small>
       </div>
@@ -50,6 +56,10 @@ function addSettingsDrawer(): void {
   const cb = wrap.querySelector<HTMLInputElement>('#rbt_toast_switch')!;
   cb.checked = settings().toastOnCardSwitch;
   cb.addEventListener('change', () => { settings().toastOnCardSwitch = cb.checked; saveSettings(); });
+  const shellCb = wrap.querySelector<HTMLInputElement>('#rbt_shell_switch')!;
+  shellCb.checked = shellOn.value;
+  shellCb.addEventListener('change', () => setShellEnabled(shellCb.checked));
+  shellOn.subscribe((v) => { shellCb.checked = v; });
 }
 
 function addSlashCommand(): void {
@@ -58,12 +68,14 @@ function addSlashCommand(): void {
     c.SlashCommandParser.addCommandObject(c.SlashCommand.fromProps({
       name: 'rbt',
       callback: (_args: unknown, tab: string) => {
-        const t = (['flow', 'vars', 'env', 'cards'] as const).find((x) => x === String(tab ?? '').trim());
+        const arg = String(tab ?? '').trim();
+        if (arg === 'shell') { setShellEnabled(!shellOn.value); return ''; }
+        const t = (['flow', 'vars', 'env', 'cards'] as const).find((x) => x === arg);
         if (t) openPanel(t);
         else panelOpen.value = !panelOpen.value;
         return '';
       },
-      helpString: '打开/关闭 RedBird 工具箱。可加参数 flow / vars / env / cards 直接打开对应页。',
+      helpString: '打开/关闭 RedBird 工具箱。可加参数 flow / vars / env / cards 直接打开对应页；/rbt shell 开关三栏外壳。',
     }));
   } catch (e) {
     console.warn('[RedBird] slash command registration failed', e);
@@ -82,11 +94,20 @@ async function init(): Promise<void> {
   document.body.appendChild(root);
   render(<Panel />, root);
 
+  installDrawers();
+  installRecentWatch();
+  installCharactersWatch();
+  initShellState();
+  const shellRoot = document.createElement('div');
+  shellRoot.id = 'rbt-shell-root';
+  document.body.appendChild(shellRoot);
+  render(<Shell />, shellRoot);
+
   addMenuButton();
   addSettingsDrawer();
   addSlashCommand();
   // Debug handle for the browser console.
-  (window as unknown as { RedBirdTools: unknown }).RedBirdTools = { captures, openPanel };
+  (window as unknown as { RedBirdTools: unknown }).RedBirdTools = { captures, openPanel, setShellEnabled };
   console.log('[RedBird] 工具箱已加载');
 }
 

@@ -43,14 +43,14 @@ body.rbt-resizing #sheld { transition: none !important; }
 
 @media (min-width: 1001px) {
   /* RedBird Dark style themes: they centre #sheld between --rbd-left and --rbd-right. */
-  body.rbt-docked.rbt-theme-layout { --rbd-right: var(--rbt-dock-w, 440px); }
+  body.rbt-docked.rbt-theme-layout:not(.rbt-shell) { --rbd-right: var(--rbt-dock-w, 440px); }
   /* A right-side ST drawer opens above the dock: reserve whichever is wider. */
-  body.rbt-docked.rbt-theme-layout:has(#top-settings-holder .drawer-content.openDrawer:not(.pinnedOpen)) {
+  body.rbt-docked.rbt-theme-layout:not(.rbt-shell):has(#top-settings-holder .drawer-content.openDrawer:not(.pinnedOpen)) {
     --rbd-right: max(var(--rbd-panel-w, 0px), var(--rbt-dock-w, 440px));
   }
 
   /* Stock ST layout: #sheld is centred with left:0; right:0; margin:auto. Shrink and shift it. */
-  body.rbt-docked:not(.rbt-theme-layout) #sheld {
+  body.rbt-docked:not(.rbt-theme-layout):not(.rbt-shell) #sheld {
     right: var(--rbt-dock-w, 440px) !important;
     width: min(var(--sheldWidth), calc(100dvw - var(--rbt-dock-w, 440px) - 16px)) !important;
   }
@@ -417,3 +417,10 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-owner-row { padding: 5px 0; border-bottom: 1px solid var(--rbt-border); display: flex; flex-direction: column; gap: 4px; }
 .rbt-owner-row:last-child { border-bottom: none; }
 .rbt-cards .rbt-warn, .rbt-cards .rbt-hint { margin: 0; }
+
+/* Narrow dock: drop the title text so all tabs stay visible. */
+.rbt-panel { container-type: inline-size; }
+@container (max-width: 560px) {
+  .rbt-title-text { display: none; }
+  .rbt-tabs button { padding: 3px 7px; }
+}

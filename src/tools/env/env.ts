@@ -12,6 +12,7 @@ import {
   saveSettings,
   settings,
   slashQuote,
+  thCharacterScriptsEnabled,
   toast,
   type Any,
   type EnvProfile,
@@ -257,7 +258,7 @@ export function buildEnvReport(): EnvReport {
     }
     const thChar = thScripts(char.data?.extensions?.tavern_helper ?? char.data?.extensions?.TavernHelper_scripts);
     if (thChar.length) {
-      const on = (thSettings?.enabled?.characters ?? []).includes(char.name);
+      const on = thCharacterScriptsEnabled(es, char);
       items.push({
         id: 'th:c', scope: 'character', kind: 'script', name: `角色脚本（酒馆助手）${thChar.length} 个`, enabled: on, leaks: false,
         detail: on ? '已启用' : '未启用（卡里的脚本不会运行）', children: thChar.map((s) => `${s.enabled ? '●' : '○'} ${s.name}`),

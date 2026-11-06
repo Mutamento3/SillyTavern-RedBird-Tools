@@ -29,7 +29,7 @@ import {
   type RegexOwner,
   type RequiredExt,
 } from '../../core/cards';
-import { charaFileName, ctx, currentCharacter, loaded, runSlash, saveSettings, settings, slashQuote, toast, type Any, type EnvProfile } from '../../st/st';
+import { charaFileName, ctx, currentCharacter, loaded, runSlash, saveSettings, settings, slashQuote, thCharacterScriptsEnabled, toast, type Any, type EnvProfile } from '../../st/st';
 import { refreshEnv, thScripts } from '../env/env';
 
 /** Avatar of the card shown in 档案; null = follow the current card. */
@@ -165,7 +165,7 @@ export function cardInfo(char: Any): CardInfo {
     },
     scripts: {
       total: th.length,
-      enabled: (es.tavern_helper?.script?.enabled?.characters ?? []).includes(char.name),
+      enabled: thCharacterScriptsEnabled(es, char),
       names: th.map((s) => s.name),
     },
     autoExts,

@@ -1,5 +1,6 @@
 import { signal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
+import { exportDiagnostics } from '../tools/diag';
 import { CardsView } from './CardsView';
 import { EnvView } from './EnvView';
 import { FlowView } from './FlowView';
@@ -94,12 +95,13 @@ export function Panel() {
     <aside class="rbt-panel rbt-dock">
       <div class="rbt-resize-handle" title="拖动调整宽度" onPointerDown={onResizeStart} />
       <div class="rbt-header">
-        <span class="rbt-title">🐦 RedBird 工具箱</span>
+        <span class="rbt-title" title="RedBird 工具箱">🐦<span class="rbt-title-text"> RedBird 工具箱</span></span>
         <div class="rbt-tabs">
           {TABS.map((t) => (
             <button key={t.id} class={activeTab.value === t.id ? 'active' : ''} onClick={() => { activeTab.value = t.id; }}>{t.label}</button>
           ))}
         </div>
+        <button class="rbt-close" title="导出诊断数据（存到酒馆 user/files 文件夹，方便排查问题）" onClick={() => { void exportDiagnostics(); }}>⤓</button>
         <button class="rbt-close" title="关闭" onClick={() => { panelOpen.value = false; }}>✕</button>
       </div>
       <div class="rbt-body">

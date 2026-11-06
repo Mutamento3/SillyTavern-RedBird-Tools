@@ -308,12 +308,17 @@ function slashQuote(v2) {
 function toast(kind, msg, title = "RedBird 工具箱", opts = {}) {
   window.toastr?.[kind]?.(msg, title, opts);
 }
+function thCharacterScriptsEnabled(es, char) {
+  const list = es?.tavern_helper?.script?.enabled?.characters ?? [];
+  return !!char && (list.includes(char.avatar) || list.includes(char.name));
+}
 const SETTINGS_KEY = "redbird_tools";
 function settings() {
   const es = ctx().extensionSettings;
   if (!es[SETTINGS_KEY]) es[SETTINGS_KEY] = {};
   const s2 = es[SETTINGS_KEY];
   s2.toastOnCardSwitch ??= true;
+  s2.shellEnabled ??= true;
   s2.profiles ??= {};
   s2.cards ??= {};
   s2.regexOwners ??= {};
@@ -1138,8 +1143,8 @@ function backupFileName(world, at) {
   const ascii = world.normalize("NFKD").replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
   let h2 = 0;
   for (const ch of world) h2 = h2 * 31 + ch.codePointAt(0) >>> 0;
-  const stamp = at.toISOString().replace(/[-:]/g, "").replace(/\..+$/, "").replace("T", "-");
-  return `rbt-world-backup-${stamp}-${ascii ? `${ascii}-` : ""}${h2.toString(36)}.json`;
+  const stamp2 = at.toISOString().replace(/[-:]/g, "").replace(/\..+$/, "").replace("T", "-");
+  return `rbt-world-backup-${stamp2}-${ascii ? `${ascii}-` : ""}${h2.toString(36)}.json`;
 }
 function acronym(name) {
   return (name.match(/[A-Z]/g) ?? []).join("");
@@ -1177,11 +1182,11 @@ function parseArchive(text) {
   if (j2?.format !== ARCHIVE_FORMAT) throw new Error("这不是 RedBird 工具箱导出的角色档案文件");
   return { ...j2, cards: j2.cards ?? {}, profiles: j2.profiles ?? {}, regexOwners: j2.regexOwners ?? {} };
 }
-function mergeRecords(cur, incoming, mode, stamp = () => "") {
+function mergeRecords(cur, incoming, mode, stamp2 = () => "") {
   if (mode === "overwrite") return { ...incoming };
   const out = { ...cur };
   for (const [k2, v2] of Object.entries(incoming)) {
-    if (!(k2 in out) || stamp(v2) > stamp(out[k2])) out[k2] = v2;
+    if (!(k2 in out) || stamp2(v2) > stamp2(out[k2])) out[k2] = v2;
   }
   return out;
 }
@@ -1903,7 +1908,7 @@ function buildEnvReport() {
     }
     const thChar = thScripts(char.data?.extensions?.tavern_helper ?? char.data?.extensions?.TavernHelper_scripts);
     if (thChar.length) {
-      const on = (thSettings?.enabled?.characters ?? []).includes(char.name);
+      const on = thCharacterScriptsEnabled(es, char);
       items.push({
         id: "th:c",
         scope: "character",
@@ -2061,13 +2066,13 @@ function installedExtensions() {
   });
 }
 const loose = (s2) => s2.toLowerCase().replace(/[^a-z0-9一-鿿]+/g, "");
-function matchExtension(req, installed) {
+function matchExtension(req, installed2) {
   const k2 = loose(req.name);
   if (!k2) return void 0;
-  return installed.find((e2) => loose(e2.id) === k2 || loose(e2.name) === k2) ?? installed.find((e2) => loose(e2.id).includes(k2) || loose(e2.name).includes(k2) || loose(e2.id).length >= 4 && k2.includes(loose(e2.id)));
+  return installed2.find((e2) => loose(e2.id) === k2 || loose(e2.name) === k2) ?? installed2.find((e2) => loose(e2.id).includes(k2) || loose(e2.name).includes(k2) || loose(e2.id).length >= 4 && k2.includes(loose(e2.id)));
 }
-function extStatus(req, installed = installedExtensions()) {
-  const match = matchExtension(req, installed);
+function extStatus(req, installed2 = installedExtensions()) {
+  const match = matchExtension(req, installed2);
   return { status: !match ? "missing" : match.enabled ? "enabled" : "disabled", match };
 }
 const TAVERN_HELPER = { name: "JS-Slash-Runner", url: "https://github.com/N0VI028/JS-Slash-Runner" };
@@ -2114,7 +2119,7 @@ ${d2.creator_notes ?? ""}`),
     },
     scripts: {
       total: th.length,
-      enabled: (es.tavern_helper?.script?.enabled?.characters ?? []).includes(char.name),
+      enabled: thCharacterScriptsEnabled(es, char),
       names: th.map((s2) => s2.name)
     },
     autoExts,
@@ -2124,9 +2129,9 @@ ${d2.creator_notes ?? ""}`),
 }
 function requiredExtensions(info) {
   const manual = (info.record?.extensions ?? []).map((req) => ({ req, auto: false }));
-  const installed = installedExtensions();
-  const manualIds = new Set(manual.map((m2) => matchExtension(m2.req, installed)?.id ?? loose(m2.req.name)));
-  const auto = info.autoExts.filter((a2) => !manualIds.has(matchExtension(a2.req, installed)?.id ?? loose(a2.req.name))).map((a2) => ({ ...a2, auto: true }));
+  const installed2 = installedExtensions();
+  const manualIds = new Set(manual.map((m2) => matchExtension(m2.req, installed2)?.id ?? loose(m2.req.name)));
+  const auto = info.autoExts.filter((a2) => !manualIds.has(matchExtension(a2.req, installed2)?.id ?? loose(a2.req.name))).map((a2) => ({ ...a2, auto: true }));
   return [...manual, ...auto];
 }
 function updateRecord(avatar, cardName, patch) {
@@ -2359,8 +2364,8 @@ function installCardsWatch(openPanel2) {
         await importCardWorld(char.avatar);
       }
       if (!settings().toastOnCardSwitch) return;
-      const installed = installedExtensions();
-      const bad = requiredExtensions(info).map((r2) => ({ ...r2, ...extStatus(r2.req, installed) })).filter((r2) => r2.status !== "enabled");
+      const installed2 = installedExtensions();
+      const bad = requiredExtensions(info).map((r2) => ({ ...r2, ...extStatus(r2.req, installed2) })).filter((r2) => r2.status !== "enabled");
       if (bad.length) {
         const text = bad.map((b2) => `${b2.match?.name ?? b2.req.name}${b2.status === "missing" ? "（没装）" : "（没启用）"}`).join("、");
         toast("warning", `「${info.name}」需要的插件：${text}。点这里查看。`, "角色档案", { onclick: () => openPanel2("cards"), timeOut: 8e3 });
@@ -2527,6 +2532,61 @@ function installVarsWatch() {
     sourceCache = null;
   });
   for (const ev of ["mag_variable_update_ended", "mag_variable_updated"]) es.on(ev, bump2);
+}
+function toBase64Utf8(text) {
+  const bytes = new TextEncoder().encode(text);
+  let bin = "";
+  const CHUNK = 32768;
+  for (let i2 = 0; i2 < bytes.length; i2 += CHUNK) bin += String.fromCharCode(...bytes.subarray(i2, i2 + CHUNK));
+  return btoa(bin);
+}
+function stamp() {
+  const d2 = /* @__PURE__ */ new Date();
+  const p2 = (n2) => String(n2).padStart(2, "0");
+  return `${d2.getFullYear()}${p2(d2.getMonth() + 1)}${p2(d2.getDate())}-${p2(d2.getHours())}${p2(d2.getMinutes())}${p2(d2.getSeconds())}`;
+}
+function buildDiagnostics() {
+  const c2 = ctx();
+  const char = currentCharacter();
+  let env = null;
+  try {
+    const r2 = buildEnvReport();
+    env = { ...r2, items: r2.items.map(({ toggle: _t, subItems, ...rest }) => ({ ...rest, subItems: subItems?.map(({ toggle: _s, ...s2 }) => s2) })) };
+  } catch (e2) {
+    env = { error: String(e2) };
+  }
+  let vars = null;
+  try {
+    vars = floorDiffs(collectFloors()).map((d2) => ({ floor: d2.floor.index, prev: d2.prev?.index ?? null, changes: d2.changes }));
+  } catch (e2) {
+    vars = { error: String(e2) };
+  }
+  return {
+    exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    tool: "RedBird 工具箱",
+    chatId: c2.getCurrentChatId?.() ?? null,
+    card: char?.name ?? null,
+    mainApi: c2.mainApi,
+    chatLength: c2.chat?.length ?? 0,
+    captures: captures.value.map(({ rawChat: _raw, ...cap }) => cap),
+    vars,
+    env
+  };
+}
+async function exportDiagnostics() {
+  try {
+    const name = `redbird-diagnostics-${stamp()}.json`;
+    const body = JSON.stringify({ name, data: toBase64Utf8(JSON.stringify(buildDiagnostics(), null, 1)) });
+    const res = await fetch("/api/files/upload", { method: "POST", headers: ctx().getRequestHeaders(), body });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    const { path } = await res.json();
+    toast("success", `诊断数据已保存：${path}`);
+    return path;
+  } catch (e2) {
+    console.error("[RedBird] export failed", e2);
+    toast("error", `导出失败：${String(e2)}`);
+    return null;
+  }
 }
 function Chip(props) {
   return /* @__PURE__ */ u$2("span", { class: `rbt-chip ${props.class ?? ""}`, title: props.title, style: props.color ? { "--chip": props.color } : void 0, children: props.children });
@@ -2751,13 +2811,13 @@ function PresetSection({ info }) {
   ] });
 }
 function ExtSection({ info }) {
-  const installed = installedExtensions();
+  const installed2 = installedExtensions();
   const list = requiredExtensions(info);
   const manual = info.record?.extensions ?? [];
   const [pick, setPick] = d$1("");
   const [name, setName] = d$1("");
   const [url, setUrl] = d$1("");
-  const listed = new Set(list.map((l2) => extStatus(l2.req, installed).match?.id).filter(Boolean));
+  const listed = new Set(list.map((l2) => extStatus(l2.req, installed2).match?.id).filter(Boolean));
   const add = () => {
     const req = pick === "__other" ? { name: name.trim(), url: isHttpUrl(url) ? url.trim() : void 0 } : { name: pick };
     if (!req.name) return;
@@ -2769,7 +2829,7 @@ function ExtSection({ info }) {
   return /* @__PURE__ */ u$2(Section, { title: "需要的插件", children: [
     !list.length && /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: "还没填。从下面选，或者手动写没装的插件。" }),
     list.map((l2, i2) => {
-      const st = extStatus(l2.req, installed);
+      const st = extStatus(l2.req, installed2);
       const chip = STATUS_CHIP[st.status];
       return /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
         /* @__PURE__ */ u$2(Chip, { color: chip.color, children: chip.text }),
@@ -2785,7 +2845,7 @@ function ExtSection({ info }) {
     /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
       /* @__PURE__ */ u$2("select", { class: "text_pole rbt-select", value: pick, onChange: (e2) => setPick(e2.currentTarget.value), children: [
         /* @__PURE__ */ u$2("option", { value: "", children: "添加一个插件…" }),
-        installed.filter((e2) => !listed.has(e2.id)).map((e2) => /* @__PURE__ */ u$2("option", { value: e2.id, children: [
+        installed2.filter((e2) => !listed.has(e2.id)).map((e2) => /* @__PURE__ */ u$2("option", { value: e2.id, children: [
           e2.name,
           e2.enabled ? "" : "（没启用）"
         ] }, e2.id)),
@@ -2968,9 +3028,9 @@ function CardLink({ info }) {
   return /* @__PURE__ */ u$2("a", { class: "rbt-card-link", onClick: () => openCard(info.avatar), children: info.name });
 }
 function OverviewRow({ info }) {
-  const installed = installedExtensions();
+  const installed2 = installedExtensions();
   const exts = requiredExtensions(info);
-  const bad = exts.filter((e2) => extStatus(e2.req, installed).status !== "enabled").length;
+  const bad = exts.filter((e2) => extStatus(e2.req, installed2).status !== "enabled").length;
   const links = info.record?.links.length ?? 0;
   const w2 = info.world;
   return /* @__PURE__ */ u$2("div", { class: `rbt-card-row ${info.isCurrent ? "current" : ""}`, onClick: () => openCard(info.avatar), title: "点开看这张卡的档案", children: [
@@ -3067,12 +3127,12 @@ function OverviewView() {
   const [busy, setBusy] = d$1(false);
   const ov = buildOverview();
   const missing = cardsMissingWorld();
-  const installed = installedExtensions();
+  const installed2 = installedExtensions();
   const shown = ov.cards.filter((c2) => {
     if (q2 && !c2.name.toLowerCase().includes(q2.toLowerCase()) && !c2.creator.toLowerCase().includes(q2.toLowerCase())) return false;
     if (filter === "nosource") return !c2.record?.links.length;
     if (filter === "problem") {
-      return c2.world.state === "missing" || c2.world.state === "unbound" || c2.regex.total > 0 && !c2.regex.allowed || c2.scripts.total > 0 && !c2.scripts.enabled || requiredExtensions(c2).some((e2) => extStatus(e2.req, installed).status !== "enabled");
+      return c2.world.state === "missing" || c2.world.state === "unbound" || c2.regex.total > 0 && !c2.regex.allowed || c2.scripts.total > 0 && !c2.scripts.enabled || requiredExtensions(c2).some((e2) => extStatus(e2.req, installed2).status !== "enabled");
     }
     return true;
   });
@@ -3871,10 +3931,16 @@ function Panel() {
   return /* @__PURE__ */ u$2("aside", { class: "rbt-panel rbt-dock", children: [
     /* @__PURE__ */ u$2("div", { class: "rbt-resize-handle", title: "拖动调整宽度", onPointerDown: onResizeStart }),
     /* @__PURE__ */ u$2("div", { class: "rbt-header", children: [
-      /* @__PURE__ */ u$2("span", { class: "rbt-title", children: "🐦 RedBird 工具箱" }),
+      /* @__PURE__ */ u$2("span", { class: "rbt-title", title: "RedBird 工具箱", children: [
+        "🐦",
+        /* @__PURE__ */ u$2("span", { class: "rbt-title-text", children: " RedBird 工具箱" })
+      ] }),
       /* @__PURE__ */ u$2("div", { class: "rbt-tabs", children: TABS.map((t2) => /* @__PURE__ */ u$2("button", { class: activeTab.value === t2.id ? "active" : "", onClick: () => {
         activeTab.value = t2.id;
       }, children: t2.label }, t2.id)) }),
+      /* @__PURE__ */ u$2("button", { class: "rbt-close", title: "导出诊断数据（存到酒馆 user/files 文件夹，方便排查问题）", onClick: () => {
+        void exportDiagnostics();
+      }, children: "⤓" }),
       /* @__PURE__ */ u$2("button", { class: "rbt-close", title: "关闭", onClick: () => {
         panelOpen.value = false;
       }, children: "✕" })
@@ -3886,6 +3952,691 @@ function Panel() {
       activeTab.value === "cards" && /* @__PURE__ */ u$2(CardsView, {})
     ] })
   ] });
+}
+const DRAWERS = [
+  { key: "preset", id: "left-nav-panel", holder: "ai-config-button", label: "预设", icon: "fa-sliders", size: "wide" },
+  { key: "api", id: "rm_api_block", holder: "sys-settings-button", label: "API", icon: "fa-plug", size: "form" },
+  { key: "persona", id: "PersonaManagement", holder: "persona-management-button", label: "人设", icon: "fa-face-smile", size: "wide" },
+  { key: "extensions", id: "rm_extensions_block", holder: "extensions-settings-button", label: "扩展·正则", icon: "fa-cubes", size: "wide" },
+  { key: "settings", id: "user-settings-block", holder: "user-settings-button", label: "设置", icon: "fa-user-cog", size: "wide" },
+  { key: "backgrounds", id: "Backgrounds", holder: "backgrounds-button", label: "背景", icon: "fa-panorama", size: "wide" },
+  { key: "formatting", id: "AdvancedFormatting", holder: "advanced-formatting-button", label: "格式化", icon: "fa-font", size: "wide" },
+  { key: "characters", id: "right-nav-panel", holder: "rightNavHolder", label: "角色", icon: "fa-address-card", size: "wide" },
+  { key: "worldinfo", id: "WorldInfo", holder: "WI-SP-button", label: "世界书", icon: "fa-book-atlas", size: "wide" }
+];
+const drawerByKey = Object.fromEntries(DRAWERS.map((d2) => [d2.key, d2]));
+const openDrawers = y$1([]);
+function el(d2) {
+  return document.getElementById(d2.id);
+}
+function isOpen(key) {
+  return !!el(drawerByKey[key])?.classList.contains("openDrawer");
+}
+function clickToggle(d2) {
+  const toggle = document.querySelector(`#${d2.holder} > .drawer-toggle`);
+  if (!toggle) return;
+  const $2 = window.jQuery;
+  if ($2) $2(toggle).trigger("click");
+  else toggle.click();
+}
+function openDrawer(key) {
+  if (!isOpen(key)) clickToggle(drawerByKey[key]);
+}
+function closeDrawer(key) {
+  if (isOpen(key)) clickToggle(drawerByKey[key]);
+}
+const wasOpen = /* @__PURE__ */ new Map();
+function drawerButtonHandlers(key) {
+  return {
+    onPointerDown: () => {
+      wasOpen.set(key, isOpen(key));
+    },
+    onClick: () => {
+      const was = wasOpen.get(key) ?? isOpen(key);
+      wasOpen.delete(key);
+      if (was) closeDrawer(key);
+      else openDrawer(key);
+    }
+  };
+}
+function injectHeaders() {
+  for (const d2 of DRAWERS) {
+    const node = el(d2);
+    if (!node || node.querySelector(":scope > .rbt-sheet-head")) continue;
+    const head = document.createElement("div");
+    head.className = "rbt-sheet-head";
+    head.innerHTML = `<span class="rbt-sheet-title"><i class="fa-solid ${d2.icon} fa-fw"></i>${d2.label}</span><button type="button" class="rbt-sheet-close" title="关闭（Esc）" aria-label="关闭">✕</button>`;
+    head.querySelector("button").addEventListener("click", () => closeDrawer(d2.key));
+    node.prepend(head);
+  }
+}
+function syncOpenState() {
+  const open = DRAWERS.filter((d2) => el(d2)?.classList.contains("openDrawer")).map((d2) => d2.key);
+  const prev = openDrawers.value;
+  if (open.length !== prev.length || open.some((k2, i2) => k2 !== prev[i2])) openDrawers.value = open;
+  document.body.classList.toggle("rbt-open-modal", open.length > 0);
+}
+function onKeyDown(e2) {
+  if (e2.key !== "Escape" || !document.body.classList.contains("rbt-shell")) return;
+  if (document.querySelector('dialog[open], .popup.open, #shadow_popup[style*="block"]')) return;
+  const open = openDrawers.value;
+  if (!open.length) return;
+  closeDrawer(open[open.length - 1]);
+  e2.preventDefault();
+}
+function onBackdropDown(e2) {
+  if (!document.body.classList.contains("rbt-shell") || !document.body.classList.contains("rbt-open-modal")) return;
+  if (e2.target !== document.body && e2.target !== document.documentElement) return;
+  setTimeout(() => {
+    for (const k2 of openDrawers.value) closeDrawer(k2);
+  }, 0);
+}
+let installed = false;
+function installDrawers() {
+  if (installed) return;
+  installed = true;
+  injectHeaders();
+  syncOpenState();
+  const mo = new MutationObserver(syncOpenState);
+  for (const d2 of DRAWERS) {
+    const node = el(d2);
+    if (node) mo.observe(node, { attributes: true, attributeFilter: ["class"] });
+  }
+  document.addEventListener("keydown", onKeyDown);
+  document.addEventListener("mousedown", onBackdropDown);
+}
+const recentChats = y$1([]);
+const recentLoading = y$1(false);
+function pinnedState() {
+  try {
+    const raw = ctx().accountStorage?.getItem("pinnedChats");
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+function pinKey(c2) {
+  return `${c2.group ? `group_${c2.group}` : ""}${c2.avatar ? `char_${c2.avatar}` : ""}_${c2.file_name}`;
+}
+function cleanPreview(text) {
+  const t2 = String(text ?? "").replace(/<(thinking|think|reasoning|status_[a-z_]*|UpdateVariable|StatusPlaceHolderImpl)[^>]*>[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]{1,200}>/g, " ").replace(/^:::.*$/gm, " ").replace(/```[\s\S]*?```/g, " ").replace(/[*_#>`~|]+/g, "").replace(/\s+/g, " ").trim();
+  return t2.length > 120 ? `${t2.slice(0, 120)}…` : t2;
+}
+function parseTime(v2) {
+  if (typeof v2 === "number") return v2;
+  const s2 = String(v2 ?? "");
+  const n2 = Date.parse(s2);
+  if (!Number.isNaN(n2)) return n2;
+  const m2 = s2.match(/(\d{4})-(\d{1,2})-(\d{1,2})\s*@\s*(\d{1,2})h\s*(\d{1,2})m(?:\s*(\d{1,2})s)?/);
+  if (m2) return new Date(+m2[1], +m2[2] - 1, +m2[3], +m2[4], +m2[5], +(m2[6] ?? 0)).getTime();
+  return 0;
+}
+async function loadRecentChats() {
+  const c2 = ctx();
+  recentLoading.value = true;
+  try {
+    const pins = pinnedState();
+    const res = await fetch("/api/chats/recent", {
+      method: "POST",
+      headers: c2.getRequestHeaders(),
+      body: JSON.stringify({ max: 200, pinned: Object.values(pins) }),
+      cache: "no-cache"
+    });
+    if (!res.ok) throw new Error(String(res.status));
+    const data = await res.json();
+    const out = [];
+    for (const r2 of Array.isArray(data) ? data : []) {
+      const character = r2.avatar ? c2.characters.find((x2) => x2.avatar === r2.avatar) : null;
+      const group = r2.group ? c2.groups?.find((x2) => x2.id === r2.group) : null;
+      if (!character && !group) continue;
+      const fileName = String(r2.file_name ?? "");
+      out.push({
+        key: pinKey(r2),
+        avatar: r2.avatar ?? "",
+        group: r2.group ?? "",
+        fileName,
+        chatId: fileName.replace(/\.jsonl$/, ""),
+        name: character?.name ?? group?.name ?? "",
+        thumb: character ? c2.getThumbnailUrl("avatar", character.avatar) : "img/five.png",
+        preview: cleanPreview(r2.mes ?? ""),
+        time: parseTime(r2.last_mes),
+        pinned: pinKey(r2) in pins,
+        messages: Number(r2.chat_items ?? 0)
+      });
+    }
+    out.sort((a2, b2) => Number(b2.pinned) - Number(a2.pinned) || b2.time - a2.time);
+    recentChats.value = out;
+  } catch (e2) {
+    console.warn("[RedBird] loading recent chats failed", e2);
+  } finally {
+    recentLoading.value = false;
+  }
+}
+function isCurrentChat(r2) {
+  const c2 = ctx();
+  const id = String(c2.getCurrentChatId?.() ?? "");
+  if (!id || id !== r2.chatId) return false;
+  if (r2.group) return c2.groupId === r2.group;
+  return currentCharacter()?.avatar === r2.avatar;
+}
+async function openRecentChat(r2) {
+  const c2 = ctx();
+  try {
+    if (r2.group) {
+      await c2.openGroupChat(r2.group, r2.chatId);
+      return;
+    }
+    const idx = c2.characters.findIndex((x2) => x2.avatar === r2.avatar);
+    if (idx < 0) throw new Error("角色不存在");
+    if (String(c2.characterId) !== String(idx)) await c2.selectCharacterById(idx);
+    if (String(ctx().getCurrentChatId?.() ?? "") !== r2.chatId) await ctx().openCharacterChat(r2.chatId);
+  } catch (e2) {
+    console.error("[RedBird] open chat failed", e2);
+    toast("error", `打开聊天失败：${String(e2)}`);
+  }
+}
+function timeGroup(r2, now = Date.now()) {
+  if (r2.pinned) return "置顶";
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const t0 = startOfToday.getTime();
+  if (r2.time >= t0) return "今天";
+  if (r2.time >= t0 - 864e5) return "昨天";
+  if (r2.time >= t0 - 6 * 864e5) return "7 天内";
+  if (r2.time >= t0 - 29 * 864e5) return "30 天内";
+  return "更早";
+}
+function shortTime(t2, now = Date.now()) {
+  if (!t2) return "";
+  const d2 = new Date(t2);
+  const today = new Date(now);
+  const p2 = (n2) => String(n2).padStart(2, "0");
+  if (d2.toDateString() === today.toDateString()) return `${p2(d2.getHours())}:${p2(d2.getMinutes())}`;
+  if (d2.getFullYear() === today.getFullYear()) return `${d2.getMonth() + 1}/${d2.getDate()}`;
+  return `${d2.getFullYear()}/${d2.getMonth() + 1}/${d2.getDate()}`;
+}
+function prettyChatName(chatId, charName) {
+  let s2 = chatId;
+  if (charName && s2.startsWith(`${charName} - `)) s2 = s2.slice(charName.length + 3);
+  const m2 = s2.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s*@\s*(\d{1,2})h\s*(\d{1,2})m/);
+  if (m2) {
+    const p2 = (n2) => n2.padStart(2, "0");
+    return `${m2[1]}-${p2(m2[2])}-${p2(m2[3])} ${p2(m2[4])}:${p2(m2[5])}`;
+  }
+  return s2;
+}
+let timer;
+function refreshRecentSoon(delay = 1200) {
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    void loadRecentChats();
+  }, delay);
+}
+function installRecentWatch() {
+  const c2 = ctx();
+  const es = c2.eventSource;
+  const et = c2.eventTypes;
+  for (const ev of [et.APP_READY, et.CHARACTER_PAGE_LOADED]) {
+    if (ev) es.on(ev, () => refreshRecentSoon(200));
+  }
+  for (const ev of [et.CHAT_CHANGED, et.CHAT_CREATED, et.CHAT_DELETED, et.GROUP_CHAT_DELETED, et.CHARACTER_RENAMED, et.CHARACTER_DELETED]) {
+    if (ev) es.on(ev, () => refreshRecentSoon(300));
+  }
+  for (const ev of [et.MESSAGE_RECEIVED, et.MESSAGE_SENT, et.MESSAGE_DELETED]) {
+    if (ev) es.on(ev, () => refreshRecentSoon(1500));
+  }
+}
+const charsTick = y$1(0);
+function toTime(v2) {
+  if (typeof v2 === "number") return v2;
+  const n2 = Date.parse(String(v2 ?? ""));
+  return Number.isNaN(n2) ? 0 : n2;
+}
+function isFav(ch) {
+  const v2 = ch?.fav ?? ch?.data?.extensions?.fav;
+  return v2 === true || v2 === "true";
+}
+function tagsFor(key) {
+  const c2 = ctx();
+  const ids = c2.tagMap?.[key] ?? [];
+  const all = c2.tags ?? [];
+  return ids.map((id) => all.find((t2) => t2.id === id)).filter(Boolean).map((t2) => ({ id: t2.id, name: t2.name, color: t2.color || void 0 }));
+}
+function listCharacters() {
+  const c2 = ctx();
+  const chars = (c2.characters ?? []).map((ch, i2) => {
+    const notes = cleanPreview(ch.data?.creator_notes ?? ch.creatorcomment ?? "");
+    return {
+      kind: "character",
+      ref: String(i2),
+      key: `c:${ch.avatar}`,
+      name: String(ch.name ?? ""),
+      thumb: c2.getThumbnailUrl("avatar", ch.avatar),
+      fav: isFav(ch),
+      note: notes,
+      version: String(ch.data?.character_version ?? ""),
+      tags: tagsFor(ch.avatar),
+      lastChat: toTime(ch.date_last_chat),
+      added: toTime(ch.date_added ?? ch.create_date)
+    };
+  });
+  const groups = (c2.groups ?? []).map((g2) => ({
+    kind: "group",
+    ref: String(g2.id),
+    key: `g:${g2.id}`,
+    name: String(g2.name ?? ""),
+    thumb: g2.avatar_url || "img/five.png",
+    fav: g2.fav === true || g2.fav === "true",
+    note: `群组 · ${(g2.members ?? []).length} 个角色`,
+    version: "",
+    tags: tagsFor(g2.id),
+    lastChat: toTime(g2.date_last_chat),
+    added: toTime(g2.date_added ?? g2.create_date)
+  }));
+  return [...chars, ...groups];
+}
+function sortCharacters(items, sort) {
+  const out = [...items];
+  if (sort === "name") out.sort((a2, b2) => a2.name.localeCompare(b2.name, "zh-Hans-CN"));
+  else if (sort === "added") out.sort((a2, b2) => b2.added - a2.added);
+  else out.sort((a2, b2) => b2.lastChat - a2.lastChat);
+  return out.sort((a2, b2) => Number(b2.fav) - Number(a2.fav));
+}
+function allTags(items) {
+  const m2 = /* @__PURE__ */ new Map();
+  for (const it of items) for (const t2 of it.tags) {
+    const e2 = m2.get(t2.id) ?? { tag: t2, count: 0 };
+    e2.count++;
+    m2.set(t2.id, e2);
+  }
+  return [...m2.values()].sort((a2, b2) => b2.count - a2.count || a2.tag.name.localeCompare(b2.tag.name));
+}
+function isCurrent(it) {
+  const c2 = ctx();
+  if (it.kind === "group") return c2.groupId === it.ref;
+  return !c2.groupId && String(c2.characterId) === it.ref;
+}
+async function openCharacter(it) {
+  const c2 = ctx();
+  try {
+    if (it.kind === "group") {
+      const g2 = c2.groups?.find((x2) => String(x2.id) === it.ref);
+      await c2.openGroupChat(it.ref, g2?.chat_id);
+    } else if (String(c2.characterId) !== it.ref || c2.groupId) {
+      await c2.selectCharacterById(Number(it.ref));
+    }
+  } catch (e2) {
+    console.error("[RedBird] open character failed", e2);
+    toast("error", `打开失败：${String(e2)}`);
+  }
+}
+async function editCharacter(it) {
+  await openCharacter(it);
+  openDrawer("characters");
+}
+async function toggleFavorite(it) {
+  if (it.kind !== "character") return;
+  const c2 = ctx();
+  const ch = c2.characters?.[Number(it.ref)];
+  if (!ch) return;
+  const next = !isFav(ch);
+  const res = await fetch("/api/characters/merge-attributes", {
+    method: "POST",
+    headers: c2.getRequestHeaders(),
+    body: JSON.stringify({ avatar: ch.avatar, fav: next, data: { extensions: { fav: next } } })
+  });
+  if (!res.ok) {
+    toast("error", `收藏没保存上：${res.status}`);
+    return;
+  }
+  ch.fav = next;
+  ch.data ??= {};
+  ch.data.extensions ??= {};
+  ch.data.extensions.fav = next;
+  charsTick.value++;
+}
+function clickSt(selector) {
+  const $2 = window.jQuery;
+  if ($2) $2(selector).first().trigger("click");
+  else document.querySelector(selector)?.click();
+}
+function createCharacter() {
+  openDrawer("characters");
+  setTimeout(() => clickSt("#rm_button_create"), 250);
+}
+function importCharacterFile() {
+  clickSt("#character_import_button");
+}
+function importCharacterUrl() {
+  clickSt("#external_import_button");
+}
+function createGroup() {
+  openDrawer("characters");
+  setTimeout(() => clickSt("#rm_button_group_chats"), 250);
+}
+function installCharactersWatch() {
+  const c2 = ctx();
+  const bump2 = () => {
+    charsTick.value++;
+  };
+  for (const ev of [
+    c2.eventTypes.CHARACTER_PAGE_LOADED,
+    c2.eventTypes.CHARACTER_EDITED,
+    c2.eventTypes.CHARACTER_DELETED,
+    c2.eventTypes.CHARACTER_RENAMED,
+    c2.eventTypes.CHAT_CHANGED,
+    c2.eventTypes.GROUP_UPDATED,
+    c2.eventTypes.APP_READY
+  ]) {
+    if (ev) c2.eventSource.on(ev, bump2);
+  }
+}
+const shellOn = y$1(false);
+const leftCollapsed = y$1(false);
+const chatTick = y$1(0);
+const COLLAPSE_KEY = "rbt-shell-left-collapsed";
+const GLOBAL_KEYS = ["preset", "api", "persona", "extensions", "settings", "backgrounds", "formatting"];
+function applyBodyClasses() {
+  const b2 = document.body.classList;
+  b2.toggle("rbt-shell", shellOn.value);
+  b2.toggle("rbt-shell-lcollapsed", leftCollapsed.value);
+  const c2 = ctx();
+  const home = (c2.characterId === void 0 || c2.characterId === null) && !c2.groupId;
+  b2.toggle("rbt-home", home);
+}
+function setShellEnabled(on) {
+  shellOn.value = on;
+  settings().shellEnabled = on;
+  saveSettings();
+  applyBodyClasses();
+}
+function setCollapsed(v2) {
+  leftCollapsed.value = v2;
+  try {
+    localStorage.setItem(COLLAPSE_KEY, v2 ? "1" : "0");
+  } catch {
+  }
+  applyBodyClasses();
+}
+function trigger(selector) {
+  const $2 = window.jQuery;
+  if ($2) $2(selector).first().trigger("click");
+  else document.querySelector(selector)?.click();
+}
+function inChat() {
+  const c2 = ctx();
+  return c2.characterId !== void 0 && c2.characterId !== null || !!c2.groupId;
+}
+function goHome() {
+  if (inChat()) trigger("#option_close_chat");
+}
+function newChat() {
+  if (inChat()) trigger("#option_start_new_chat");
+  else setView("chars");
+}
+function DrawerButton({ k: k2, compact }) {
+  const d2 = DRAWERS.find((x2) => x2.key === k2);
+  const active = openDrawers.value.includes(k2);
+  return /* @__PURE__ */ u$2("button", { type: "button", class: `rbt-gbtn ${active ? "active" : ""} ${compact ? "compact" : ""}`, title: d2.label, ...drawerButtonHandlers(k2), children: [
+    /* @__PURE__ */ u$2("i", { class: `fa-solid ${d2.icon} fa-fw` }),
+    /* @__PURE__ */ u$2("span", { children: d2.label })
+  ] });
+}
+function RecentRow({ r: r2 }) {
+  const current = isCurrentChat(r2);
+  return /* @__PURE__ */ u$2("button", { type: "button", class: `rbt-recent-row ${current ? "current" : ""}`, onClick: () => {
+    void openRecentChat(r2);
+  }, title: `${r2.name} · ${r2.chatId}`, children: [
+    /* @__PURE__ */ u$2("img", { class: "rbt-recent-avatar", src: r2.thumb, alt: "", loading: "lazy" }),
+    /* @__PURE__ */ u$2("span", { class: "rbt-recent-main", children: [
+      /* @__PURE__ */ u$2("span", { class: "rbt-recent-line1", children: [
+        /* @__PURE__ */ u$2("span", { class: "rbt-recent-name", children: r2.name }),
+        /* @__PURE__ */ u$2("span", { class: "rbt-recent-time", children: shortTime(r2.time) })
+      ] }),
+      /* @__PURE__ */ u$2("span", { class: "rbt-recent-preview", children: r2.preview || prettyChatName(r2.chatId, r2.name) })
+    ] })
+  ] });
+}
+const leftView = y$1("chats");
+const VIEW_KEY = "rbt-shell-left-view";
+const SORT_KEY = "rbt-shell-char-sort";
+function setView(v2) {
+  leftView.value = v2;
+  try {
+    localStorage.setItem(VIEW_KEY, v2);
+  } catch {
+  }
+}
+function ChatList({ q: q2 }) {
+  void chatTick.value;
+  h$2(() => {
+    if (!recentChats.value.length) void loadRecentChats();
+  }, []);
+  const groups = T(() => {
+    const query = q2.trim().toLowerCase();
+    const list = recentChats.value.filter((r2) => !query || r2.name.toLowerCase().includes(query) || r2.preview.toLowerCase().includes(query) || r2.chatId.toLowerCase().includes(query));
+    const out = [];
+    for (const r2 of list) {
+      const label = timeGroup(r2);
+      const last = out[out.length - 1];
+      if (last?.label === label) last.items.push(r2);
+      else out.push({ label, items: [r2] });
+    }
+    return out;
+  }, [recentChats.value, q2]);
+  return /* @__PURE__ */ u$2("div", { class: "rbt-recent", children: [
+    groups.map((g2) => /* @__PURE__ */ u$2("section", { class: "rbt-recent-group", children: [
+      /* @__PURE__ */ u$2("h4", { children: g2.label }),
+      g2.items.map((r2) => /* @__PURE__ */ u$2(RecentRow, { r: r2 }, r2.key))
+    ] }, g2.label)),
+    !groups.length && /* @__PURE__ */ u$2("div", { class: "rbt-recent-empty", children: recentLoading.value ? "读取中…" : q2 ? "没有匹配的聊天" : "还没有聊天" })
+  ] });
+}
+function CharRow({ it }) {
+  const current = isCurrent(it);
+  const sub = it.note || it.version;
+  return /* @__PURE__ */ u$2("div", { class: "rbt-char-row" + (current ? " current" : ""), children: [
+    /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-char-open", onClick: () => {
+      void openCharacter(it);
+    }, title: it.name, children: [
+      /* @__PURE__ */ u$2("img", { class: "rbt-recent-avatar", src: it.thumb, alt: "", loading: "lazy" }),
+      /* @__PURE__ */ u$2("span", { class: "rbt-recent-main", children: [
+        /* @__PURE__ */ u$2("span", { class: "rbt-recent-name", children: [
+          it.fav && /* @__PURE__ */ u$2("i", { class: "fa-solid fa-star rbt-char-favmark" }),
+          it.name
+        ] }),
+        sub && /* @__PURE__ */ u$2("span", { class: "rbt-recent-preview", children: sub }),
+        it.tags.length > 0 && /* @__PURE__ */ u$2("span", { class: "rbt-char-tags", children: [
+          it.tags.slice(0, 2).map((t2) => /* @__PURE__ */ u$2("span", { class: "rbt-char-tag", children: t2.name }, t2.id)),
+          it.tags.length > 2 && /* @__PURE__ */ u$2("span", { class: "rbt-char-tag more", children: [
+            "+",
+            it.tags.length - 2
+          ] })
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ u$2("span", { class: "rbt-char-actions", children: [
+      it.kind === "character" && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-row-act" + (it.fav ? " on" : ""), title: it.fav ? "取消收藏" : "收藏", onClick: () => {
+        void toggleFavorite(it);
+      }, children: /* @__PURE__ */ u$2("i", { class: (it.fav ? "fa-solid" : "fa-regular") + " fa-star" }) }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-row-act", title: "编辑", onClick: () => {
+        void editCharacter(it);
+      }, children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-pen" }) })
+    ] })
+  ] });
+}
+function CharList({ q: q2 }) {
+  void charsTick.value;
+  void chatTick.value;
+  const [filter, setFilter] = d$1("all");
+  const [sort, setSortState] = d$1(() => {
+    try {
+      return localStorage.getItem(SORT_KEY) || "recent";
+    } catch {
+      return "recent";
+    }
+  });
+  const setSort = (v2) => {
+    setSortState(v2);
+    try {
+      localStorage.setItem(SORT_KEY, v2);
+    } catch {
+    }
+  };
+  const all = listCharacters();
+  const tags = allTags(all);
+  const query = q2.trim().toLowerCase();
+  const shown = sortCharacters(all.filter((it) => {
+    if (filter === "fav" && !it.fav) return false;
+    if (filter === "group" && it.kind !== "group") return false;
+    if (filter === "char" && it.kind !== "character") return false;
+    if (filter.startsWith("tag:") && !it.tags.some((t2) => t2.id === filter.slice(4))) return false;
+    if (query && !(it.name.toLowerCase().includes(query) || it.note.toLowerCase().includes(query) || it.tags.some((t2) => t2.name.toLowerCase().includes(query)))) return false;
+    return true;
+  }), sort);
+  return /* @__PURE__ */ u$2(S$1, { children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-char-tools", children: [
+      /* @__PURE__ */ u$2("select", { class: "rbt-mini-select", value: filter, title: "筛选", onChange: (e2) => setFilter(e2.currentTarget.value), children: [
+        /* @__PURE__ */ u$2("option", { value: "all", children: [
+          "全部（",
+          all.length,
+          "）"
+        ] }),
+        /* @__PURE__ */ u$2("option", { value: "fav", children: [
+          "★ 收藏（",
+          all.filter((x2) => x2.fav).length,
+          "）"
+        ] }),
+        /* @__PURE__ */ u$2("option", { value: "char", children: "只看角色" }),
+        all.some((x2) => x2.kind === "group") && /* @__PURE__ */ u$2("option", { value: "group", children: "只看群组" }),
+        tags.length > 0 && /* @__PURE__ */ u$2("optgroup", { label: "标签", children: tags.map(({ tag, count }) => /* @__PURE__ */ u$2("option", { value: "tag:" + tag.id, children: [
+          tag.name,
+          "（",
+          count,
+          "）"
+        ] }, tag.id)) })
+      ] }),
+      /* @__PURE__ */ u$2("select", { class: "rbt-mini-select", value: sort, title: "排序", onChange: (e2) => setSort(e2.currentTarget.value), children: [
+        /* @__PURE__ */ u$2("option", { value: "recent", children: "最近聊过" }),
+        /* @__PURE__ */ u$2("option", { value: "name", children: "名称" }),
+        /* @__PURE__ */ u$2("option", { value: "added", children: "最近添加" })
+      ] })
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-char-lib", children: [
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-lib-btn", onClick: createCharacter, title: "新建角色", children: [
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-user-plus" }),
+        " 新建"
+      ] }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-lib-btn", onClick: importCharacterFile, title: "从文件导入角色卡", children: [
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-import" }),
+        " 导入"
+      ] }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-lib-btn icon", onClick: importCharacterUrl, title: "从链接导入", children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-link" }) }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-lib-btn icon", onClick: createGroup, title: "新建群组", children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-users" }) })
+    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-recent", children: [
+      shown.map((it) => /* @__PURE__ */ u$2(CharRow, { it }, it.key)),
+      !shown.length && /* @__PURE__ */ u$2("div", { class: "rbt-recent-empty", children: query || filter !== "all" ? "没有匹配的角色" : "还没有角色" })
+    ] })
+  ] });
+}
+function LeftColumn() {
+  const [q2, setQ] = d$1("");
+  const view = leftView.value;
+  return /* @__PURE__ */ u$2("aside", { class: "rbt-left", "aria-label": "RedBird 左栏", children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-left-head", children: [
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-brand", title: "回到首页", onClick: goHome, children: [
+        /* @__PURE__ */ u$2("span", { class: "rbt-brand-mark", children: "🐦" }),
+        /* @__PURE__ */ u$2("span", { children: "首页" })
+      ] }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn", title: "收起左栏", onClick: () => setCollapsed(true), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-angles-left" }) })
+    ] }),
+    /* @__PURE__ */ u$2("nav", { class: "rbt-globals", "aria-label": "全局设定", children: GLOBAL_KEYS.map((k2) => /* @__PURE__ */ u$2(DrawerButton, { k: k2 }, k2)) }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-left-actions", children: [
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-newchat-main", onClick: newChat, title: inChat() ? "给当前角色开一个新存档" : "选一个角色开始聊天", children: [
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-plus" }),
+        " 新聊天"
+      ] }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-seg", role: "tablist", children: [
+        /* @__PURE__ */ u$2("button", { type: "button", role: "tab", class: view === "chats" ? "active" : "", onClick: () => setView("chats"), children: "聊天" }),
+        /* @__PURE__ */ u$2("button", { type: "button", role: "tab", class: view === "chars" ? "active" : "", onClick: () => setView("chars"), children: "角色" })
+      ] }),
+      /* @__PURE__ */ u$2("label", { class: "rbt-search", children: [
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-magnifying-glass" }),
+        /* @__PURE__ */ u$2("input", { type: "search", placeholder: view === "chats" ? "搜索聊天" : "搜索角色、备注、标签", value: q2, onInput: (e2) => setQ(e2.currentTarget.value) })
+      ] })
+    ] }),
+    view === "chats" ? /* @__PURE__ */ u$2(ChatList, { q: q2 }) : /* @__PURE__ */ u$2(CharList, { q: q2 }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-left-foot", children: /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-foot-btn", title: "关掉三栏外壳，回到酒馆原来的界面", onClick: () => setShellEnabled(false), children: [
+      /* @__PURE__ */ u$2("i", { class: "fa-solid fa-table-columns" }),
+      " 原版界面"
+    ] }) })
+  ] });
+}
+function NavBar() {
+  void chatTick.value;
+  const c2 = ctx();
+  const char = currentCharacter();
+  const group = c2.groupId ? c2.groups?.find((g2) => g2.id === c2.groupId) : null;
+  const chatId = String(c2.getCurrentChatId?.() ?? "");
+  const home = !char && !group;
+  const name = char?.name ?? group?.name ?? "";
+  return /* @__PURE__ */ u$2("header", { class: "rbt-nav", children: [
+    leftCollapsed.value && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn", title: "展开左栏", onClick: () => setCollapsed(false), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-angles-right" }) }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-nav-title", children: home ? /* @__PURE__ */ u$2("span", { class: "rbt-nav-name", children: "首页" }) : /* @__PURE__ */ u$2(S$1, { children: [
+      char && /* @__PURE__ */ u$2("img", { class: "rbt-nav-avatar", src: c2.getThumbnailUrl("avatar", char.avatar), alt: "" }),
+      /* @__PURE__ */ u$2("span", { class: "rbt-nav-name", children: name }),
+      chatId && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-nav-save", title: "切换 / 管理这个角色的存档", onClick: () => trigger("#option_select_chat"), children: [
+        prettyChatName(chatId, name),
+        " ",
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-chevron-down" })
+      ] })
+    ] }) }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-nav-actions", children: [
+      !home && /* @__PURE__ */ u$2(DrawerButton, { k: "characters", compact: true }),
+      !home && /* @__PURE__ */ u$2(DrawerButton, { k: "worldinfo", compact: true }),
+      /* @__PURE__ */ u$2(
+        "button",
+        {
+          type: "button",
+          class: `rbt-gbtn compact ${panelOpen.value ? "active" : ""}`,
+          title: "RedBird 工具箱",
+          onClick: () => {
+            panelOpen.value = !panelOpen.value;
+          },
+          children: [
+            /* @__PURE__ */ u$2("i", { class: "fa-solid fa-feather-pointed fa-fw" }),
+            /* @__PURE__ */ u$2("span", { children: "工具箱" })
+          ]
+        }
+      )
+    ] })
+  ] });
+}
+function Shell() {
+  if (!shellOn.value) return null;
+  return /* @__PURE__ */ u$2(S$1, { children: [
+    !leftCollapsed.value && /* @__PURE__ */ u$2(LeftColumn, {}),
+    /* @__PURE__ */ u$2(NavBar, {})
+  ] });
+}
+function initShellState() {
+  shellOn.value = settings().shellEnabled;
+  try {
+    leftCollapsed.value = localStorage.getItem(COLLAPSE_KEY) === "1";
+    leftView.value = localStorage.getItem(VIEW_KEY) === "chars" ? "chars" : "chats";
+  } catch {
+  }
+  applyBodyClasses();
+  setTimeout(() => document.body.classList.add("rbt-shell-ready"), 800);
+  const c2 = ctx();
+  const bump2 = () => {
+    chatTick.value++;
+    applyBodyClasses();
+  };
+  for (const ev of [c2.eventTypes.CHAT_CHANGED, c2.eventTypes.CHARACTER_RENAMED, c2.eventTypes.CHAT_RENAMED]) {
+    if (ev) c2.eventSource.on(ev, bump2);
+  }
 }
 function addMenuButton() {
   const menu = document.getElementById("extensionsMenu");
@@ -3918,6 +4669,7 @@ function addSettingsDrawer() {
           <div class="menu_button" data-tab="env">换卡体检</div>
           <div class="menu_button" data-tab="cards">角色档案</div>
         </div>
+        <label class="checkbox_label"><input type="checkbox" id="rbt_shell_switch" /> 三栏外壳（电脑上用左栏和导航条代替原顶栏）</label>
         <label class="checkbox_label"><input type="checkbox" id="rbt_toast_switch" /> 换卡时弹出体检提示</label>
         <small>也可以从输入框左边的魔法棒菜单打开，或输入 <code>/rbt</code>。</small>
       </div>
@@ -3930,6 +4682,12 @@ function addSettingsDrawer() {
     settings().toastOnCardSwitch = cb.checked;
     saveSettings();
   });
+  const shellCb = wrap.querySelector("#rbt_shell_switch");
+  shellCb.checked = shellOn.value;
+  shellCb.addEventListener("change", () => setShellEnabled(shellCb.checked));
+  shellOn.subscribe((v2) => {
+    shellCb.checked = v2;
+  });
 }
 function addSlashCommand() {
   const c2 = ctx();
@@ -3937,12 +4695,17 @@ function addSlashCommand() {
     c2.SlashCommandParser.addCommandObject(c2.SlashCommand.fromProps({
       name: "rbt",
       callback: (_args, tab) => {
-        const t2 = ["flow", "vars", "env", "cards"].find((x2) => x2 === String(tab ?? "").trim());
+        const arg = String(tab ?? "").trim();
+        if (arg === "shell") {
+          setShellEnabled(!shellOn.value);
+          return "";
+        }
+        const t2 = ["flow", "vars", "env", "cards"].find((x2) => x2 === arg);
         if (t2) openPanel(t2);
         else panelOpen.value = !panelOpen.value;
         return "";
       },
-      helpString: "打开/关闭 RedBird 工具箱。可加参数 flow / vars / env / cards 直接打开对应页。"
+      helpString: "打开/关闭 RedBird 工具箱。可加参数 flow / vars / env / cards 直接打开对应页；/rbt shell 开关三栏外壳。"
     }));
   } catch (e2) {
     console.warn("[RedBird] slash command registration failed", e2);
@@ -3958,10 +4721,18 @@ async function init() {
   root.id = "rbt-root";
   document.body.appendChild(root);
   R(/* @__PURE__ */ u$2(Panel, {}), root);
+  installDrawers();
+  installRecentWatch();
+  installCharactersWatch();
+  initShellState();
+  const shellRoot = document.createElement("div");
+  shellRoot.id = "rbt-shell-root";
+  document.body.appendChild(shellRoot);
+  R(/* @__PURE__ */ u$2(Shell, {}), shellRoot);
   addMenuButton();
   addSettingsDrawer();
   addSlashCommand();
-  window.RedBirdTools = { captures, openPanel };
+  window.RedBirdTools = { captures, openPanel, setShellEnabled };
   console.log("[RedBird] 工具箱已加载");
 }
 const start = () => {

@@ -100,10 +100,21 @@ export function toast(kind: 'info' | 'success' | 'warning' | 'error', msg: strin
   window.toastr?.[kind]?.(msg, title, opts);
 }
 
+/**
+ * Whether Tavern Helper (酒馆助手) runs this character's own scripts. TH ≤4.3 keyed the list by
+ * character name; TH 4.12 keys it by avatar file name (e.g. "回响之城.png"). Accept both.
+ */
+export function thCharacterScriptsEnabled(es: Any, char: Any): boolean {
+  const list: unknown[] = es?.tavern_helper?.script?.enabled?.characters ?? [];
+  return !!char && (list.includes(char.avatar) || list.includes(char.name));
+}
+
 const SETTINGS_KEY = 'redbird_tools';
 
 export interface RbtSettings {
   toastOnCardSwitch: boolean;
+  /** 三栏外壳（左栏 + 导航条）是否开启。只在宽于 1000px 的屏幕上生效。 */
+  shellEnabled: boolean;
   profiles: Record<string, EnvProfile>;
   /** 角色档案: hand-filled info per card avatar. */
   cards: Record<string, CardRecord>;
@@ -132,6 +143,7 @@ export function settings(): RbtSettings {
   if (!es[SETTINGS_KEY]) es[SETTINGS_KEY] = {};
   const s = es[SETTINGS_KEY];
   s.toastOnCardSwitch ??= true;
+  s.shellEnabled ??= true;
   s.profiles ??= {};
   s.cards ??= {};
   s.regexOwners ??= {};
