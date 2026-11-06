@@ -1,22 +1,22 @@
 import { signal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
 import { exportDiagnostics } from '../tools/diag';
-import { CardsView } from './CardsView';
-import { EnvView } from './EnvView';
 import { FlowView } from './FlowView';
+import { CardPage } from './pages/CardPage';
+import { GlobalPage } from './pages/GlobalPage';
+import { MaintainPage } from './pages/MaintainPage';
 import { VarsView } from './VarsView';
+import { shellActive, VIEW_LABELS, type ViewId } from './views';
 
-export type TabId = 'flow' | 'vars' | 'env' | 'cards';
+export type TabId = ViewId;
 
 export const panelOpen = signal(false);
 export const activeTab = signal<TabId>('flow');
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'flow', label: '信息流' },
-  { id: 'vars', label: '变量' },
-  { id: 'env', label: '换卡体检' },
-  { id: 'cards', label: '角色档案' },
-];
+/** In shell mode the management views open as overlays, so the dock keeps only the watch-while-playing tabs. */
+function tabsNow(): TabId[] {
+  return shellActive.value ? ['card', 'flow', 'vars'] : ['card', 'flow', 'vars', 'global', 'maintain'];
+}
 
 /**
  * The toolbox is a side dock on the right. On wide screens the chat column makes room for it
@@ -57,6 +57,7 @@ export function openPanel(tab?: TabId): void {
 
 export function Panel() {
   const open = panelOpen.value;
+  if (!tabsNow().includes(activeTab.value)) activeTab.value = 'flow';
 
   useEffect(() => {
     document.body.classList.toggle('rbt-docked', open);
@@ -95,10 +96,10 @@ export function Panel() {
     <aside class="rbt-panel rbt-dock">
       <div class="rbt-resize-handle" title="拖动调整宽度" onPointerDown={onResizeStart} />
       <div class="rbt-header">
-        <span class="rbt-title" title="RedBird 工具箱">🐦<span class="rbt-title-text"> RedBird 工具箱</span></span>
+        <span class="rbt-title" title={shellActive.value ? "聊天工具箱" : "RedBird 工具箱"}>🐦<span class="rbt-title-text">{shellActive.value ? ' 聊天工具箱' : ' RedBird 工具箱'}</span></span>
         <div class="rbt-tabs">
-          {TABS.map((t) => (
-            <button key={t.id} class={activeTab.value === t.id ? 'active' : ''} onClick={() => { activeTab.value = t.id; }}>{t.label}</button>
+          {tabsNow().map((id) => (
+            <button key={id} class={activeTab.value === id ? 'active' : ''} onClick={() => { activeTab.value = id; }}>{VIEW_LABELS[id]}</button>
           ))}
         </div>
         <button class="rbt-close" title="导出诊断数据（存到酒馆 user/files 文件夹，方便排查问题）" onClick={() => { void exportDiagnostics(); }}>⤓</button>
@@ -107,8 +108,9 @@ export function Panel() {
       <div class="rbt-body">
         {activeTab.value === 'flow' && <FlowView />}
         {activeTab.value === 'vars' && <VarsView />}
-        {activeTab.value === 'env' && <EnvView />}
-        {activeTab.value === 'cards' && <CardsView />}
+        {activeTab.value === 'card' && <CardPage />}
+        {activeTab.value === 'global' && <GlobalPage />}
+        {activeTab.value === 'maintain' && <MaintainPage />}
       </div>
     </aside>
   );

@@ -424,3 +424,42 @@ body.rbt-resizing #sheld { transition: none !important; }
   .rbt-title-text { display: none; }
   .rbt-tabs button { padding: 3px 7px; }
 }
+
+/* ============ 页面（这张卡 / 全局 / 维护）：在侧边栏里单栏，在大 overlay 里自动分两栏 ============ */
+.rbt-scope {
+  --rbt-fg: var(--SmartThemeBodyColor, #dcdcd2);
+  --rbt-border: var(--rbd-line, var(--SmartThemeBorderColor, rgba(255, 255, 255, 0.15)));
+  --rbt-muted: color-mix(in srgb, var(--rbt-fg) 55%, transparent);
+  --rbt-soft: color-mix(in srgb, var(--rbt-fg) 7%, transparent);
+  color: var(--rbt-fg);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.rbt-page { display: flex; flex-direction: column; gap: 12px; }
+.rbt-page-lead { color: var(--rbt-muted); font-size: 12px; }
+.rbt-page-cols { display: grid; grid-template-columns: 1fr; gap: 12px 24px; align-items: start; }
+.rbt-page-group { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.rbt-page-group-title { font-size: 11px; font-weight: 600; color: var(--rbt-muted); }
+@container (min-width: 820px) {
+  .rbt-page-cols { grid-template-columns: 1fr 1fr; }
+}
+
+/* 需要注意的问题：放在页面最上面，每行带修复按钮 */
+.rbt-attn {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(224, 160, 64, 0.1);
+}
+.rbt-attn.ok { background: var(--rbt-soft); color: var(--rbt-muted); }
+.rbt-attn.ok i { color: #4cb782; margin-right: 4px; }
+.rbt-attn-title { font-weight: 600; margin-bottom: 4px; }
+.rbt-attn-line { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.rbt-attn-line > i { color: #e0a040; }
+.rbt-attn-text { flex: 1; min-width: 0; }
+.rbt-attn-text > small:first-child { color: var(--rbt-muted); margin-right: 4px; }
+
+/* 全局正则：开关一行，"属于谁"紧跟在下面 */
+.rbt-owner-row { margin-bottom: 6px; }
+.rbt-owner-row .rbt-env-item { margin-bottom: 2px; }
+.rbt-owner-pick { padding-left: 8px; align-items: center; }
+.rbt-owner-pick .rbt-select { flex: 1; }

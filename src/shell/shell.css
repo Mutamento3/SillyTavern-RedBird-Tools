@@ -397,7 +397,7 @@
 @media (min-width: 1001px) {
   .rbt-left-actions .rbt-newchat-main { width: 100%; }
 
-  .rbt-seg {
+  .rbt-segctl {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 2px;
@@ -405,7 +405,7 @@
     border-radius: 8px;
     background: var(--rbd-bg3, rgba(0, 0, 0, 0.25));
   }
-  .rbt-seg button {
+  .rbt-segctl button {
     padding: 5px 0;
     border: 0;
     border-radius: 6px;
@@ -414,8 +414,8 @@
     font: inherit;
     cursor: pointer;
   }
-  .rbt-seg button:hover { color: var(--SmartThemeBodyColor); }
-  .rbt-seg button.active { background: var(--rbd-bg2, rgba(255, 255, 255, 0.08)); color: var(--SmartThemeBodyColor); font-weight: 600; }
+  .rbt-segctl button:hover { color: var(--SmartThemeBodyColor); }
+  .rbt-segctl button.active { background: var(--rbd-bg2, rgba(255, 255, 255, 0.08)); color: var(--SmartThemeBodyColor); font-weight: 600; }
 
   .rbt-char-tools { display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 0 12px 6px; flex-shrink: 0; }
   .rbt-mini-select {
@@ -509,4 +509,263 @@
   }
   .rbt-row-act:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.1)); color: var(--SmartThemeBodyColor); }
   .rbt-row-act.on { color: var(--rbd-accent, #e2725b); }
+}
+
+/* ============================================ 当前环境 === */
+@media (min-width: 1001px) {
+  .rbt-chip-ok { color: var(--rbd-text3, #6b707a); }
+  .rbt-chip-warn { color: #e0a040; }
+
+  /* 标题栏里的说明：比如世界书面板写清楚这张卡实际加载了哪些书 */
+  .rbt-sheet-note {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--rbd-text2, #9ca1aa);
+  }
+  .rbt-sheet-note:empty { display: none; }
+
+  .rbt-status {
+    position: fixed;
+    top: calc(var(--rbt-nav-h) + 4px);
+    right: calc(var(--rbt-R) + 12px);
+    z-index: 3010;
+    width: min(440px, calc(100dvw - var(--rbt-L) - 24px));
+    max-height: calc(100dvh - var(--rbt-nav-h) - 24px);
+    overflow-y: auto;
+    padding: 4px 0 8px;
+    color: var(--SmartThemeBodyColor);
+    background: var(--rbd-bg1, #17191e);
+    border: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.08));
+    border-radius: 10px;
+    font-family: var(--rbd-font, inherit);
+    font-size: 13px;
+  }
+  .rbt-status-head {
+    position: sticky;
+    top: -4px;
+    z-index: 1;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 16px 8px;
+    background: var(--rbd-bg1, #17191e);
+    font-size: 15px;
+  }
+  .rbt-status-sum { flex-shrink: 0; font-size: 12px; }
+  .rbt-status-sum.ok { color: var(--rbd-text3, #6b707a); }
+  .rbt-status-sum.warn { color: #e0a040; }
+  .rbt-status-applied {
+    margin: 0 12px 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--rbd-bg2, rgba(255, 255, 255, 0.05));
+  }
+  .rbt-status-applied-title { font-weight: 600; margin-bottom: 4px; }
+  .rbt-status-applied ul { margin: 0 0 6px; padding-left: 18px; color: var(--rbd-text2, #9ca1aa); }
+  .rbt-status-sec { padding: 4px 16px; }
+  .rbt-status-sec h5 {
+    margin: 8px 0 2px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--rbd-text3, #6b707a);
+  }
+  .rbt-status-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.05));
+  }
+  .rbt-status-sec .rbt-status-line:last-child { border-bottom: 0; }
+  .rbt-status-line > i { margin-top: 3px; font-size: 12px; }
+  .rbt-status-line.ok > i { color: #4cb782; }
+  .rbt-status-line.warn > i { color: #e0a040; }
+  .rbt-status-line.info > i { color: var(--rbd-text3, #6b707a); }
+  .rbt-status-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .rbt-status-text small { font-size: 12px; color: var(--rbd-text3, #6b707a); }
+  .rbt-status-btn {
+    flex-shrink: 0;
+    padding: 3px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: var(--rbd-bg2, rgba(255, 255, 255, 0.08));
+    color: var(--SmartThemeBodyColor);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .rbt-status-btn:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.12)); }
+  .rbt-status-btn:disabled { opacity: 0.5; cursor: default; }
+  .rbt-status-foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+    padding: 10px 16px 4px;
+    border-top: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.06));
+  }
+  .rbt-status-auto { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--rbd-text2, #9ca1aa); cursor: pointer; }
+  .rbt-status-link {
+    margin-left: auto;
+    border: 0;
+    background: transparent;
+    color: var(--rbd-text2, #9ca1aa);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .rbt-status-link:hover { color: var(--SmartThemeBodyColor); }
+}
+
+/* ============================ 工具箱自己的大 overlay（这张卡 / 全局 / 维护） === */
+@media (min-width: 1001px) {
+  .rbt-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 3004;
+    background: rgba(0, 0, 0, 0.6);
+  }
+  .rbt-sheet {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 3006;
+    display: flex;
+    flex-direction: column;
+    width: min(1320px, calc(100dvw - 96px));
+    /* 跟内容走，最高到屏幕的 90%：内容少的页面不留一大块空白 */
+    max-height: min(90dvh, 1040px);
+    transform: translate(-50%, -50%);
+    background: var(--rbd-bg1, var(--SmartThemeBlurTintColor, #17191e));
+    border: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.08));
+    border-radius: 14px;
+    overflow: hidden;
+    font-family: var(--rbd-font, inherit);
+    container-type: inline-size;
+  }
+  .rbt-sheet-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.06));
+    flex-shrink: 0;
+  }
+  .rbt-sheet-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 20px 24px; }
+
+  .rbt-char-problem {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    color: #e0a040;
+  }
+  .rbt-globals .rbt-gbtn span { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+}
+
+/* ============================ 输入框上方的快捷按钮：收成一行 ===
+   酒馆的快速回复组和酒馆助手脚本按钮，每一组默认各占一整行，输入框会被顶得很高。
+   改成所有按钮排在同一行，放不下就左右滑动。 */
+body.rbt-shell #qr--bar {
+  flex-wrap: nowrap !important;
+  justify-content: flex-start !important;
+  align-items: center;
+  gap: 4px !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  padding: 2px 4px !important;
+}
+body.rbt-shell #qr--bar > .qr--buttons {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  flex-wrap: nowrap !important;
+  gap: 4px !important;
+  margin: 0 !important;
+}
+body.rbt-shell #qr--bar .qr--button,
+body.rbt-shell #qr--bar .qr--buttons > .menu_button,
+body.rbt-shell #qr--bar #qr--popoutTrigger {
+  flex: 0 0 auto;
+  margin: 0 !important;
+  padding: 2px 8px !important;
+  font-size: 12px !important;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+/* ============================ 状态点（例如 API 没连上） === */
+@media (min-width: 1001px) {
+  .rbt-gbtn { position: relative; }
+  .rbt-dot {
+    position: absolute;
+    top: 5px;
+    right: calc(50% - 16px);
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #e0a040;
+    box-shadow: 0 0 0 2px var(--rbd-bg1, #17191e);
+  }
+  .rbt-nav-new { color: var(--rbd-text2, #9ca1aa); }
+}
+
+/* 世界书面板标题栏里的书名：可以点，点了在编辑器里打开 */
+@media (min-width: 1001px) {
+  .rbt-note-book {
+    padding: 0 4px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--SmartThemeBodyColor);
+    font: inherit;
+    cursor: pointer;
+  }
+  .rbt-note-book:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.06)); }
+  .rbt-note-book.active { color: var(--rbd-accent, #e2725b); }
+}
+
+/* 全局工具箱的两个标签（全局 / 维护） */
+@media (min-width: 1001px) {
+  .rbt-sheet-bar .rbt-sheet-title { flex-shrink: 0; }
+  .rbt-sheet-tabs { display: flex; gap: 2px; flex: 1; margin-left: 12px; }
+  .rbt-sheet-tabs button {
+    padding: 4px 12px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--rbd-text2, #9ca1aa);
+    font: inherit;
+    cursor: pointer;
+  }
+  .rbt-sheet-tabs button:hover { color: var(--SmartThemeBodyColor); }
+  .rbt-sheet-tabs button.active { background: var(--rbd-bg2, rgba(255, 255, 255, 0.08)); color: var(--SmartThemeBodyColor); font-weight: 600; }
+}
+
+/* 「全局工具箱」：工具箱自己的入口，单独一行，和下面酒馆自带的入口分开 */
+@media (min-width: 1001px) {
+  .rbt-gtool-row { padding: 0 12px 8px; flex-shrink: 0; }
+  .rbt-gtool {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 6px;
+    background: var(--rbd-bg2, rgba(255, 255, 255, 0.06));
+    color: var(--SmartThemeBodyColor);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .rbt-gtool:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.1)); }
+  .rbt-gtool.active { background: var(--rbd-accent-soft, rgba(226, 114, 91, 0.14)); color: var(--rbd-accent, #e2725b); }
 }

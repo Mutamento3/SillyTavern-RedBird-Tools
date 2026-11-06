@@ -115,6 +115,8 @@ export interface RbtSettings {
   toastOnCardSwitch: boolean;
   /** 三栏外壳（左栏 + 导航条）是否开启。只在宽于 1000px 的屏幕上生效。 */
   shellEnabled: boolean;
+  /** 换卡时自动把预设、全局世界书、全局正则切成这张卡的配套环境。 */
+  autoApplyEnv: boolean;
   profiles: Record<string, EnvProfile>;
   /** 角色档案: hand-filled info per card avatar. */
   cards: Record<string, CardRecord>;
@@ -144,6 +146,7 @@ export function settings(): RbtSettings {
   const s = es[SETTINGS_KEY];
   s.toastOnCardSwitch ??= true;
   s.shellEnabled ??= true;
+  s.autoApplyEnv ??= true;
   s.profiles ??= {};
   s.cards ??= {};
   s.regexOwners ??= {};

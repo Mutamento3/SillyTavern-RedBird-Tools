@@ -96,6 +96,7 @@ function injectHeaders(): void {
     const head = document.createElement('div');
     head.className = 'rbt-sheet-head';
     head.innerHTML = `<span class="rbt-sheet-title"><i class="fa-solid ${d.icon} fa-fw"></i>${d.label}</span>`
+      + '<span class="rbt-sheet-note"></span>'
       + '<button type="button" class="rbt-sheet-close" title="关闭（Esc）" aria-label="关闭">✕</button>';
     head.querySelector('button')!.addEventListener('click', () => closeDrawer(d.key));
     node.prepend(head);
@@ -130,6 +131,20 @@ function onBackdropDown(e: MouseEvent): void {
   setTimeout(() => {
     for (const k of openDrawers.value) closeDrawer(k);
   }, 0);
+}
+
+/** The note slot in a drawer's title bar (for richer content than plain text). */
+export function sheetNoteElement(key: DrawerKey): HTMLElement | null {
+  return el(drawerByKey[key])?.querySelector<HTMLElement>(':scope > .rbt-sheet-head .rbt-sheet-note') ?? null;
+}
+
+/** A short line in a drawer's title bar, e.g. which lorebooks this card already loads. */
+export function setSheetNote(key: DrawerKey, text: string): void {
+  const note = el(drawerByKey[key])?.querySelector<HTMLElement>(':scope > .rbt-sheet-head .rbt-sheet-note');
+  if (note) {
+    note.textContent = text;
+    note.title = text;
+  }
 }
 
 let installed = false;

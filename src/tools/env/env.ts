@@ -30,7 +30,7 @@ export interface EnvItem {
   enabled: boolean;
   /** Leaks into every card → worth a look when switching cards. */
   leaks: boolean;
-  /** Tagged (in 角色档案) as belonging to another card / preset, but still on. */
+  /** Tagged (in 全局 → 全局正则) as belonging to another card / preset, but still on. */
   misplaced?: string;
   toggle?: (on: boolean) => Promise<void>;
   children?: string[];
@@ -358,14 +358,15 @@ export function installEnvWatch(openPanel: (tab: string) => void): void {
       const r = refreshEnv();
       if (!r.avatar || r.avatar === lastAvatar) return;
       lastAvatar = r.avatar;
-      if (!settings().toastOnCardSwitch) return;
+      // With auto-apply on, the switch itself is reported by autoapply.ts (one toast instead of several).
+      if (settings().autoApplyEnv) return; // auto-apply reports the switch itself; reminders only when it is off
       const open = { onclick: () => openPanel('env'), timeOut: 8000 };
       const misplaced = r.items.filter((i) => i.misplaced);
       if (misplaced.length) {
-        toast('warning', `${misplaced.map((i) => `全局正则「${i.name}」${i.misplaced}`).join('；')}，但现在还开着。点这里查看。`, '换卡体检', open);
+        toast('warning', `${misplaced.map((i) => `全局正则「${i.name}」${i.misplaced}`).join('；')}，但现在还开着。点这里查看。`, '换卡提醒', open);
       }
       if (r.drift?.count) {
-        toast('warning', `「${r.cardName}」的环境和上次记住的不一样（${r.drift.count} 项）。点这里查看并一键恢复。`, '换卡体检', open);
+        toast('warning', `「${r.cardName}」的环境和上次记住的不一样（${r.drift.count} 项）。点这里查看并一键恢复。`, '换卡提醒', open);
         return;
       }
       if (r.profile) return;
@@ -374,7 +375,7 @@ export function installEnvWatch(openPanel: (tab: string) => void): void {
         const books = leaks.filter((i) => i.kind === 'worldbook').length;
         const rx = leaks.filter((i) => i.kind === 'regex' && i.scope === 'global').length;
         const parts = [books && `全局世界书 ${books} 本`, rx && `全局正则 ${rx} 条`, leaks.some((i) => i.id === 'rx:p') && '预设正则', leaks.some((i) => i.kind === 'script') && '全局/预设脚本'].filter(Boolean);
-        toast('info', `这张卡还没记住环境。当前对所有卡都生效的有：${parts.join('、')}。点这里查看。`, '换卡体检', open);
+        toast('info', `这张卡还没记住环境。当前对所有卡都生效的有：${parts.join('、')}。点这里查看。`, '换卡提醒', open);
       }
     }, 600);
   });

@@ -6,6 +6,7 @@ import { signal } from '@preact/signals';
 import { cleanPreview } from './recent';
 import { ctx, toast, type Any } from '../st/st';
 import { openDrawer } from './drawers';
+import { cardInfo, extStatus, installedExtensions, requiredExtensions } from '../tools/cards/cards';
 
 export interface TagInfo {
   id: string;
@@ -26,6 +27,9 @@ export interface CharItem {
   tags: TagInfo[];
   lastChat: number;
   added: number;
+  /** Short labels of what is not in place (lorebook missing, regex not allowed…). */
+  problems: string[];
+  hasLinks: boolean;
 }
 
 export type CharSort = 'recent' | 'name' | 'added';
@@ -53,7 +57,16 @@ function tagsFor(key: string): TagInfo[] {
 
 export function listCharacters(): CharItem[] {
   const c = ctx();
+  const installed = installedExtensions();
+  const s = (c.extensionSettings?.redbird_tools ?? {}) as Any;
   const chars: CharItem[] = (c.characters ?? []).map((ch: Any, i: number) => {
+    const info = cardInfo(ch);
+    const problems: string[] = [];
+    if (info.world.state === 'missing') problems.push('世界书缺文件');
+    if (info.world.state === 'unbound') problems.push('世界书没导入');
+    if (info.regex.total > 0 && !info.regex.allowed) problems.push('正则没允许');
+    if (info.scripts.total > 0 && !info.scripts.enabled) problems.push('脚本没启用');
+    if (requiredExtensions(info).some((e) => extStatus(e.req, installed).status !== 'enabled')) problems.push('缺插件');
     const notes = cleanPreview(ch.data?.creator_notes ?? ch.creatorcomment ?? '');
     return {
       kind: 'character' as const,
@@ -67,6 +80,8 @@ export function listCharacters(): CharItem[] {
       tags: tagsFor(ch.avatar),
       lastChat: toTime(ch.date_last_chat),
       added: toTime(ch.date_added ?? ch.create_date),
+      problems,
+      hasLinks: !!s.cards?.[ch.avatar]?.links?.length,
     };
   });
   const groups: CharItem[] = (c.groups ?? []).map((g: Any) => ({
@@ -81,6 +96,8 @@ export function listCharacters(): CharItem[] {
     tags: tagsFor(g.id),
     lastChat: toTime(g.date_last_chat),
     added: toTime(g.date_added ?? g.create_date),
+    problems: [],
+    hasLinks: false,
   }));
   return [...chars, ...groups];
 }

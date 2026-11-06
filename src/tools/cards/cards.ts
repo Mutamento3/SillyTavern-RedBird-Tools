@@ -231,7 +231,7 @@ export function presetRegexCount(name: string): number {
   }
 }
 
-/** Shared with 换卡体检: the recommended preset is the `preset` part of the remembered environment. */
+/** Shared with the remembered card environment: the recommended preset is the `preset` part of the remembered environment. */
 export function setRecommendedPreset(avatar: string, cardName: string, name: string | null): void {
   const s = settings();
   const p: EnvProfile = s.profiles[avatar] ?? { savedAt: new Date().toISOString(), cardName };
@@ -458,7 +458,7 @@ export function installCardsWatch(openPanel: (tab: string) => void): void {
       if (settings().autoImportWorld && info.world.embedded && (info.world.state === 'missing' || info.world.state === 'unbound')) {
         await importCardWorld(char.avatar);
       }
-      if (!settings().toastOnCardSwitch) return;
+      if (settings().autoApplyEnv) return; // auto-apply reports the switch itself; reminders only when it is off
       const installed = installedExtensions();
       const bad = requiredExtensions(info).map((r) => ({ ...r, ...extStatus(r.req, installed) })).filter((r) => r.status !== 'enabled');
       if (bad.length) {

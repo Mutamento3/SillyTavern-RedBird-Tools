@@ -6,7 +6,9 @@ import { signal } from '@preact/signals';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { ctx, currentCharacter, saveSettings, settings } from '../st/st';
 import { panelOpen } from '../ui/Panel';
-import { DRAWERS, drawerButtonHandlers, openDrawer, openDrawers, type DrawerKey } from './drawers';
+import { openView, sheetView, shellActive } from '../ui/views';
+import { DRAWERS, drawerButtonHandlers, openDrawers, type DrawerKey } from './drawers';
+import { ToolboxButton } from './EnvStatus';
 import {
   allTags,
   charsTick,
@@ -41,7 +43,15 @@ export const leftCollapsed = signal(false);
 export const chatTick = signal(0);
 
 const COLLAPSE_KEY = 'rbt-shell-left-collapsed';
-const GLOBAL_KEYS: DrawerKey[] = ['preset', 'api', 'persona', 'extensions', 'settings', 'backgrounds', 'formatting'];
+/** 酒馆自带的全局入口，都写名字（教程里按名字找）。和工具箱自己的「全局工具箱」分开放。 */
+const ST_KEYS: DrawerKey[] = ['preset', 'extensions', 'api', 'persona', 'settings', 'backgrounds', 'formatting'];
+
+/** Whether the API is connected (ST's online_status). */
+export const apiOnline = signal(true);
+function readOnline(): void {
+  const st = String(ctx().onlineStatus ?? '');
+  apiOnline.value = !!st && st !== 'no_connection';
+}
 
 function applyBodyClasses(): void {
   const b = document.body.classList;
@@ -50,6 +60,7 @@ function applyBodyClasses(): void {
   const c = ctx();
   const home = (c.characterId === undefined || c.characterId === null) && !c.groupId;
   b.toggle('rbt-home', home);
+  shellActive.value = shellOn.value && (window.innerWidth || 1280) > 1000;
 }
 
 export function setShellEnabled(on: boolean): void {
@@ -80,21 +91,31 @@ function goHome(): void {
   if (inChat()) trigger('#option_close_chat');
 }
 
+/** Only offered inside a chat: a new save for the current character / group (ST asks to confirm). */
 function newChat(): void {
-  // In a chat: a new save for the same character (ST asks to confirm). On the home page: pick a character.
   if (inChat()) trigger('#option_start_new_chat');
-  else setView('chars');
 }
 
 // ---------------------------------------------------------------- left ---
 
-function DrawerButton({ k, compact }: { k: DrawerKey; compact?: boolean }) {
+function DrawerButton({ k, compact, label, title, dot }: { k: DrawerKey; compact?: boolean; label?: string; title?: string; dot?: string }) {
   const d = DRAWERS.find((x) => x.key === k)!;
   const active = openDrawers.value.includes(k);
   return (
-    <button type="button" class={`rbt-gbtn ${active ? 'active' : ''} ${compact ? 'compact' : ''}`} title={d.label} {...drawerButtonHandlers(k)}>
+    <button type="button" class={`rbt-gbtn ${active ? 'active' : ''} ${compact ? 'compact' : ''}`} title={title ?? d.label} {...drawerButtonHandlers(k)}>
       <i class={`fa-solid ${d.icon} fa-fw`} />
-      <span>{d.label}</span>
+      <span>{label ?? d.label}</span>
+      {dot && <span class="rbt-dot" title={dot} />}
+    </button>
+  );
+}
+
+/** Left-column button for the toolbox's own 「全局」 overlay. */
+function GlobalButton() {
+  return (
+    <button type="button" class={`rbt-gtool ${sheetView.value ? 'active' : ''}`} title="全局工具箱：对所有卡都生效的世界书、正则、预设、插件，以及维护" onClick={() => openView('global')}>
+      <i class="fa-solid fa-globe fa-fw" />
+      <span>全局工具箱</span>
     </button>
   );
 }
@@ -166,6 +187,7 @@ function CharRow({ it }: { it: CharItem }) {
         <span class="rbt-recent-main">
           <span class="rbt-recent-name">{it.fav && <i class="fa-solid fa-star rbt-char-favmark" />}{it.name}</span>
           {sub && <span class="rbt-recent-preview">{sub}</span>}
+          {it.problems.length > 0 && <span class="rbt-char-problem" title={it.problems.join('、')}><i class="fa-solid fa-circle-exclamation" /> {it.problems.join(' · ')}</span>}
           {it.tags.length > 0 && (
             <span class="rbt-char-tags">
               {it.tags.slice(0, 2).map((t) => <span key={t.id} class="rbt-char-tag">{t.name}</span>)}
@@ -203,6 +225,8 @@ function CharList({ q }: { q: string }) {
     if (filter === 'fav' && !it.fav) return false;
     if (filter === 'group' && it.kind !== 'group') return false;
     if (filter === 'char' && it.kind !== 'character') return false;
+    if (filter === 'problem' && !it.problems.length) return false;
+    if (filter === 'nolinks' && (it.kind !== 'character' || it.hasLinks)) return false;
     if (filter.startsWith('tag:') && !it.tags.some((t) => t.id === filter.slice(4))) return false;
     if (query && !(it.name.toLowerCase().includes(query) || it.note.toLowerCase().includes(query) || it.tags.some((t) => t.name.toLowerCase().includes(query)))) return false;
     return true;
@@ -214,6 +238,8 @@ function CharList({ q }: { q: string }) {
         <select class="rbt-mini-select" value={filter} title="筛选" onChange={(e) => setFilter((e.currentTarget as HTMLSelectElement).value)}>
           <option value="all">全部（{all.length}）</option>
           <option value="fav">★ 收藏（{all.filter((x) => x.fav).length}）</option>
+          <option value="problem">有问题的（{all.filter((x) => x.problems.length).length}）</option>
+          <option value="nolinks">没填来源链接的</option>
           <option value="char">只看角色</option>
           {all.some((x) => x.kind === 'group') && <option value="group">只看群组</option>}
           {tags.length > 0 && <optgroup label="标签">{tags.map(({ tag, count }) => <option key={tag.id} value={'tag:' + tag.id}>{tag.name}（{count}）</option>)}</optgroup>}
@@ -229,6 +255,7 @@ function CharList({ q }: { q: string }) {
         <button type="button" class="rbt-lib-btn" onClick={importCharacterFile} title="从文件导入角色卡"><i class="fa-solid fa-file-import" /> 导入</button>
         <button type="button" class="rbt-lib-btn icon" onClick={importCharacterUrl} title="从链接导入"><i class="fa-solid fa-link" /></button>
         <button type="button" class="rbt-lib-btn icon" onClick={createGroup} title="新建群组"><i class="fa-solid fa-users" /></button>
+        <button type="button" class="rbt-lib-btn icon" onClick={() => openView('maintain')} title="维护：批量导入缺的世界书、反查、导出 / 导入档案"><i class="fa-solid fa-screwdriver-wrench" /></button>
       </div>
       <div class="rbt-recent">
         {shown.map((it) => <CharRow key={it.key} it={it} />)}
@@ -254,15 +281,15 @@ function LeftColumn() {
         </button>
       </div>
 
-      <nav class="rbt-globals" aria-label="全局设定">
-        {GLOBAL_KEYS.map((k) => <DrawerButton key={k} k={k} />)}
+      <div class="rbt-gtool-row"><GlobalButton /></div>
+      <nav class="rbt-globals" aria-label="酒馆设定">
+        {ST_KEYS.map((k) => (
+          <DrawerButton key={k} k={k} title={k === 'api' && !apiOnline.value ? 'API（没连上）' : undefined} dot={k === 'api' && !apiOnline.value ? '没连上 API' : undefined} />
+        ))}
       </nav>
 
       <div class="rbt-left-actions">
-        <button type="button" class="rbt-newchat-main" onClick={newChat} title={inChat() ? '给当前角色开一个新存档' : '选一个角色开始聊天'}>
-          <i class="fa-solid fa-plus" /> 新聊天
-        </button>
-        <div class="rbt-seg" role="tablist">
+        <div class="rbt-segctl" role="tablist">
           <button type="button" role="tab" class={view === 'chats' ? 'active' : ''} onClick={() => setView('chats')}>聊天</button>
           <button type="button" role="tab" class={view === 'chars' ? 'active' : ''} onClick={() => setView('chars')}>角色</button>
         </div>
@@ -313,21 +340,17 @@ function NavBar() {
                 {prettyChatName(chatId, name)} <i class="fa-solid fa-chevron-down" />
               </button>
             )}
+            <button type="button" class="rbt-gbtn compact rbt-nav-new" title={`给「${name}」开一个新存档`} onClick={newChat}>
+              <i class="fa-solid fa-plus fa-fw" />
+              <span>新聊天</span>
+            </button>
           </>
         )}
       </div>
       <div class="rbt-nav-actions">
-        {!home && <DrawerButton k="characters" compact />}
+        {!home && <DrawerButton k="characters" compact label="编辑卡片" title="打开酒馆的角色卡编辑页" />}
         {!home && <DrawerButton k="worldinfo" compact />}
-        <button
-          type="button"
-          class={`rbt-gbtn compact ${panelOpen.value ? 'active' : ''}`}
-          title="RedBird 工具箱"
-          onClick={() => { panelOpen.value = !panelOpen.value; }}
-        >
-          <i class="fa-solid fa-feather-pointed fa-fw" />
-          <span>工具箱</span>
-        </button>
+        {!home && <ToolboxButton />}
       </div>
     </header>
   );
@@ -350,11 +373,20 @@ export function initShellState(): void {
     leftView.value = localStorage.getItem(VIEW_KEY) === 'chars' ? 'chars' : 'chats';
   } catch { /* ignore */ }
   applyBodyClasses();
+  window.addEventListener('resize', applyBodyClasses);
   // Enable layout transitions only after the first layout, so the page doesn't slide around on load.
   setTimeout(() => document.body.classList.add('rbt-shell-ready'), 800);
   const c = ctx();
-  const bump = () => { chatTick.value++; applyBodyClasses(); };
+  const bump = () => {
+    chatTick.value++;
+    applyBodyClasses();
+    if (shellActive.value && document.body.classList.contains('rbt-home')) panelOpen.value = false;
+  };
   for (const ev of [c.eventTypes.CHAT_CHANGED, c.eventTypes.CHARACTER_RENAMED, c.eventTypes.CHAT_RENAMED]) {
     if (ev) c.eventSource.on(ev, bump);
+  }
+  readOnline();
+  for (const ev of [c.eventTypes.ONLINE_STATUS_CHANGED, c.eventTypes.MAIN_API_CHANGED, c.eventTypes.CHATCOMPLETION_SOURCE_CHANGED, c.eventTypes.CONNECTION_PROFILE_LOADED]) {
+    if (ev) c.eventSource.on(ev, () => setTimeout(readOnline, 0));
   }
 }
