@@ -2212,6 +2212,10 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
   .rbt-hcard-favmark { top: 8px; right: 8px; }
   .rbt-hcard-acts { display: none; }
 
+  /* ---- 聊天：头像小一点、消息左右留白少一点，宽度留给正文 ---- */
+  body.rbt-shell #chat { --avatar-base-width: 32px; --avatar-base-height: 32px; }
+  html.rbt-look body.rbt-shell #chat .mes { padding: var(--rbd-s-3) var(--rbd-s-3) var(--rbd-s-2); }
+
   /* ---- 状态：手机上不显示状态栏；「需要注意」浮层占满宽度 ---- */
   .rbt-statusbar { display: none; }
   .rbt-status { right: auto; left: 8px; width: calc(100dvw - 16px); }
