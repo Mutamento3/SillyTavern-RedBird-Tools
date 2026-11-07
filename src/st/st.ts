@@ -46,19 +46,21 @@ export const ST_MODULES = {
   extensions: '/scripts/extensions.js',
   regexEngine: '/scripts/extensions/regex/engine.js',
   powerUser: '/scripts/power-user.js',
+  personas: '/scripts/personas.js',
 } as const;
 
 /** Preload modules once so later synchronous reads have them. */
-export const loaded: { openai?: Any; worldInfo?: Any; extensions?: Any; regexEngine?: Any } = {};
+export const loaded: { openai?: Any; worldInfo?: Any; extensions?: Any; regexEngine?: Any; personas?: Any } = {};
 
 export async function preloadModules(): Promise<void> {
-  const [openai, worldInfo, extensions, regexEngine] = await Promise.all([
+  const [openai, worldInfo, extensions, regexEngine, personas] = await Promise.all([
     stModule(ST_MODULES.openai),
     stModule(ST_MODULES.worldInfo),
     stModule(ST_MODULES.extensions),
     stModule(ST_MODULES.regexEngine),
+    stModule(ST_MODULES.personas),
   ]);
-  Object.assign(loaded, { openai, worldInfo, extensions, regexEngine });
+  Object.assign(loaded, { openai, worldInfo, extensions, regexEngine, personas });
 }
 
 export function currentCharacter(): Any | null {

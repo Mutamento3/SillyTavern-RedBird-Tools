@@ -433,9 +433,8 @@ function NavBar() {
           </>
         )}
       </div>
-      {char && <StatusBar />}
+      {!home && <StatusBar />}
       <div class="rbt-nav-actions">
-        {!home && <WorldButton />}
         {!home && <ToolboxButton />}
       </div>
     </header>
@@ -473,6 +472,10 @@ export function initShellState(): void {
   };
   for (const ev of [c.eventTypes.CHAT_CHANGED, c.eventTypes.CHARACTER_RENAMED, c.eventTypes.CHAT_RENAMED]) {
     if (ev) c.eventSource.on(ev, bump);
+  }
+  // 状态栏里的人设
+  for (const ev of [c.eventTypes.PERSONA_CHANGED, c.eventTypes.PERSONA_UPDATED, c.eventTypes.PERSONA_RENAMED, c.eventTypes.PERSONA_DELETED, c.eventTypes.SETTINGS_UPDATED]) {
+    if (ev) c.eventSource.on(ev, () => { chatTick.value++; });
   }
   readOnline();
   loadVersion();

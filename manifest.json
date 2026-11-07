@@ -6,7 +6,7 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
   "rbt_whats_new": "信息流加了「额度」：上下文和回复上限、这一轮用了多少，回复被截断或聊天记录被挤掉会提醒；正则和脚本旁边有编辑按钮；换预设把模型换掉时会提示（清空时自动换回）；修了打字卡顿。"

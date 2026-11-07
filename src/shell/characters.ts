@@ -4,7 +4,7 @@
  */
 import { signal } from '@preact/signals';
 import { cleanPreview } from './recent';
-import { ctx, toast, type Any } from '../st/st';
+import { ctx, escHtml, stModule, toast, type Any } from '../st/st';
 import { openDrawer } from './drawers';
 import { cardInfo, extStatus, installedExtensions, requiredExtensions } from '../tools/cards/cards';
 
@@ -190,6 +190,78 @@ export function importCharacterUrl(): void {
 export function createGroup(): void {
   openDrawer('characters');
   setTimeout(() => clickSt('#rm_button_group_chats'), 250);
+}
+
+// ------------------------------------------------------------ manage ---
+// 删除、导出、复制都用酒馆自己的接口 / 函数，和在角色面板里做的一样。
+
+function charOf(it: CharItem): Any | null {
+  return it.kind === 'character' ? ctx().characters?.[Number(it.ref)] ?? null : null;
+}
+
+/** Download a character as PNG (card with picture) or JSON. */
+export async function exportCharacter(it: CharItem, format: 'png' | 'json' = 'png'): Promise<void> {
+  const ch = charOf(it);
+  if (!ch) return;
+  const res = await fetch('/api/characters/export', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({ format, avatar_url: ch.avatar }) });
+  if (!res.ok) { toast('error', `导出「${ch.name}」失败：${res.status}`); return; }
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = String(ch.avatar).replace(/\.png$/i, `.${format}`);
+  document.body.appendChild(a);
+  a.click();
+  URL.revokeObjectURL(a.href);
+  a.remove();
+}
+
+/** Make a copy of a character (ST names the copy itself). */
+export async function duplicateCharacter(it: CharItem): Promise<void> {
+  const c = ctx();
+  const ch = charOf(it);
+  if (!ch) return;
+  const res = await fetch('/api/characters/duplicate', { method: 'POST', headers: c.getRequestHeaders(), body: JSON.stringify({ avatar_url: ch.avatar }) });
+  if (!res.ok) { toast('error', `复制「${ch.name}」失败：${res.status}`); return; }
+  const data = await res.json();
+  await c.eventSource.emit(c.eventTypes.CHARACTER_DUPLICATED, { oldAvatar: ch.avatar, newAvatar: data.path });
+  await c.getCharacters();
+  charsTick.value++;
+  toast('success', `已复制一份「${ch.name}」`);
+}
+
+/** Set favourite on several characters at once. */
+export async function setFavorite(items: CharItem[], fav: boolean): Promise<void> {
+  for (const it of items) {
+    const ch = charOf(it);
+    if (ch && isFav(ch) !== fav) await toggleFavorite(it);
+  }
+}
+
+/**
+ * Delete characters after one confirm. Uses ST's own deleteCharacter (it also cleans up ST's
+ * per-character settings); chats are kept unless the box is ticked.
+ */
+export async function deleteCharacters(items: CharItem[]): Promise<boolean> {
+  const c = ctx();
+  const chars = items.map(charOf).filter(Boolean) as Any[];
+  if (!chars.length || !c.Popup || !c.POPUP_TYPE) return false;
+  // 同名的卡（比如复制出来的）后面带上文件名，免得删错
+  const all: Any[] = c.characters ?? [];
+  const label = (x: Any) => (all.filter((y) => y.name === x.name).length > 1 ? `「${x.name}」(${x.avatar})` : `「${x.name}」`);
+  const names = chars.slice(0, 5).map(label).join('、') + (chars.length > 5 ? ` 等 ${chars.length} 张` : '');
+  const popup = new c.Popup(
+    `<h3>删除 ${escHtml(names)}？</h3><p>角色卡文件会被删掉，不能撤销。想留一份的话，先「导出」。</p>`,
+    c.POPUP_TYPE.CONFIRM, '',
+    { okButton: '删除', cancelButton: '取消', customInputs: [{ id: 'rbt_del_chats', label: chars.length > 1 ? '同时删除它们的聊天记录' : '同时删除它的聊天记录', defaultState: false }] },
+  );
+  if (!(await popup.show())) return false;
+  const deleteChats = !!popup.inputResults?.get('rbt_del_chats');
+  const script = await stModule('/script.js');
+  if (typeof script?.deleteCharacter !== 'function') { toast('error', '没找到酒馆的删除功能，没有删除'); return false; }
+  // 酒馆自己会提示「角色已删除」，这里不再重复
+  const ok = await script.deleteCharacter(chars.map((x) => x.avatar), { deleteChats });
+  charsTick.value++;
+  return !!ok;
 }
 
 export function installCharactersWatch(): void {

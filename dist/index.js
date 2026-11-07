@@ -989,17 +989,19 @@ const ST_MODULES = {
   openai: "/scripts/openai.js",
   worldInfo: "/scripts/world-info.js",
   extensions: "/scripts/extensions.js",
-  regexEngine: "/scripts/extensions/regex/engine.js"
+  regexEngine: "/scripts/extensions/regex/engine.js",
+  personas: "/scripts/personas.js"
 };
 const loaded = {};
 async function preloadModules() {
-  const [openai, worldInfo, extensions, regexEngine] = await Promise.all([
+  const [openai, worldInfo, extensions, regexEngine, personas] = await Promise.all([
     stModule(ST_MODULES.openai),
     stModule(ST_MODULES.worldInfo),
     stModule(ST_MODULES.extensions),
-    stModule(ST_MODULES.regexEngine)
+    stModule(ST_MODULES.regexEngine),
+    stModule(ST_MODULES.personas)
   ]);
-  Object.assign(loaded, { openai, worldInfo, extensions, regexEngine });
+  Object.assign(loaded, { openai, worldInfo, extensions, regexEngine, personas });
 }
 function currentCharacter() {
   const c2 = ctx();
@@ -3610,6 +3612,71 @@ function createGroup() {
   openDrawer("characters");
   setTimeout(() => clickSt("#rm_button_group_chats"), 250);
 }
+function charOf(it) {
+  return it.kind === "character" ? ctx().characters?.[Number(it.ref)] ?? null : null;
+}
+async function exportCharacter(it, format = "png") {
+  const ch = charOf(it);
+  if (!ch) return;
+  const res = await fetch("/api/characters/export", { method: "POST", headers: ctx().getRequestHeaders(), body: JSON.stringify({ format, avatar_url: ch.avatar }) });
+  if (!res.ok) {
+    toast("error", `导出「${ch.name}」失败：${res.status}`);
+    return;
+  }
+  const blob = await res.blob();
+  const a2 = document.createElement("a");
+  a2.href = URL.createObjectURL(blob);
+  a2.download = String(ch.avatar).replace(/\.png$/i, `.${format}`);
+  document.body.appendChild(a2);
+  a2.click();
+  URL.revokeObjectURL(a2.href);
+  a2.remove();
+}
+async function duplicateCharacter(it) {
+  const c2 = ctx();
+  const ch = charOf(it);
+  if (!ch) return;
+  const res = await fetch("/api/characters/duplicate", { method: "POST", headers: c2.getRequestHeaders(), body: JSON.stringify({ avatar_url: ch.avatar }) });
+  if (!res.ok) {
+    toast("error", `复制「${ch.name}」失败：${res.status}`);
+    return;
+  }
+  const data = await res.json();
+  await c2.eventSource.emit(c2.eventTypes.CHARACTER_DUPLICATED, { oldAvatar: ch.avatar, newAvatar: data.path });
+  await c2.getCharacters();
+  charsTick.value++;
+  toast("success", `已复制一份「${ch.name}」`);
+}
+async function setFavorite(items, fav) {
+  for (const it of items) {
+    const ch = charOf(it);
+    if (ch && isFav(ch) !== fav) await toggleFavorite(it);
+  }
+}
+async function deleteCharacters(items) {
+  const c2 = ctx();
+  const chars = items.map(charOf).filter(Boolean);
+  if (!chars.length || !c2.Popup || !c2.POPUP_TYPE) return false;
+  const all = c2.characters ?? [];
+  const label = (x2) => all.filter((y2) => y2.name === x2.name).length > 1 ? `「${x2.name}」(${x2.avatar})` : `「${x2.name}」`;
+  const names = chars.slice(0, 5).map(label).join("、") + (chars.length > 5 ? ` 等 ${chars.length} 张` : "");
+  const popup = new c2.Popup(
+    `<h3>删除 ${escHtml(names)}？</h3><p>角色卡文件会被删掉，不能撤销。想留一份的话，先「导出」。</p>`,
+    c2.POPUP_TYPE.CONFIRM,
+    "",
+    { okButton: "删除", cancelButton: "取消", customInputs: [{ id: "rbt_del_chats", label: chars.length > 1 ? "同时删除它们的聊天记录" : "同时删除它的聊天记录", defaultState: false }] }
+  );
+  if (!await popup.show()) return false;
+  const deleteChats = !!popup.inputResults?.get("rbt_del_chats");
+  const script = await stModule("/script.js");
+  if (typeof script?.deleteCharacter !== "function") {
+    toast("error", "没找到酒馆的删除功能，没有删除");
+    return false;
+  }
+  const ok = await script.deleteCharacter(chars.map((x2) => x2.avatar), { deleteChats });
+  charsTick.value++;
+  return !!ok;
+}
 function installCharactersWatch() {
   const c2 = ctx();
   const bump2 = () => {
@@ -5947,33 +6014,85 @@ function DockGlobal() {
     drop.dragging && /* @__PURE__ */ u$2(DropHint, {})
   ] });
 }
-function Item$1({ icon, text, title, warn, onClick }) {
-  return /* @__PURE__ */ u$2("button", { type: "button", class: `rbt-stat ${warn ? "warn" : ""}`, title: warn ? `${title}
-${warn}` : title, onClick, children: [
-    warn && /* @__PURE__ */ u$2("span", { class: "rbt-stat-dot" }),
-    /* @__PURE__ */ u$2("i", { class: `fa-solid ${icon}` }),
-    /* @__PURE__ */ u$2("span", { class: "rbt-stat-text", children: text })
-  ] });
+function Item$1({ kind, icon, img, text, title, warn, badge, drawer }) {
+  const active = openDrawers.value.includes(drawer);
+  return /* @__PURE__ */ u$2(
+    "button",
+    {
+      type: "button",
+      class: `rbt-stat rbt-stat-${kind} ${warn ? "warn" : ""} ${active ? "active" : ""}`,
+      title: warn ? `${title}
+${warn}` : title,
+      onClick: () => openDrawer(drawer),
+      children: [
+        img ? /* @__PURE__ */ u$2("img", { class: "rbt-stat-img", src: img, alt: "" }) : /* @__PURE__ */ u$2("i", { class: `fa-solid ${icon} fa-fw` }),
+        /* @__PURE__ */ u$2("span", { class: "rbt-stat-text", children: text }),
+        badge && /* @__PURE__ */ u$2("i", { class: `fa-solid ${badge} rbt-stat-badge` }),
+        warn && /* @__PURE__ */ u$2("span", { class: "rbt-stat-dot" })
+      ]
+    }
+  );
+}
+const PERSONA_SOURCE = {
+  chat: { icon: "fa-lock", label: "锁定在这个聊天" },
+  character: { icon: "fa-link", label: "绑定了这张卡" },
+  group: { icon: "fa-link", label: "绑定了这个群聊" },
+  default: { icon: "fa-star", label: "默认人设" }
+};
+function personaStatus() {
+  const c2 = ctx();
+  const avatar = String(loaded.personas?.user_avatar ?? "");
+  const pu = c2.powerUserSettings ?? {};
+  const name = String(c2.name1 ?? pu.personas?.[avatar] ?? "");
+  let source = "";
+  if (avatar && c2.chatMetadata?.persona === avatar) source = "chat";
+  else {
+    const char = currentCharacter();
+    const target = c2.groupId ? { type: "group", id: c2.groupId } : char ? { type: "character", id: char.avatar } : null;
+    const conns = pu.persona_descriptions?.[avatar]?.connections ?? [];
+    if (target && conns.some((x2) => x2.type === target.type && x2.id === target.id)) source = target.type;
+    else if (avatar && pu.default_persona === avatar) source = "default";
+  }
+  return { name, avatar, source };
 }
 function StatusBar() {
   void chatTick.value;
   void statusTick.value;
   void sourcesTick.value;
+  void openDrawers.value;
+  const c2 = ctx();
   const char = currentCharacter();
-  if (!char) return null;
-  const info = cardInfo(char);
+  if (!char && !c2.groupId) return null;
+  const info = char ? cardInfo(char) : null;
   const s2 = settings();
   const preset = currentPresetName();
-  const recPreset = info.preset?.name;
+  const recPreset = info?.preset?.name;
   const presetWarn = recPreset && recPreset !== preset ? `这张卡推荐「${recPreset}」` : void 0;
   const model = modelsApply() ? currentModel() : null;
-  const wantModel = s2.profiles[char.avatar]?.model ?? (recPreset ? s2.presetInfo[recPreset]?.model : void 0);
-  const modelWarn = !apiOnline.value ? "API 没连上" : wantModel && !sameModel(wantModel, model) ? `这张卡推荐 ${modelLabel(wantModel)}` : void 0;
+  const wantModel = char ? s2.profiles[char.avatar]?.model ?? (recPreset ? s2.presetInfo[recPreset]?.model : void 0) : void 0;
   const conn = activeConnection();
-  return /* @__PURE__ */ u$2("div", { class: "rbt-statusbar", "aria-label": "现在用的预设和模型", children: [
-    /* @__PURE__ */ u$2(Item$1, { icon: "fa-sliders", text: preset || "没有预设", title: `预设：${preset || "（没有）"}`, warn: presetWarn, onClick: () => openDrawer("preset") }),
-    /* @__PURE__ */ u$2(Item$1, { icon: "fa-plug", text: conn.model ? `${conn.api} · ${conn.model.split("/").pop()}` : `${conn.api} · 没选模型`, title: `API：${conn.api}
-模型：${conn.model || "（没选）"}`, warn: modelWarn, onClick: () => openDrawer("api") })
+  const modelWarn = !apiOnline.value ? "API 没连上" : wantModel && !sameModel(wantModel, model) ? `这张卡推荐 ${modelLabel(wantModel)}` : void 0;
+  const shortModel = conn.model ? conn.model.split("/").pop() : "没选模型";
+  const w2 = worldStatus();
+  const p2 = personaStatus();
+  const src = PERSONA_SOURCE[p2.source];
+  return /* @__PURE__ */ u$2("div", { class: "rbt-statusbar", "aria-label": "现在用的预设、模型、世界书和人设", children: [
+    /* @__PURE__ */ u$2(Item$1, { kind: "preset", drawer: "preset", icon: "fa-sliders", text: preset || "无", title: `预设：${preset || "（没有）"}`, warn: presetWarn }),
+    /* @__PURE__ */ u$2(Item$1, { kind: "model", drawer: "api", icon: "fa-plug", text: shortModel, title: `API：${conn.api}
+模型：${conn.model || "（没选）"}`, warn: modelWarn }),
+    /* @__PURE__ */ u$2(Item$1, { kind: "world", drawer: "worldinfo", icon: "fa-book-atlas", text: w2.count ? String(w2.count) : "无", title: w2.title, warn: w2.warn }),
+    p2.avatar && /* @__PURE__ */ u$2(
+      Item$1,
+      {
+        kind: "persona",
+        drawer: "persona",
+        img: c2.getThumbnailUrl?.("persona", p2.avatar),
+        text: p2.name || "人设",
+        badge: src?.icon,
+        title: `人设：${p2.name}
+${src ? src.label : "手动选的，没有绑定"}`
+      }
+    )
   ] });
 }
 function worldStatus() {
@@ -5988,7 +6107,7 @@ function worldStatus() {
     const list = [...[scopes.character, scopes.chat, scopes.persona, scopes.global][i2]];
     return list.length ? `${label}：${list.join("、")}` : "";
   }).filter(Boolean).join("\n") : "现在没有加载世界书";
-  return { count: books.length, title: `世界书
+  return { count: books.length, title: `世界书（${books.length} 本）
 ${worldTitle}`, warn: worldWarn };
 }
 const SORT_KEY = "rbt-shell-char-sort";
@@ -6048,10 +6167,50 @@ function lastChatText(t2, now = Date.now()) {
   const d2 = new Date(t2);
   return d2.getFullYear() === new Date(now).getFullYear() ? `${d2.getMonth() + 1} 月 ${d2.getDate()} 日聊过` : `${d2.getFullYear()} 年 ${d2.getMonth() + 1} 月聊过`;
 }
-function Card({ it }) {
+function CardMenu({ it, onClose }) {
+  const ref = A$1(null);
+  h$2(() => {
+    const away = (e2) => {
+      if (!ref.current?.contains(e2.target)) onClose();
+    };
+    const esc = (e2) => {
+      if (e2.key === "Escape") onClose();
+    };
+    document.addEventListener("pointerdown", away, true);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", away, true);
+      document.removeEventListener("keydown", esc);
+    };
+  }, []);
+  const run = (fn) => () => {
+    onClose();
+    void fn();
+  };
+  return /* @__PURE__ */ u$2("div", { class: "rbt-hcard-menu", ref, role: "menu", children: [
+    /* @__PURE__ */ u$2("button", { type: "button", role: "menuitem", onClick: run(() => exportCharacter(it, "png")), children: [
+      /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-image fa-fw" }),
+      " 导出 PNG"
+    ] }),
+    /* @__PURE__ */ u$2("button", { type: "button", role: "menuitem", onClick: run(() => exportCharacter(it, "json")), children: [
+      /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-code fa-fw" }),
+      " 导出 JSON"
+    ] }),
+    /* @__PURE__ */ u$2("button", { type: "button", role: "menuitem", onClick: run(() => duplicateCharacter(it)), children: [
+      /* @__PURE__ */ u$2("i", { class: "fa-solid fa-clone fa-fw" }),
+      " 复制一份"
+    ] }),
+    /* @__PURE__ */ u$2("button", { type: "button", role: "menuitem", class: "danger", onClick: run(() => deleteCharacters([it])), children: [
+      /* @__PURE__ */ u$2("i", { class: "fa-solid fa-trash-can fa-fw" }),
+      " 删除…"
+    ] })
+  ] });
+}
+function Card({ it, managing, selected, onSelect }) {
   const src = fullImage(it);
   const [tint, setTint] = d$1(tints.get(src) ?? "");
   const [broken, setBroken] = d$1(false);
+  const [menu, setMenu] = d$1(false);
   const onLoad = (e2) => {
     if (tints.has(src)) return;
     const t2 = sampleTint(e2.currentTarget);
@@ -6060,35 +6219,85 @@ function Card({ it }) {
       setTint(t2);
     }
   };
-  return /* @__PURE__ */ u$2("article", { class: "rbt-hcard", style: tint ? { "--tint": tint } : void 0, children: [
-    /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-hcard-hit", title: `和「${it.name}」聊天`, onClick: () => {
-      void openCharacter(it);
-    }, children: [
-      !broken ? /* @__PURE__ */ u$2("img", { class: "rbt-hcard-img", src, alt: "", loading: "lazy", decoding: "async", onLoad, onError: () => setBroken(true) }) : /* @__PURE__ */ u$2("img", { class: "rbt-hcard-img", src: it.thumb, alt: "" }),
-      /* @__PURE__ */ u$2("span", { class: "rbt-hcard-shade" }),
-      it.problems.length > 0 ? /* @__PURE__ */ u$2("span", { class: "rbt-hcard-pill warn", title: it.problems.join("、"), children: [
-        /* @__PURE__ */ u$2("i", {}),
-        " ",
-        it.problems.length > 1 ? `${it.problems.length} 项待处理` : it.problems[0]
-      ] }) : it.kind === "group" && /* @__PURE__ */ u$2("span", { class: "rbt-hcard-pill", children: [
-        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-users" }),
-        " 群组"
-      ] }),
-      /* @__PURE__ */ u$2("span", { class: "rbt-hcard-text", children: [
-        /* @__PURE__ */ u$2("span", { class: "rbt-hcard-name", children: it.name }),
-        /* @__PURE__ */ u$2("span", { class: "rbt-hcard-meta", children: it.kind === "group" ? it.note : lastChatText(it.lastChat) }),
-        it.tags.length > 0 && /* @__PURE__ */ u$2("span", { class: "rbt-hcard-meta", children: it.tags.slice(0, 3).map((t2) => t2.name).join(" · ") })
-      ] })
-    ] }),
-    /* @__PURE__ */ u$2("span", { class: "rbt-hcard-acts", children: [
+  const selectable = it.kind === "character";
+  const cls = "rbt-hcard" + (managing ? " managing" : "") + (selected ? " selected" : "") + (managing && !selectable ? " disabled" : "") + (menu ? " menu-open" : "");
+  return /* @__PURE__ */ u$2("article", { class: cls, style: tint ? { "--tint": tint } : void 0, children: [
+    /* @__PURE__ */ u$2(
+      "button",
+      {
+        type: "button",
+        class: "rbt-hcard-hit",
+        title: managing ? selectable ? selected ? "取消选择" : "选择" : "群组不能在这里管理" : `和「${it.name}」聊天`,
+        "aria-pressed": managing ? !!selected : void 0,
+        onClick: () => {
+          if (managing) {
+            if (selectable) onSelect?.(it);
+          } else void openCharacter(it);
+        },
+        children: [
+          !broken ? /* @__PURE__ */ u$2("img", { class: "rbt-hcard-img", src, alt: "", loading: "lazy", decoding: "async", onLoad, onError: () => setBroken(true) }) : /* @__PURE__ */ u$2("img", { class: "rbt-hcard-img", src: it.thumb, alt: "" }),
+          /* @__PURE__ */ u$2("span", { class: "rbt-hcard-shade" }),
+          it.problems.length > 0 ? /* @__PURE__ */ u$2("span", { class: "rbt-hcard-pill warn", title: it.problems.join("、"), children: [
+            /* @__PURE__ */ u$2("i", {}),
+            " ",
+            it.problems.length > 1 ? `${it.problems.length} 项待处理` : it.problems[0]
+          ] }) : it.kind === "group" && /* @__PURE__ */ u$2("span", { class: "rbt-hcard-pill", children: [
+            /* @__PURE__ */ u$2("i", { class: "fa-solid fa-users" }),
+            " 群组"
+          ] }),
+          /* @__PURE__ */ u$2("span", { class: "rbt-hcard-text", children: [
+            /* @__PURE__ */ u$2("span", { class: "rbt-hcard-name", children: it.name }),
+            /* @__PURE__ */ u$2("span", { class: "rbt-hcard-meta", children: it.kind === "group" ? it.note : lastChatText(it.lastChat) }),
+            it.tags.length > 0 && /* @__PURE__ */ u$2("span", { class: "rbt-hcard-meta", children: it.tags.slice(0, 3).map((t2) => t2.name).join(" · ") })
+          ] })
+        ]
+      }
+    ),
+    managing ? selectable && /* @__PURE__ */ u$2("span", { class: "rbt-hcard-check", "aria-hidden": "true", children: selected && /* @__PURE__ */ u$2("i", { class: "fa-solid fa-check" }) }) : /* @__PURE__ */ u$2("span", { class: "rbt-hcard-acts", children: [
       it.kind === "character" && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-hcard-act" + (it.fav ? " on" : ""), title: it.fav ? "取消收藏" : "收藏", onClick: () => {
         void toggleFavorite(it);
       }, children: /* @__PURE__ */ u$2("i", { class: (it.fav ? "fa-solid" : "fa-regular") + " fa-star" }) }),
       /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-hcard-act", title: "编辑角色卡", onClick: () => {
         void editCharacter(it);
-      }, children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-pen" }) })
+      }, children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-pen" }) }),
+      it.kind === "character" && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-hcard-act", title: "更多：导出、复制、删除", "aria-haspopup": "menu", "aria-expanded": menu, onClick: () => setMenu(!menu), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-ellipsis" }) })
     ] }),
-    it.fav && /* @__PURE__ */ u$2("span", { class: "rbt-hcard-favmark", title: "已收藏", children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-star" }) })
+    menu && !managing && /* @__PURE__ */ u$2(CardMenu, { it, onClose: () => setMenu(false) }),
+    it.fav && !managing && /* @__PURE__ */ u$2("span", { class: "rbt-hcard-favmark", title: "已收藏", children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-star" }) })
+  ] });
+}
+function ManageBar({ picked, total, onAll, onDone }) {
+  const n2 = picked.length;
+  const allFav = n2 > 0 && picked.every((x2) => x2.fav);
+  const exportAll = async () => {
+    for (const it of picked) await exportCharacter(it, "png");
+  };
+  return /* @__PURE__ */ u$2("div", { class: "rbt-manage-bar", role: "toolbar", "aria-label": "批量管理", children: [
+    /* @__PURE__ */ u$2("span", { class: "rbt-manage-count", children: n2 ? `已选 ${n2} 张` : "点卡片来选择" }),
+    /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-home-btn", onClick: onAll, children: n2 === total && total > 0 ? "全不选" : "全选" }),
+    /* @__PURE__ */ u$2("span", { class: "rbt-manage-gap" }),
+    /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-home-btn", disabled: !n2, onClick: () => {
+      void setFavorite(picked, !allFav);
+    }, children: [
+      /* @__PURE__ */ u$2("i", { class: (allFav ? "fa-regular" : "fa-solid") + " fa-star" }),
+      " ",
+      allFav ? "取消收藏" : "收藏"
+    ] }),
+    /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-home-btn", disabled: !n2, onClick: () => {
+      void exportAll();
+    }, children: [
+      /* @__PURE__ */ u$2("i", { class: "fa-solid fa-download" }),
+      " 导出"
+    ] }),
+    /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-home-btn danger", disabled: !n2, onClick: () => {
+      void deleteCharacters(picked).then((ok) => {
+        if (ok) onDone();
+      });
+    }, children: [
+      /* @__PURE__ */ u$2("i", { class: "fa-solid fa-trash-can" }),
+      " 删除…"
+    ] }),
+    /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-home-btn primary", onClick: onDone, children: "完成" })
   ] });
 }
 function HomeGallery() {
@@ -6109,6 +6318,8 @@ function HomeGallery() {
     } catch {
     }
   };
+  const [managing, setManaging] = d$1(false);
+  const [picked, setPicked] = d$1(/* @__PURE__ */ new Set());
   const all = listCharacters();
   const tags = T(() => allTags(all), [all.length, charsTick.value]);
   const query = q2.trim().toLowerCase();
@@ -6124,6 +6335,19 @@ function HomeGallery() {
   const nProblem = all.filter((x2) => x2.problems.length).length;
   const nGroup = all.filter((x2) => x2.kind === "group").length;
   const tagValue = filter.startsWith("tag:") ? filter : "";
+  const selectable = shown.filter((x2) => x2.kind === "character");
+  const pickedItems = selectable.filter((x2) => picked.has(x2.key));
+  const toggle = (it) => {
+    const next = new Set(picked);
+    if (next.has(it.key)) next.delete(it.key);
+    else next.add(it.key);
+    setPicked(next);
+  };
+  const toggleAll = () => setPicked(pickedItems.length === selectable.length ? /* @__PURE__ */ new Set() : new Set(selectable.map((x2) => x2.key)));
+  const stopManaging = () => {
+    setManaging(false);
+    setPicked(/* @__PURE__ */ new Set());
+  };
   const Pill = ({ v: v2, label }) => /* @__PURE__ */ u$2("button", { type: "button", class: filter === v2 ? "active" : "", onClick: () => setFilter(v2), children: label });
   return /* @__PURE__ */ u$2("main", { class: "rbt-home-gallery", "aria-label": "角色", children: [
     /* @__PURE__ */ u$2("header", { class: "rbt-home-head", children: [
@@ -6173,10 +6397,17 @@ function HomeGallery() {
           ] }, tag.id))
         ] })
       ] }),
-      /* @__PURE__ */ u$2("select", { class: "rbt-home-select", value: sort, title: "排序", onChange: (e2) => setSort(e2.currentTarget.value), children: [
-        /* @__PURE__ */ u$2("option", { value: "recent", children: "最近聊过" }),
-        /* @__PURE__ */ u$2("option", { value: "name", children: "按名称" }),
-        /* @__PURE__ */ u$2("option", { value: "added", children: "最近添加" })
+      /* @__PURE__ */ u$2("div", { class: "rbt-home-tools", children: [
+        /* @__PURE__ */ u$2("select", { class: "rbt-home-select", value: sort, title: "排序", onChange: (e2) => setSort(e2.currentTarget.value), children: [
+          /* @__PURE__ */ u$2("option", { value: "recent", children: "最近聊过" }),
+          /* @__PURE__ */ u$2("option", { value: "name", children: "按名称" }),
+          /* @__PURE__ */ u$2("option", { value: "added", children: "最近添加" })
+        ] }),
+        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-home-select rbt-home-manage" + (managing ? " active" : ""), title: "多选：批量收藏、导出、删除", onClick: () => managing ? stopManaging() : setManaging(true), children: [
+          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-list-check" }),
+          " ",
+          managing ? "完成" : "管理"
+        ] })
       ] })
     ] }),
     filter === "problem" && /* @__PURE__ */ u$2("div", { class: "rbt-home-note", children: [
@@ -6184,8 +6415,9 @@ function HomeGallery() {
       /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-linkbtn", onClick: () => openGlobal("worlds"), children: "全局工具箱 › 世界书" }),
       "里一次全部导入。"
     ] }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-home-grid", children: shown.map((it) => /* @__PURE__ */ u$2(Card, { it }, it.key)) }),
-    !shown.length && /* @__PURE__ */ u$2("div", { class: "rbt-home-empty", children: query || filter !== "all" ? "没有符合条件的角色。" : "还没有角色。点「新建角色」或「导入」开始。" })
+    /* @__PURE__ */ u$2("div", { class: "rbt-home-grid", children: shown.map((it) => /* @__PURE__ */ u$2(Card, { it, managing, selected: picked.has(it.key), onSelect: toggle }, it.key)) }),
+    !shown.length && /* @__PURE__ */ u$2("div", { class: "rbt-home-empty", children: query || filter !== "all" ? "没有符合条件的角色。" : "还没有角色。点「新建角色」或「导入」开始。" }),
+    managing && /* @__PURE__ */ u$2(ManageBar, { picked: pickedItems, total: selectable.length, onAll: toggleAll, onDone: stopManaging })
   ] });
 }
 const shellOn = y$1(false);
@@ -6528,11 +6760,8 @@ function NavBar() {
         /* @__PURE__ */ u$2("span", { children: "新聊天" })
       ] })
     ] }) }),
-    char && /* @__PURE__ */ u$2(StatusBar, {}),
-    /* @__PURE__ */ u$2("div", { class: "rbt-nav-actions", children: [
-      !home && /* @__PURE__ */ u$2(WorldButton, {}),
-      !home && /* @__PURE__ */ u$2(ToolboxButton, {})
-    ] })
+    !home && /* @__PURE__ */ u$2(StatusBar, {}),
+    /* @__PURE__ */ u$2("div", { class: "rbt-nav-actions", children: !home && /* @__PURE__ */ u$2(ToolboxButton, {}) })
   ] });
 }
 function Shell() {
@@ -6563,6 +6792,11 @@ function initShellState() {
   };
   for (const ev of [c2.eventTypes.CHAT_CHANGED, c2.eventTypes.CHARACTER_RENAMED, c2.eventTypes.CHAT_RENAMED]) {
     if (ev) c2.eventSource.on(ev, bump2);
+  }
+  for (const ev of [c2.eventTypes.PERSONA_CHANGED, c2.eventTypes.PERSONA_UPDATED, c2.eventTypes.PERSONA_RENAMED, c2.eventTypes.PERSONA_DELETED, c2.eventTypes.SETTINGS_UPDATED]) {
+    if (ev) c2.eventSource.on(ev, () => {
+      chatTick.value++;
+    });
   }
   readOnline();
   loadVersion();

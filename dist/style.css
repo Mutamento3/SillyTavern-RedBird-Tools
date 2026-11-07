@@ -1894,6 +1894,11 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
   color: var(--rbd-text2, #9ca1aa) !important; font-size: 13px !important; cursor: pointer;
 }
 .rbt-home-select.active { color: var(--SmartThemeBodyColor) !important; background: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1) 12%, transparent)) !important; }
+/* 排序和「管理」：管的是下面这一列卡片，放在一起 */
+.rbt-home-tools { display: flex; align-items: center; gap: var(--rbd-s-2); flex: none; }
+.rbt-home-manage { display: inline-flex; align-items: center; gap: 6px; font: inherit; }
+.rbt-home-manage i { font-size: 12px; }
+.rbt-home-manage.active { color: var(--rbd-accent, #0a84ff) !important; background: var(--rbd-accent-soft, rgba(10, 132, 255, 0.18)) !important; }
 .rbt-home-note { margin: -8px 0 20px; font-size: 13px; color: var(--rbd-text2, #9ca1aa); line-height: 1.6; }
 .rbt-linkbtn { padding: 0 2px; border: 0; background: none; color: var(--rbd-accent, #e2725b); font: inherit; cursor: pointer; }
 .rbt-home-empty { padding: 80px 0; text-align: center; color: var(--rbd-text3, #6b707a); }
@@ -1985,6 +1990,52 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
 }
 .rbt-hcard-act:hover { background: rgba(20, 20, 24, 0.72); }
 .rbt-hcard-act.on { color: #ffd45e; }
+.rbt-hcard.menu-open .rbt-hcard-acts { opacity: 1; }
+/* 「⋯」菜单：贴在按钮下面，毛玻璃，和右上角按钮同一个语言 */
+.rbt-hcard-menu {
+  position: absolute; top: 48px; right: 12px; z-index: 3;
+  display: flex; flex-direction: column; min-width: 140px; padding: var(--rbd-s-1);
+  border-radius: var(--rbd-r-m);
+  background: rgba(20, 20, 24, 0.82);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3);
+}
+.rbt-hcard-menu button {
+  display: flex; align-items: center; gap: var(--rbd-s-2); height: 32px; padding: 0 var(--rbd-s-2);
+  border: 0; border-radius: var(--rbd-r-s); background: none; color: #fff; font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+.rbt-hcard-menu button:hover { background: rgba(255, 255, 255, 0.12); }
+.rbt-hcard-menu button i { font-size: 12px; opacity: 0.8; }
+.rbt-hcard-menu button.danger { color: #ff8a80; }
+/* 管理模式：卡片不再浮起，点一下是选择；左上角一个圆形勾选 */
+.rbt-hcard.managing:hover { transform: none; }
+.rbt-hcard.managing:hover .rbt-hcard-img { transform: none; }
+.rbt-hcard.managing .rbt-hcard-pill { left: 48px; max-width: calc(100% - 60px); }
+.rbt-hcard.selected { box-shadow: 0 0 0 3px var(--rbd-accent, #0a84ff); }
+.rbt-hcard.managing:not(.selected) .rbt-hcard-img { filter: brightness(0.82); }
+.rbt-hcard.disabled { opacity: 0.4; }
+.rbt-hcard.disabled .rbt-hcard-hit { cursor: default; }
+.rbt-hcard-check {
+  position: absolute; top: 12px; left: 12px; z-index: 2; pointer-events: none;
+  display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  background: rgba(20, 20, 24, 0.35);
+  color: #fff; font-size: 12px;
+}
+.rbt-hcard.selected .rbt-hcard-check { border-color: var(--rbd-accent, #0a84ff); background: var(--rbd-accent, #0a84ff); }
+/* 管理模式底部的操作条：贴在画廊底部 */
+.rbt-manage-bar {
+  position: sticky; bottom: var(--rbd-s-4); z-index: 5;
+  display: flex; align-items: center; gap: var(--rbd-s-2); flex-wrap: wrap;
+  margin-top: var(--rbd-s-5); padding: var(--rbd-s-2) var(--rbd-s-2) var(--rbd-s-2) var(--rbd-s-4);
+  border-radius: var(--rbd-r-l);
+  background: var(--rbd-bg1, #1e1e21);
+  box-shadow: 0 0 0 1px var(--rbd-hairline, rgba(255, 255, 255, 0.07)), 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+.rbt-manage-count { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.rbt-manage-gap { flex: 1; }
+.rbt-home-btn.active { background: var(--rbd-accent-soft, rgba(10, 132, 255, 0.18)); color: var(--rbd-accent, #0a84ff); }
+.rbt-home-btn.danger { color: #ff8a80; }
+.rbt-home-btn:disabled { opacity: 0.4; cursor: default; }
 
 /* ---- 左栏：标题、底部的酒馆链接 ---- */
 .rbt-left-title { font-size: 12px; font-weight: 600; color: var(--rbd-text2, #9ca1aa); padding: 2px 2px 0; }
@@ -2000,25 +2051,37 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
 #rbt_settings .menu_button,
 body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
 
-/* ===== 聊天里的状态栏（Mac 菜单栏右上角那种）：预设、模型 ===== */
-.rbt-statusbar { display: flex; align-items: center; gap: 2px; flex: 0 1 auto; min-width: 0; margin-right: 6px; }
+/* ===== 顶栏右边的状态栏（Mac 菜单栏右上角那种）：预设 · 模型 · 世界书 · 人设 =====
+   每一项一样高、一样的内边距；字只露一点点（够看出是不是空的、是不是那个），完整的在悬停提示里。
+   和推荐的不一样时右上角一个琥珀色小点。 */
+.rbt-statusbar { display: flex; align-items: center; gap: var(--rbd-s-1); flex: 0 1 auto; min-width: 0; }
 .rbt-stat {
-  position: relative; display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 190px;
-  padding: var(--rbd-s-1) var(--rbd-s-3); border: 0; border-radius: var(--rbd-r-s); background: transparent;
-  color: var(--rbd-text2, #9ca1aa); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
+  position: relative; display: inline-flex; align-items: center; gap: 6px; flex: 0 1 auto; min-width: 0;
+  height: 28px; padding: 0 var(--rbd-s-2); border: 0; border-radius: var(--rbd-r-s); background: transparent;
+  color: var(--rbd-text2, #9ca1aa); font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap;
 }
 .rbt-stat:hover { background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 6%, transparent)); color: var(--SmartThemeBodyColor); }
-.rbt-stat i { flex: none; font-size: 11px; opacity: 0.8; }
-.rbt-stat-text { overflow: hidden; text-overflow: ellipsis; }
+.rbt-stat.active { background: var(--rbd-accent-soft, rgba(10, 132, 255, 0.18)); color: var(--rbd-accent, #0a84ff); }
 .rbt-stat.warn { color: var(--SmartThemeBodyColor); }
-.rbt-stat-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: #e0a040; }
-/* 窄的时候：只留预设（最常需要确认的），模型名藏到提示里 */
+.rbt-stat > i:first-child { flex: none; width: 14px; font-size: 12px; text-align: center; }
+.rbt-stat-img { flex: none; width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
+.rbt-stat-text { min-width: 0; max-width: 6em; overflow: hidden; text-overflow: ellipsis; }
+.rbt-stat-badge { flex: none; font-size: 9px; opacity: 0.7; }
+.rbt-stat-dot { position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: #e0a040; }
+/* 顶栏里所有按钮一个高度、一样的内边距和字号（编辑卡片、存档、新聊天、聊天工具箱、状态栏） */
+.rbt-nav :is(.rbt-gbtn.compact, .rbt-nav-save) { height: 28px; padding: 0 var(--rbd-s-2); font-size: 12.5px; }
+.rbt-nav .rbt-gbtn.compact i { font-size: 12px; }
+.rbt-nav-actions { gap: var(--rbd-s-1); }
+/* 窄的时候按重要程度收：先藏模型名，再藏预设名和人设名，最后只剩图标（世界书的数字很短，一直留着） */
+@container (max-width: 900px) {
+  .rbt-stat-model .rbt-stat-text { display: none; }
+}
 @container (max-width: 760px) {
-  .rbt-stat { max-width: 130px; }
-  .rbt-statusbar .rbt-stat:nth-child(2) .rbt-stat-text { display: none; }
+  .rbt-stat-preset .rbt-stat-text,
+  .rbt-stat-persona .rbt-stat-text { display: none; }
 }
 @container (max-width: 560px) {
-  .rbt-statusbar .rbt-stat .rbt-stat-text { display: none; }
+  .rbt-statusbar .rbt-stat-text { display: none; }
 }
 
 /* =================================================== 手机 ===

@@ -2,14 +2,18 @@
  * 首页：角色画廊。图片是视觉中心——竖版大卡片，立绘铺满，底部用图片自己的颜色渐变 + 模糊托住名字。
  * 左栏只放最近的聊天；挑角色、新建 / 导入都在这里。
  */
-import { useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { openGlobal } from '../ui/views';
 import {
   allTags,
   charsTick,
   createCharacter,
   createGroup,
+  deleteCharacters,
+  duplicateCharacter,
   editCharacter,
+  exportCharacter,
+  setFavorite,
   importCharacterFile,
   importCharacterUrl,
   listCharacters,
@@ -81,18 +85,47 @@ function lastChatText(t: number, now = Date.now()): string {
   return d.getFullYear() === new Date(now).getFullYear() ? `${d.getMonth() + 1} 月 ${d.getDate()} 日聊过` : `${d.getFullYear()} 年 ${d.getMonth() + 1} 月聊过`;
 }
 
-function Card({ it }: { it: CharItem }) {
+/** 「⋯」菜单：导出、复制、删除（收藏和编辑已经是单独的按钮） */
+function CardMenu({ it, onClose }: { it: CharItem; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const away = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node)) onClose(); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('pointerdown', away, true);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc); };
+  }, []);
+  const run = (fn: () => unknown) => () => { onClose(); void fn(); };
+  return (
+    <div class="rbt-hcard-menu" ref={ref} role="menu">
+      <button type="button" role="menuitem" onClick={run(() => exportCharacter(it, 'png'))}><i class="fa-solid fa-file-image fa-fw" /> 导出 PNG</button>
+      <button type="button" role="menuitem" onClick={run(() => exportCharacter(it, 'json'))}><i class="fa-solid fa-file-code fa-fw" /> 导出 JSON</button>
+      <button type="button" role="menuitem" onClick={run(() => duplicateCharacter(it))}><i class="fa-solid fa-clone fa-fw" /> 复制一份</button>
+      <button type="button" role="menuitem" class="danger" onClick={run(() => deleteCharacters([it]))}><i class="fa-solid fa-trash-can fa-fw" /> 删除…</button>
+    </div>
+  );
+}
+
+function Card({ it, managing, selected, onSelect }: { it: CharItem; managing?: boolean; selected?: boolean; onSelect?: (it: CharItem) => void }) {
   const src = fullImage(it);
   const [tint, setTint] = useState(tints.get(src) ?? '');
   const [broken, setBroken] = useState(false);
+  const [menu, setMenu] = useState(false);
   const onLoad = (e: Event) => {
     if (tints.has(src)) return;
     const t = sampleTint(e.currentTarget as HTMLImageElement);
     if (t) { tints.set(src, t); setTint(t); }
   };
+  const selectable = it.kind === 'character';
+  const cls = 'rbt-hcard' + (managing ? ' managing' : '') + (selected ? ' selected' : '') + (managing && !selectable ? ' disabled' : '') + (menu ? ' menu-open' : '');
   return (
-    <article class="rbt-hcard" style={tint ? { '--tint': tint } : undefined}>
-      <button type="button" class="rbt-hcard-hit" title={`和「${it.name}」聊天`} onClick={() => { void openCharacter(it); }}>
+    <article class={cls} style={tint ? { '--tint': tint } : undefined}>
+      <button
+        type="button" class="rbt-hcard-hit"
+        title={managing ? (selectable ? (selected ? '取消选择' : '选择') : '群组不能在这里管理') : `和「${it.name}」聊天`}
+        aria-pressed={managing ? !!selected : undefined}
+        onClick={() => { if (managing) { if (selectable) onSelect?.(it); } else void openCharacter(it); }}
+      >
         {!broken
           ? <img class="rbt-hcard-img" src={src} alt="" loading="lazy" decoding="async" onLoad={onLoad} onError={() => setBroken(true)} />
           : <img class="rbt-hcard-img" src={it.thumb} alt="" />}
@@ -106,18 +139,48 @@ function Card({ it }: { it: CharItem }) {
           {it.tags.length > 0 && <span class="rbt-hcard-meta">{it.tags.slice(0, 3).map((t) => t.name).join(' · ')}</span>}
         </span>
       </button>
-      <span class="rbt-hcard-acts">
-        {it.kind === 'character' && (
-          <button type="button" class={'rbt-hcard-act' + (it.fav ? ' on' : '')} title={it.fav ? '取消收藏' : '收藏'} onClick={() => { void toggleFavorite(it); }}>
-            <i class={(it.fav ? 'fa-solid' : 'fa-regular') + ' fa-star'} />
+      {managing ? (
+        selectable && <span class="rbt-hcard-check" aria-hidden="true">{selected && <i class="fa-solid fa-check" />}</span>
+      ) : (
+        <span class="rbt-hcard-acts">
+          {it.kind === 'character' && (
+            <button type="button" class={'rbt-hcard-act' + (it.fav ? ' on' : '')} title={it.fav ? '取消收藏' : '收藏'} onClick={() => { void toggleFavorite(it); }}>
+              <i class={(it.fav ? 'fa-solid' : 'fa-regular') + ' fa-star'} />
+            </button>
+          )}
+          <button type="button" class="rbt-hcard-act" title="编辑角色卡" onClick={() => { void editCharacter(it); }}>
+            <i class="fa-solid fa-pen" />
           </button>
-        )}
-        <button type="button" class="rbt-hcard-act" title="编辑角色卡" onClick={() => { void editCharacter(it); }}>
-          <i class="fa-solid fa-pen" />
-        </button>
-      </span>
-      {it.fav && <span class="rbt-hcard-favmark" title="已收藏"><i class="fa-solid fa-star" /></span>}
+          {it.kind === 'character' && (
+            <button type="button" class="rbt-hcard-act" title="更多：导出、复制、删除" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(!menu)}>
+              <i class="fa-solid fa-ellipsis" />
+            </button>
+          )}
+        </span>
+      )}
+      {menu && !managing && <CardMenu it={it} onClose={() => setMenu(false)} />}
+      {it.fav && !managing && <span class="rbt-hcard-favmark" title="已收藏"><i class="fa-solid fa-star" /></span>}
     </article>
+  );
+}
+
+/** 管理模式底部的操作条 */
+function ManageBar({ picked, total, onAll, onDone }: { picked: CharItem[]; total: number; onAll: () => void; onDone: () => void }) {
+  const n = picked.length;
+  const allFav = n > 0 && picked.every((x) => x.fav);
+  const exportAll = async () => { for (const it of picked) await exportCharacter(it, 'png'); };
+  return (
+    <div class="rbt-manage-bar" role="toolbar" aria-label="批量管理">
+      <span class="rbt-manage-count">{n ? `已选 ${n} 张` : '点卡片来选择'}</span>
+      <button type="button" class="rbt-home-btn" onClick={onAll}>{n === total && total > 0 ? '全不选' : '全选'}</button>
+      <span class="rbt-manage-gap" />
+      <button type="button" class="rbt-home-btn" disabled={!n} onClick={() => { void setFavorite(picked, !allFav); }}>
+        <i class={(allFav ? 'fa-regular' : 'fa-solid') + ' fa-star'} /> {allFav ? '取消收藏' : '收藏'}
+      </button>
+      <button type="button" class="rbt-home-btn" disabled={!n} onClick={() => { void exportAll(); }}><i class="fa-solid fa-download" /> 导出</button>
+      <button type="button" class="rbt-home-btn danger" disabled={!n} onClick={() => { void deleteCharacters(picked).then((ok) => { if (ok) onDone(); }); }}><i class="fa-solid fa-trash-can" /> 删除…</button>
+      <button type="button" class="rbt-home-btn primary" onClick={onDone}>完成</button>
+    </div>
   );
 }
 
@@ -131,6 +194,8 @@ export function HomeGallery() {
     try { return (localStorage.getItem(SORT_KEY) as CharSort) || 'recent'; } catch { return 'recent'; }
   });
   const setSort = (v: CharSort) => { setSortState(v); try { localStorage.setItem(SORT_KEY, v); } catch { /* ignore */ } };
+  const [managing, setManaging] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const all = listCharacters();
   const tags = useMemo(() => allTags(all), [all.length, charsTick.value]);
   const query = q.trim().toLowerCase();
@@ -146,6 +211,16 @@ export function HomeGallery() {
   const nProblem = all.filter((x) => x.problems.length).length;
   const nGroup = all.filter((x) => x.kind === 'group').length;
   const tagValue = filter.startsWith('tag:') ? filter : '';
+  // 管理模式：只能选角色（群组不在这里管）；选中的里面被删掉 / 筛掉的不算
+  const selectable = shown.filter((x) => x.kind === 'character');
+  const pickedItems = selectable.filter((x) => picked.has(x.key));
+  const toggle = (it: CharItem) => {
+    const next = new Set(picked);
+    if (next.has(it.key)) next.delete(it.key); else next.add(it.key);
+    setPicked(next);
+  };
+  const toggleAll = () => setPicked(pickedItems.length === selectable.length ? new Set() : new Set(selectable.map((x) => x.key)));
+  const stopManaging = () => { setManaging(false); setPicked(new Set()); };
 
   const Pill = ({ v, label }: { v: Filter; label: string }) => (
     <button type="button" class={filter === v ? 'active' : ''} onClick={() => setFilter(v)}>{label}</button>
@@ -179,11 +254,16 @@ export function HomeGallery() {
             </select>
           )}
         </div>
-        <select class="rbt-home-select" value={sort} title="排序" onChange={(e) => setSort((e.currentTarget as HTMLSelectElement).value as CharSort)}>
-          <option value="recent">最近聊过</option>
-          <option value="name">按名称</option>
-          <option value="added">最近添加</option>
-        </select>
+        <div class="rbt-home-tools">
+          <select class="rbt-home-select" value={sort} title="排序" onChange={(e) => setSort((e.currentTarget as HTMLSelectElement).value as CharSort)}>
+            <option value="recent">最近聊过</option>
+            <option value="name">按名称</option>
+            <option value="added">最近添加</option>
+          </select>
+          <button type="button" class={'rbt-home-select rbt-home-manage' + (managing ? ' active' : '')} title="多选：批量收藏、导出、删除" onClick={() => (managing ? stopManaging() : setManaging(true))}>
+            <i class="fa-solid fa-list-check" /> {managing ? '完成' : '管理'}
+          </button>
+        </div>
       </div>
       {filter === 'problem' && (
         <div class="rbt-home-note">
@@ -193,9 +273,10 @@ export function HomeGallery() {
         </div>
       )}
       <div class="rbt-home-grid">
-        {shown.map((it) => <Card key={it.key} it={it} />)}
+        {shown.map((it) => <Card key={it.key} it={it} managing={managing} selected={picked.has(it.key)} onSelect={toggle} />)}
       </div>
       {!shown.length && <div class="rbt-home-empty">{query || filter !== 'all' ? '没有符合条件的角色。' : '还没有角色。点「新建角色」或「导入」开始。'}</div>}
+      {managing && <ManageBar picked={pickedItems} total={selectable.length} onAll={toggleAll} onDone={stopManaging} />}
     </main>
   );
 }
