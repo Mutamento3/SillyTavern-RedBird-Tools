@@ -899,8 +899,10 @@ body.rbt-resizing #sheld { transition: none !important; }
 /* 左栏最上面：「导入文件」单独一行，主题色，比「全局工具箱」醒目 */
 .rbt-gtool-row { display: flex; gap: 6px; }
 .rbt-gtool-row .rbt-gtool { flex: 1; min-width: 0; }
-.rbt-gtool.rbt-gtool-import { padding-top: 10px; padding-bottom: 10px; background: var(--rbd-accent-soft, color-mix(in srgb, var(--accent) 14%, transparent)); color: var(--rbd-accent, var(--accent)); }
-.rbt-gtool.rbt-gtool-import:hover { background: color-mix(in srgb, var(--rbd-accent, var(--accent)) 22%, transparent); }
+/* 主按钮：实心主题色，整个界面只有它一个 */
+.rbt-gtool.rbt-gtool-import { background: var(--rbd-accent, var(--accent)); box-shadow: none; color: #fff; }
+.rbt-gtool.rbt-gtool-import > i { opacity: 1; }
+.rbt-gtool.rbt-gtool-import:hover { background: color-mix(in srgb, var(--rbd-accent, var(--accent)) 88%, #fff); }
 
 /* 文件拖进三栏界面任何地方时：整个窗口的提示（不挡鼠标，松手由窗口接） */
 .rbt-drop-hint.full {

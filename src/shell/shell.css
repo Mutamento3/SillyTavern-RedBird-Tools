@@ -236,7 +236,8 @@ body.rbt-shell.rbt-shell-lcollapsed .rbt-left { display: none; }
 .rbt-gbtn.compact { flex-direction: row; gap: 6px; padding: var(--rbd-s-1) var(--rbd-s-3); font-size: 13px; }
 .rbt-gbtn.compact i { font-size: 13px; }
 
-.rbt-left-actions { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 8px; flex-shrink: 0; }
+/* 工具区和聊天列表之间一条细线分组 */
+.rbt-left-actions { display: flex; flex-direction: column; gap: 10px; margin: 0 12px; padding: 12px 0 8px; border-top: 1px solid var(--rbd-hairline, color-mix(in srgb, var(--rbd-text1) 7%, transparent)); flex-shrink: 0; }
 .rbt-newchat { display: flex; gap: 4px; }
 .rbt-newchat-main, .rbt-newchat-alt {
   border: 0;
@@ -292,13 +293,13 @@ body.rbt-shell.rbt-shell-lcollapsed .rbt-left { display: none; }
   text-align: left;
   cursor: pointer;
 }
-.rbt-recent-row:hover { background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 5%, transparent)); }
-.rbt-recent-row.current { background: var(--rbd-accent-soft, rgba(226, 114, 91, 0.14)); }
+.rbt-recent-row:hover { background: color-mix(in srgb, var(--rbd-text1, #ececf1) 5%, transparent); }
+/* 正在看的这条：中性灰（用文字色调出来，深浅主题都看得见），比悬停深一档，不用主题色（主题色留给按钮） */
+.rbt-recent-row.current { background: color-mix(in srgb, var(--rbd-text1, #ececf1) 8%, transparent); }
 .rbt-recent-avatar { width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; object-fit: cover; }
 .rbt-recent-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .rbt-recent-line1 { display: flex; align-items: baseline; gap: 6px; }
 .rbt-recent-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-.rbt-recent-row.current .rbt-recent-name { color: var(--rbd-accent, #e2725b); }
 .rbt-recent-time { flex-shrink: 0; font-size: 11px; color: var(--rbd-text3, #6b707a); }
 .rbt-recent-preview {
   overflow: hidden;
@@ -397,25 +398,20 @@ body.rbt-shell.rbt-shell-ready .rbt-nav { transition: left 0.18s ease, width 0.1
 /* ============================================ 左栏：聊天 / 角色 === */
 .rbt-left-actions .rbt-newchat-main { width: 100%; }
 
-.rbt-segctl {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px;
-  padding: 2px;
-  border-radius: var(--rbd-r-s);
-  background: var(--rbd-bg3, rgba(0, 0, 0, 0.25));
-}
+/* 「最近聊过 / 最近导入」：像小标题一样的文字切换，不做成一条按钮 */
+.rbt-segctl { display: flex; align-items: baseline; gap: var(--rbd-s-4); padding: 0 var(--rbd-s-1); }
 .rbt-segctl button {
-  padding: 5px 0;
+  padding: 2px 0;
   border: 0;
-  border-radius: calc(var(--rbd-r-s) - 2px);
   background: transparent;
-  color: var(--rbd-text2, #9ca1aa);
+  color: var(--rbd-text3, #6b707a);
   font: inherit;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
 }
-.rbt-segctl button:hover { color: var(--SmartThemeBodyColor); }
-.rbt-segctl button.active { background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 8%, transparent)); color: var(--SmartThemeBodyColor); font-weight: 600; }
+.rbt-segctl button:hover { color: var(--rbd-text2, #9ca1aa); }
+.rbt-segctl button.active { color: var(--SmartThemeBodyColor); }
 
 .rbt-char-tools { display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 0 12px 6px; flex-shrink: 0; }
 .rbt-mini-select {
@@ -741,23 +737,31 @@ body.rbt-shell #qr--bar #qr--popoutTrigger {
 .rbt-sheet-tabs button.active { background: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1) 8%, transparent)); color: var(--SmartThemeBodyColor); font-weight: 600; }
 
 /* 「全局工具箱」：工具箱自己的入口，单独一行，和下面酒馆自带的入口分开 */
-.rbt-gtool-row { padding: 0 12px 8px; flex-shrink: 0; }
+.rbt-gtool-row { padding: 0 12px 10px; flex-shrink: 0; }
+/* 「导入文件」「全局工具箱」：并排两个真正的按钮（填色、居中、等高），
+   和下面的文字切换、搜索框一眼分开 */
 .rbt-gtool {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 7px;
   width: 100%;
-  padding: 8px 12px;
+  height: 36px;
+  padding: 0 10px;
   border: 0;
   border-radius: var(--rbd-r-s);
-  background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 6%, transparent));
+  background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 8%, transparent));
+  box-shadow: inset 0 0 0 1px var(--rbd-line, color-mix(in srgb, var(--rbd-text1) 12%, transparent));
   color: var(--SmartThemeBodyColor);
   font: inherit;
+  font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
 }
-.rbt-gtool:hover { background: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1) 10%, transparent)); }
-.rbt-gtool.active { background: var(--rbd-accent-soft, rgba(226, 114, 91, 0.14)); color: var(--rbd-accent, #e2725b); }
+.rbt-gtool > i { font-size: 13px; opacity: 0.85; }
+.rbt-gtool:hover { background: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1) 12%, transparent)); }
+.rbt-gtool.active { background: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1) 12%, transparent)); box-shadow: inset 0 0 0 1px var(--rbd-text3, #6b707a); }
 
 /* =================================================== 首页：角色画廊 ===
    图片是视觉中心：竖版大卡片、立绘铺满；底部用图片自己的颜色渐变 + 模糊托住名字。
@@ -790,6 +794,11 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
   color: var(--SmartThemeBodyColor); font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap;
 }
 .rbt-home-btn:hover { background: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1) 12%, transparent)); }
+/* 「导入文件」：只在手机上出现（电脑上用左栏那个），和左栏一样是主题色浅底 */
+.rbt-home-btn.accent { background: var(--rbd-accent, #0a84ff); color: #fff; }
+.rbt-home-btn.accent i { opacity: 1; }
+.rbt-home-btn.accent:hover { background: color-mix(in srgb, var(--rbd-accent, #0a84ff) 88%, #fff); }
+.rbt-home-import { display: none !important; }
 /* 只用在管理条的「完成」：首页本身不放实心主按钮 */
 .rbt-home-btn.primary { background: var(--rbd-accent, #e2725b); color: #fff; }
 .rbt-home-btn.primary:hover { filter: brightness(1.08); }
@@ -1058,7 +1067,7 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
   /* 手指比鼠标粗：按钮和行都加高 */
   .rbt-gbtn { padding: 10px 2px 8px; font-size: 12px; }
   .rbt-gbtn i { font-size: 17px; }
-  .rbt-gtool { padding: 11px 12px; }
+  .rbt-gtool { height: 42px; font-size: 14px; }
   .rbt-recent-row { padding: var(--rbd-s-3) var(--rbd-s-2); }
   .rbt-recent-avatar { width: 38px; height: 38px; }
   .rbt-search input { height: 38px; font-size: 16px; } /* 16px：iPhone 点进输入框时不会自动放大页面 */
@@ -1142,6 +1151,7 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
   .rbt-home-head h1 { font-size: 22px; }
   .rbt-home-search { order: 3; width: 100%; }
   .rbt-home-actions { order: 2; margin-left: auto; flex-wrap: nowrap; }
+  .rbt-home-import { display: inline-flex !important; }
   .rbt-home-actions::-webkit-scrollbar { display: none; }
   .rbt-home-filters { flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
   .rbt-home-pills { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; flex: 1 1 100%; }

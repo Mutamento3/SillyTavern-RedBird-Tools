@@ -4,6 +4,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { openGlobal } from '../ui/views';
+import { openImport } from '../ui/ImportDialog';
 import {
   allTags,
   charsTick,
@@ -261,6 +262,8 @@ export function HomeGallery() {
           <input type="search" placeholder="搜索角色、备注、标签" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
         </label>
         <div class="rbt-home-actions">
+          {/* 手机上左栏收在 ☰ 里，导入放到这里（电脑上隐藏，用左栏那个） */}
+          <button type="button" class="rbt-home-btn accent rbt-home-import" onClick={() => { void openImport(); }}><i class="fa-solid fa-file-import" /> 导入文件</button>
           <NewMenu />
         </div>
       </header>

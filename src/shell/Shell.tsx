@@ -318,8 +318,7 @@ function LeftColumn() {
 
       {phone && <CurrentCharacter />}
 
-      <div class="rbt-gtool-row"><ImportButton big /></div>
-      <div class="rbt-gtool-row"><GlobalButton /></div>
+      <div class="rbt-gtool-row"><ImportButton big /><GlobalButton /></div>
       <nav class="rbt-globals" aria-label="酒馆设定">
         {ST_KEYS.map((k) => (
           <DrawerButton key={k} k={k} title={k === 'api' && !apiOnline.value ? 'API（没连上）' : undefined} dot={k === 'api' && !apiOnline.value ? '没连上 API' : undefined} />

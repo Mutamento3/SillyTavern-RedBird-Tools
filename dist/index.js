@@ -6399,7 +6399,15 @@ function HomeGallery() {
         /* @__PURE__ */ u$2("i", { class: "fa-solid fa-magnifying-glass" }),
         /* @__PURE__ */ u$2("input", { type: "search", placeholder: "搜索角色、备注、标签", value: q2, onInput: (e2) => setQ(e2.currentTarget.value) })
       ] }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-home-actions", children: /* @__PURE__ */ u$2(NewMenu, {}) })
+      /* @__PURE__ */ u$2("div", { class: "rbt-home-actions", children: [
+        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-home-btn accent rbt-home-import", onClick: () => {
+          void openImport();
+        }, children: [
+          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-import" }),
+          " 导入文件"
+        ] }),
+        /* @__PURE__ */ u$2(NewMenu, {})
+      ] })
     ] }),
     /* @__PURE__ */ u$2("div", { class: "rbt-home-filters", children: [
       /* @__PURE__ */ u$2("div", { class: "rbt-home-pills", role: "tablist", children: [
@@ -6689,8 +6697,10 @@ function LeftColumn() {
       phone ? /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn", title: "关闭", "aria-label": "关闭", onClick: () => setNavOpen(false), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-xmark" }) }) : /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn", title: "收起左栏", onClick: () => setCollapsed(true), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-angles-left" }) })
     ] }),
     phone && /* @__PURE__ */ u$2(CurrentCharacter, {}),
-    /* @__PURE__ */ u$2("div", { class: "rbt-gtool-row", children: /* @__PURE__ */ u$2(ImportButton, { big: true }) }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-gtool-row", children: /* @__PURE__ */ u$2(GlobalButton, {}) }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-gtool-row", children: [
+      /* @__PURE__ */ u$2(ImportButton, { big: true }),
+      /* @__PURE__ */ u$2(GlobalButton, {})
+    ] }),
     /* @__PURE__ */ u$2("nav", { class: "rbt-globals", "aria-label": "酒馆设定", children: ST_KEYS.map((k2) => /* @__PURE__ */ u$2(DrawerButton, { k: k2, title: k2 === "api" && !apiOnline.value ? "API（没连上）" : void 0, dot: k2 === "api" && !apiOnline.value ? "没连上 API" : void 0 }, k2)) }),
     /* @__PURE__ */ u$2("div", { class: "rbt-left-actions", children: [
       /* @__PURE__ */ u$2("div", { class: "rbt-segctl", role: "tablist", "aria-label": "左栏列表", children: [

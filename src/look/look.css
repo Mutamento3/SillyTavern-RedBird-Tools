@@ -30,7 +30,7 @@
   --rbd-accent: #0a84ff;
   --rbd-accent-soft: color-mix(in srgb, var(--rbd-accent) 18%, transparent);
   /* 你的消息的底色：中性的一点点，只用来分清轮次。不用强调色——强调色只表示「当前 / 可以点」 */
-  --rbd-user-tint: color-mix(in srgb, var(--SmartThemeBodyColor) 5%, transparent);
+  --rbd-user-tint: color-mix(in srgb, var(--SmartThemeBodyColor) 2.5%, transparent);
   /* 圆角只有这一套：小标记 4 / 按钮、输入框、列表行 8 / 卡片、消息、提示 12 / 弹窗、大面板、输入栏 16 / 首页角色卡 20。
      嵌套时里面一层 = 外层 − 间距（同心），比如分段标签：外框 8、内边距 2、按钮 6。 */
   --rbd-r-xs: 4px;
@@ -70,7 +70,7 @@ html.rbt-look {
   --rbd-text3: rgba(235, 235, 245, 0.4);
   --rbd-hairline: rgba(255, 255, 255, 0.07);
   --rbd-line: rgba(255, 255, 255, 0.1);
-  --rbd-user-tint: rgba(255, 255, 255, 0.045);
+  --rbd-user-tint: rgba(255, 255, 255, 0.022);
   /* 正文里的斜体（动作、旁白）浅一级，引号里的话（对白）用正文色。
      聊天内容区全是中性色：强调色只用在工具栏、面板这些「可以点」的地方 */
   --rbd-em: #b9b9c3;
@@ -89,7 +89,7 @@ html.rbt-look.rbt-look-light {
   --rbd-text3: rgba(60, 60, 67, 0.46);
   --rbd-hairline: rgba(0, 0, 0, 0.08);
   --rbd-line: rgba(0, 0, 0, 0.12);
-  --rbd-user-tint: rgba(0, 0, 0, 0.035);
+  --rbd-user-tint: rgba(0, 0, 0, 0.02);
   --rbd-em: #6e6e73;
   --rbd-quote: #1d1d1f;
 }
@@ -106,7 +106,7 @@ html.rbt-look.rbt-look-warm {
   --rbd-text3: rgba(59, 47, 34, 0.48);
   --rbd-hairline: rgba(59, 47, 34, 0.1);
   --rbd-line: rgba(59, 47, 34, 0.16);
-  --rbd-user-tint: rgba(91, 70, 40, 0.07);
+  --rbd-user-tint: rgba(91, 70, 40, 0.04);
   --rbd-em: #7a6a55;
   --rbd-quote: #3b2f22;
 }
