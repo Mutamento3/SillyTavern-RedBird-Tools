@@ -65,9 +65,10 @@ body.rbt-shell .rbt-sheet-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin: 0 0 8px;
-  padding: 10px 14px;
+  gap: var(--rbd-s-2);
+  /* 面板有左右内边距，标题栏伸到两边贴边；标题文字和内容左边对齐 */
+  margin: 0 calc(-1 * var(--rbd-inset)) var(--rbd-s-4);
+  padding: var(--rbd-s-3) var(--rbd-inset);
   background: var(--rbd-bg1, var(--SmartThemeBlurTintColor, #17191e));
   border-bottom: 1px solid var(--rbd-hairline, color-mix(in srgb, var(--rbd-text1) 6%, transparent));
 }
@@ -105,7 +106,8 @@ body.rbt-shell #top-settings-holder #user-settings-block,
 body.rbt-shell #top-settings-holder #Backgrounds,
 body.rbt-shell #top-settings-holder #AdvancedFormatting {
   --rbt-sheet-w: min(1320px, calc(100dvw - 96px));
-  --sheldWidth: var(--rbt-sheet-w);
+  /* 酒馆按 --sheldWidth 算面板里的分栏，要减掉左右内边距 */
+  --sheldWidth: calc(var(--rbt-sheet-w) - 2 * var(--rbd-inset));
   position: fixed !important;
   top: 50% !important;
   left: 50% !important;
@@ -118,7 +120,8 @@ body.rbt-shell #top-settings-holder #AdvancedFormatting {
   height: min(90dvh, 1040px) !important;
   max-height: min(90dvh, 1040px) !important;
   margin: 0 !important;
-  padding-top: 0 !important;
+  /* 酒馆自己是 5px，在这么大的面板里内容几乎贴边 */
+  padding: 0 var(--rbd-inset) var(--rbd-s-6) !important;
   border: 1px solid var(--rbd-hairline, color-mix(in srgb, var(--rbd-text1) 8%, transparent)) !important;
   border-radius: var(--rbd-r-l) !important;
   box-shadow: none !important;
@@ -128,6 +131,10 @@ body.rbt-shell #top-settings-holder #AdvancedFormatting {
 body.rbt-shell #top-settings-holder #rm_api_block {
   --rbt-sheet-w: min(760px, calc(100dvw - 64px));
   height: auto !important;
+}
+/* 预设：也是一栏表单（一串滑块 + 提示词列表），铺满整屏时滑块长得没法看，和 API 一样宽 */
+body.rbt-shell #top-settings-holder #left-nav-panel {
+  --rbt-sheet-w: min(760px, calc(100dvw - 64px));
 }
 /* 面板变成 overlay 后"钉住"就没有意义了，隐藏酒馆的钉住按钮 */
 body.rbt-shell #lm_button_panel_pin_div,
@@ -226,7 +233,7 @@ body.rbt-shell.rbt-shell-lcollapsed .rbt-left { display: none; }
 .rbt-gbtn i { font-size: 15px; }
 .rbt-gbtn:hover { background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 5%, transparent)); color: var(--SmartThemeBodyColor); }
 .rbt-gbtn.active { background: var(--rbd-accent-soft, rgba(226, 114, 91, 0.14)); color: var(--rbd-accent, #e2725b); }
-.rbt-gbtn.compact { flex-direction: row; gap: 6px; padding: 6px 10px; font-size: 13px; }
+.rbt-gbtn.compact { flex-direction: row; gap: 6px; padding: var(--rbd-s-1) var(--rbd-s-3); font-size: 13px; }
 .rbt-gbtn.compact i { font-size: 13px; }
 
 .rbt-left-actions { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 8px; flex-shrink: 0; }
@@ -264,9 +271,9 @@ body.rbt-shell.rbt-shell-lcollapsed .rbt-left { display: none; }
   font: inherit;
 }
 
-.rbt-recent { flex: 1; overflow-y: auto; padding: 4px 8px 12px; }
+.rbt-recent { flex: 1; overflow-y: auto; padding: var(--rbd-s-1) var(--rbd-s-1) var(--rbd-s-3); }
 .rbt-recent-group h4 {
-  margin: 12px 8px 4px;
+  margin: var(--rbd-s-3) var(--rbd-s-2) var(--rbd-s-1);
   font-size: 11px;
   font-weight: 600;
   color: var(--rbd-text3, #6b707a);
@@ -276,7 +283,7 @@ body.rbt-shell.rbt-shell-lcollapsed .rbt-left { display: none; }
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 6px 8px;
+  padding: var(--rbd-s-2);
   border: 0;
   border-radius: var(--rbd-r-s);
   background: transparent;
@@ -334,7 +341,7 @@ body.rbt-shell .rbt-nav {
   gap: 8px;
   width: var(--rbt-chat-w);
   height: var(--rbt-nav-h);
-  padding: 0 12px;
+  padding: 0 var(--rbd-s-4);
   box-sizing: border-box;
   color: var(--SmartThemeBodyColor);
   background: var(--rbd-canvas, var(--SmartThemeBlurTintColor, #0f1013));
@@ -351,7 +358,7 @@ body.rbt-shell .rbt-nav {
   align-items: center;
   gap: 6px;
   min-width: 0;
-  padding: 4px 8px;
+  padding: var(--rbd-s-1) var(--rbd-s-3);
   border: 0;
   border-radius: var(--rbd-r-s);
   background: transparent;
@@ -642,12 +649,12 @@ body.rbt-shell.rbt-shell-ready .rbt-nav { transition: left 0.18s ease, width 0.1
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 10px 14px;
+  gap: var(--rbd-s-2);
+  padding: var(--rbd-s-3) var(--rbd-inset);
   border-bottom: 1px solid var(--rbd-hairline, color-mix(in srgb, var(--rbd-text1) 6%, transparent));
   flex-shrink: 0;
 }
-.rbt-sheet-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 20px 24px; }
+.rbt-sheet-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--rbd-s-4) var(--rbd-inset) var(--rbd-s-6); }
 
 .rbt-char-problem {
   display: block;
@@ -721,7 +728,7 @@ body.rbt-shell #qr--bar #qr--popoutTrigger {
 .rbt-sheet-bar .rbt-sheet-title { flex-shrink: 0; }
 .rbt-sheet-tabs { display: inline-flex; gap: 2px; margin: 0 auto 0 14px; padding: 2px; border-radius: var(--rbd-r-s); background: var(--rbd-bg3, rgba(0, 0, 0, 0.22)); }
 .rbt-sheet-tabs button {
-  padding: 3px 14px;
+  padding: var(--rbd-s-1) var(--rbd-s-3);
   font-size: 12px !important;
   border: 0;
   border-radius: calc(var(--rbd-r-s) - 2px);
@@ -765,13 +772,13 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
   height: calc(100dvh - var(--rbt-nav-h));
   z-index: 31;
   overflow-y: auto;
-  padding: 28px clamp(20px, 3vw, 44px) 48px;
+  padding: var(--rbd-s-6) var(--rbd-inset) var(--rbd-s-6);
   box-sizing: border-box;
   background: var(--rbd-canvas, #0f1012);
   color: var(--SmartThemeBodyColor);
 }
 
-.rbt-home-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.rbt-home-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: var(--rbd-s-4); }
 .rbt-home-head h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; }
 .rbt-home-head h1 small { margin-left: 6px; font-size: 15px; font-weight: 500; color: var(--rbd-text3, #6b707a); }
 .rbt-home-search { width: 260px; }
@@ -787,7 +794,7 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
 .rbt-home-btn.primary:hover { filter: brightness(1.08); }
 .rbt-home-btn i { font-size: 12px; opacity: 0.85; }
 
-.rbt-home-filters { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.rbt-home-filters { display: flex; align-items: center; gap: var(--rbd-s-3); margin-bottom: var(--rbd-s-5); }
 .rbt-home-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; }
 .rbt-home-pills button {
   padding: 5px 14px; border: 0; border-radius: 999px; background: transparent;
@@ -810,7 +817,7 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
 .rbt-home-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
-  gap: 22px 18px;
+  gap: var(--rbd-s-5) var(--rbd-s-4);
 }
 .rbt-hcard {
   --tint: hsl(225 12% 16%);
@@ -912,7 +919,7 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
 .rbt-statusbar { display: flex; align-items: center; gap: 2px; flex: 0 1 auto; min-width: 0; margin-right: 6px; }
 .rbt-stat {
   position: relative; display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 190px;
-  padding: 4px 9px; border: 0; border-radius: var(--rbd-r-s); background: transparent;
+  padding: var(--rbd-s-1) var(--rbd-s-3); border: 0; border-radius: var(--rbd-r-s); background: transparent;
   color: var(--rbd-text2, #9ca1aa); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
 }
 .rbt-stat:hover { background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 6%, transparent)); color: var(--SmartThemeBodyColor); }
@@ -937,6 +944,8 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
    注意：手机上酒馆会把 <html> 设成 position:fixed + transform，right/bottom/inset 会塌掉，
    所以这里一律用 top/left + dvw/dvh 定尺寸。 */
 @media (max-width: 1000px) {
+  /* 手机：面板边距、分区内边距小一档，可点的行高一档（手指比鼠标粗） */
+  :root { --rbd-inset: var(--rbd-s-4); --rbd-card: var(--rbd-s-3); --rbd-row-y: var(--rbd-s-3); }
   body.rbt-shell { --rbt-nav-h: 52px; --rbt-L: 0px; --rbt-R: 0px; }
   body.rbt-shell.rbt-docked { --rbt-R: 0px; }
 
@@ -961,7 +970,7 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
   .rbt-gbtn { padding: 10px 2px 8px; font-size: 12px; }
   .rbt-gbtn i { font-size: 17px; }
   .rbt-gtool { padding: 11px 12px; }
-  .rbt-recent-row { padding: 9px 8px; }
+  .rbt-recent-row { padding: var(--rbd-s-3) var(--rbd-s-2); }
   .rbt-recent-avatar { width: 38px; height: 38px; }
   .rbt-search input { height: 38px; font-size: 16px; } /* 16px：iPhone 点进输入框时不会自动放大页面 */
   .rbt-foot-btn { padding: 9px 8px; font-size: 13px; }
@@ -1005,7 +1014,7 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
     border-radius: 0 !important;
   }
   body.rbt-shell #top-settings-holder #rm_api_block { height: 100dvh !important; }
-  body.rbt-shell .rbt-sheet-head { padding: 6px 6px 6px 14px; }
+  body.rbt-shell .rbt-sheet-head { padding: var(--rbd-s-2) var(--rbd-s-2) var(--rbd-s-2) var(--rbd-inset); }
   body.rbt-shell .rbt-sheet-close { width: 40px; height: 40px; font-size: 17px; }
   body.rbt-shell.rbt-open-modal::after { inset: auto; top: 0; left: 0; width: 100dvw; height: 100dvh; }
 
@@ -1016,11 +1025,11 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
     width: 100dvw; height: 100dvh; max-height: none;
     border: 0; border-radius: 0;
   }
-  .rbt-sheet-bar { flex-wrap: wrap; row-gap: 8px; padding: 6px 6px 10px 14px; }
+  .rbt-sheet-bar { flex-wrap: wrap; row-gap: var(--rbd-s-2); padding: var(--rbd-s-2) var(--rbd-s-2) var(--rbd-s-3) var(--rbd-inset); }
   .rbt-sheet-bar .rbt-sheet-title { flex: 1; }
   .rbt-sheet-tabs { order: 3; display: flex; width: calc(100% - 8px); margin: 0; overflow-x: auto; }
   .rbt-sheet-tabs button { flex: 1 0 auto; padding: 7px 10px; font-size: 13px !important; }
-  .rbt-sheet-body { padding: 12px 12px 32px; }
+  .rbt-sheet-body { padding: var(--rbd-s-3) var(--rbd-inset) var(--rbd-s-6); }
 
   /* ---- 导入窗口：全屏 ---- */
   .rbt-sheet.rbt-imp { top: 0; left: 0; transform: none; width: 100dvw; height: 100dvh; max-height: none; border-radius: 0; }
@@ -1034,7 +1043,7 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
   .rbt-imp-foot .rbt-btn { padding: 9px 18px; font-size: 14px; }
 
   /* ---- 首页：角色画廊一行两张 ---- */
-  .rbt-home-gallery { padding: 16px 12px 40px; }
+  .rbt-home-gallery { padding: var(--rbd-s-4) var(--rbd-inset) var(--rbd-s-6); }
   .rbt-home-head { gap: 10px; }
   .rbt-home-head h1 { font-size: 22px; }
   .rbt-home-search { order: 3; width: 100%; }
