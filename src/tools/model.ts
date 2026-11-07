@@ -68,18 +68,35 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export async function setModel(m: ModelChoice): Promise<boolean> {
   if (!modelsApply()) return false;
   const $ = window.jQuery;
-  const cur = currentModel();
-  if (cur?.source !== m.source && $) {
+  const before = currentModel();
+  if (before?.source !== m.source && $) {
     $('#chat_completion_source').val(m.source).trigger('change');
     await wait(600);
   }
-  // Model lists load asynchronously after an API change, so try a few times.
+  // /model picks the closest-named model when there is no exact one, so only run it once the
+  // exact model is in the list. Model lists load asynchronously after an API change: try a few times.
   for (let i = 0; i < 8; i++) {
-    await runSlash(`/model quiet=true ${slashQuote(m.model)}`);
-    if (sameModel(currentModel(), m)) return true;
+    if (hasModelOption(m)) {
+      await runSlash(`/model quiet=true ${slashQuote(m.model)}`);
+      if (sameModel(currentModel(), m)) return true;
+      break;
+    }
     await wait(500);
   }
-  return sameModel(currentModel(), m);
+  // Not available (or a different one got picked): put back what was there.
+  if (before && !sameModel(currentModel(), before) && $) {
+    if (currentModel()?.source !== before.source) { $('#chat_completion_source').val(before.source).trigger('change'); await wait(600); }
+    if (hasModelOption(before)) await runSlash(`/model quiet=true ${slashQuote(before.model)}`);
+  }
+  return false;
+}
+
+/** Whether the model list of the API in use has exactly this model (custom endpoints take any id). */
+function hasModelOption(m: ModelChoice): boolean {
+  if (m.source === 'custom') return true;
+  const want = m.model.trim().toLowerCase();
+  return [...document.querySelectorAll<HTMLOptionElement>('#openai_api select[id^="model_"] option')]
+    .some((o) => o.value.trim().toLowerCase() === want);
 }
 
 const MAIN_API_LABEL: Record<string, string> = { textgenerationwebui: 'Text Completion', novel: 'NovelAI', koboldhorde: 'AI Horde', kobold: 'KoboldAI' };

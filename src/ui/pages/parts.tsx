@@ -6,7 +6,7 @@ import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { normalizeUrl, splitLinks, type BookDiff, type RegexOwner } from '../../core/cards';
-import { ctx, currentCharacter, saveSettings, settings } from '../../st/st';
+import { ctx, currentCharacter, saveSettings, settings, confirmText } from '../../st/st';
 import {
   allCharacters,
   archiveTarget,
@@ -315,7 +315,7 @@ export function WorldSection({ info }: { info: CardInfo }) {
 
   const run = async (overwrite: boolean) => {
     if (overwrite) {
-      const ok = await ctx().Popup?.show?.confirm?.('用卡里的版本覆盖？',
+      const ok = await confirmText('用卡里的版本覆盖？',
         `世界书「${w.importName}」会换成卡里自带的版本，只在现有世界书里的条目会丢失（可能是你或脚本加的）。覆盖前会自动备份。`);
       if (!ok) return;
     }

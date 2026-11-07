@@ -156,7 +156,7 @@ export async function runImport(items: ImportItem[], hooks: {
   presetNames: () => string[];
   worldNames: () => string[];
   characterAvatars: () => string[];
-  switchPreset: (n: string) => Promise<void>;
+  switchPreset: (n: string) => Promise<unknown>;
   setWorldGlobal: (n: string) => Promise<void>;
   openCharacter: (avatar: string) => Promise<void>;
   saveSource: (kind: 'preset' | 'world' | 'theme', name: string, rec: { author: string; links: { label: string; url: string }[]; notes: string }) => void;

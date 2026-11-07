@@ -30,7 +30,7 @@ import {
   type RegexOwner,
   type RequiredExt,
 } from '../../core/cards';
-import { charaFileName, ctx, currentCharacter, loaded, runSlash, saveSettings, settings, slashQuote, thCharacterScriptsEnabled, toast, type Any, type EnvProfile } from '../../st/st';
+import { charaFileName, ctx, currentCharacter, loaded, runSlash, saveSettings, settings, slashQuote, thCharacterScriptsEnabled, toast, type Any, type EnvProfile, confirmText } from '../../st/st';
 import { refreshEnv, thScripts } from '../env/env';
 import { markDeleted, syncStore } from '../../st/store';
 
@@ -263,10 +263,16 @@ export function setRecommendedPreset(avatar: string, cardName: string, name: str
   bump();
 }
 
-export async function switchPreset(name: string): Promise<void> {
+/** Switch to a preset by its exact name. /preset falls back to the closest-named preset, so check first. */
+export async function switchPreset(name: string): Promise<boolean> {
+  if (!presetNames().includes(name)) {
+    toast('error', `找不到预设「${name}」，可能已经被删除或改名，没有切换。`, '预设');
+    return false;
+  }
   await runSlash(`/preset ${slashQuote(name)}`);
   refreshEnv();
   bump();
+  return true;
 }
 
 // ------------------------------------------------------------ lorebooks ---
@@ -450,7 +456,7 @@ export async function importArchive(text: string, mode: 'merge' | 'overwrite'): 
   const inc = parseArchive(text);
   const s = settings();
   if (mode === 'overwrite') {
-    const ok = await ctx().Popup?.show?.confirm?.('覆盖导入', '现在所有的角色档案、记住的配置、正则归属，以及预设、世界书、插件和美化的来源，都会换成文件里的。');
+    const ok = await confirmText('覆盖导入', '现在所有的角色档案、记住的配置、正则归属，以及预设、世界书、插件和美化的来源，都会换成文件里的。');
     if (!ok) return;
   }
   s.cards = mergeRecords(s.cards, inc.cards, mode, (v) => v.updatedAt ?? '');
@@ -481,11 +487,12 @@ export function installCardsWatch(openPanel: (tab: string) => void): void {
       const char = currentCharacter();
       if (!char?.avatar || char.avatar === lastAvatar) return;
       lastAvatar = char.avatar;
+      // Auto-apply imports the card's lorebook and reports the switch itself; doing it here too would import twice.
+      if (settings().autoApplyEnv) return;
       const info = cardInfo(char);
       if (settings().autoImportWorld && info.world.embedded && (info.world.state === 'missing' || info.world.state === 'unbound')) {
         await importCardWorld(char.avatar);
       }
-      if (settings().autoApplyEnv) return; // auto-apply reports the switch itself; reminders only when it is off
       const installed = installedExtensions();
       const bad = requiredExtensions(info).map((r) => ({ ...r, ...extStatus(r.req, installed) })).filter((r) => r.status !== 'enabled');
       if (bad.length) {

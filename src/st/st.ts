@@ -100,6 +100,16 @@ export function toast(kind: 'info' | 'success' | 'warning' | 'error', msg: strin
   window.toastr?.[kind]?.(msg, title, opts);
 }
 
+/** Escape text for HTML. ST's Popup renders its content as HTML, and names come from imported files. */
+export function escHtml(v: unknown): string {
+  return String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]!));
+}
+
+/** ST's confirm popup with plain-text title and body (escaped). Resolves to whether the user confirmed. */
+export async function confirmText(title: string, text: string): Promise<boolean> {
+  return !!(await ctx().Popup?.show?.confirm?.(escHtml(title), escHtml(text)));
+}
+
 /**
  * Whether Tavern Helper (酒馆助手) runs this character's own scripts. TH ≤4.3 keyed the list by
  * character name; TH 4.12 keys it by avatar file name (e.g. "回响之城.png"). Accept both.

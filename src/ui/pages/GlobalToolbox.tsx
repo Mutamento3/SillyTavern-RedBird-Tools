@@ -8,7 +8,7 @@
  * - 开关就是开关，按钮就是按钮；其余文字不可点，也不上色。
  */
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { ctx, runSlash, saveSettings, settings, slashQuote } from '../../st/st';
+import { ctx, runSlash, saveSettings, settings, slashQuote, confirmText } from '../../st/st';
 import {
   allCharacters,
   archiveVersion,
@@ -497,7 +497,7 @@ function BackupPage() {
                 <div key={o.avatar} class="rbt-link-row">
                   <span>「{o.cardName}」</span>
                   {o.candidates.map((c) => <button key={c} type="button" class="rbt-btn rbt-btn-small" onClick={() => relink(o.avatar, c)}>转给「{c}」</button>)}
-                  <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={async () => { if (await ctx().Popup?.show?.confirm?.('删除这份档案？', `「${o.cardName}」的来源、说明和记住的配置都会删除。`)) dropRecord(o.avatar); }}>删除</button>
+                  <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={async () => { if (await confirmText('删除这份档案？', `「${o.cardName}」的来源、说明和记住的配置都会删除。`)) dropRecord(o.avatar); }}>删除</button>
                 </div>
               ))}
             </Section>

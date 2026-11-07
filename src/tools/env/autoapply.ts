@@ -143,13 +143,19 @@ export function planHasChanges(p: ApplyPlan): boolean {
   return !!p.preset || (!!p.model && !sameModel(p.model, currentModel())) || p.worldsOn.length > 0 || p.worldsOff.length > 0 || p.regexOn.length > 0 || p.regexOff.length > 0;
 }
 
-async function setRegexStates(changes: Record<string, boolean>): Promise<void> {
+async function setRegexStates(changes: Record<string, boolean>, { duringChatLoad = false } = {}): Promise<void> {
   const re = loaded.regexEngine;
   if (!re || !Object.keys(changes).length) return;
   const next = globalRegex().map((r: Any) => (r.id in changes ? { ...r, disabled: changes[r.id] } : r));
   await re.saveScriptsByType(next, GLOBAL);
   saveSettings();
-  if (ctx().getCurrentChatId?.()) await ctx().reloadCurrentChat();
+  // Only display-only regex needs the messages re-rendered; the others act on new text / the prompt.
+  const chatId = ctx().getCurrentChatId?.();
+  if (!chatId || !next.some((r: Any) => r.id in changes && r.markdownOnly)) return;
+  if (!duringChatLoad) { await ctx().reloadCurrentChat(); return; }
+  // We're inside ST's CHAT_CHANGED: reloading now would load the chat again in the middle of its own
+  // load (every CHAT_CHANGED / first-message listener would run twice). Reload once it has finished.
+  setTimeout(() => { if (ctx().getCurrentChatId?.() === chatId) void ctx().reloadCurrentChat(); }, 1000);
 }
 
 async function setWorlds(on: string[], off: string[]): Promise<void> {
@@ -167,9 +173,8 @@ export async function applyPlan(plan: ApplyPlan): Promise<string[]> {
   const changes: string[] = [];
   if (plan.preset) {
     // 这张卡有推荐模型：预设带过来的模型马上会被换成推荐的，不用提示；没有的话，模型被预设换掉会单独提示（能换回去）
-    if (plan.model) await withoutModelGuard(() => switchPreset(plan.preset!));
-    else await switchPreset(plan.preset);
-    changes.push(`预设换成「${plan.preset}」`);
+    const ok = plan.model ? await withoutModelGuard(() => switchPreset(plan.preset!)) : await switchPreset(plan.preset);
+    if (ok) changes.push(`预设换成「${plan.preset}」`);
   }
   if (plan.model && !sameModel(plan.model, currentModel())) {
     if (await setModel(plan.model)) changes.push(`模型换成 ${modelLabel(plan.model)}`);
@@ -183,7 +188,7 @@ export async function applyPlan(plan: ApplyPlan): Promise<string[]> {
   const rx: Record<string, boolean> = {};
   for (const r of plan.regexOff) { rx[r.id] = true; changes.push(`关掉全局正则「${r.name}」`); }
   for (const r of plan.regexOn) { rx[r.id] = false; changes.push(`打开全局正则「${r.name}」`); }
-  await setRegexStates(rx);
+  await setRegexStates(rx, { duringChatLoad: true });
   if (changes.length) lastApplied.value = { avatar: plan.avatar, cardName: plan.cardName, at: Date.now(), changes, snapshot };
   refreshEnv();
   return changes;

@@ -5,7 +5,7 @@
  */
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { ctx, currentCharacter, saveSettings, settings } from '../st/st';
+import { ctx, currentCharacter, saveSettings, settings, confirmText } from '../st/st';
 import { panelOpen } from '../ui/Panel';
 import { openGlobal, sheetOpen, shellActive } from '../ui/views';
 import { DRAWERS, drawerButtonHandlers, openDrawers, type DrawerKey } from './drawers';
@@ -48,6 +48,9 @@ function readOnline(): void {
   apiOnline.value = !!st && st !== 'no_connection';
 }
 
+/** ST's temporary assistant chat has no character and fires no CHAT_CHANGED; we know it only because we opened it. */
+let inTempChat = false;
+
 function applyBodyClasses(): void {
   const b = document.body.classList;
   b.toggle('rbt-shell', shellOn.value);
@@ -57,7 +60,7 @@ function applyBodyClasses(): void {
   b.toggle('rbt-nav-open', navOpen.value);
   b.toggle('rbt-shell-lcollapsed', leftCollapsed.value && !compact.value);
   const c = ctx();
-  const home = (c.characterId === undefined || c.characterId === null) && !c.groupId;
+  const home = (c.characterId === undefined || c.characterId === null) && !c.groupId && !inTempChat;
   b.toggle('rbt-home', home);
   homeActive.value = home;
   shellActive.value = shellOn.value;
@@ -87,9 +90,13 @@ function trigger(selector: string): void {
   else document.querySelector<HTMLElement>(selector)?.click();
 }
 
-function inChat(): boolean {
+function inSavedChat(): boolean {
   const c = ctx();
   return (c.characterId !== undefined && c.characterId !== null) || !!c.groupId;
+}
+
+function inChat(): boolean {
+  return inSavedChat() || inTempChat;
 }
 
 function goHome(): void {
@@ -98,7 +105,7 @@ function goHome(): void {
 
 /** Only offered inside a chat: a new save for the current character / group (ST asks to confirm). */
 function newChat(): void {
-  if (inChat()) trigger('#option_start_new_chat');
+  if (inSavedChat()) trigger('#option_start_new_chat');
 }
 
 // ---------------------------------------------------------------- left ---
@@ -229,7 +236,11 @@ function AddedList({ q }: { q: string }) {
 
 /** 酒馆欢迎页上的东西（临时聊天、文档、版本号），首页中间换成了角色画廊，就挪到左栏底部。 */
 function openTemporaryChat(): void {
-  const click = () => trigger('.openTemporaryChat');
+  const click = () => {
+    trigger('.openTemporaryChat');
+    inTempChat = true;
+    applyBodyClasses();
+  };
   if (!inChat()) { click(); return; }
   goHome();
   let n = 0;
@@ -242,7 +253,7 @@ function openTemporaryChat(): void {
 
 /** Leaving the shell is easy to click by accident, so confirm and say how to come back. */
 async function leaveShell(): Promise<void> {
-  const ok = await ctx().Popup?.show?.confirm?.('切回原版界面？', '想回到现在的三栏界面时，在输入框里发送 /rbt shell，或者在「扩展 › RedBird 工具箱」里勾选「三栏外壳」。');
+  const ok = await confirmText('切回原版界面？', '想回到现在的三栏界面时，在输入框里发送 /rbt shell，或者在「扩展 › RedBird 工具箱」里勾选「三栏外壳」。');
   if (ok) setShellEnabled(false);
 }
 
@@ -358,6 +369,7 @@ ${w.warn}` : w.title} dot={w.warn} />;
 
 function NavBar() {
   void chatTick.value;
+  void homeActive.value; // re-render when the temporary chat opens
   const c = ctx();
   const char = currentCharacter();
   const group = c.groupId ? c.groups?.find((g: { id: string }) => g.id === c.groupId) : null;
@@ -373,7 +385,7 @@ function NavBar() {
         </button>
         <div class="rbt-nav-title">
           {home ? (
-            <span class="rbt-nav-name">首页</span>
+            <span class="rbt-nav-name">{inTempChat ? '临时聊天' : '首页'}</span>
           ) : (
             <button type="button" class="rbt-nav-who" title="切换 / 管理存档" onClick={() => trigger('#option_select_chat')}>
               {char && <img class="rbt-nav-avatar" src={c.getThumbnailUrl('avatar', char.avatar)} alt="" />}
@@ -403,7 +415,7 @@ function NavBar() {
       )}
       <div class="rbt-nav-title">
         {home ? (
-          <span class="rbt-nav-name">首页</span>
+          <span class="rbt-nav-name">{inTempChat ? '临时聊天' : '首页'}</span>
         ) : (
           <>
             {char && <img class="rbt-nav-avatar" src={c.getThumbnailUrl('avatar', char.avatar)} alt="" />}
@@ -454,6 +466,7 @@ export function initShellState(): void {
   setTimeout(() => document.body.classList.add('rbt-shell-ready'), 800);
   const c = ctx();
   const bump = () => {
+    inTempChat = false;
     chatTick.value++;
     applyBodyClasses();
     if (shellActive.value && document.body.classList.contains('rbt-home')) panelOpen.value = false;

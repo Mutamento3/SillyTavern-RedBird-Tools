@@ -4,7 +4,7 @@
  * 工具箱、三栏界面和美化后的酒馆界面都用它。
  */
 import { signal } from '@preact/signals';
-import { ctx, saveSettings, settings, toast } from '../st/st';
+import { ctx, saveSettings, settings, toast, confirmText, escHtml } from '../st/st';
 
 export const ACCENTS: { id: string; label: string; color: string }[] = [
   { id: 'blue', label: '蓝', color: '#0a84ff' },
@@ -66,7 +66,7 @@ async function warnThirdParty(name: string): Promise<boolean> {
   if (t && !themeHasCss(t)) return true; // 只换颜色的主题不会和布局打架
   const c = ctx();
   if (!c.Popup || !c.POPUP_TYPE) return true;
-  const popup = new c.Popup(`<h3>换成「${name}」？</h3><p>${WARN}</p><p>随时可以在「全局工具箱 › 美化」里换回工具箱自带的。</p>`, c.POPUP_TYPE.CONFIRM, '', {
+  const popup = new c.Popup(`<h3>换成「${escHtml(name)}」？</h3><p>${WARN}</p><p>随时可以在「全局工具箱 › 美化」里换回工具箱自带的。</p>`, c.POPUP_TYPE.CONFIRM, '', {
     okButton: '换过去', cancelButton: '取消', customInputs: [{ id: 'rbt_theme_warn_off', label: '以后不再提醒' }],
   });
   const res = await popup.show();
@@ -88,12 +88,22 @@ export async function useStTheme(name: string): Promise<void> {
 
 /**
  * 旧美化「RedBird Dark」已经被这套美化取代。它的样式存在酒馆设置的自定义 CSS 里，
- * 开着的旧页面保存设置时会把它写回去，所以在页面自己这里清掉（只清这一段，别人的美化不动）。
+ * 开着的旧页面保存设置时会把它写回去，所以在页面自己这里清掉。自定义 CSS 里可能还有用户自己加的东西，
+ * 所以清之前先把整段备份到 data/<用户>/user/files；备份失败就不动。
  */
-export function retireOldTheme(): void {
+export async function retireOldTheme(): Promise<void> {
   const pu = ctx().powerUserSettings;
   const css = String(pu?.custom_css ?? '');
   if (!css.includes('RedBird Dark')) return;
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+$/, '').replace('T', '-');
+  const file = `rbt-custom-css-backup-${stamp}.css`;
+  try {
+    const up = await fetch('/api/files/upload', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({ name: file, data: toBase64(css) }) });
+    if (!up.ok) throw new Error(String(up.status));
+  } catch (e) {
+    console.warn('[RedBird] 旧美化的自定义 CSS 备份失败，先不清除', e);
+    return;
+  }
   const $ = window.jQuery;
   if ($ && $('#customCSS').length) $('#customCSS').val('').trigger('input');
   else pu.custom_css = '';
@@ -102,7 +112,7 @@ export function retireOldTheme(): void {
     if ($) { $('#themes').val('Dark V 1.0'); $('#themes option[value="RedBird Dark"]').remove(); }
   }
   ctx().saveSettingsDebounced();
-  console.info('[RedBird] 旧美化 RedBird Dark 的自定义 CSS 已清除（备份在 data/<用户>/backups/redbird-old-theme）');
+  toast('info', `旧美化 RedBird Dark 已换成工具箱自带的美化。原来的自定义 CSS 备份在 data/你的用户名/user/files/${file}`, '美化', { timeOut: 10000 });
 }
 
 /** Whether the ST theme in use carries its own custom CSS (someone else's 美化). */
@@ -185,7 +195,7 @@ function toBase64(text: string): string {
 export async function deleteStTheme(name: string): Promise<string | null> {
   const t = stThemes.value.find((x) => x.name === name);
   if (!t || name === currentStTheme()) return null;
-  const ok = await ctx().Popup?.show?.confirm?.(`删除美化「${name}」？`, '会先把它备份到「data/你的用户名/user/files」里，想要回来可以从那里重新导入。');
+  const ok = await confirmText(`删除美化「${name}」？`, '会先把它备份到「data/你的用户名/user/files」里，想要回来可以从那里重新导入。');
   if (!ok) return null;
   const ascii = name.normalize('NFKD').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+$/, '').replace('T', '-');

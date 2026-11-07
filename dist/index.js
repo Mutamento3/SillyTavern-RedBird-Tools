@@ -1032,6 +1032,12 @@ function slashQuote(v2) {
 function toast(kind, msg, title = "RedBird 工具箱", opts = {}) {
   window.toastr?.[kind]?.(msg, title, opts);
 }
+function escHtml(v2) {
+  return String(v2 ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+}
+async function confirmText(title, text) {
+  return !!await ctx().Popup?.show?.confirm?.(escHtml(title), escHtml(text));
+}
 function thCharacterScriptsEnabled(es, char) {
   const list = es?.tavern_helper?.script?.enabled?.characters ?? [];
   return !!char && (list.includes(char.avatar) || list.includes(char.name));
@@ -1116,7 +1122,7 @@ async function warnThirdParty(name) {
   if (t2 && !themeHasCss(t2)) return true;
   const c2 = ctx();
   if (!c2.Popup || !c2.POPUP_TYPE) return true;
-  const popup = new c2.Popup(`<h3>换成「${name}」？</h3><p>${WARN$1}</p><p>随时可以在「全局工具箱 › 美化」里换回工具箱自带的。</p>`, c2.POPUP_TYPE.CONFIRM, "", {
+  const popup = new c2.Popup(`<h3>换成「${escHtml(name)}」？</h3><p>${WARN$1}</p><p>随时可以在「全局工具箱 › 美化」里换回工具箱自带的。</p>`, c2.POPUP_TYPE.CONFIRM, "", {
     okButton: "换过去",
     cancelButton: "取消",
     customInputs: [{ id: "rbt_theme_warn_off", label: "以后不再提醒" }]
@@ -1142,10 +1148,19 @@ async function useStTheme(name) {
   if (lookOn.value) setLook(false);
   themeTick.value++;
 }
-function retireOldTheme() {
+async function retireOldTheme() {
   const pu = ctx().powerUserSettings;
   const css = String(pu?.custom_css ?? "");
   if (!css.includes("RedBird Dark")) return;
+  const stamp2 = (/* @__PURE__ */ new Date()).toISOString().replace(/[-:]/g, "").replace(/\..+$/, "").replace("T", "-");
+  const file = `rbt-custom-css-backup-${stamp2}.css`;
+  try {
+    const up = await fetch("/api/files/upload", { method: "POST", headers: ctx().getRequestHeaders(), body: JSON.stringify({ name: file, data: toBase64$1(css) }) });
+    if (!up.ok) throw new Error(String(up.status));
+  } catch (e2) {
+    console.warn("[RedBird] 旧美化的自定义 CSS 备份失败，先不清除", e2);
+    return;
+  }
   const $2 = window.jQuery;
   if ($2 && $2("#customCSS").length) $2("#customCSS").val("").trigger("input");
   else pu.custom_css = "";
@@ -1157,7 +1172,7 @@ function retireOldTheme() {
     }
   }
   ctx().saveSettingsDebounced();
-  console.info("[RedBird] 旧美化 RedBird Dark 的自定义 CSS 已清除（备份在 data/<用户>/backups/redbird-old-theme）");
+  toast("info", `旧美化 RedBird Dark 已换成工具箱自带的美化。原来的自定义 CSS 备份在 data/你的用户名/user/files/${file}`, "美化", { timeOut: 1e4 });
 }
 function stThemeHasCss() {
   const css = String(ctx().powerUserSettings?.custom_css ?? "");
@@ -1218,7 +1233,7 @@ function toBase64$1(text) {
 async function deleteStTheme(name) {
   const t2 = stThemes.value.find((x2) => x2.name === name);
   if (!t2 || name === currentStTheme()) return null;
-  const ok = await ctx().Popup?.show?.confirm?.(`删除美化「${name}」？`, "会先把它备份到「data/你的用户名/user/files」里，想要回来可以从那里重新导入。");
+  const ok = await confirmText(`删除美化「${name}」？`, "会先把它备份到「data/你的用户名/user/files」里，想要回来可以从那里重新导入。");
   if (!ok) return null;
   const ascii = name.normalize("NFKD").replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
   const stamp2 = (/* @__PURE__ */ new Date()).toISOString().replace(/[-:]/g, "").replace(/\..+$/, "").replace("T", "-");
@@ -2572,17 +2587,32 @@ const wait$1 = (ms) => new Promise((r2) => setTimeout(r2, ms));
 async function setModel(m2) {
   if (!modelsApply()) return false;
   const $2 = window.jQuery;
-  const cur = currentModel();
-  if (cur?.source !== m2.source && $2) {
+  const before = currentModel();
+  if (before?.source !== m2.source && $2) {
     $2("#chat_completion_source").val(m2.source).trigger("change");
     await wait$1(600);
   }
   for (let i2 = 0; i2 < 8; i2++) {
-    await runSlash(`/model quiet=true ${slashQuote(m2.model)}`);
-    if (sameModel(currentModel(), m2)) return true;
+    if (hasModelOption(m2)) {
+      await runSlash(`/model quiet=true ${slashQuote(m2.model)}`);
+      if (sameModel(currentModel(), m2)) return true;
+      break;
+    }
     await wait$1(500);
   }
-  return sameModel(currentModel(), m2);
+  if (before && !sameModel(currentModel(), before) && $2) {
+    if (currentModel()?.source !== before.source) {
+      $2("#chat_completion_source").val(before.source).trigger("change");
+      await wait$1(600);
+    }
+    if (hasModelOption(before)) await runSlash(`/model quiet=true ${slashQuote(before.model)}`);
+  }
+  return false;
+}
+function hasModelOption(m2) {
+  if (m2.source === "custom") return true;
+  const want = m2.model.trim().toLowerCase();
+  return [...document.querySelectorAll('#openai_api select[id^="model_"] option')].some((o2) => o2.value.trim().toLowerCase() === want);
 }
 const MAIN_API_LABEL = { textgenerationwebui: "Text Completion", novel: "NovelAI", koboldhorde: "AI Horde", kobold: "KoboldAI" };
 const TEXTGEN_LABEL = {
@@ -3219,9 +3249,14 @@ function setRecommendedPreset(avatar, cardName, name) {
   bump();
 }
 async function switchPreset(name) {
+  if (!presetNames().includes(name)) {
+    toast("error", `找不到预设「${name}」，可能已经被删除或改名，没有切换。`, "预设");
+    return false;
+  }
   await runSlash(`/preset ${slashQuote(name)}`);
   refreshEnv();
   bump();
+  return true;
 }
 async function checkWorld(info) {
   if (info.world.state !== "ok" || info.world.embedded === null) return null;
@@ -3388,7 +3423,7 @@ async function importArchive(text, mode) {
   const inc = parseArchive(text);
   const s2 = settings();
   if (mode === "overwrite") {
-    const ok = await ctx().Popup?.show?.confirm?.("覆盖导入", "现在所有的角色档案、记住的配置、正则归属，以及预设、世界书、插件和美化的来源，都会换成文件里的。");
+    const ok = await confirmText("覆盖导入", "现在所有的角色档案、记住的配置、正则归属，以及预设、世界书、插件和美化的来源，都会换成文件里的。");
     if (!ok) return;
   }
   s2.cards = mergeRecords(s2.cards, inc.cards, mode, (v2) => v2.updatedAt ?? "");
@@ -3417,11 +3452,11 @@ function installCardsWatch(openPanel2) {
       const char = currentCharacter();
       if (!char?.avatar || char.avatar === lastAvatar$1) return;
       lastAvatar$1 = char.avatar;
+      if (settings().autoApplyEnv) return;
       const info = cardInfo(char);
       if (settings().autoImportWorld && info.world.embedded && (info.world.state === "missing" || info.world.state === "unbound")) {
         await importCardWorld(char.avatar);
       }
-      if (settings().autoApplyEnv) return;
       const installed2 = installedExtensions();
       const bad = requiredExtensions(info).map((r2) => ({ ...r2, ...extStatus(r2.req, installed2) })).filter((r2) => r2.status !== "enabled");
       if (bad.length) {
@@ -4428,13 +4463,21 @@ function planFor(char) {
 function planHasChanges(p2) {
   return !!p2.preset || !!p2.model && !sameModel(p2.model, currentModel()) || p2.worldsOn.length > 0 || p2.worldsOff.length > 0 || p2.regexOn.length > 0 || p2.regexOff.length > 0;
 }
-async function setRegexStates(changes) {
+async function setRegexStates(changes, { duringChatLoad = false } = {}) {
   const re = loaded.regexEngine;
   if (!re || !Object.keys(changes).length) return;
   const next = globalRegex().map((r2) => r2.id in changes ? { ...r2, disabled: changes[r2.id] } : r2);
   await re.saveScriptsByType(next, GLOBAL);
   saveSettings();
-  if (ctx().getCurrentChatId?.()) await ctx().reloadCurrentChat();
+  const chatId = ctx().getCurrentChatId?.();
+  if (!chatId || !next.some((r2) => r2.id in changes && r2.markdownOnly)) return;
+  if (!duringChatLoad) {
+    await ctx().reloadCurrentChat();
+    return;
+  }
+  setTimeout(() => {
+    if (ctx().getCurrentChatId?.() === chatId) void ctx().reloadCurrentChat();
+  }, 1e3);
 }
 async function setWorlds(on, off) {
   for (const w2 of off) await runSlash(`/world state=off silent=true ${slashQuote(w2)}`);
@@ -4449,9 +4492,8 @@ async function applyPlan(plan) {
   };
   const changes = [];
   if (plan.preset) {
-    if (plan.model) await withoutModelGuard(() => switchPreset(plan.preset));
-    else await switchPreset(plan.preset);
-    changes.push(`预设换成「${plan.preset}」`);
+    const ok = plan.model ? await withoutModelGuard(() => switchPreset(plan.preset)) : await switchPreset(plan.preset);
+    if (ok) changes.push(`预设换成「${plan.preset}」`);
   }
   if (plan.model && !sameModel(plan.model, currentModel())) {
     if (await setModel(plan.model)) changes.push(`模型换成 ${modelLabel(plan.model)}`);
@@ -4471,7 +4513,7 @@ async function applyPlan(plan) {
     rx[r2.id] = false;
     changes.push(`打开全局正则「${r2.name}」`);
   }
-  await setRegexStates(rx);
+  await setRegexStates(rx, { duringChatLoad: true });
   if (changes.length) lastApplied.value = { avatar: plan.avatar, cardName: plan.cardName, at: Date.now(), changes, snapshot };
   refreshEnv();
   return changes;
@@ -5392,7 +5434,7 @@ function WorldSection({ info }) {
   }, [info.avatar, w2.name, w2.state, archiveVersion.value]);
   const run = async (overwrite) => {
     if (overwrite) {
-      const ok = await ctx().Popup?.show?.confirm?.(
+      const ok = await confirmText(
         "用卡里的版本覆盖？",
         `世界书「${w2.importName}」会换成卡里自带的版本，只在现有世界书里的条目会丢失（可能是你或脚本加的）。覆盖前会自动备份。`
       );
@@ -6160,6 +6202,7 @@ function readOnline() {
   const st = String(ctx().onlineStatus ?? "");
   apiOnline.value = !!st && st !== "no_connection";
 }
+let inTempChat = false;
 function applyBodyClasses() {
   const b2 = document.body.classList;
   b2.toggle("rbt-shell", shellOn.value);
@@ -6169,7 +6212,7 @@ function applyBodyClasses() {
   b2.toggle("rbt-nav-open", navOpen.value);
   b2.toggle("rbt-shell-lcollapsed", leftCollapsed.value && !compact.value);
   const c2 = ctx();
-  const home = (c2.characterId === void 0 || c2.characterId === null) && !c2.groupId;
+  const home = (c2.characterId === void 0 || c2.characterId === null) && !c2.groupId && !inTempChat;
   b2.toggle("rbt-home", home);
   homeActive.value = home;
   shellActive.value = shellOn.value;
@@ -6197,15 +6240,18 @@ function trigger(selector) {
   if ($2) $2(selector).first().trigger("click");
   else document.querySelector(selector)?.click();
 }
-function inChat() {
+function inSavedChat() {
   const c2 = ctx();
   return c2.characterId !== void 0 && c2.characterId !== null || !!c2.groupId;
+}
+function inChat() {
+  return inSavedChat() || inTempChat;
 }
 function goHome() {
   if (inChat()) trigger("#option_close_chat");
 }
 function newChat() {
-  if (inChat()) trigger("#option_start_new_chat");
+  if (inSavedChat()) trigger("#option_start_new_chat");
 }
 function DrawerButton({ k: k2, compact: compact2, label, title, dot }) {
   const d2 = DRAWERS.find((x2) => x2.key === k2);
@@ -6319,7 +6365,11 @@ function AddedList({ q: q2 }) {
   ] });
 }
 function openTemporaryChat() {
-  const click = () => trigger(".openTemporaryChat");
+  const click = () => {
+    trigger(".openTemporaryChat");
+    inTempChat = true;
+    applyBodyClasses();
+  };
   if (!inChat()) {
     click();
     return;
@@ -6333,7 +6383,7 @@ function openTemporaryChat() {
   setTimeout(wait2, 100);
 }
 async function leaveShell() {
-  const ok = await ctx().Popup?.show?.confirm?.("切回原版界面？", "想回到现在的三栏界面时，在输入框里发送 /rbt shell，或者在「扩展 › RedBird 工具箱」里勾选「三栏外壳」。");
+  const ok = await confirmText("切回原版界面？", "想回到现在的三栏界面时，在输入框里发送 /rbt shell，或者在「扩展 › RedBird 工具箱」里勾选「三栏外壳」。");
   if (ok) setShellEnabled(false);
 }
 const stVersion = y$1("");
@@ -6441,6 +6491,7 @@ ${w2.warn}` : w2.title, dot: w2.warn });
 }
 function NavBar() {
   void chatTick.value;
+  void homeActive.value;
   const c2 = ctx();
   const char = currentCharacter();
   const group = c2.groupId ? c2.groups?.find((g2) => g2.id === c2.groupId) : null;
@@ -6450,7 +6501,7 @@ function NavBar() {
   if (compact.value) {
     return /* @__PURE__ */ u$2("header", { class: "rbt-nav rbt-nav-phone", children: [
       /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn rbt-nav-menu", title: "菜单", "aria-label": "菜单", onClick: () => setNavOpen(true), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-bars" }) }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-nav-title", children: home ? /* @__PURE__ */ u$2("span", { class: "rbt-nav-name", children: "首页" }) : /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-nav-who", title: "切换 / 管理存档", onClick: () => trigger("#option_select_chat"), children: [
+      /* @__PURE__ */ u$2("div", { class: "rbt-nav-title", children: home ? /* @__PURE__ */ u$2("span", { class: "rbt-nav-name", children: inTempChat ? "临时聊天" : "首页" }) : /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-nav-who", title: "切换 / 管理存档", onClick: () => trigger("#option_select_chat"), children: [
         char && /* @__PURE__ */ u$2("img", { class: "rbt-nav-avatar", src: c2.getThumbnailUrl("avatar", char.avatar), alt: "" }),
         /* @__PURE__ */ u$2("span", { class: "rbt-nav-name", children: name }),
         chatId && /* @__PURE__ */ u$2("i", { class: "fa-solid fa-chevron-down" })
@@ -6463,7 +6514,7 @@ function NavBar() {
   }
   return /* @__PURE__ */ u$2("header", { class: "rbt-nav", children: [
     leftCollapsed.value && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn", title: "展开左栏", onClick: () => setCollapsed(false), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-angles-right" }) }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-nav-title", children: home ? /* @__PURE__ */ u$2("span", { class: "rbt-nav-name", children: "首页" }) : /* @__PURE__ */ u$2(S$1, { children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-nav-title", children: home ? /* @__PURE__ */ u$2("span", { class: "rbt-nav-name", children: inTempChat ? "临时聊天" : "首页" }) : /* @__PURE__ */ u$2(S$1, { children: [
       char && /* @__PURE__ */ u$2("img", { class: "rbt-nav-avatar", src: c2.getThumbnailUrl("avatar", char.avatar), alt: "" }),
       /* @__PURE__ */ u$2("span", { class: "rbt-nav-name", children: name }),
       /* @__PURE__ */ u$2(DrawerButton, { k: "characters", compact: true, label: "编辑卡片", title: `编辑「${name}」的角色卡` }),
@@ -6505,6 +6556,7 @@ function initShellState() {
   setTimeout(() => document.body.classList.add("rbt-shell-ready"), 800);
   const c2 = ctx();
   const bump2 = () => {
+    inTempChat = false;
     chatTick.value++;
     applyBodyClasses();
     if (shellActive.value && document.body.classList.contains("rbt-home")) panelOpen.value = false;
@@ -7321,7 +7373,7 @@ function BackupPage() {
           "」"
         ] }, c2)),
         /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-push", onClick: async () => {
-          if (await ctx().Popup?.show?.confirm?.("删除这份档案？", `「${o2.cardName}」的来源、说明和记住的配置都会删除。`)) dropRecord(o2.avatar);
+          if (await confirmText("删除这份档案？", `「${o2.cardName}」的来源、说明和记住的配置都会删除。`)) dropRecord(o2.avatar);
         }, children: "删除" })
       ] }, o2.avatar)) })
     ] }),
@@ -7728,7 +7780,7 @@ function addSlashCommand() {
 }
 async function init() {
   applyLook();
-  retireOldTheme();
+  void retireOldTheme();
   watchStThemeSwitch();
   await preloadModules();
   await installStore();

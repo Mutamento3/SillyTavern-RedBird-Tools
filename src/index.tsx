@@ -121,7 +121,7 @@ function addSlashCommand(): void {
 
 async function init(): Promise<void> {
   applyLook();
-  retireOldTheme();
+  void retireOldTheme();
   watchStThemeSwitch();
   await preloadModules();
   // 工具箱自己的存档：先把 settings.json 里旧了的部分补回来（见 st/store.ts）
