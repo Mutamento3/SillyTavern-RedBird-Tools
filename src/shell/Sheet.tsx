@@ -3,12 +3,11 @@
  * 并且和酒馆面板互斥：一个时刻只开一个。
  */
 import { useEffect } from 'preact/hooks';
-import { DropHint, GlobalTabs, GlobalToolbox, useDropImport } from '../ui/pages/GlobalToolbox';
+import { GlobalTabs, GlobalToolbox } from '../ui/pages/GlobalToolbox';
 import { closeSheet, sheetOpen } from '../ui/views';
 
 export function SheetHost() {
   const open = sheetOpen.value;
-  const drop = useDropImport();
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -25,7 +24,7 @@ export function SheetHost() {
   return (
     <>
       <div class="rbt-sheet-backdrop" onMouseDown={() => closeSheet()} />
-      <section class="rbt-sheet rbt-scope" role="dialog" aria-label={title} {...drop.handlers}>
+      <section class="rbt-sheet rbt-scope" role="dialog" aria-label={title}>
         <header class="rbt-sheet-bar">
           <span class="rbt-sheet-title"><i class="fa-solid fa-globe fa-fw" />{title}</span>
           <GlobalTabs />
@@ -34,7 +33,6 @@ export function SheetHost() {
         <div class="rbt-sheet-body">
           <GlobalToolbox />
         </div>
-        {drop.dragging && <DropHint />}
       </section>
     </>
   );

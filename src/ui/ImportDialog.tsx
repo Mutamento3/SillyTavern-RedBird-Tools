@@ -9,25 +9,111 @@
  * 都不勾、不填，就是普通导入。
  */
 import { signal } from '@preact/signals';
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { normalizeUrl } from '../core/cards';
 import { charaFileName, ctx, loaded, runSlash, slashQuote, toast } from '../st/st';
 import { presetNames, setRecommendedPreset, switchPreset, updateRecord, worldNames, archiveVersion } from '../tools/cards/cards';
 import { KIND_LABEL, KIND_TAB, prepareImport, runImport, type ImportItem } from '../tools/importer';
 import { updateSource } from '../tools/sources';
 import { refreshStatus } from '../shell/EnvStatus';
+import { importCharacterUrl } from '../shell/characters';
 import { CheckRow } from './common';
 import { loadThemes, useStTheme } from '../look/look';
 import { setGlobalTab, sheetOpen } from './views';
 
 const draft = signal<ImportItem[] | null>(null);
+/** The window is open on its first step: nothing picked yet. */
+const picking = signal(false);
+/** Files are being dragged over the first step's drop area. */
+const over = signal(false);
 
-export async function openImport(files: File[]): Promise<void> {
-  if (!files.length) return;
+/** Open the import window. With no files it starts on the drop area / file picker. */
+export async function openImport(files: File[] = []): Promise<void> {
+  if (!files.length) { picking.value = true; return; }
   draft.value = await prepareImport(files);
+  picking.value = false;
+}
+
+/** True while the import window is open (either step). */
+export const importOpen = (): boolean => picking.value || !!draft.value;
+
+function closeImport(): void {
+  draft.value = null;
+  picking.value = false;
+  over.value = false;
 }
 
 export const IMPORT_ACCEPT = '.json,.settings,.lorebook,.png,.charx,.byaf,.yaml,.yml';
+const canDrag = (): boolean => !window.matchMedia?.('(pointer: coarse)').matches;
+const hasFiles = (e: DragEvent): boolean => [...(e.dataTransfer?.types ?? [])].includes('Files');
+
+/**
+ * Drops on the import window (and its backdrop) never reach ST's page-wide handler,
+ * which would import everything as a character. First step: take the files. Second step: refuse.
+ */
+const dropHandlers = {
+  onDragOver: (e: DragEvent) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = picking.value ? 'copy' : 'none';
+    if (picking.value) over.value = true;
+  },
+  onDragLeave: (e: DragEvent) => { if (!e.relatedTarget || !(e.currentTarget as Node).contains(e.relatedTarget as Node)) over.value = false; },
+  onDrop: (e: DragEvent) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    over.value = false;
+    if (picking.value) void openImport([...(e.dataTransfer?.files ?? [])]);
+  },
+};
+
+const KINDS: { label: string; icon: string }[] = [
+  { label: '角色卡', icon: 'fa-user' }, { label: '预设', icon: 'fa-sliders' }, { label: '世界书', icon: 'fa-book' },
+  { label: '正则', icon: 'fa-code' }, { label: '美化', icon: 'fa-palette' },
+];
+
+/** First step: one big drop area that is also the file picker. */
+function PickStep() {
+  const ref = useRef<HTMLInputElement>(null);
+  const drag = canDrag();
+  const pick = () => ref.current?.click();
+  return (
+    <>
+      <div class="rbt-sheet-backdrop rbt-imp-backdrop" onMouseDown={closeImport} {...dropHandlers} />
+      <section class="rbt-sheet rbt-scope rbt-imp rbt-imp-pick" role="dialog" aria-label="导入文件" {...dropHandlers}>
+        <header class="rbt-sheet-bar">
+          <span class="rbt-sheet-title"><i class="fa-solid fa-file-import fa-fw" />导入文件</span>
+          <button type="button" class="rbt-sheet-close" title="关闭（Esc）" aria-label="关闭" onClick={closeImport}>✕</button>
+        </header>
+        <div class="rbt-sheet-body">
+          <div class={`rbt-imp-drop ${over.value ? 'over' : ''}`} onClick={pick}>
+            <i class="fa-solid fa-arrow-up-from-bracket rbt-imp-drop-ico" />
+            {drag && <b>{over.value ? '松开鼠标，开始导入' : '把文件拖到这里'}</b>}
+            <button type="button" class="rbt-btn rbt-btn-primary" onClick={(e) => { e.stopPropagation(); pick(); }}>选择文件</button>
+            <small>可以多选。工具箱会识别每个文件的类型。</small>
+          </div>
+          <div class="rbt-imp-kinds">
+            <span>支持</span>
+            {KINDS.map((k) => <span key={k.label} class="rbt-imp-kind"><i class={`fa-solid ${k.icon} fa-fw`} />{k.label}</span>)}
+          </div>
+          <input ref={ref} type="file" multiple accept={IMPORT_ACCEPT} style={{ display: 'none' }} onChange={(e) => {
+            const input = e.currentTarget as HTMLInputElement;
+            const files = [...(input.files ?? [])];
+            input.value = '';
+            void openImport(files);
+          }} />
+        </div>
+        <footer class="rbt-imp-foot">
+          <button type="button" class="rbt-linkbtn" onClick={() => { closeImport(); importCharacterUrl(); }}>
+            <i class="fa-solid fa-link fa-fw" /> 从链接导入角色卡
+          </button>
+        </footer>
+      </section>
+    </>
+  );
+}
 
 const KIND_ICON: Record<ImportItem['kind'], string> = {
   character: 'fa-user', preset: 'fa-sliders', world: 'fa-book', regex: 'fa-code', theme: 'fa-palette', unknown: 'fa-file-circle-question',
@@ -151,12 +237,14 @@ export function ImportDialog() {
   const [busy, setBusy] = useState(false);
   const [src, setSrc] = useState<Source>(NO_SOURCE);
   useEffect(() => { if (!items) setSrc(NO_SOURCE); }, [items]);
+  const open = !!items || picking.value;
   useEffect(() => {
-    if (!items) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busy && !document.querySelector('dialog[open]')) draft.value = null; };
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busy && !document.querySelector('dialog[open]')) closeImport(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [items, busy]);
+  }, [open, busy]);
+  if (picking.value) return <PickStep />;
   if (!items) return null;
   const usable = items.filter((i) => i.kind !== 'unknown' && !i.skip);
   const theCard = items.filter((i) => i.kind === 'character' && !i.skip);
@@ -212,7 +300,7 @@ export function ImportDialog() {
       archiveVersion.value++;
       if (usable.some((i) => i.kind === 'theme')) void loadThemes();
       refreshStatus();
-      draft.value = null;
+      closeImport();
     } finally {
       setBusy(false);
     }
@@ -220,11 +308,11 @@ export function ImportDialog() {
 
   return (
     <>
-      <div class="rbt-sheet-backdrop rbt-imp-backdrop" onMouseDown={() => { if (!busy) draft.value = null; }} />
-      <section class="rbt-sheet rbt-scope rbt-imp" role="dialog" aria-label="导入">
+      <div class="rbt-sheet-backdrop rbt-imp-backdrop" onMouseDown={() => { if (!busy) closeImport(); }} {...dropHandlers} />
+      <section class="rbt-sheet rbt-scope rbt-imp" role="dialog" aria-label="导入" {...dropHandlers}>
         <header class="rbt-sheet-bar">
           <span class="rbt-sheet-title"><i class="fa-solid fa-file-import fa-fw" />导入 {items.length} 个文件</span>
-          <button type="button" class="rbt-sheet-close" title="取消（Esc）" aria-label="取消" disabled={busy} onClick={() => { draft.value = null; }}>✕</button>
+          <button type="button" class="rbt-sheet-close" title="取消（Esc）" aria-label="取消" disabled={busy} onClick={closeImport}>✕</button>
         </header>
         <div class="rbt-sheet-body">
           {main && (
@@ -242,7 +330,7 @@ export function ImportDialog() {
         </div>
         <footer class="rbt-imp-foot">
           <small class="rbt-muted">用的是酒馆自己的导入，重名时酒馆会问要不要覆盖。</small>
-          <button type="button" class="rbt-btn" disabled={busy} onClick={() => { draft.value = null; }}>取消</button>
+          <button type="button" class="rbt-btn" disabled={busy} onClick={closeImport}>取消</button>
           <button type="button" class="rbt-btn rbt-btn-primary" disabled={busy || !usable.length} onClick={go}>{busy ? '正在导入…' : `导入 ${usable.length} 个`}</button>
         </footer>
       </section>

@@ -121,7 +121,7 @@ function DockGlobal() {
     <div class="rbt-dock-global" {...drop.handlers}>
       <div class="rbt-dock-subtabs"><GlobalTabs /><ImportButton /></div>
       <GlobalToolbox />
-      {drop.dragging && <DropHint />}
+      {drop.dragging !== null && <DropHint count={drop.dragging} />}
     </div>
   );
 }

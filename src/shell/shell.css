@@ -790,8 +790,24 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
   color: var(--SmartThemeBodyColor); font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap;
 }
 .rbt-home-btn:hover { background: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1) 12%, transparent)); }
+/* 只用在管理条的「完成」：首页本身不放实心主按钮 */
 .rbt-home-btn.primary { background: var(--rbd-accent, #e2725b); color: #fff; }
 .rbt-home-btn.primary:hover { filter: brightness(1.08); }
+/* 「＋ 新建」和它的菜单 */
+.rbt-home-new { position: relative; }
+.rbt-home-new-chev { font-size: 9px !important; opacity: 0.6 !important; margin-left: 2px; }
+.rbt-home-newmenu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
+  display: flex; flex-direction: column; min-width: 160px; padding: var(--rbd-s-1);
+  border-radius: var(--rbd-r-m); background: var(--rbd-bg1, #1e1e21);
+  box-shadow: 0 0 0 1px var(--rbd-line, rgba(255, 255, 255, 0.1)), 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+.rbt-home-newmenu button {
+  display: flex; align-items: center; gap: var(--rbd-s-2); height: 34px; padding: 0 var(--rbd-s-2);
+  border: 0; border-radius: var(--rbd-r-s); background: none; color: var(--SmartThemeBodyColor); font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+.rbt-home-newmenu button:hover { background: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1) 12%, transparent)); }
+.rbt-home-newmenu button i { font-size: 12px; opacity: 0.75; }
 .rbt-home-btn i { font-size: 12px; opacity: 0.85; }
 
 .rbt-home-filters { display: flex; align-items: center; gap: var(--rbd-s-3); margin-bottom: var(--rbd-s-5); }
@@ -805,9 +821,19 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
 .rbt-home-select {
   width: auto !important; min-width: 0; margin: 0 !important;
   padding: 5px 10px !important; border: 0 !important; border-radius: 999px !important;
-  background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 6%, transparent)) !important;
+  background: transparent !important;
   color: var(--rbd-text2, #9ca1aa) !important; font-size: 13px !important; cursor: pointer;
 }
+/* 下拉（排序、按标签）：没有底色了，用一个小箭头说明能点开 */
+select.rbt-home-select {
+  -webkit-appearance: none; appearance: none; padding-right: 24px !important; field-sizing: content;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239ca1aa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 9px center / 9px 6px !important;
+}
+select.rbt-home-select:hover { background-color: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 5%, transparent)) !important; }
+select.rbt-home-select.active { background-color: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1) 12%, transparent)) !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239ca1aa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important; background-repeat: no-repeat !important; background-position: right 9px center !important; background-size: 9px 6px !important; }
+.rbt-home-select:hover { color: var(--SmartThemeBodyColor) !important; background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 5%, transparent)) !important; }
+/* 「待处理」是提醒，不只是筛选：前面一个琥珀色小点，和卡片上的提醒同色 */
+.rbt-home-pill-dot { display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: #f0a43a; vertical-align: 2px; }
 .rbt-home-select.active { color: var(--SmartThemeBodyColor) !important; background: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1) 12%, transparent)) !important; }
 /* 排序和「管理」：管的是下面这一列卡片，放在一起 */
 .rbt-home-tools { display: flex; align-items: center; gap: var(--rbd-s-2); flex: none; }
@@ -1102,6 +1128,11 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
   .rbt-imp .rbt-sheet-body { padding: 12px; }
   .rbt-imp-item { padding: 14px; }
   .rbt-imp-foot > small { display: none; }
+  .rbt-imp-kinds > span:first-child { flex-basis: 100%; text-align: center; }
+  .rbt-sheet.rbt-imp.rbt-imp-pick { width: 100dvw; }
+  .rbt-imp-kinds { gap: 5px; }
+  .rbt-imp-kind { padding: 3px 8px; }
+  .rbt-imp-pick .rbt-imp-foot { justify-content: center; }
   .rbt-imp-foot { justify-content: flex-end; }
   .rbt-imp-foot .rbt-btn { padding: 9px 18px; font-size: 14px; }
 
@@ -1110,7 +1141,7 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
   .rbt-home-head { gap: 10px; }
   .rbt-home-head h1 { font-size: 22px; }
   .rbt-home-search { order: 3; width: 100%; }
-  .rbt-home-actions { order: 4; width: 100%; margin-left: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .rbt-home-actions { order: 2; margin-left: auto; flex-wrap: nowrap; }
   .rbt-home-actions::-webkit-scrollbar { display: none; }
   .rbt-home-filters { flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
   .rbt-home-pills { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; flex: 1 1 100%; }

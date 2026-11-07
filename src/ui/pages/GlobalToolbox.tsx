@@ -7,6 +7,7 @@
  * - 结尾有 ↗ 的：去酒馆自己的面板或网页；
  * - 开关就是开关，按钮就是按钮；其余文字不可点，也不上色。
  */
+import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { ctx, runSlash, saveSettings, settings, slashQuote, confirmText } from '../../st/st';
 import {
@@ -39,7 +40,7 @@ import { ModelPicker } from '../ModelPicker';
 import { currentModel, modelLabel, presetBindsConnection, presetConnection, SOURCE_LABEL } from '../../tools/model';
 import { currentDetail, detailStack, GLOBAL_TAB_LABELS, GLOBAL_TABS, globalTab, goBack, openDetail, setGlobalTab, type GlobalTab } from '../views';
 import { installPlugin } from '../../tools/importer';
-import { openImport } from '../ImportDialog';
+import { importOpen, openImport } from '../ImportDialog';
 import { CardPage } from './CardPage';
 import { AddGlobalWorld, GlobalRegexList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
 import { Section } from './parts';
@@ -687,60 +688,90 @@ export function GlobalToolbox() {
 
 // ------------------------------------------------------- quick import ---
 
-const ACCEPT = '.json,.settings,.lorebook,.png,.charx,.byaf,.yaml,.yml';
-
-async function runImport(files: File[]): Promise<void> {
-  await openImport(files);
-}
-
-/** 「导入」 in the toolbox header: pick files, they go to the right ST importer. */
-/** 「导入」: pick files → the import window asks what to do with each. `big`: the left-column style. */
+/** 「导入文件」: opens the import window on its first step (drop area + file picker). */
 export function ImportButton({ big }: { big?: boolean } = {}) {
-  const ref = useRef<HTMLInputElement>(null);
   return (
-    <>
-      <button type="button" class={big ? 'rbt-gtool rbt-gtool-import' : 'rbt-btn rbt-btn-small rbt-import-btn'} title="导入预设、世界书、正则、角色卡或美化，也可以直接把文件拖进来" onClick={() => ref.current?.click()}>
-        <i class="fa-solid fa-file-import" /> 导入
-      </button>
-      <input ref={ref} type="file" multiple accept={ACCEPT} style={{ display: 'none' }} onChange={(e) => {
-        const input = e.currentTarget as HTMLInputElement;
-        const files = [...(input.files ?? [])];
-        input.value = '';
-        void runImport(files);
-      }} />
-    </>
+    <button type="button" class={big ? 'rbt-gtool rbt-gtool-import' : 'rbt-btn rbt-btn-small rbt-import-btn'} title="导入角色卡、预设、世界书、正则或美化。可以多选，也可以把文件拖进窗口。" onClick={() => { void openImport(); }}>
+      <i class="fa-solid fa-file-import fa-fw" /> <span>导入文件</span>
+    </button>
   );
 }
 
-/** Drag files anywhere over the toolbox to import them. */
-export function useDropImport(): { dragging: boolean; handlers: Record<string, (e: DragEvent) => void> } {
-  const [dragging, setDragging] = useState(false);
+const hasFiles = (e: DragEvent) => [...(e.dataTransfer?.types ?? [])].includes('Files');
+/** How many files are being dragged; 0 when the browser does not say. */
+const dragCount = (e: DragEvent) => [...(e.dataTransfer?.items ?? [])].filter((i) => i.kind === 'file').length;
+
+/** Drag files over the toolbox dock (stock UI) to import them. */
+export function useDropImport(): { dragging: number | null; handlers: Record<string, (e: DragEvent) => void> } {
+  const [dragging, setDragging] = useState<number | null>(null);
   const depth = useRef(0);
-  const hasFiles = (e: DragEvent) => [...(e.dataTransfer?.types ?? [])].includes('Files');
   return {
     dragging,
     handlers: {
-      onDragEnter: (e) => { if (!hasFiles(e)) return; e.preventDefault(); depth.current++; setDragging(true); },
+      onDragEnter: (e) => { if (!hasFiles(e)) return; e.preventDefault(); depth.current++; setDragging(dragCount(e)); },
       onDragOver: (e) => { if (!hasFiles(e)) return; e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; },
-      onDragLeave: () => { depth.current = Math.max(0, depth.current - 1); if (!depth.current) setDragging(false); },
+      onDragLeave: () => { depth.current = Math.max(0, depth.current - 1); if (!depth.current) setDragging(null); },
       onDrop: (e) => {
         if (!hasFiles(e)) return;
         e.preventDefault();
         e.stopPropagation(); // ST's own page-wide drop handler would try to import it a second time
         depth.current = 0;
-        setDragging(false);
-        void runImport([...(e.dataTransfer?.files ?? [])]);
+        setDragging(null);
+        void openImport([...(e.dataTransfer?.files ?? [])]);
       },
     },
   };
 }
 
-export function DropHint() {
+/** Files dragged over the three-column UI: how many (0 = unknown), or null when nothing is dragged. */
+export const windowDrag = signal<number | null>(null);
+
+/**
+ * Three-column UI: files dropped anywhere go to the import window instead of ST's page-wide
+ * handler (which only knows character cards). Places that take files themselves keep them:
+ * the chat input (attachments), ST popups, and the import window.
+ */
+const OWN_DROP = '#form_sheld, .popup, dialog, #select_chat_popup, [id^="dragGallery"], .rbt-imp, .rbt-imp-backdrop';
+export function installWindowDrop(): () => void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const hide = () => { clearTimeout(timer); windowDrag.value = null; };
+  const ours = (e: DragEvent) => hasFiles(e) && !importOpen() && !(e.target as Element | null)?.closest?.(OWN_DROP);
+  const onOver = (e: DragEvent) => {
+    if (!ours(e)) { if (windowDrag.value !== null) hide(); return; }
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    const n = dragCount(e);
+    if (windowDrag.value !== n) windowDrag.value = n;
+    // dragover keeps firing while files are over the page; when it stops, the drag left or was cancelled
+    clearTimeout(timer);
+    timer = setTimeout(hide, 300);
+  };
+  const onDrop = (e: DragEvent) => {
+    if (!ours(e)) { hide(); return; }
+    e.preventDefault();
+    e.stopPropagation();
+    hide();
+    void openImport([...(e.dataTransfer?.files ?? [])]);
+  };
+  window.addEventListener('dragenter', onOver, true);
+  window.addEventListener('dragover', onOver, true);
+  window.addEventListener('drop', onDrop, true);
+  return () => {
+    hide();
+    window.removeEventListener('dragenter', onOver, true);
+    window.removeEventListener('dragover', onOver, true);
+    window.removeEventListener('drop', onDrop, true);
+  };
+}
+
+/** Shown while files are dragged over a drop area. `count`: how many files, 0 when unknown. */
+export function DropHint({ count = 0, full }: { count?: number; full?: boolean }) {
   return (
-    <div class="rbt-drop-hint">
-      <i class="fa-solid fa-file-import" />
-      <b>松开就导入</b>
-      <span>预设、世界书、正则、角色卡、美化都可以，会自动认出是哪种</span>
+    <div class={`rbt-drop-hint ${full ? 'full' : ''}`}>
+      <i class="fa-solid fa-arrow-up-from-bracket" />
+      <b>{count > 0 ? `松开鼠标，导入 ${count} 个文件` : '松开鼠标，开始导入'}</b>
+      <span>工具箱会识别每个文件是角色卡、预设、世界书、正则还是美化。</span>
     </div>
   );
 }

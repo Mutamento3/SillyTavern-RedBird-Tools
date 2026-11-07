@@ -11,7 +11,7 @@ import { openGlobal, sheetOpen, shellActive } from '../ui/views';
 import { DRAWERS, drawerButtonHandlers, openDrawers, type DrawerKey } from './drawers';
 import { ToolboxButton } from './EnvStatus';
 import { StatusBar, worldStatus } from './StatusBar';
-import { ImportButton } from '../ui/pages/GlobalToolbox';
+import { DropHint, ImportButton, installWindowDrop, windowDrag } from '../ui/pages/GlobalToolbox';
 import { HomeGallery } from './Home';
 import { charsTick, isCurrent as isCurrentChar, listCharacters, openCharacter, sortCharacters, type CharItem } from './characters';
 import {
@@ -253,7 +253,7 @@ function openTemporaryChat(): void {
 
 /** Leaving the shell is easy to click by accident, so confirm and say how to come back. */
 async function leaveShell(): Promise<void> {
-  const ok = await confirmText('切回原版界面？', '想回到现在的三栏界面时，在输入框里发送 /rbt shell，或者在「扩展 › RedBird 工具箱」里勾选「三栏外壳」。');
+  const ok = await confirmText('切回原版界面？', '想回到现在的三栏界面时，在输入框里发送 /rbt shell，或者在「扩展 › RedBird 工具箱」里勾选「三栏界面」。');
   if (ok) setShellEnabled(false);
 }
 
@@ -318,7 +318,8 @@ function LeftColumn() {
 
       {phone && <CurrentCharacter />}
 
-      <div class="rbt-gtool-row"><GlobalButton /><ImportButton big /></div>
+      <div class="rbt-gtool-row"><ImportButton big /></div>
+      <div class="rbt-gtool-row"><GlobalButton /></div>
       <nav class="rbt-globals" aria-label="酒馆设定">
         {ST_KEYS.map((k) => (
           <DrawerButton key={k} k={k} title={k === 'api' && !apiOnline.value ? 'API（没连上）' : undefined} dot={k === 'api' && !apiOnline.value ? '没连上 API' : undefined} />
@@ -348,7 +349,7 @@ function LeftColumn() {
           <a href="https://discord.gg/sillytavern" target="_blank" rel="noopener"><i class="fa-brands fa-discord" /> Discord</a>
         </div>
         <div class="rbt-foot-row">
-          <button type="button" class="rbt-foot-btn" title="关掉三栏外壳，回到酒馆原来的界面" onClick={() => { void leaveShell(); }}>
+          <button type="button" class="rbt-foot-btn" title="关掉三栏界面，回到酒馆原来的界面" onClick={() => { void leaveShell(); }}>
             <i class="fa-solid fa-table-columns fa-fw" /> 原版界面
           </button>
           {version && <span class="rbt-foot-version">SillyTavern {version}</span>}
@@ -442,10 +443,14 @@ function NavBar() {
 }
 
 export function Shell() {
-  if (!shellOn.value) return null;
+  const on = shellOn.value;
+  useEffect(() => (on ? installWindowDrop() : undefined), [on]);
+  if (!on) return null;
   const phone = compact.value;
+  const drag = windowDrag.value;
   return (
     <>
+      {drag !== null && <DropHint count={drag} full />}
       {phone && navOpen.value && <div class="rbt-left-scrim" onClick={() => setNavOpen(false)} />}
       {(phone || !leftCollapsed.value) && <LeftColumn />}
       <NavBar />

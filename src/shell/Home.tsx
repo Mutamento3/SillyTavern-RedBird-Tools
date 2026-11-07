@@ -14,8 +14,6 @@ import {
   editCharacter,
   exportCharacter,
   setFavorite,
-  importCharacterFile,
-  importCharacterUrl,
   listCharacters,
   openCharacter,
   sortCharacters,
@@ -83,6 +81,34 @@ function lastChatText(t: number, now = Date.now()): string {
   if (days < 7) return `${days} 天前聊过`;
   const d = new Date(t);
   return d.getFullYear() === new Date(now).getFullYear() ? `${d.getMonth() + 1} 月 ${d.getDate()} 日聊过` : `${d.getFullYear()} 年 ${d.getMonth() + 1} 月聊过`;
+}
+
+/** 「＋ 新建」：新建角色、新建群组收在一个次要按钮里。 */
+function NewMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('pointerdown', away, true);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc); };
+  }, [open]);
+  const run = (fn: () => void) => () => { setOpen(false); fn(); };
+  return (
+    <div class="rbt-home-new" ref={ref}>
+      <button type="button" class={'rbt-home-btn' + (open ? ' active' : '')} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <i class="fa-solid fa-plus" /> 新建 <i class="fa-solid fa-chevron-down rbt-home-new-chev" />
+      </button>
+      {open && (
+        <div class="rbt-home-newmenu" role="menu">
+          <button type="button" role="menuitem" onClick={run(createCharacter)}><i class="fa-solid fa-user-plus fa-fw" /> 新建角色</button>
+          <button type="button" role="menuitem" onClick={run(createGroup)}><i class="fa-solid fa-users fa-fw" /> 新建群组</button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** 「⋯」菜单：导出、复制、删除（收藏和编辑已经是单独的按钮） */
@@ -222,8 +248,8 @@ export function HomeGallery() {
   const toggleAll = () => setPicked(pickedItems.length === selectable.length ? new Set() : new Set(selectable.map((x) => x.key)));
   const stopManaging = () => { setManaging(false); setPicked(new Set()); };
 
-  const Pill = ({ v, label }: { v: Filter; label: string }) => (
-    <button type="button" class={filter === v ? 'active' : ''} onClick={() => setFilter(v)}>{label}</button>
+  const Pill = ({ v, label, dot }: { v: Filter; label: string; dot?: boolean }) => (
+    <button type="button" class={filter === v ? 'active' : ''} onClick={() => setFilter(v)}>{dot && <span class="rbt-home-pill-dot" />}{label}</button>
   );
 
   return (
@@ -235,17 +261,14 @@ export function HomeGallery() {
           <input type="search" placeholder="搜索角色、备注、标签" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
         </label>
         <div class="rbt-home-actions">
-          <button type="button" class="rbt-home-btn primary" onClick={createCharacter}><i class="fa-solid fa-user-plus" /> 新建角色</button>
-          <button type="button" class="rbt-home-btn" onClick={importCharacterFile}><i class="fa-solid fa-file-import" /> 导入</button>
-          <button type="button" class="rbt-home-btn" onClick={importCharacterUrl}><i class="fa-solid fa-link" /> 从链接导入</button>
-          <button type="button" class="rbt-home-btn" onClick={createGroup}><i class="fa-solid fa-users" /> 新建群组</button>
+          <NewMenu />
         </div>
       </header>
       <div class="rbt-home-filters">
         <div class="rbt-home-pills" role="tablist">
           <Pill v="all" label="全部" />
           {nFav > 0 && <Pill v="fav" label={`收藏 ${nFav}`} />}
-          {nProblem > 0 && <Pill v="problem" label={`待处理 ${nProblem}`} />}
+          {nProblem > 0 && <Pill v="problem" label={`待处理 ${nProblem}`} dot />}
           {nGroup > 0 && <Pill v="group" label={`群组 ${nGroup}`} />}
           {tags.length > 0 && (
             <select class={'rbt-home-select' + (tagValue ? ' active' : '')} value={tagValue} onChange={(e) => { const v = (e.currentTarget as HTMLSelectElement).value; setFilter((v || 'all') as Filter); }}>
@@ -275,7 +298,7 @@ export function HomeGallery() {
       <div class="rbt-home-grid">
         {shown.map((it) => <Card key={it.key} it={it} managing={managing} selected={picked.has(it.key)} onSelect={toggle} />)}
       </div>
-      {!shown.length && <div class="rbt-home-empty">{query || filter !== 'all' ? '没有符合条件的角色。' : '还没有角色。点「新建角色」或「导入」开始。'}</div>}
+      {!shown.length && <div class="rbt-home-empty">{query || filter !== 'all' ? '没有符合条件的角色。' : '还没有角色。点左上角「导入文件」，或者右上角「新建」。'}</div>}
       {managing && <ManageBar picked={pickedItems} total={selectable.length} onAll={toggleAll} onDone={stopManaging} />}
     </main>
   );

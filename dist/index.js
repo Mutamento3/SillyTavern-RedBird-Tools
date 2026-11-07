@@ -3602,9 +3602,6 @@ function createCharacter() {
   openDrawer("characters");
   setTimeout(() => clickSt("#rm_button_create"), 250);
 }
-function importCharacterFile() {
-  clickSt("#character_import_button");
-}
 function importCharacterUrl() {
   clickSt("#external_import_button");
 }
@@ -4374,7 +4371,7 @@ async function waitForNew(get, before, fallback, ms = 8e3) {
   }
   return get().includes(fallback) ? fallback : null;
 }
-async function runImport$1(items, hooks) {
+async function runImport(items, hooks) {
   const done = [];
   items = items.filter((i2) => !i2.skip);
   const toCardWorlds = [];
@@ -6011,7 +6008,7 @@ function DockGlobal() {
       /* @__PURE__ */ u$2(ImportButton, {})
     ] }),
     /* @__PURE__ */ u$2(GlobalToolbox, {}),
-    drop.dragging && /* @__PURE__ */ u$2(DropHint, {})
+    drop.dragging !== null && /* @__PURE__ */ u$2(DropHint, { count: drop.dragging })
   ] });
 }
 function Item$1({ kind, icon, img, text, title, warn, badge, drawer }) {
@@ -6166,6 +6163,46 @@ function lastChatText(t2, now = Date.now()) {
   if (days < 7) return `${days} 天前聊过`;
   const d2 = new Date(t2);
   return d2.getFullYear() === new Date(now).getFullYear() ? `${d2.getMonth() + 1} 月 ${d2.getDate()} 日聊过` : `${d2.getFullYear()} 年 ${d2.getMonth() + 1} 月聊过`;
+}
+function NewMenu() {
+  const [open, setOpen] = d$1(false);
+  const ref = A$1(null);
+  h$2(() => {
+    if (!open) return;
+    const away = (e2) => {
+      if (!ref.current?.contains(e2.target)) setOpen(false);
+    };
+    const esc = (e2) => {
+      if (e2.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", away, true);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", away, true);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  const run = (fn) => () => {
+    setOpen(false);
+    fn();
+  };
+  return /* @__PURE__ */ u$2("div", { class: "rbt-home-new", ref, children: [
+    /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-home-btn" + (open ? " active" : ""), "aria-haspopup": "menu", "aria-expanded": open, onClick: () => setOpen(!open), children: [
+      /* @__PURE__ */ u$2("i", { class: "fa-solid fa-plus" }),
+      " 新建 ",
+      /* @__PURE__ */ u$2("i", { class: "fa-solid fa-chevron-down rbt-home-new-chev" })
+    ] }),
+    open && /* @__PURE__ */ u$2("div", { class: "rbt-home-newmenu", role: "menu", children: [
+      /* @__PURE__ */ u$2("button", { type: "button", role: "menuitem", onClick: run(createCharacter), children: [
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-user-plus fa-fw" }),
+        " 新建角色"
+      ] }),
+      /* @__PURE__ */ u$2("button", { type: "button", role: "menuitem", onClick: run(createGroup), children: [
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-users fa-fw" }),
+        " 新建群组"
+      ] })
+    ] })
+  ] });
 }
 function CardMenu({ it, onClose }) {
   const ref = A$1(null);
@@ -6348,7 +6385,10 @@ function HomeGallery() {
     setManaging(false);
     setPicked(/* @__PURE__ */ new Set());
   };
-  const Pill = ({ v: v2, label }) => /* @__PURE__ */ u$2("button", { type: "button", class: filter === v2 ? "active" : "", onClick: () => setFilter(v2), children: label });
+  const Pill = ({ v: v2, label, dot }) => /* @__PURE__ */ u$2("button", { type: "button", class: filter === v2 ? "active" : "", onClick: () => setFilter(v2), children: [
+    dot && /* @__PURE__ */ u$2("span", { class: "rbt-home-pill-dot" }),
+    label
+  ] });
   return /* @__PURE__ */ u$2("main", { class: "rbt-home-gallery", "aria-label": "角色", children: [
     /* @__PURE__ */ u$2("header", { class: "rbt-home-head", children: [
       /* @__PURE__ */ u$2("h1", { children: [
@@ -6359,30 +6399,13 @@ function HomeGallery() {
         /* @__PURE__ */ u$2("i", { class: "fa-solid fa-magnifying-glass" }),
         /* @__PURE__ */ u$2("input", { type: "search", placeholder: "搜索角色、备注、标签", value: q2, onInput: (e2) => setQ(e2.currentTarget.value) })
       ] }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-home-actions", children: [
-        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-home-btn primary", onClick: createCharacter, children: [
-          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-user-plus" }),
-          " 新建角色"
-        ] }),
-        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-home-btn", onClick: importCharacterFile, children: [
-          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-import" }),
-          " 导入"
-        ] }),
-        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-home-btn", onClick: importCharacterUrl, children: [
-          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-link" }),
-          " 从链接导入"
-        ] }),
-        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-home-btn", onClick: createGroup, children: [
-          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-users" }),
-          " 新建群组"
-        ] })
-      ] })
+      /* @__PURE__ */ u$2("div", { class: "rbt-home-actions", children: /* @__PURE__ */ u$2(NewMenu, {}) })
     ] }),
     /* @__PURE__ */ u$2("div", { class: "rbt-home-filters", children: [
       /* @__PURE__ */ u$2("div", { class: "rbt-home-pills", role: "tablist", children: [
         /* @__PURE__ */ u$2(Pill, { v: "all", label: "全部" }),
         nFav > 0 && /* @__PURE__ */ u$2(Pill, { v: "fav", label: `收藏 ${nFav}` }),
-        nProblem > 0 && /* @__PURE__ */ u$2(Pill, { v: "problem", label: `待处理 ${nProblem}` }),
+        nProblem > 0 && /* @__PURE__ */ u$2(Pill, { v: "problem", label: `待处理 ${nProblem}`, dot: true }),
         nGroup > 0 && /* @__PURE__ */ u$2(Pill, { v: "group", label: `群组 ${nGroup}` }),
         tags.length > 0 && /* @__PURE__ */ u$2("select", { class: "rbt-home-select" + (tagValue ? " active" : ""), value: tagValue, onChange: (e2) => {
           const v2 = e2.currentTarget.value;
@@ -6416,7 +6439,7 @@ function HomeGallery() {
       "里一次全部导入。"
     ] }),
     /* @__PURE__ */ u$2("div", { class: "rbt-home-grid", children: shown.map((it) => /* @__PURE__ */ u$2(Card, { it, managing, selected: picked.has(it.key), onSelect: toggle }, it.key)) }),
-    !shown.length && /* @__PURE__ */ u$2("div", { class: "rbt-home-empty", children: query || filter !== "all" ? "没有符合条件的角色。" : "还没有角色。点「新建角色」或「导入」开始。" }),
+    !shown.length && /* @__PURE__ */ u$2("div", { class: "rbt-home-empty", children: query || filter !== "all" ? "没有符合条件的角色。" : "还没有角色。点左上角「导入文件」，或者右上角「新建」。" }),
     managing && /* @__PURE__ */ u$2(ManageBar, { picked: pickedItems, total: selectable.length, onAll: toggleAll, onDone: stopManaging })
   ] });
 }
@@ -6615,7 +6638,7 @@ function openTemporaryChat() {
   setTimeout(wait2, 100);
 }
 async function leaveShell() {
-  const ok = await confirmText("切回原版界面？", "想回到现在的三栏界面时，在输入框里发送 /rbt shell，或者在「扩展 › RedBird 工具箱」里勾选「三栏外壳」。");
+  const ok = await confirmText("切回原版界面？", "想回到现在的三栏界面时，在输入框里发送 /rbt shell，或者在「扩展 › RedBird 工具箱」里勾选「三栏界面」。");
   if (ok) setShellEnabled(false);
 }
 const stVersion = y$1("");
@@ -6666,10 +6689,8 @@ function LeftColumn() {
       phone ? /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn", title: "关闭", "aria-label": "关闭", onClick: () => setNavOpen(false), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-xmark" }) }) : /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn", title: "收起左栏", onClick: () => setCollapsed(true), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-angles-left" }) })
     ] }),
     phone && /* @__PURE__ */ u$2(CurrentCharacter, {}),
-    /* @__PURE__ */ u$2("div", { class: "rbt-gtool-row", children: [
-      /* @__PURE__ */ u$2(GlobalButton, {}),
-      /* @__PURE__ */ u$2(ImportButton, { big: true })
-    ] }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-gtool-row", children: /* @__PURE__ */ u$2(ImportButton, { big: true }) }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-gtool-row", children: /* @__PURE__ */ u$2(GlobalButton, {}) }),
     /* @__PURE__ */ u$2("nav", { class: "rbt-globals", "aria-label": "酒馆设定", children: ST_KEYS.map((k2) => /* @__PURE__ */ u$2(DrawerButton, { k: k2, title: k2 === "api" && !apiOnline.value ? "API（没连上）" : void 0, dot: k2 === "api" && !apiOnline.value ? "没连上 API" : void 0 }, k2)) }),
     /* @__PURE__ */ u$2("div", { class: "rbt-left-actions", children: [
       /* @__PURE__ */ u$2("div", { class: "rbt-segctl", role: "tablist", "aria-label": "左栏列表", children: [
@@ -6702,7 +6723,7 @@ function LeftColumn() {
         ] })
       ] }),
       /* @__PURE__ */ u$2("div", { class: "rbt-foot-row", children: [
-        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-foot-btn", title: "关掉三栏外壳，回到酒馆原来的界面", onClick: () => {
+        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-foot-btn", title: "关掉三栏界面，回到酒馆原来的界面", onClick: () => {
           void leaveShell();
         }, children: [
           /* @__PURE__ */ u$2("i", { class: "fa-solid fa-table-columns fa-fw" }),
@@ -6765,9 +6786,13 @@ function NavBar() {
   ] });
 }
 function Shell() {
-  if (!shellOn.value) return null;
+  const on = shellOn.value;
+  h$2(() => on ? installWindowDrop() : void 0, [on]);
+  if (!on) return null;
   const phone = compact.value;
+  const drag = windowDrag.value;
   return /* @__PURE__ */ u$2(S$1, { children: [
+    drag !== null && /* @__PURE__ */ u$2(DropHint, { count: drag, full: true }),
     phone && navOpen.value && /* @__PURE__ */ u$2("div", { class: "rbt-left-scrim", onClick: () => setNavOpen(false) }),
     (phone || !leftCollapsed.value) && /* @__PURE__ */ u$2(LeftColumn, {}),
     /* @__PURE__ */ u$2(NavBar, {}),
@@ -6948,9 +6973,98 @@ function refreshStatus() {
   statusTick.value++;
 }
 const draft = y$1(null);
-async function openImport(files) {
-  if (!files.length) return;
+const picking = y$1(false);
+const over = y$1(false);
+async function openImport(files = []) {
+  if (!files.length) {
+    picking.value = true;
+    return;
+  }
   draft.value = await prepareImport(files);
+  picking.value = false;
+}
+const importOpen = () => picking.value || !!draft.value;
+function closeImport() {
+  draft.value = null;
+  picking.value = false;
+  over.value = false;
+}
+const IMPORT_ACCEPT = ".json,.settings,.lorebook,.png,.charx,.byaf,.yaml,.yml";
+const canDrag = () => !window.matchMedia?.("(pointer: coarse)").matches;
+const hasFiles$1 = (e2) => [...e2.dataTransfer?.types ?? []].includes("Files");
+const dropHandlers = {
+  onDragOver: (e2) => {
+    if (!hasFiles$1(e2)) return;
+    e2.preventDefault();
+    e2.stopPropagation();
+    if (e2.dataTransfer) e2.dataTransfer.dropEffect = picking.value ? "copy" : "none";
+    if (picking.value) over.value = true;
+  },
+  onDragLeave: (e2) => {
+    if (!e2.relatedTarget || !e2.currentTarget.contains(e2.relatedTarget)) over.value = false;
+  },
+  onDrop: (e2) => {
+    if (!hasFiles$1(e2)) return;
+    e2.preventDefault();
+    e2.stopPropagation();
+    over.value = false;
+    if (picking.value) void openImport([...e2.dataTransfer?.files ?? []]);
+  }
+};
+const KINDS = [
+  { label: "角色卡", icon: "fa-user" },
+  { label: "预设", icon: "fa-sliders" },
+  { label: "世界书", icon: "fa-book" },
+  { label: "正则", icon: "fa-code" },
+  { label: "美化", icon: "fa-palette" }
+];
+function PickStep() {
+  const ref = A$1(null);
+  const drag = canDrag();
+  const pick = () => ref.current?.click();
+  return /* @__PURE__ */ u$2(S$1, { children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-sheet-backdrop rbt-imp-backdrop", onMouseDown: closeImport, ...dropHandlers }),
+    /* @__PURE__ */ u$2("section", { class: "rbt-sheet rbt-scope rbt-imp rbt-imp-pick", role: "dialog", "aria-label": "导入文件", ...dropHandlers, children: [
+      /* @__PURE__ */ u$2("header", { class: "rbt-sheet-bar", children: [
+        /* @__PURE__ */ u$2("span", { class: "rbt-sheet-title", children: [
+          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-import fa-fw" }),
+          "导入文件"
+        ] }),
+        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-sheet-close", title: "关闭（Esc）", "aria-label": "关闭", onClick: closeImport, children: "✕" })
+      ] }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-sheet-body", children: [
+        /* @__PURE__ */ u$2("div", { class: `rbt-imp-drop ${over.value ? "over" : ""}`, onClick: pick, children: [
+          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-arrow-up-from-bracket rbt-imp-drop-ico" }),
+          drag && /* @__PURE__ */ u$2("b", { children: over.value ? "松开鼠标，开始导入" : "把文件拖到这里" }),
+          /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-primary", onClick: (e2) => {
+            e2.stopPropagation();
+            pick();
+          }, children: "选择文件" }),
+          /* @__PURE__ */ u$2("small", { children: "可以多选。工具箱会识别每个文件的类型。" })
+        ] }),
+        /* @__PURE__ */ u$2("div", { class: "rbt-imp-kinds", children: [
+          /* @__PURE__ */ u$2("span", { children: "支持" }),
+          KINDS.map((k2) => /* @__PURE__ */ u$2("span", { class: "rbt-imp-kind", children: [
+            /* @__PURE__ */ u$2("i", { class: `fa-solid ${k2.icon} fa-fw` }),
+            k2.label
+          ] }, k2.label))
+        ] }),
+        /* @__PURE__ */ u$2("input", { ref, type: "file", multiple: true, accept: IMPORT_ACCEPT, style: { display: "none" }, onChange: (e2) => {
+          const input = e2.currentTarget;
+          const files = [...input.files ?? []];
+          input.value = "";
+          void openImport(files);
+        } })
+      ] }),
+      /* @__PURE__ */ u$2("footer", { class: "rbt-imp-foot", children: /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-linkbtn", onClick: () => {
+        closeImport();
+        importCharacterUrl();
+      }, children: [
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-link fa-fw" }),
+        " 从链接导入角色卡"
+      ] }) })
+    ] })
+  ] });
 }
 const KIND_ICON = {
   character: "fa-user",
@@ -7062,14 +7176,16 @@ function ImportDialog() {
   h$2(() => {
     if (!items) setSrc(NO_SOURCE);
   }, [items]);
+  const open = !!items || picking.value;
   h$2(() => {
-    if (!items) return;
+    if (!open) return;
     const onKey = (e2) => {
-      if (e2.key === "Escape" && !busy && !document.querySelector("dialog[open]")) draft.value = null;
+      if (e2.key === "Escape" && !busy && !document.querySelector("dialog[open]")) closeImport();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [items, busy]);
+  }, [open, busy]);
+  if (picking.value) return /* @__PURE__ */ u$2(PickStep, {});
   if (!items) return null;
   const usable = items.filter((i2) => i2.kind !== "unknown" && !i2.skip);
   const theCard = items.filter((i2) => i2.kind === "character" && !i2.skip);
@@ -7085,7 +7201,7 @@ function ImportDialog() {
   const go = async () => {
     setBusy(true);
     try {
-      const done = await runImport$1(usable.map((it) => ({ ...it, ...src })), {
+      const done = await runImport(usable.map((it) => ({ ...it, ...src })), {
         presetNames,
         worldNames,
         characterAvatars: () => (ctx().characters ?? []).map((c2) => c2.avatar),
@@ -7136,16 +7252,16 @@ function ImportDialog() {
       archiveVersion.value++;
       if (usable.some((i2) => i2.kind === "theme")) void loadThemes();
       refreshStatus();
-      draft.value = null;
+      closeImport();
     } finally {
       setBusy(false);
     }
   };
   return /* @__PURE__ */ u$2(S$1, { children: [
     /* @__PURE__ */ u$2("div", { class: "rbt-sheet-backdrop rbt-imp-backdrop", onMouseDown: () => {
-      if (!busy) draft.value = null;
-    } }),
-    /* @__PURE__ */ u$2("section", { class: "rbt-sheet rbt-scope rbt-imp", role: "dialog", "aria-label": "导入", children: [
+      if (!busy) closeImport();
+    }, ...dropHandlers }),
+    /* @__PURE__ */ u$2("section", { class: "rbt-sheet rbt-scope rbt-imp", role: "dialog", "aria-label": "导入", ...dropHandlers, children: [
       /* @__PURE__ */ u$2("header", { class: "rbt-sheet-bar", children: [
         /* @__PURE__ */ u$2("span", { class: "rbt-sheet-title", children: [
           /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-import fa-fw" }),
@@ -7153,9 +7269,7 @@ function ImportDialog() {
           items.length,
           " 个文件"
         ] }),
-        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-sheet-close", title: "取消（Esc）", "aria-label": "取消", disabled: busy, onClick: () => {
-          draft.value = null;
-        }, children: "✕" })
+        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-sheet-close", title: "取消（Esc）", "aria-label": "取消", disabled: busy, onClick: closeImport, children: "✕" })
       ] }),
       /* @__PURE__ */ u$2("div", { class: "rbt-sheet-body", children: [
         main && /* @__PURE__ */ u$2(Item, { it: main, onChange: (p2) => set(main, p2), children: companions.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-imp-group", children: [
@@ -7171,9 +7285,7 @@ function ImportDialog() {
       ] }),
       /* @__PURE__ */ u$2("footer", { class: "rbt-imp-foot", children: [
         /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "用的是酒馆自己的导入，重名时酒馆会问要不要覆盖。" }),
-        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn", disabled: busy, onClick: () => {
-          draft.value = null;
-        }, children: "取消" }),
+        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn", disabled: busy, onClick: closeImport, children: "取消" }),
         /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-primary", disabled: busy || !usable.length, onClick: go, children: busy ? "正在导入…" : `导入 ${usable.length} 个` })
       ] })
     ] })
@@ -7784,29 +7896,20 @@ function GlobalToolbox() {
   if (t2 === "backup") return /* @__PURE__ */ u$2(BackupPage, {});
   return /* @__PURE__ */ u$2(Empty, { children: "没有这个标签。" });
 }
-const ACCEPT = ".json,.settings,.lorebook,.png,.charx,.byaf,.yaml,.yml";
-async function runImport(files) {
-  await openImport(files);
-}
 function ImportButton({ big } = {}) {
-  const ref = A$1(null);
-  return /* @__PURE__ */ u$2(S$1, { children: [
-    /* @__PURE__ */ u$2("button", { type: "button", class: big ? "rbt-gtool rbt-gtool-import" : "rbt-btn rbt-btn-small rbt-import-btn", title: "导入预设、世界书、正则、角色卡或美化，也可以直接把文件拖进来", onClick: () => ref.current?.click(), children: [
-      /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-import" }),
-      " 导入"
-    ] }),
-    /* @__PURE__ */ u$2("input", { ref, type: "file", multiple: true, accept: ACCEPT, style: { display: "none" }, onChange: (e2) => {
-      const input = e2.currentTarget;
-      const files = [...input.files ?? []];
-      input.value = "";
-      void runImport(files);
-    } })
+  return /* @__PURE__ */ u$2("button", { type: "button", class: big ? "rbt-gtool rbt-gtool-import" : "rbt-btn rbt-btn-small rbt-import-btn", title: "导入角色卡、预设、世界书、正则或美化。可以多选，也可以把文件拖进窗口。", onClick: () => {
+    void openImport();
+  }, children: [
+    /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-import fa-fw" }),
+    " ",
+    /* @__PURE__ */ u$2("span", { children: "导入文件" })
   ] });
 }
+const hasFiles = (e2) => [...e2.dataTransfer?.types ?? []].includes("Files");
+const dragCount = (e2) => [...e2.dataTransfer?.items ?? []].filter((i2) => i2.kind === "file").length;
 function useDropImport() {
-  const [dragging, setDragging] = d$1(false);
+  const [dragging, setDragging] = d$1(null);
   const depth = A$1(0);
-  const hasFiles = (e2) => [...e2.dataTransfer?.types ?? []].includes("Files");
   return {
     dragging,
     handlers: {
@@ -7814,7 +7917,7 @@ function useDropImport() {
         if (!hasFiles(e2)) return;
         e2.preventDefault();
         depth.current++;
-        setDragging(true);
+        setDragging(dragCount(e2));
       },
       onDragOver: (e2) => {
         if (!hasFiles(e2)) return;
@@ -7823,24 +7926,66 @@ function useDropImport() {
       },
       onDragLeave: () => {
         depth.current = Math.max(0, depth.current - 1);
-        if (!depth.current) setDragging(false);
+        if (!depth.current) setDragging(null);
       },
       onDrop: (e2) => {
         if (!hasFiles(e2)) return;
         e2.preventDefault();
         e2.stopPropagation();
         depth.current = 0;
-        setDragging(false);
-        void runImport([...e2.dataTransfer?.files ?? []]);
+        setDragging(null);
+        void openImport([...e2.dataTransfer?.files ?? []]);
       }
     }
   };
 }
-function DropHint() {
-  return /* @__PURE__ */ u$2("div", { class: "rbt-drop-hint", children: [
-    /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-import" }),
-    /* @__PURE__ */ u$2("b", { children: "松开就导入" }),
-    /* @__PURE__ */ u$2("span", { children: "预设、世界书、正则、角色卡、美化都可以，会自动认出是哪种" })
+const windowDrag = y$1(null);
+const OWN_DROP = '#form_sheld, .popup, dialog, #select_chat_popup, [id^="dragGallery"], .rbt-imp, .rbt-imp-backdrop';
+function installWindowDrop() {
+  let timer2;
+  const hide = () => {
+    clearTimeout(timer2);
+    windowDrag.value = null;
+  };
+  const ours = (e2) => hasFiles(e2) && !importOpen() && !e2.target?.closest?.(OWN_DROP);
+  const onOver = (e2) => {
+    if (!ours(e2)) {
+      if (windowDrag.value !== null) hide();
+      return;
+    }
+    e2.preventDefault();
+    e2.stopPropagation();
+    if (e2.dataTransfer) e2.dataTransfer.dropEffect = "copy";
+    const n2 = dragCount(e2);
+    if (windowDrag.value !== n2) windowDrag.value = n2;
+    clearTimeout(timer2);
+    timer2 = setTimeout(hide, 300);
+  };
+  const onDrop = (e2) => {
+    if (!ours(e2)) {
+      hide();
+      return;
+    }
+    e2.preventDefault();
+    e2.stopPropagation();
+    hide();
+    void openImport([...e2.dataTransfer?.files ?? []]);
+  };
+  window.addEventListener("dragenter", onOver, true);
+  window.addEventListener("dragover", onOver, true);
+  window.addEventListener("drop", onDrop, true);
+  return () => {
+    hide();
+    window.removeEventListener("dragenter", onOver, true);
+    window.removeEventListener("dragover", onOver, true);
+    window.removeEventListener("drop", onDrop, true);
+  };
+}
+function DropHint({ count = 0, full }) {
+  return /* @__PURE__ */ u$2("div", { class: `rbt-drop-hint ${full ? "full" : ""}`, children: [
+    /* @__PURE__ */ u$2("i", { class: "fa-solid fa-arrow-up-from-bracket" }),
+    /* @__PURE__ */ u$2("b", { children: count > 0 ? `松开鼠标，导入 ${count} 个文件` : "松开鼠标，开始导入" }),
+    /* @__PURE__ */ u$2("span", { children: "工具箱会识别每个文件是角色卡、预设、世界书、正则还是美化。" })
   ] });
 }
 function InstallPlugin() {
@@ -7880,7 +8025,6 @@ function PresetModelSection({ name, isCurrent: isCurrent2 }) {
 }
 function SheetHost() {
   const open = sheetOpen.value;
-  const drop = useDropImport();
   h$2(() => {
     if (!open) return;
     const onKey = (e2) => {
@@ -7895,7 +8039,7 @@ function SheetHost() {
   const title = "全局工具箱";
   return /* @__PURE__ */ u$2(S$1, { children: [
     /* @__PURE__ */ u$2("div", { class: "rbt-sheet-backdrop", onMouseDown: () => closeSheet() }),
-    /* @__PURE__ */ u$2("section", { class: "rbt-sheet rbt-scope", role: "dialog", "aria-label": title, ...drop.handlers, children: [
+    /* @__PURE__ */ u$2("section", { class: "rbt-sheet rbt-scope", role: "dialog", "aria-label": title, children: [
       /* @__PURE__ */ u$2("header", { class: "rbt-sheet-bar", children: [
         /* @__PURE__ */ u$2("span", { class: "rbt-sheet-title", children: [
           /* @__PURE__ */ u$2("i", { class: "fa-solid fa-globe fa-fw" }),
@@ -7904,8 +8048,7 @@ function SheetHost() {
         /* @__PURE__ */ u$2(GlobalTabs, {}),
         /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-sheet-close", title: "关闭（Esc）", "aria-label": "关闭", onClick: () => closeSheet(), children: "✕" })
       ] }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-sheet-body", children: /* @__PURE__ */ u$2(GlobalToolbox, {}) }),
-      drop.dragging && /* @__PURE__ */ u$2(DropHint, {})
+      /* @__PURE__ */ u$2("div", { class: "rbt-sheet-body", children: /* @__PURE__ */ u$2(GlobalToolbox, {}) })
     ] })
   ] });
 }

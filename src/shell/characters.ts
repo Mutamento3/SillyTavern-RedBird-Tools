@@ -181,9 +181,6 @@ export function createCharacter(): void {
   openDrawer('characters');
   setTimeout(() => clickSt('#rm_button_create'), 250);
 }
-export function importCharacterFile(): void {
-  clickSt('#character_import_button');
-}
 export function importCharacterUrl(): void {
   clickSt('#external_import_button');
 }
