@@ -197,10 +197,19 @@ export function installRecentWatch(): void {
   const et = c.eventTypes;
   // The character list loads after extensions; chats of unknown characters are dropped, so load again then.
   // (Both events and the list's first mount go through the same debounce: one request at startup.)
+  // 启动时两个事件常常隔着一两秒先后到：角色数没变、刚拉过的就不再拉
+  let lastStartup = { at: 0, chars: -1 };
+  const startupLoad = () => {
+    const chars = ctx().characters?.length ?? 0;
+    if (Date.now() - lastStartup.at < 5000 && chars === lastStartup.chars) return;
+    lastStartup = { at: Date.now(), chars };
+    refreshRecentSoon(400);
+  };
   for (const ev of [et.APP_READY, et.CHARACTER_PAGE_LOADED]) {
-    if (ev) es.on(ev, () => refreshRecentSoon(400));
+    if (ev) es.on(ev, startupLoad);
   }
-  for (const ev of [et.CHAT_CHANGED, et.CHAT_CREATED, et.CHAT_DELETED, et.GROUP_CHAT_DELETED, et.CHARACTER_RENAMED, et.CHARACTER_DELETED]) {
+  // 打开一个聊天不会改变列表内容（当前高亮由界面自己算），所以换聊天不再重新下载；新建、删除、改名才拉
+  for (const ev of [et.CHAT_CREATED, et.CHAT_RENAMED, et.CHAT_DELETED, et.GROUP_CHAT_DELETED, et.CHARACTER_RENAMED, et.CHARACTER_DELETED]) {
     if (ev) es.on(ev, () => refreshRecentSoon(300));
   }
   let patchTimer: ReturnType<typeof setTimeout> | undefined;

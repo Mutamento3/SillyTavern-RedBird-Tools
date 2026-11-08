@@ -1236,8 +1236,13 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
   .rbt-hcard-text { padding: 0 10px 14px; }
   .rbt-hcard-name { font-size: 16px; }
   .rbt-hcard-pill { top: 8px; left: 8px; padding: 4px 9px 4px 8px; font-size: 11px; }
-  .rbt-hcard-favmark { top: 8px; right: 8px; }
-  .rbt-hcard-acts { display: none; }
+  /* 手机：右上角只放一个「⋯」（收藏、编辑在它的菜单里），收藏的卡在它左边亮一颗星；群组没有菜单，放「编辑」 */
+  .rbt-hcard-acts { top: 6px; right: 6px; opacity: 1; }
+  .rbt-hcard-act { width: 36px; height: 36px; font-size: 14px; }
+  .rbt-hcard-act-fav, .rbt-hcard-acts:has(.rbt-hcard-act-more) .rbt-hcard-act-edit { display: none; }
+  .rbt-hcard-favmark { display: none; }
+  .rbt-hcard-namefav { display: inline; margin-right: 5px; font-size: 0.8em; color: #ffd45e; vertical-align: 0.08em; }
+  .rbt-hcard-pill { max-width: calc(100% - 52px); }
 
   /* ---- 聊天：头像小一点、消息左右留白少一点，宽度留给正文 ---- */
   body.rbt-shell #chat { --avatar-base-width: 32px; --avatar-base-height: 32px; }
@@ -1503,3 +1508,20 @@ body.rbt-shell .rbt-nav-progress::before {
 @media (prefers-reduced-motion: reduce) {
   body.rbt-shell .rbt-nav-progress::before { width: 100%; animation: none; opacity: 0.6; }
 }
+
+/* ============================================================ 触屏：首页卡片的收藏和「⋯」一直显示 ===
+   电脑上鼠标移上去才出现；手机没有悬停，原来点不到。触屏上一直显示，按钮放大到好点的尺寸，
+   右上角的小星星标记就不用了（收藏按钮本身会亮）。卡片也不做悬停放大（手指点完会卡在放大状态）。 */
+@media (hover: none) and (min-width: 1001px) {
+  .rbt-hcard-acts { opacity: 1; }
+  .rbt-hcard-favmark { display: none; }
+  .rbt-hcard-act { width: 36px; height: 36px; font-size: 14px; }
+  .rbt-hcard-menu { top: 54px; }
+  .rbt-hcard:hover { transform: none; }
+  .rbt-hcard:hover .rbt-hcard-img { transform: none; }
+}
+
+/* 卡片左上角标签：文字太长时省略，不截断半个字；名字前的收藏星只在手机上显示 */
+.rbt-hcard-pill-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbt-hcard-namefav { display: none; }
+@media (max-width: 1000px) { .rbt-hcard-namefav { display: inline; } }

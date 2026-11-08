@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "换卡切换推荐预设时，等待超过 0.5 秒会显示进度条。"
+  "rbt_whats_new": "手机角色卡菜单可直接点开，启动和编辑更流畅。"
 }

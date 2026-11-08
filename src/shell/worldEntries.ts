@@ -77,8 +77,11 @@ function enhance(entry: HTMLElement): void {
     const sum = document.createElement('div');
     sum.className = 'rbt-wi-sum';
     header.appendChild(sum);
-    entry.addEventListener('input', () => refresh(entry));
-    entry.addEventListener('change', () => refresh(entry));
+    // 打字时每帧最多更新一次摘要
+    let queued = false;
+    const soon = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; refresh(entry); }); };
+    entry.addEventListener('input', soon);
+    entry.addEventListener('change', soon);
   }
   refresh(entry);
 
@@ -101,17 +104,42 @@ function enhance(entry: HTMLElement): void {
 }
 
 let pending = false;
-function scan(): void {
+/** 等着处理的条目；null 表示整页都看一遍（第一次、换书、数据重读后）。 */
+let queue: Set<HTMLElement> | null = null;
+function scan(entries?: Iterable<HTMLElement>): void {
+  if (!entries) queue = null;
+  else if (queue !== null || !pending) { queue ??= new Set(); for (const e of entries) queue.add(e); }
   if (pending) return;
   pending = true;
   // 一次重画会触发很多条变动，合成一次处理
   requestAnimationFrame(() => {
     pending = false;
+    const todo = queue;
+    queue = new Set();
     if (!document.body.classList.contains('rbt-shell')) return;
     const name = bookName();
     if (name && !books.has(name)) void loadBook(name);
-    for (const el of document.querySelectorAll<HTMLElement>('#world_popup_entries_list .world_entry')) enhance(el);
+    const list = todo ?? document.querySelectorAll<HTMLElement>('#world_popup_entries_list .world_entry');
+    for (const el of list) if (el.isConnected) enhance(el);
   });
+}
+
+const ENTRY = '.world_entry, .world_entry_edit';
+/**
+ * 只关心新加进来的条目和编辑区（翻页、排序、换书、展开）。打字时酒馆在条目里更新字数统计之类的小节点，
+ * 那些变动不用管：以前每次都把整页条目重新检查一遍，手机上打字会慢。
+ */
+function onMutations(records: MutationRecord[]): void {
+  const hit = new Set<HTMLElement>();
+  for (const r of records) {
+    for (const n of r.addedNodes) {
+      if (!(n instanceof HTMLElement)) continue;
+      if (n.matches(ENTRY)) { const e = n.closest<HTMLElement>('.world_entry'); if (e) hit.add(e); }
+      else for (const e of n.querySelectorAll<HTMLElement>('.world_entry')) hit.add(e);
+      if (!n.matches('.world_entry') && n.querySelector('.world_entry_edit')) { const e = n.closest<HTMLElement>('.world_entry'); if (e) hit.add(e); }
+    }
+  }
+  if (hit.size) scan(hit);
 }
 
 let installed = false;
@@ -123,7 +151,7 @@ export function installWorldEntries(tries = 0): void {
   if (!list) { if (tries < 30) setTimeout(() => installWorldEntries(tries + 1), 2000); return; }
   installed = true;
   // 翻页、排序、换一本书、展开收起时酒馆会重画条目
-  new MutationObserver(() => scan()).observe(list, { childList: true, subtree: true });
+  new MutationObserver(onMutations).observe(list, { childList: true, subtree: true });
   // 改了关键词以后，世界书数据要重新读（收起时的摘要用它）
   let t: ReturnType<typeof setTimeout> | undefined;
   list.addEventListener('change', () => { clearTimeout(t); t = setTimeout(() => { books.delete(bookName()); scan(); }, 1500); });

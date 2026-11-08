@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { openGlobal } from '../ui/views';
 import { openImport } from '../ui/ImportDialog';
-import { Menu } from '../ui/Menu';
+import { isPhone, Menu } from '../ui/Menu';
 import { ctx } from '../st/st';
 import {
   allTags,
@@ -29,9 +29,21 @@ const SORT_KEY = 'rbt-shell-char-sort';
 
 // ------------------------------------------------------------ colour ---
 
-/** Average colour of the lower part of each picture, toned down so white text stays readable. */
-const tints = new Map<string, string>();
+// 卡片底色（从图片底部取的颜色）记在浏览器里：下次打开首页不用再把每张图画到画布上取色
+const TINT_KEY = 'rbt-card-tints';
+const tints: Map<string, string> = (() => {
+  try { return new Map(Object.entries(JSON.parse(localStorage.getItem(TINT_KEY) ?? '{}') as Record<string, string>)); } catch { return new Map(); }
+})();
+let tintSave: ReturnType<typeof setTimeout> | undefined;
+function rememberTint(key: string, t: string): void {
+  tints.set(key, t);
+  clearTimeout(tintSave);
+  tintSave = setTimeout(() => {
+    try { localStorage.setItem(TINT_KEY, JSON.stringify(Object.fromEntries([...tints].slice(-500)))); } catch { /* 存不下就算了 */ }
+  }, 1000);
+}
 
+/** Average colour of the lower part of each picture, toned down so white text stays readable. */
 function toneDown(r: number, g: number, b: number): string {
   // RGB → HSL, then cap saturation / lightness.
   r /= 255; g /= 255; b /= 255;
@@ -135,6 +147,13 @@ function CardMenu({ it, onClose }: { it: CharItem; onClose: () => void }) {
   const run = (fn: () => unknown) => () => { onClose(); void fn(); };
   return (
     <Menu title={it.name} cls="rbt-hcard-menu" menuRef={ref} onClose={onClose}>
+      {/* 手机上卡片太窄，只放「⋯」一个按钮：收藏和编辑也放进这个菜单 */}
+      {isPhone() && (
+        <>
+          <button type="button" role="menuitem" onClick={run(() => toggleFavorite(it))}><i class={`${it.fav ? 'fa-solid' : 'fa-regular'} fa-star fa-fw`} /> {it.fav ? '取消收藏' : '收藏'}</button>
+          <button type="button" role="menuitem" onClick={run(() => editCharacter(it))}><i class="fa-solid fa-pen fa-fw" /> 编辑角色卡</button>
+        </>
+      )}
       <button type="button" role="menuitem" onClick={run(() => exportCharacter(it, 'png'))}><i class="fa-solid fa-file-image fa-fw" /> 导出 PNG</button>
       <button type="button" role="menuitem" onClick={run(() => exportCharacter(it, 'json'))}><i class="fa-solid fa-file-code fa-fw" /> 导出 JSON</button>
       <button type="button" role="menuitem" onClick={run(() => duplicateCharacter(it))}><i class="fa-solid fa-clone fa-fw" /> 复制一份</button>
@@ -145,13 +164,13 @@ function CardMenu({ it, onClose }: { it: CharItem; onClose: () => void }) {
 
 function Card({ it, managing, selected, onSelect }: { it: CharItem; managing?: boolean; selected?: boolean; onSelect?: (it: CharItem) => void }) {
   const src = cardImage(it);
-  const [tint, setTint] = useState(tints.get(src) ?? '');
+  const [tint, setTint] = useState(tints.get(it.key) ?? '');
   const [broken, setBroken] = useState(false);
   const [menu, setMenu] = useState(false);
   const onLoad = (e: Event) => {
-    if (tints.has(src)) return;
+    if (tints.has(it.key)) return;
     const t = sampleTint(e.currentTarget as HTMLImageElement);
-    if (t) { tints.set(src, t); setTint(t); }
+    if (t) { rememberTint(it.key, t); setTint(t); }
   };
   const selectable = it.kind === 'character';
   const cls = 'rbt-hcard' + (managing ? ' managing' : '') + (selected ? ' selected' : '') + (managing && !selectable ? ' disabled' : '') + (menu ? ' menu-open' : '');
@@ -168,10 +187,10 @@ function Card({ it, managing, selected, onSelect }: { it: CharItem; managing?: b
           : <img class="rbt-hcard-img" src={it.thumb} alt="" />}
         <span class="rbt-hcard-shade" />
         {it.problems.length > 0
-          ? <span class="rbt-hcard-pill warn" title={it.problems.join('、')}><i /> {it.problems.length > 1 ? `${it.problems.length} 项待处理` : it.problems[0]}</span>
+          ? <span class="rbt-hcard-pill warn" title={it.problems.join('、')}><i /><span class="rbt-hcard-pill-text">{it.problems.length > 1 ? `${it.problems.length} 项待处理` : it.problems[0]}</span></span>
           : it.kind === 'group' && <span class="rbt-hcard-pill"><i class="fa-solid fa-users" /> 群组</span>}
         <span class="rbt-hcard-text">
-          <span class="rbt-hcard-name">{it.name}</span>
+          <span class="rbt-hcard-name">{it.fav && <i class="fa-solid fa-star rbt-hcard-namefav" aria-label="已收藏" />}{it.name}</span>
           <span class="rbt-hcard-meta">{it.kind === 'group' ? it.note : lastChatText(it.lastChat)}</span>
           {it.tags.length > 0 && <span class="rbt-hcard-meta">{it.tags.slice(0, 3).map((t) => t.name).join(' · ')}</span>}
         </span>
@@ -181,15 +200,15 @@ function Card({ it, managing, selected, onSelect }: { it: CharItem; managing?: b
       ) : (
         <span class="rbt-hcard-acts">
           {it.kind === 'character' && (
-            <button type="button" class={'rbt-hcard-act' + (it.fav ? ' on' : '')} title={it.fav ? '取消收藏' : '收藏'} onClick={() => { void toggleFavorite(it); }}>
+            <button type="button" class={'rbt-hcard-act rbt-hcard-act-fav' + (it.fav ? ' on' : '')} title={it.fav ? '取消收藏' : '收藏'} onClick={() => { void toggleFavorite(it); }}>
               <i class={(it.fav ? 'fa-solid' : 'fa-regular') + ' fa-star'} />
             </button>
           )}
-          <button type="button" class="rbt-hcard-act" title="编辑角色卡" onClick={() => { void editCharacter(it); }}>
+          <button type="button" class="rbt-hcard-act rbt-hcard-act-edit" title="编辑角色卡" onClick={() => { void editCharacter(it); }}>
             <i class="fa-solid fa-pen" />
           </button>
           {it.kind === 'character' && (
-            <button type="button" class="rbt-hcard-act" title="更多：导出、复制、删除" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(!menu)}>
+            <button type="button" class="rbt-hcard-act rbt-hcard-act-more" title="更多：收藏、编辑、导出、复制、删除" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(!menu)}>
               <i class="fa-solid fa-ellipsis" />
             </button>
           )}

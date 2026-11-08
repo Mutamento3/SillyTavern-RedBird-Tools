@@ -130,5 +130,10 @@ export async function newerVersion(): Promise<string> {
 
 /** On startup, a few seconds after load so it doesn't compete with ST's own work. */
 export function installUpdateCheck(): void {
-  setTimeout(() => { void checkForUpdate(false); }, 8000);
+  // 等酒馆加载完再过一会儿才查，别和启动时的请求抢网速（手机流量下启动要几十秒）
+  let done = false;
+  const run = () => { if (done) return; done = true; void checkForUpdate(false); };
+  const c = ctx();
+  if (c.eventTypes?.APP_READY) c.eventSource.on(c.eventTypes.APP_READY, () => setTimeout(run, 15000));
+  setTimeout(run, 90000);
 }
