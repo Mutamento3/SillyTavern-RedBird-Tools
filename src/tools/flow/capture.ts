@@ -11,6 +11,7 @@ import {
   type ExtensionPromptInfo,
   type PresetPromptInfo,
   type WIEntryInfo,
+  scaleTokens,
 } from '../../core/attribute';
 import { contentToText } from '../../core/text';
 import { charaFileName, ctx, currentCharacter, loaded, substitute, type Any } from '../../st/st';
@@ -293,10 +294,13 @@ export function installFlowCapture(): void {
     const wiRaw = pendingWI;
     const gen = data.dryRun ? { type: 'preview', quiet: false } : lastGen;
     const budget = readBudget();
+    // 酒馆刚用模型的分词器把这一轮算过一遍（在发这个事件之前），总数以它为准
+    const stTokens = Number(loaded.openai?.promptManager?.tokenUsage) || 0;
     pendingWI = [];
     setTimeout(() => {
       try {
         const cap = buildCapture(chatOut, structured, wiRaw, gen);
+        cap.result = scaleTokens(cap.result, stTokens);
         cap.budget = budget;
         captures.value = [cap, ...captures.value].slice(0, MAX_CAPTURES);
       } catch (e) {

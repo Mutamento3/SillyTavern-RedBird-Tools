@@ -399,3 +399,21 @@ export function attribute(input: AttributionInput): AttributionResult {
   const totalTokens = messages.reduce((n, m) => n + m.tokens, 0);
   return { messages, totals, totalTokens, aligned: input.identifiers !== null };
 }
+
+/**
+ * 把我们粗估的 token 数按比例换成酒馆自己算的总数。
+ * 我们按「一个汉字约 1 token」估，酒馆用模型的分词器算，中文常常多出三成左右；
+ * 酒馆判断「放不放得下、挤掉哪些聊天记录」用的是它自己的数，所以总数以它为准，
+ * 各条、各来源的占比仍用我们的估算（只是等比例放大缩小）。
+ */
+export function scaleTokens(result: AttributionResult, target: number): AttributionResult {
+  if (!(target > 0) || !(result.totalTokens > 0) || target === result.totalTokens) return result;
+  const f = target / result.totalTokens;
+  const messages = result.messages.map((m) => ({
+    ...m,
+    tokens: Math.round(m.tokens * f),
+    segments: m.segments.map((s) => ({ ...s, tokens: Math.round(s.tokens * f) })),
+  }));
+  const totals = Object.fromEntries(Object.entries(result.totals).map(([k, v]) => [k, Math.round(v * f)])) as Record<Category, number>;
+  return { ...result, messages, totals, totalTokens: target };
+}
