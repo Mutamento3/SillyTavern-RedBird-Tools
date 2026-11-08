@@ -1,5 +1,5 @@
 /**
- * 三栏外壳：左栏「角色」列表的数据。全部读写酒馆自己的角色数据（收藏、标签与原版互通）。
+ * 三栏外壳：左栏「角色」列表的数据。全部读写酒馆自己的角色数据（置顶 = 酒馆的收藏，和标签一样与原版互通）。
  * 浏览/切换角色是"导航"，放在左栏；编辑角色是专注任务，用 overlay 打开酒馆原来的编辑页。
  */
 import { signal } from '@preact/signals';
@@ -160,7 +160,7 @@ export async function toggleFavorite(it: CharItem): Promise<void> {
     body: JSON.stringify({ avatar: ch.avatar, fav: next, data: { extensions: { fav: next } } }),
   });
   if (!res.ok) {
-    toast('error', `收藏没保存上：${res.status}`);
+    toast('error', `置顶没保存上：${res.status}`);
     return;
   }
   ch.fav = next;

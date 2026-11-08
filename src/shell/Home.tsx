@@ -134,7 +134,7 @@ function NewMenu() {
   );
 }
 
-/** 「⋯」菜单：导出、复制、删除（收藏和编辑已经是单独的按钮） */
+/** 「⋯」菜单：导出、复制、删除（置顶和编辑在电脑上是单独的按钮） */
 function CardMenu({ it, onClose }: { it: CharItem; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -147,10 +147,10 @@ function CardMenu({ it, onClose }: { it: CharItem; onClose: () => void }) {
   const run = (fn: () => unknown) => () => { onClose(); void fn(); };
   return (
     <Menu title={it.name} cls="rbt-hcard-menu" menuRef={ref} onClose={onClose}>
-      {/* 手机上卡片太窄，只放「⋯」一个按钮：收藏和编辑也放进这个菜单 */}
+      {/* 手机上卡片太窄，只放「⋯」一个按钮：置顶和编辑也放进这个菜单 */}
       {isPhone() && (
         <>
-          <button type="button" role="menuitem" onClick={run(() => toggleFavorite(it))}><i class={`${it.fav ? 'fa-solid' : 'fa-regular'} fa-star fa-fw`} /> {it.fav ? '取消收藏' : '收藏'}</button>
+          <button type="button" role="menuitem" onClick={run(() => toggleFavorite(it))}><i class="fa-solid fa-thumbtack fa-fw" /> {it.fav ? '取消置顶' : '置顶'}</button>
           <button type="button" role="menuitem" onClick={run(() => editCharacter(it))}><i class="fa-solid fa-pen fa-fw" /> 编辑角色卡</button>
         </>
       )}
@@ -190,7 +190,7 @@ function Card({ it, managing, selected, onSelect }: { it: CharItem; managing?: b
           ? <span class="rbt-hcard-pill warn" title={it.problems.join('、')}><i /><span class="rbt-hcard-pill-text">{it.problems.length > 1 ? `${it.problems.length} 项待处理` : it.problems[0]}</span></span>
           : it.kind === 'group' && <span class="rbt-hcard-pill"><i class="fa-solid fa-users" /> 群组</span>}
         <span class="rbt-hcard-text">
-          <span class="rbt-hcard-name">{it.fav && <i class="fa-solid fa-star rbt-hcard-namefav" aria-label="已收藏" />}{it.name}</span>
+          <span class="rbt-hcard-name">{it.fav && <i class="fa-solid fa-thumbtack rbt-hcard-namefav" aria-label="已置顶" />}{it.name}</span>
           <span class="rbt-hcard-meta">{it.kind === 'group' ? it.note : lastChatText(it.lastChat)}</span>
           {it.tags.length > 0 && <span class="rbt-hcard-meta">{it.tags.slice(0, 3).map((t) => t.name).join(' · ')}</span>}
         </span>
@@ -200,22 +200,22 @@ function Card({ it, managing, selected, onSelect }: { it: CharItem; managing?: b
       ) : (
         <span class="rbt-hcard-acts">
           {it.kind === 'character' && (
-            <button type="button" class={'rbt-hcard-act rbt-hcard-act-fav' + (it.fav ? ' on' : '')} title={it.fav ? '取消收藏' : '收藏'} onClick={() => { void toggleFavorite(it); }}>
-              <i class={(it.fav ? 'fa-solid' : 'fa-regular') + ' fa-star'} />
+            <button type="button" class={'rbt-hcard-act rbt-hcard-act-fav' + (it.fav ? ' on' : '')} title={it.fav ? '取消置顶' : '置顶'} onClick={() => { void toggleFavorite(it); }}>
+              <i class="fa-solid fa-thumbtack" />
             </button>
           )}
           <button type="button" class="rbt-hcard-act rbt-hcard-act-edit" title="编辑角色卡" onClick={() => { void editCharacter(it); }}>
             <i class="fa-solid fa-pen" />
           </button>
           {it.kind === 'character' && (
-            <button type="button" class="rbt-hcard-act rbt-hcard-act-more" title="更多：收藏、编辑、导出、复制、删除" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(!menu)}>
+            <button type="button" class="rbt-hcard-act rbt-hcard-act-more" title="更多：置顶、编辑、导出、复制、删除" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(!menu)}>
               <i class="fa-solid fa-ellipsis" />
             </button>
           )}
         </span>
       )}
       {menu && !managing && <CardMenu it={it} onClose={() => setMenu(false)} />}
-      {it.fav && !managing && <span class="rbt-hcard-favmark" title="已收藏"><i class="fa-solid fa-star" /></span>}
+      {it.fav && !managing && <span class="rbt-hcard-favmark" title="已置顶"><i class="fa-solid fa-thumbtack" /></span>}
     </article>
   );
 }
@@ -231,7 +231,7 @@ function ManageBar({ picked, total, onAll, onDone }: { picked: CharItem[]; total
       <button type="button" class="rbt-home-btn" onClick={onAll}>{n === total && total > 0 ? '全不选' : '全选'}</button>
       <span class="rbt-manage-gap" />
       <button type="button" class="rbt-home-btn" disabled={!n} onClick={() => { void setFavorite(picked, !allFav); }}>
-        <i class={(allFav ? 'fa-regular' : 'fa-solid') + ' fa-star'} /> {allFav ? '取消收藏' : '收藏'}
+        <i class="fa-solid fa-thumbtack" /> {allFav ? '取消置顶' : '置顶'}
       </button>
       <button type="button" class="rbt-home-btn" disabled={!n} onClick={() => { void exportAll(); }}><i class="fa-solid fa-download" /> 导出</button>
       <button type="button" class="rbt-home-btn danger" disabled={!n} onClick={() => { void deleteCharacters(picked).then((ok) => { if (ok) onDone(); }); }}><i class="fa-solid fa-trash-can" /> 删除…</button>
@@ -301,7 +301,7 @@ export function HomeGallery() {
       <div class="rbt-home-filters">
         <div class="rbt-home-pills" role="tablist">
           <Pill v="all" label="全部" />
-          {nFav > 0 && <Pill v="fav" label={`收藏 ${nFav}`} />}
+          {nFav > 0 && <Pill v="fav" label={`置顶 ${nFav}`} />}
           {nProblem > 0 && <Pill v="problem" label={`待处理 ${nProblem}`} dot />}
           {nGroup > 0 && <Pill v="group" label={`群组 ${nGroup}`} />}
           {tags.length > 0 && (
@@ -317,7 +317,7 @@ export function HomeGallery() {
             <option value="name">按名称</option>
             <option value="added">最近添加</option>
           </select>
-          <button type="button" class={'rbt-home-select rbt-home-manage' + (managing ? ' active' : '')} title="多选：批量收藏、导出、删除" onClick={() => (managing ? stopManaging() : setManaging(true))}>
+          <button type="button" class={'rbt-home-select rbt-home-manage' + (managing ? ' active' : '')} title="多选：批量置顶、导出、删除" onClick={() => (managing ? stopManaging() : setManaging(true))}>
             <i class="fa-solid fa-list-check" /> {managing ? '完成' : '管理'}
           </button>
         </div>

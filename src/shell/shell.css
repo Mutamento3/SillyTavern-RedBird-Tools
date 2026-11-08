@@ -1525,3 +1525,6 @@ body.rbt-shell .rbt-nav-progress::before {
 .rbt-hcard-pill-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rbt-hcard-namefav { display: none; }
 @media (max-width: 1000px) { .rbt-hcard-namefav { display: inline; } }
+
+/* 置顶（= 酒馆的收藏）用图钉：没置顶时图钉斜着、淡一点，置顶后立起来、变黄 */
+.rbt-hcard-act-fav:not(.on) i { transform: rotate(45deg); opacity: 0.8; }
