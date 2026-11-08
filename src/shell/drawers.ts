@@ -128,12 +128,17 @@ const NESTED_OF: Partial<Record<DrawerKey, { layer: string; close: string }[]>> 
   characters: [{ layer: '#character_popup', close: '#character_cross' }],
 };
 function closeNestedOf(key: DrawerKey): void {
-  for (const { layer, close } of NESTED_OF[key] ?? []) {
-    const el = document.querySelector<HTMLElement>(layer);
-    if (!el || getComputedStyle(el).display === 'none') continue;
-    // 用原生 click：酒馆用 addEventListener 绑的，jQuery 的 trigger 触发不到
-    document.querySelector<HTMLElement>(close)?.click();
-  }
+  const layers = NESTED_OF[key];
+  if (!layers) return;
+  // 下一帧再看：在面板正在关的这一刻读样式会逼浏览器马上重新计算整页样式（手机上 60 多毫秒）
+  requestAnimationFrame(() => {
+    for (const { layer, close } of layers) {
+      const el = document.querySelector<HTMLElement>(layer);
+      if (!el || getComputedStyle(el).display === 'none') continue;
+      // 用原生 click：酒馆用 addEventListener 绑的，jQuery 的 trigger 触发不到
+      document.querySelector<HTMLElement>(close)?.click();
+    }
+  });
 }
 
 function syncOpenState(): void {

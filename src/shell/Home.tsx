@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { openGlobal } from '../ui/views';
 import { openImport } from '../ui/ImportDialog';
 import { Menu } from '../ui/Menu';
+import { ctx } from '../st/st';
 import {
   allTags,
   charsTick,
@@ -232,8 +233,10 @@ export function HomeGallery() {
   const setSort = (v: CharSort) => { setSortState(v); try { localStorage.setItem(SORT_KEY, v); } catch { /* ignore */ } };
   const [managing, setManaging] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const all = listCharacters();
-  const tags = useMemo(() => allTags(all), [all.length, charsTick.value]);
+  // 整理角色列表要把每张卡看一遍；搜索框每打一个字都会重画，所以只在角色数据变了时重算
+  const chars = ctx().characters;
+  const all = useMemo(() => listCharacters(), [charsTick.value, chars, chars?.length, ctx().groups?.length]);
+  const tags = useMemo(() => allTags(all), [all]);
   const query = q.trim().toLowerCase();
   const shown = sortCharacters(all.filter((it) => {
     if (filter === 'fav' && !it.fav) return false;

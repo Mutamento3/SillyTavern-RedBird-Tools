@@ -74,8 +74,9 @@ export async function loadRecentChats(): Promise<void> {
     if (!res.ok) throw new Error(String(res.status));
     const data: Any[] = await res.json();
     const out: RecentChat[] = [];
+    const byAvatar = new Map<string, Any>((c.characters ?? []).map((x: Any) => [x.avatar, x]));
     for (const r of Array.isArray(data) ? data : []) {
-      const character = r.avatar ? c.characters.find((x: Any) => x.avatar === r.avatar) : null;
+      const character = r.avatar ? byAvatar.get(r.avatar) : null;
       const group = r.group ? c.groups?.find((x: Any) => x.id === r.group) : null;
       if (!character && !group) continue;
       const fileName = String(r.file_name ?? '');
@@ -102,12 +103,34 @@ export async function loadRecentChats(): Promise<void> {
   }
 }
 
-export function isCurrentChat(r: RecentChat): boolean {
+/** Which chat is open: chat id + whose it is. Read once per list render. */
+export function currentChatKey(): { id: string; group: string; avatar: string } {
   const c = ctx();
-  const id = String(c.getCurrentChatId?.() ?? '');
-  if (!id || id !== r.chatId) return false;
-  if (r.group) return c.groupId === r.group;
-  return currentCharacter()?.avatar === r.avatar;
+  return { id: String(c.getCurrentChatId?.() ?? ''), group: String(c.groupId ?? ''), avatar: String(currentCharacter()?.avatar ?? '') };
+}
+
+export function isCurrentChat(r: RecentChat, cur = currentChatKey()): boolean {
+  if (!cur.id || cur.id !== r.chatId) return false;
+  if (r.group) return cur.group === r.group;
+  return cur.avatar === r.avatar;
+}
+
+/**
+ * 发消息 / 收到回复 / 删消息后，只改当前聊天这一行（预览、时间、条数），挪到最上面；
+ * 不再每条消息都把整个列表从服务器拉一遍。列表里没有这个聊天（刚建的）才重新拉。
+ */
+function patchCurrentRow(): void {
+  const cur = currentChatKey();
+  const list = recentChats.value;
+  const i = list.findIndex((r) => isCurrentChat(r, cur));
+  if (i < 0) { refreshRecentSoon(1500); return; }
+  const chat: Any[] = ctx().chat ?? [];
+  const last = [...chat].reverse().find((m) => !m?.is_system);
+  const row: RecentChat = { ...list[i], preview: cleanPreview(last?.mes ?? ''), time: Date.now(), messages: chat.length };
+  const rest = list.filter((_, j) => j !== i);
+  const out = [row, ...rest];
+  out.sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.time - a.time);
+  recentChats.value = out;
 }
 
 export async function openRecentChat(r: RecentChat): Promise<void> {
@@ -173,13 +196,15 @@ export function installRecentWatch(): void {
   const es = c.eventSource;
   const et = c.eventTypes;
   // The character list loads after extensions; chats of unknown characters are dropped, so load again then.
+  // (Both events and the list's first mount go through the same debounce: one request at startup.)
   for (const ev of [et.APP_READY, et.CHARACTER_PAGE_LOADED]) {
-    if (ev) es.on(ev, () => refreshRecentSoon(200));
+    if (ev) es.on(ev, () => refreshRecentSoon(400));
   }
   for (const ev of [et.CHAT_CHANGED, et.CHAT_CREATED, et.CHAT_DELETED, et.GROUP_CHAT_DELETED, et.CHARACTER_RENAMED, et.CHARACTER_DELETED]) {
     if (ev) es.on(ev, () => refreshRecentSoon(300));
   }
-  for (const ev of [et.MESSAGE_RECEIVED, et.MESSAGE_SENT, et.MESSAGE_DELETED]) {
-    if (ev) es.on(ev, () => refreshRecentSoon(1500));
+  let patchTimer: ReturnType<typeof setTimeout> | undefined;
+  for (const ev of [et.MESSAGE_RECEIVED, et.MESSAGE_SENT, et.MESSAGE_DELETED, et.MESSAGE_SWIPED, et.MESSAGE_EDITED]) {
+    if (ev) es.on(ev, () => { clearTimeout(patchTimer); patchTimer = setTimeout(patchCurrentRow, 300); });
   }
 }

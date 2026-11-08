@@ -46,6 +46,8 @@ async function writeFile(snap: StoreSnapshot): Promise<void> {
 
 let running: Promise<void> | null = null;
 let again = false;
+/** What the file held after the last sync; a save that did not touch any of it needs no request. */
+let lastSynced = '';
 
 /**
  * Read the file, merge it with what this page has, keep the result here and write it back.
@@ -66,6 +68,7 @@ export async function syncStore(authoritative = false): Promise<boolean> {
         ctx().saveSettingsDebounced();
       }
       if (!remote || !sameStore(merged, remote) || JSON.stringify(merged.deleted) !== JSON.stringify(remote.deleted)) await writeFile(merged);
+      lastSynced = JSON.stringify(merged);
     } catch (e) {
       console.warn('[RedBird] could not sync redbird-tools.json', e);
     }
@@ -79,7 +82,8 @@ export async function syncStore(authoritative = false): Promise<boolean> {
 let timer: ReturnType<typeof setTimeout> | undefined;
 function scheduleSync(): void {
   clearTimeout(timer);
-  timer = setTimeout(() => { void syncStore(); }, 800);
+  // 酒馆设置经常保存，但大多数时候我们存的东西没变：没变就不发请求；变了也攒 3 秒再同步
+  timer = setTimeout(() => { if (JSON.stringify(localSnapshot()) !== lastSynced) void syncStore(); }, 3000);
 }
 
 /** Remember that a record was deleted (call right where it is deleted). */

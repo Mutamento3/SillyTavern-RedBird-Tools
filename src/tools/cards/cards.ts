@@ -68,15 +68,22 @@ export function thumbnailUrl(avatar: string): string {
 
 export interface ExtInfo { id: string; name: string; enabled: boolean }
 
+// 角色列表里每张卡都要问一遍「装了哪些插件」，结果只在启用 / 停用插件后才变，记下来复用
+let extCache: { key: string; list: ExtInfo[] } | null = null;
+
 export function installedExtensions(): ExtInfo[] {
   const names: string[] = loaded.extensions?.extensionNames ?? [];
   const disabled: string[] = ctx().extensionSettings?.disabledExtensions ?? [];
-  return names.filter((n) => n.startsWith('third-party/')).map((n) => {
+  const key = `${names.length}|${disabled.join(',')}`;
+  if (extCache?.key === key) return extCache.list;
+  const list = names.filter((n) => n.startsWith('third-party/')).map((n) => {
     const id = n.replace('third-party/', '');
     let name = id;
     try { name = loaded.extensions?.getExtensionManifest?.(n)?.display_name || id; } catch { /* ignore */ }
     return { id, name, enabled: !disabled.includes(n) };
   });
+  extCache = { key, list };
+  return list;
 }
 
 const loose = (s: string) => s.toLowerCase().replace(/[^a-z0-9一-鿿]+/g, '');

@@ -70,7 +70,7 @@ const SCREENS = [
   { key: 'worldinfo-entry', root: '#WorldInfo .world_entry', toggle: { hit: '#WorldInfo .world_entry .inline-drawer-header .inline-drawer-toggle', state: '#WorldInfo .world_entry > form > .inline-drawer > .inline-drawer-content' }, open: `await menu(); btnText('世界书', q('.rbt-left')).click(); await wait(2500); q('#WorldInfo .world_entry .inline-drawer-toggle')?.click(); await wait(1200); q('#WorldInfo .world_entry')?.scrollIntoView();` },
   { key: 'global', root: '.rbt-sheet', open: `await menu(); btnText('全局工具箱', q('.rbt-left')).click(); await wait(1500);` },
   { key: 'import', root: '.rbt-imp', open: `await menu(); q('.rbt-gtool-import').click(); await wait(800);` },
-  { key: 'settings', root: '#rbt_settings', open: `await menu(); btnText('扩展·正则', q('.rbt-left')).click(); await wait(1500); const c2 = q('#rbt_settings .inline-drawer-content'); if (c2 && getComputedStyle(c2).display === 'none') { q('#rbt_settings .inline-drawer-toggle').click(); await wait(800); } q('#rbt_settings').scrollIntoView();` },
+  { key: 'settings', root: '#rbt_settings', open: `await menu(); btnText('扩展·正则', q('.rbt-left')).click(); await wait(1500); const c2 = q('#rbt_settings .inline-drawer-content'); if (c2 && getComputedStyle(c2).display === 'none') { q('#rbt_settings .inline-drawer-toggle').click(); await wait(800); } for (const id of ['#rbt_update_row', '#rbt_thumb_tip']) q(id)?.removeAttribute('hidden'); /* 平时按条件才显示的，也一起检查 */ q('#rbt_settings').scrollIntoView();` },
 ];
 
 const browser = await openBrowser();

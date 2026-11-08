@@ -16,9 +16,10 @@ import { DropHint, ImportButton, installWindowDrop, windowDrag } from '../ui/pag
 import { HomeGallery } from './Home';
 import { charsTick, isCurrent as isCurrentChar, listCharacters, openCharacter, sortCharacters, type CharItem } from './characters';
 import {
+  currentChatKey,
   isCurrentChat,
-  loadRecentChats,
   openRecentChat,
+  refreshRecentSoon,
   prettyChatName,
   recentChats,
   recentLoading,
@@ -31,6 +32,16 @@ export const shellOn = signal(false);
 export const leftCollapsed = signal(false);
 /** Bumped on chat changes so the nav bar re-reads character / chat name. */
 export const chatTick = signal(0);
+/**
+ * 人设、酒馆设置变了：只有状态栏要重画。和 chatTick 分开，免得编辑人设时每打一个字整个外壳
+ * （导航条、左栏列表、工具箱按钮）都重画一遍；也稍微攒一下，停下来再画。
+ */
+export const personaTick = signal(0);
+let personaTimer: ReturnType<typeof setTimeout> | undefined;
+function bumpPersona(): void {
+  clearTimeout(personaTimer);
+  personaTimer = setTimeout(() => { personaTick.value++; }, 250);
+}
 
 const COLLAPSE_KEY = 'rbt-shell-left-collapsed';
 /** 酒馆自带的全局入口，都写名字（教程里按名字找）。和工具箱自己的「全局工具箱」分开放。 */
@@ -52,10 +63,13 @@ function readOnline(): void {
 /** ST's temporary assistant chat has no character and fires no CHAT_CHANGED; we know it only because we opened it. */
 let inTempChat = false;
 
+// 用媒体查询判断窄屏：读 window.innerWidth 会在酒馆改页面的同时强制重新排版（手机上每次换聊天 6–14 毫秒）
+const compactQuery = typeof matchMedia === 'function' ? matchMedia(`(max-width: ${COMPACT_MAX}px)`) : null;
+
 function applyBodyClasses(): void {
   const b = document.body.classList;
   b.toggle('rbt-shell', shellOn.value);
-  compact.value = (window.innerWidth || 1280) <= COMPACT_MAX;
+  compact.value = compactQuery ? compactQuery.matches : (window.innerWidth || 1280) <= COMPACT_MAX;
   if (!compact.value) navOpen.value = false;
   b.toggle('rbt-compact', compact.value);
   b.toggle('rbt-nav-open', navOpen.value);
@@ -133,8 +147,7 @@ function GlobalButton() {
   );
 }
 
-function RecentRow({ r }: { r: RecentChat }) {
-  const current = isCurrentChat(r);
+function RecentRow({ r, current }: { r: RecentChat; current: boolean }) {
   return (
     <button type="button" class={`rbt-recent-row ${current ? 'current' : ''}`} onClick={() => { void openRecentChat(r); }} title={`${r.name} · ${r.chatId}`}>
       <img class="rbt-recent-avatar" src={r.thumb} alt="" loading="lazy" />
@@ -149,32 +162,40 @@ function RecentRow({ r }: { r: RecentChat }) {
   );
 }
 
+/** 不搜索时先画这么多行，往下有「显示更多」。几百个聊天全画出来，手机上开关侧边栏会卡。 */
+const RECENT_PAGE = 40;
+
 function ChatList({ q }: { q: string }) {
   void chatTick.value; // re-render current-chat highlight
-  useEffect(() => { if (!recentChats.value.length) void loadRecentChats(); }, []);
+  const [limit, setLimit] = useState(RECENT_PAGE);
+  useEffect(() => { if (!recentChats.value.length) refreshRecentSoon(200); }, []);
+  const query = q.trim().toLowerCase();
+  const matched = useMemo(() => recentChats.value.filter((r) => !query
+    || r.name.toLowerCase().includes(query)
+    || r.preview.toLowerCase().includes(query)
+    || r.chatId.toLowerCase().includes(query)), [recentChats.value, query]);
+  const more = query ? 0 : Math.max(0, matched.length - limit);
   const groups = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    const list = recentChats.value.filter((r) => !query
-      || r.name.toLowerCase().includes(query)
-      || r.preview.toLowerCase().includes(query)
-      || r.chatId.toLowerCase().includes(query));
     const out: { label: string; items: RecentChat[] }[] = [];
-    for (const r of list) {
+    for (const r of more ? matched.slice(0, limit) : matched) {
       const label = timeGroup(r);
       const last = out[out.length - 1];
       if (last?.label === label) last.items.push(r);
       else out.push({ label, items: [r] });
     }
     return out;
-  }, [recentChats.value, q]);
+  }, [matched, more, limit]);
+  // 当前聊天只算一次，不在每一行里各问一遍酒馆
+  const cur = currentChatKey();
   return (
     <div class="rbt-recent">
       {groups.map((g) => (
         <section key={g.label} class="rbt-recent-group">
           <h4>{g.label}</h4>
-          {g.items.map((r) => <RecentRow key={r.key} r={r} />)}
+          {g.items.map((r) => <RecentRow key={r.key} r={r} current={isCurrentChat(r, cur)} />)}
         </section>
       ))}
+      {more > 0 && <button type="button" class="rbt-recent-more" onClick={() => setLimit((n) => n + RECENT_PAGE * 2)}>显示更多（还有 {more} 个）</button>}
       {!groups.length && <div class="rbt-recent-empty">{recentLoading.value ? '读取中…' : q ? '没有匹配的聊天' : '还没有聊天'}</div>}
     </div>
   );
@@ -450,19 +471,32 @@ function NavBar() {
   );
 }
 
+// 每块只听自己用到的状态：打开 / 关上手机侧边栏时只画遮罩，不把导航条、左栏列表、首页画廊全部重画一遍
+function WindowDropHint() {
+  const drag = windowDrag.value;
+  return drag !== null ? <DropHint count={drag} full /> : null;
+}
+function LeftScrim() {
+  return compact.value && navOpen.value ? <div class="rbt-left-scrim" onClick={() => setNavOpen(false)} /> : null;
+}
+function Left() {
+  return compact.value || !leftCollapsed.value ? <LeftColumn /> : null;
+}
+function Gallery() {
+  return homeActive.value && shellActive.value ? <HomeGallery /> : null;
+}
+
 export function Shell() {
   const on = shellOn.value;
   useEffect(() => (on ? installWindowDrop() : undefined), [on]);
   if (!on) return null;
-  const phone = compact.value;
-  const drag = windowDrag.value;
   return (
     <>
-      {drag !== null && <DropHint count={drag} full />}
-      {phone && navOpen.value && <div class="rbt-left-scrim" onClick={() => setNavOpen(false)} />}
-      {(phone || !leftCollapsed.value) && <LeftColumn />}
+      <WindowDropHint />
+      <LeftScrim />
+      <Left />
       <NavBar />
-      {homeActive.value && shellActive.value && <HomeGallery />}
+      <Gallery />
     </>
   );
 }
@@ -473,7 +507,8 @@ export function initShellState(): void {
     leftCollapsed.value = localStorage.getItem(COLLAPSE_KEY) === '1';
   } catch { /* ignore */ }
   applyBodyClasses();
-  window.addEventListener('resize', applyBodyClasses);
+  if (compactQuery) compactQuery.addEventListener('change', applyBodyClasses);
+  else window.addEventListener('resize', applyBodyClasses);
   // Enable layout transitions only after the first layout, so the page doesn't slide around on load.
   setTimeout(() => document.body.classList.add('rbt-shell-ready'), 800);
   const c = ctx();
@@ -486,9 +521,9 @@ export function initShellState(): void {
   for (const ev of [c.eventTypes.CHAT_CHANGED, c.eventTypes.CHARACTER_RENAMED, c.eventTypes.CHAT_RENAMED]) {
     if (ev) c.eventSource.on(ev, bump);
   }
-  // 状态栏里的人设
+  // 状态栏里的人设（只重画状态栏）
   for (const ev of [c.eventTypes.PERSONA_CHANGED, c.eventTypes.PERSONA_UPDATED, c.eventTypes.PERSONA_RENAMED, c.eventTypes.PERSONA_DELETED, c.eventTypes.SETTINGS_UPDATED]) {
-    if (ev) c.eventSource.on(ev, () => { chatTick.value++; });
+    if (ev) c.eventSource.on(ev, bumpPersona);
   }
   readOnline();
   loadVersion();

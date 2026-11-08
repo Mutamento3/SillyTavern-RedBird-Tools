@@ -1101,11 +1101,14 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
     z-index: 3200;
     transform: translateX(-102%);
     transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+    /* 单独一层、内容和外面互不影响：滑进滑出只移动这一层，不重新排版、重画整页 */
+    will-change: transform;
+    contain: layout paint style;
     border-right: 0;
     font-size: 14px;
   }
   body.rbt-shell.rbt-nav-open .rbt-left { transform: none; }
-  .rbt-left-scrim { position: fixed; top: 0; left: 0; width: 100dvw; height: 100dvh; z-index: 3150; background: rgba(0, 0, 0, 0.5); }
+  .rbt-left-scrim { position: fixed; top: 0; left: 0; width: 100dvw; height: 100dvh; z-index: 3150; background: rgba(0, 0, 0, 0.5); animation: rbt-fade-in 0.2s ease-out; }
   .rbt-left-head { height: 52px; }
   .rbt-left .rbt-icon-btn { width: 40px; height: 40px; font-size: 17px; }
   /* 手指比鼠标粗：按钮和行都加高 */
@@ -1468,3 +1471,19 @@ body.rbt-shell #WorldInfo .rbt-wi-sum { display: none; }
 body.rbt-shell #completion_prompt_manager_popup .completion_prompt_manager_popup_entry_form_footer { order: -1; margin: 0 0 var(--rbd-s-3) !important; }
 body.rbt-shell #completion_prompt_manager_popup_edit > h3 { display: none; }
 body.rbt-shell:has(#completion_prompt_manager_popup[style*="block"]) #left-nav-panel > .rbt-sheet-head .rbt-titlebar-x { visibility: hidden; }
+
+@keyframes rbt-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ============================================================ 手机：首页卡片不用毛玻璃 ===
+   每张卡底部、左上角标签、右上角按钮各有一层背景模糊。手机显卡每一帧都要把它们重算一遍，
+   侧边栏滑过、页面滚动时会掉帧。手机上换成半透明底色（卡片底部本来就有图片颜色的渐变托着名字）。 */
+@media (max-width: 1000px) {
+  .rbt-hcard-shade, .rbt-hcard-pill, .rbt-hcard-favmark, .rbt-hcard-act, .rbt-hcard-menu { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .rbt-hcard-shade { background: linear-gradient(to bottom, transparent 38%, color-mix(in srgb, var(--tint) 78%, transparent) 66%, var(--tint) 100%); }
+  .rbt-hcard-pill, .rbt-hcard-favmark { background: rgba(20, 20, 24, 0.6); }
+  .rbt-hcard-act { background: rgba(20, 20, 24, 0.68); }
+  .rbt-hcard-menu { background: rgba(20, 20, 24, 0.94); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .rbt-hcard-shade, .rbt-hcard-pill, .rbt-hcard-favmark, .rbt-hcard-act, .rbt-hcard-menu { -webkit-backdrop-filter: none; backdrop-filter: none; }
+}

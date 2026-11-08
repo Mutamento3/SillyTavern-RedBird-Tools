@@ -163,7 +163,12 @@ async function setWorlds(on: string[], off: string[]): Promise<void> {
   for (const w of on) await runSlash(`/world state=on silent=true ${slashQuote(w)}`);
 }
 
-export async function applyPlan(plan: ApplyPlan): Promise<string[]> {
+/**
+ * 套用推荐配置。`deferModel` 时先把预设、世界书、正则换好就返回（换卡时酒馆在等这一步才显示聊天），
+ * 模型放到后面再换：换模型要连 API、等模型列表，手机上要一两秒，而显示聊天用不到它。
+ * 换完模型后调用 `onModel`，并把结果补进「撤销」记录。
+ */
+export async function applyPlan(plan: ApplyPlan, opts: { deferModel?: boolean; onModel?: (changes: string[]) => void } = {}): Promise<string[]> {
   const snapshot: Snapshot = {
     preset: currentPresetName(),
     model: currentModel(),
@@ -176,10 +181,14 @@ export async function applyPlan(plan: ApplyPlan): Promise<string[]> {
     const ok = plan.model ? await withoutModelGuard(() => switchPreset(plan.preset!)) : await switchPreset(plan.preset);
     if (ok) changes.push(`预设换成「${plan.preset}」`);
   }
-  if (plan.model && !sameModel(plan.model, currentModel())) {
-    if (await setModel(plan.model)) changes.push(`模型换成 ${modelLabel(plan.model)}`);
-    else changes.push(`没能换成推荐的模型 ${modelLabel(plan.model)}（这个 API 可能还没填密钥）`);
-  }
+  const doModel = async (): Promise<string[]> => {
+    const m = plan.model;
+    if (!m || sameModel(m, currentModel())) return [];
+    return (await withoutModelGuard(() => setModel(m)))
+      ? [`模型换成 ${modelLabel(m)}`]
+      : [`没能换成推荐的模型 ${modelLabel(m)}（这个 API 可能还没填密钥）`];
+  };
+  if (!opts.deferModel) changes.push(...(await doModel()));
   if (plan.worldsOn.length || plan.worldsOff.length) {
     await setWorlds(plan.worldsOn, plan.worldsOff);
     for (const w of plan.worldsOff) changes.push(`关掉全局世界书「${w}」`);
@@ -189,8 +198,18 @@ export async function applyPlan(plan: ApplyPlan): Promise<string[]> {
   for (const r of plan.regexOff) { rx[r.id] = true; changes.push(`关掉全局正则「${r.name}」`); }
   for (const r of plan.regexOn) { rx[r.id] = false; changes.push(`打开全局正则「${r.name}」`); }
   await setRegexStates(rx, { duringChatLoad: true });
-  if (changes.length) lastApplied.value = { avatar: plan.avatar, cardName: plan.cardName, at: Date.now(), changes, snapshot };
+  const record = () => { if (changes.length) lastApplied.value = { avatar: plan.avatar, cardName: plan.cardName, at: Date.now(), changes: [...changes], snapshot }; };
+  record();
   refreshEnv();
+  if (opts.deferModel) {
+    // 不等它：让酒馆先把聊天显示出来
+    void (async () => {
+      let more: string[] = [];
+      try { more = await doModel(); } catch (e) { console.error('[RedBird] model switch failed', e); }
+      if (more.length) { changes.push(...more); record(); refreshEnv(); }
+      opts.onModel?.(more);
+    })();
+  }
   return changes;
 }
 
@@ -241,9 +260,17 @@ export async function autoApplyOnSwitch(openStatus: () => void): Promise<void> {
   }
   const plan = planFor(char);
   if (planHasChanges(plan) || imported.length) {
-    const changes = [...imported, ...(planHasChanges(plan) ? await applyPlan(plan) : [])];
-    if (changes.length) {
-      toast('success', `已换成「${char.name}」的配置：${changes.join('；')}。点这里查看或撤销。`, '自动切换', { onclick: openStatus, timeOut: 9000 });
+    const tell = (changes: string[]) => {
+      if (changes.length) toast('success', `已换成「${char.name}」的配置：${changes.join('；')}。点这里查看或撤销。`, '自动切换', { onclick: openStatus, timeOut: 9000 });
+    };
+    if (!planHasChanges(plan)) tell(imported);
+    else {
+      // 模型在聊天显示出来之后再换，两步都完成后一起提示（谁先完成都行）
+      let first: string[] | null = null;
+      let later: string[] | null = null;
+      const both = () => { if (first && later) tell([...first, ...later]); };
+      first = [...imported, ...(await applyPlan(plan, { deferModel: true, onModel: (more) => { later = more; both(); } }))];
+      both();
     }
   }
   const disabled = plan.plugins.filter((p) => p.status === 'disabled');

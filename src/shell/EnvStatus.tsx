@@ -2,7 +2,7 @@
  * 这张卡配套环境的"需要注意"检查：世界书 / 预设 / 正则 / 脚本 / 插件里哪些没到位，以及一键修复。
  * 导航条上的「环境」按钮显示问题数；完整内容在「这张卡」页面里。
  */
-import { signal } from '@preact/signals';
+import { computed, signal } from '@preact/signals';
 import { ctx, currentCharacter, loaded, saveSettings, settings, type Any } from '../st/st';
 import { cardInfo, currentPresetName, importCardWorld, presetApi, setRecommendedPreset, switchPreset } from '../tools/cards/cards';
 import { enablePluginsAndReload, planFor } from '../tools/env/autoapply';
@@ -11,6 +11,8 @@ import { buildEnvReport } from '../tools/env/env';
 import { currentModel, modelLabel, modelsApply, sameModel, setModel } from '../tools/model';
 import { panelOpen } from '../ui/Panel';
 import { chatTick } from './Shell';
+import { openDrawers } from './drawers';
+import { sourcesTick } from '../tools/sources';
 
 /** Bumped after actions so the panel re-reads ST state. */
 export const statusTick = signal(0);
@@ -28,11 +30,35 @@ function hasMvu(char: Any): boolean {
   }
 }
 
-function buildSections(char: Any): { sections: Section[]; issues: number } {
+/**
+ * 状态变了就加一（换聊天、刷新状态、改了来源信息、酒馆面板开关）。工具箱按钮、状态栏、世界书按钮、
+ * 角色档案都要用「这张卡的检查结果」，同一次变化里只算一遍，按这个数和卡来缓存。
+ */
+let genN = 0;
+const envGen = computed(() => { void chatTick.value; void statusTick.value; void sourcesTick.value; void openDrawers.value; return ++genN; });
+
+function cached<T>(fn: (char: Any) => T): (char: Any) => T {
+  let last: { gen: number; avatar: string; val: T } | null = null;
+  return (char: Any) => {
+    const gen = envGen.value;
+    const avatar = String(char?.avatar ?? '');
+    if (last && last.gen === gen && last.avatar === avatar) return last.val;
+    const val = fn(char);
+    last = { gen, avatar, val };
+    return val;
+  };
+}
+
+/** planFor for display (status bar, world button); the real switch still calls planFor fresh. */
+export const planForView = cached((char: Any) => planFor(char));
+
+const buildSections = cached(buildSectionsNow);
+
+function buildSectionsNow(char: Any): { sections: Section[]; issues: number } {
   const info = cardInfo(char);
   const scopes = currentBookScopes();
   const report = buildEnvReport();
-  const plan = planFor(char);
+  const plan = planForView(char);
   const sections: Section[] = [];
   const bump = () => { statusTick.value++; };
 

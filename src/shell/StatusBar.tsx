@@ -6,12 +6,11 @@
 import { ctx, currentCharacter, loaded, settings } from '../st/st';
 import { currentPresetName, cardInfo } from '../tools/cards/cards';
 import { currentBookScopes } from '../tools/flow/capture';
-import { planFor } from '../tools/env/autoapply';
 import { activeConnection, currentModel, modelLabel, modelsApply, sameModel } from '../tools/model';
 import { sourcesTick } from '../tools/sources';
 import { openDrawer, openDrawers, type DrawerKey } from './drawers';
-import { statusTick } from './EnvStatus';
-import { apiOnline, chatTick } from './Shell';
+import { planForView, statusTick } from './EnvStatus';
+import { apiOnline, chatTick, personaTick } from './Shell';
 
 interface ItemProps {
   kind: string;
@@ -68,6 +67,7 @@ export function personaStatus(): { name: string; avatar: string; source: string 
 
 export function StatusBar() {
   void chatTick.value;
+  void personaTick.value;
   void statusTick.value;
   void sourcesTick.value;
   void openDrawers.value; // a change made in ST's panel shows up when the panel closes
@@ -121,7 +121,7 @@ export function worldStatus(): { count: number; title: string; warn?: string } {
   const char = currentCharacter();
   const scopes = currentBookScopes();
   const books = [...new Set([...scopes.character, ...scopes.chat, ...scopes.persona, ...scopes.global])];
-  const stray = char ? planFor(char).worldsOff : [];
+  const stray = char ? planForView(char).worldsOff : [];
   const worldWarn = stray.length ? `全局开着别的卡的世界书：${stray.join('、')}` : undefined;
   const worldTitle = books.length
     ? ['这张卡', '这个聊天', '用户设定', '全局'].map((label, i) => {

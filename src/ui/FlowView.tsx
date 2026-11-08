@@ -119,7 +119,9 @@ function BudgetPanel({ cap }: { cap: Capture }) {
 }
 
 function captureTitle(c: Capture): string {
-  const t = c.time.toLocaleTimeString();
+  // 手写时分秒：toLocaleTimeString 每次都要初始化一遍本地化格式，下拉框里几十条时打开很慢
+  const p2 = (n: number) => String(n).padStart(2, '0');
+  const t = `${p2(c.time.getHours())}:${p2(c.time.getMinutes())}:${p2(c.time.getSeconds())}`;
   const floor = c.targetFloor !== null ? `生成 #${c.targetFloor}` : c.genTypeLabel;
   return `${t} · ${floor}${c.targetFloor !== null && c.genType !== 'normal' ? `（${c.genTypeLabel}）` : ''} · ~${fmtTokens(c.result.totalTokens)} tokens`;
 }

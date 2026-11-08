@@ -1,5 +1,9 @@
 /* RedBird 工具箱 — every selector is prefixed with .rbt- to avoid clashing with ST themes. */
 
+/* 系统自带的等宽字体：不用酒馆的 Noto Sans Mono（打开「变量」页时要下载 273 KB） */
+:root { --rbd-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif; }
+
+
 /* ---- side dock ----
    Wide screens: fixed on the right below the top bar; the chat column makes room (rules below).
    Narrow screens: covers the area below the top bar. ST drawers (z 3000) open above it. */
@@ -233,7 +237,7 @@ body.rbt-resizing #sheld { transition: none !important; }
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
-  font-family: var(--monoFontFamily, ui-monospace, Consolas, monospace);
+  font-family: var(--rbd-mono);
   font-size: 12px;
   background: rgba(0, 0, 0, 0.25);
   border-radius: var(--rbd-r-s);
@@ -272,7 +276,7 @@ body.rbt-resizing #sheld { transition: none !important; }
 }
 .rbt-var-head { display: flex; align-items: center; gap: 6px; }
 .rbt-var-path { font-size: 12px; word-break: break-all; }
-.rbt-var-values { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin-top: 3px; font-family: var(--monoFontFamily, monospace); font-size: 12px; }
+.rbt-var-values { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin-top: 3px; font-family: var(--rbd-mono); font-size: 12px; }
 .rbt-var-before { color: #ff8a8a; text-decoration: line-through; text-decoration-color: rgba(255, 138, 138, 0.5); }
 .rbt-var-after { color: #6fe0a8; }
 .rbt-arrow { color: var(--rbt-muted); }
@@ -292,7 +296,7 @@ body.rbt-resizing #sheld { transition: none !important; }
   border-bottom: 1px solid var(--rbt-soft);
 }
 .rbt-vartree-row code { word-break: break-all; }
-.rbt-vartree-row span { word-break: break-word; font-family: var(--monoFontFamily, monospace); }
+.rbt-vartree-row span { word-break: break-word; font-family: var(--rbd-mono); }
 .rbt-vartree-row.changed { background: rgba(240, 164, 58, 0.15); }
 
 /* ---- env ---- */
@@ -755,7 +759,7 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-vseg button.active { background: var(--g2h); color: var(--t1); font-weight: 600; }
 
 .rbt-vgroup { margin-bottom: var(--rbd-s-4); }
-.rbt-vgroup-title { display: flex; align-items: center; gap: var(--rbd-s-2); margin: 0 0 var(--rbd-s-2) var(--rbd-s-1); font-size: 12px; font-weight: 600; color: var(--t2); font-family: var(--monoFontFamily, ui-monospace, monospace); }
+.rbt-vgroup-title { display: flex; align-items: center; gap: var(--rbd-s-2); margin: 0 0 var(--rbd-s-2) var(--rbd-s-1); font-size: 12px; font-weight: 600; color: var(--t2); font-family: var(--rbd-mono); }
 .rbt-vgroup-badge { padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-family: var(--mainFontFamily, inherit); font-size: 11px; font-weight: 600; }
 .rbt-vgroup-body { border-radius: var(--rbd-r-m); background: var(--g2); padding: 0 var(--rbd-card); }
 
@@ -768,7 +772,7 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-vrow-main.static { cursor: default; }
 .rbt-vrow-mark { width: 6px; height: 6px; border-radius: 50%; align-self: center; }
 .rbt-vrow.changed .rbt-vrow-mark { background: var(--accent); }
-.rbt-vrow-name { color: var(--t2); font-size: 12px; font-family: var(--monoFontFamily, ui-monospace, monospace); word-break: break-all; }
+.rbt-vrow-name { color: var(--t2); font-size: 12px; font-family: var(--rbd-mono); word-break: break-all; }
 .rbt-vrow-value { color: var(--t1); font-size: 13px; word-break: break-word; }
 .rbt-vrow.changed .rbt-vrow-value { font-weight: 600; }
 .rbt-vrow.removed .rbt-vrow-value { color: var(--t3); font-weight: 400; font-style: italic; }
@@ -776,7 +780,7 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-vrow-main:hover .rbt-vrow-name { color: var(--t1); }
 .rbt-vrow-detail { display: flex; flex-direction: column; gap: 6px; margin: 0 0 10px 16px; padding: 8px 10px; border-radius: var(--rbd-r-s); background: var(--g3); font-size: 12px; }
 .rbt-vrow-desc { color: var(--t1); line-height: 1.5; }
-.rbt-vrow-path { color: var(--t3); font-family: var(--monoFontFamily, ui-monospace, monospace); font-size: 11px; word-break: break-all; }
+.rbt-vrow-path { color: var(--t3); font-family: var(--rbd-mono); font-size: 11px; word-break: break-all; }
 .rbt-vrow-refs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
 .rbt-vrow-ref { padding: 1px 8px; border-radius: 999px; background: var(--g2); color: var(--t2); font-size: 11.5px; }
 
@@ -939,19 +943,6 @@ body.rbt-resizing #sheld { transition: none !important; }
 
 
 /* 扩展设置里的「RedBird 工具箱」：两个打开按钮 + 分组的开关（整行都能点，开关在右边） */
-#rbt_settings .rbt-set { display: flex; flex-direction: column; gap: var(--rbd-s-4); padding: var(--rbd-s-3) 0; max-width: 560px; }
-#rbt_settings .rbt-set-intro { margin: 0; font-size: 13px; line-height: 1.6; color: var(--rbd-text2, color-mix(in srgb, var(--rbd-text1) 66%, transparent)); }
-#rbt_settings .rbt-set-intro a { margin-left: 4px; color: var(--rbd-accent, #0a84ff); text-decoration: none; }
-#rbt_settings .rbt-set-open { display: flex; flex-direction: column; gap: 10px; }
-#rbt_settings .rbt-set-tool { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-#rbt_settings .rbt-set-tool .menu_button { flex: none; width: 150px; justify-content: flex-start; }
-#rbt_settings .rbt-set-tool small { flex: 1 1 200px; min-width: 0; font-size: 12px; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 45%, transparent)); }
-#rbt_settings .rbt-set-open .menu_button { margin: 0; padding: 6px 14px; gap: 6px; white-space: nowrap; }
-#rbt_settings .rbt-set-group { display: flex; flex-direction: column; border-radius: var(--rbd-r-m); background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 5%, transparent)); padding: var(--rbd-s-1) var(--rbd-s-4) var(--rbd-s-2); }
-#rbt_settings .rbt-set-title { margin: 8px 6px 2px; font-size: 12px; font-weight: 600; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 40%, transparent)); }
-#rbt_settings .rbt-set-foot { display: flex; align-items: center; gap: 10px; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 40%, transparent)); }
-#rbt_settings .rbt-set-link { border: 0; background: none; padding: 0; font: inherit; font-size: 12px; color: var(--rbd-accent, #0a84ff); cursor: pointer; }
-#rbt_settings .rbt-set-link:hover { text-decoration: underline; }
 
 
 
@@ -1248,8 +1239,6 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
   .rbt-panel input:not([type=checkbox]):not([type=radio]), .rbt-scope input:not([type=checkbox]):not([type=radio]) { min-height: 36px; }
 }
 @media (max-width: 1000px) {
-  #rbt_settings .rbt-set-link, #rbt_settings .rbt-set-intro a { display: inline-flex; align-items: center; min-height: 32px; }
-  #rbt_settings .inline-drawer-icon { min-width: 32px; min-height: 32px; text-align: center; line-height: 32px; }
 }
 
 /* ============================================= 推荐的 vs 现在用的（角色档案） ===
@@ -1302,8 +1291,6 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-card-section-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; }
 .rbt-card-section-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .rbt-frow { grid-template-columns: auto minmax(0, 1fr) auto; }
-#rbt_settings .rbt-set-tip { display: block; margin: -4px 0 4px 34px; font-size: 12px; line-height: 1.5; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 45%, transparent)); }
-#rbt_settings .rbt-set-tip[hidden] { display: none; }
 
 /* =================================================== 选择模式和删除（全局工具箱） ===
    常见的「选择」模式：顶上「已选 N 个 · 全选 · 完成」，底部固定一条操作栏（删除是红色，在最右边）。
@@ -1321,3 +1308,36 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-delete-one { align-self: flex-start; margin-top: var(--rbd-s-3); }
 /* 操作栏在卡片里时（全局正则），底色和卡片一样，不出现一条深色带 */
 .rbt-card-section .rbt-selbar { background: var(--g2); margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+
+/* ================================================== 扩展设置里的「RedBird 工具箱」 ===
+   像系统设置一样的分组列表：每组一块圆角底，组名小字在上；行与行之间一条细线。
+   入口行 = 图标 + 名字 + 一句短说明 + ›，整行能点；开关行 = 勾选框 + 名字 + 一句短说明。 */
+#rbt_settings .rbt-set { display: flex; flex-direction: column; gap: 14px; padding: var(--rbd-s-3) 0; max-width: 560px; }
+#rbt_settings .rbt-set-group { display: flex; flex-direction: column; padding: 4px 14px; border-radius: var(--rbd-r-m, 12px); background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 5%, transparent)); }
+#rbt_settings .rbt-set-group[hidden] { display: none; }
+#rbt_settings .rbt-set-title { margin: 8px 0 2px; font-size: 12px; font-weight: 600; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 45%, transparent)); }
+#rbt_settings .rbt-set-item { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 0; }
+#rbt_settings .rbt-set-group > :is(.rbt-set-item, .rbt-set-row) ~ :is(.rbt-set-item, .rbt-set-row) { border-top: 1px solid var(--rbd-hairline, color-mix(in srgb, var(--rbd-text1) 8%, transparent)); }
+#rbt_settings .rbt-set-nav { cursor: pointer; }
+#rbt_settings .rbt-set-nav:hover .rbt-set-text > span { color: var(--rbd-accent, #0a84ff); }
+#rbt_settings .rbt-set-nav:focus-visible { outline: 2px solid var(--rbd-accent, #0a84ff); outline-offset: 2px; }
+#rbt_settings .rbt-set-ico { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: color-mix(in srgb, var(--rbd-text1) 10%, transparent); color: var(--rbd-text1, inherit); font-size: 14px; }
+#rbt_settings .rbt-set-ico.accent { background: var(--rbd-accent, #0a84ff); color: #fff; }
+#rbt_settings .rbt-set-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+#rbt_settings .rbt-set-text > span { font-size: 14px; color: var(--rbd-text1, inherit); }
+#rbt_settings .rbt-set-text > small { font-size: 12px; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 45%, transparent)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#rbt_settings .rbt-set-chev { flex: none; font-size: 12px; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 45%, transparent)); }
+#rbt_settings .rbt-set-primary { flex: none; margin: 0; padding: 6px 16px; border-radius: 999px; background: var(--rbd-accent, #0a84ff); color: #fff; font-weight: 600; }
+#rbt_settings .rbt-set-row { margin: 0; padding: 10px 0; border-radius: 0; }
+#rbt_settings .rbt-set-tip { display: block; margin: -4px 0 8px 28px; font-size: 12px; line-height: 1.5; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 45%, transparent)); }
+#rbt_settings .rbt-set-tip[hidden] { display: none; }
+#rbt_settings .rbt-set-tip a { color: var(--rbd-accent, #0a84ff); text-decoration: none; }
+#rbt_settings .rbt-set-foot { display: flex; align-items: center; gap: 14px; padding: 0 4px; font-size: 12px; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 45%, transparent)); }
+#rbt_settings .rbt-set-link { display: inline-flex; align-items: center; border: 0; background: none; padding: 0; font: inherit; font-size: 12px; color: var(--rbd-accent, #0a84ff); text-decoration: none; cursor: pointer; }
+#rbt_settings .rbt-set-link:hover { text-decoration: underline; }
+@media (max-width: 1000px) {
+  #rbt_settings .rbt-set-item { min-height: 56px; }
+  #rbt_settings .rbt-set-link, #rbt_settings .rbt-set-tip a { display: inline-flex; align-items: center; min-height: 32px; vertical-align: middle; }
+  #rbt_settings .rbt-set-primary { min-height: 34px; display: inline-flex; align-items: center; }
+  #rbt_settings .inline-drawer-icon { min-width: 32px; min-height: 32px; text-align: center; line-height: 32px; }
+}

@@ -11,7 +11,7 @@ import './look/look.css';
 import { applyLook, lookOn, retireOldTheme, setLook, useBuiltInLook, watchStThemeSwitch } from './look/look';
 import { ctx, preloadModules, saveSettings, settings } from './st/st';
 import { installStore } from './st/store';
-import { checkForUpdate, installedVersion, installUpdateCheck } from './tools/update';
+import { checkForUpdate, newerVersion, updateNow, installedVersion, installUpdateCheck } from './tools/update';
 import { installModelGuard } from './tools/model';
 import { installCharactersWatch } from './shell/characters';
 import { closeDrawer, installDrawers, openDrawers } from './shell/drawers';
@@ -59,30 +59,40 @@ function addSettingsDrawer(): void {
         <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
       </div>
       <div class="inline-drawer-content rbt-set">
-        <p class="rbt-set-intro">给酒馆换一套更好找东西的界面，并帮你检查每张卡要配的预设、世界书和正则。第一次用？先看<a href="https://github.com/RebBirdTD/SillyTavern-RedBird-Tools#readme" target="_blank" rel="noopener">使用说明 ↗</a></p>
-        <div class="rbt-set-open">
-          <div class="rbt-set-tool">
-            <div class="menu_button" id="rbt_open_chat"><i class="fa-solid fa-toolbox"></i>打开聊天工具箱</div>
-            <small>当前这张卡：缺什么、这一轮发给 AI 的内容、变量</small>
+        <!-- 有新版本时才显示，放在最上面 -->
+        <div class="rbt-set-group" id="rbt_update_row" hidden>
+          <div class="rbt-set-item">
+            <span class="rbt-set-ico accent"><i class="fa-solid fa-circle-arrow-up"></i></span>
+            <span class="rbt-set-text"><span id="rbt_update_title">有新版本</span><small>更新后刷新页面生效</small></span>
+            <div class="menu_button rbt-set-primary" id="rbt_update_now">更新</div>
           </div>
-          <div class="rbt-set-tool">
-            <div class="menu_button" id="rbt_open_global"><i class="fa-solid fa-globe"></i>打开全局工具箱</div>
-            <small>所有卡共用的：预设、世界书、正则、插件、美化、备份</small>
+        </div>
+        <div class="rbt-set-group">
+          <div class="rbt-set-title">工具箱</div>
+          <div class="rbt-set-item rbt-set-nav" id="rbt_open_chat" role="button" tabindex="0">
+            <span class="rbt-set-ico"><i class="fa-solid fa-toolbox"></i></span>
+            <span class="rbt-set-text"><span>聊天工具箱</span><small>当前这张卡</small></span>
+            <i class="fa-solid fa-chevron-right rbt-set-chev"></i>
+          </div>
+          <div class="rbt-set-item rbt-set-nav" id="rbt_open_global" role="button" tabindex="0">
+            <span class="rbt-set-ico"><i class="fa-solid fa-globe"></i></span>
+            <span class="rbt-set-text"><span>全局工具箱</span><small>所有卡共用的预设、世界书、正则…</small></span>
+            <i class="fa-solid fa-chevron-right rbt-set-chev"></i>
           </div>
         </div>
         <div class="rbt-set-group">
           <div class="rbt-set-title">界面</div>
-          ${row('rbt_shell_switch', '三栏界面', '把酒馆换成三栏布局：左边是最近的聊天和常用入口，中间聊天，右边是聊天工具箱。手机上左栏收进左上角的 ☰。想换回原来的样子，点左栏底部的「原版界面」。')}
-          <small class="rbt-set-tip" id="rbt_thumb_tip" hidden>手机或远程打开时，首页卡片用的是酒馆的缩略图，加载快但可能模糊。想更清楚：在酒馆的 config.yaml 里把 thumbnails 下的 avatar 尺寸调大（比如 [384, 576]），再删掉 data/你的用户名/thumbnails/avatar 文件夹，酒馆会按新尺寸重新生成。</small>
-          ${row('rbt_look_switch', '美化', '酒馆和工具箱用同一套配色和字体。深色、浅色、护眼三套和强调色在「全局工具箱 › 美化」里选')}
+          ${row('rbt_shell_switch', '三栏界面', '左栏入口、中间聊天、右边工具箱；左栏底部可以切回原版')}
+          <small class="rbt-set-tip" id="rbt_thumb_tip" hidden>手机或远程打开时，首页用的是缩略图。觉得模糊，见<a href="https://github.com/RebBirdTD/SillyTavern-RedBird-Tools#调整缩略图清晰度" target="_blank" rel="noopener">怎么调清楚 ↗</a></small>
+          ${row('rbt_look_switch', '自带美化', '深色、浅色、护眼，在全局工具箱 › 美化里选')}
         </div>
         <div class="rbt-set-group">
           <div class="rbt-set-title">换卡时</div>
-          ${row('rbt_auto_switch', '自动换成这张卡的预设、世界书和正则', '每次都能撤销；关掉后只提醒，不自动换')}
-          ${row('rbt_auto_world', '自动导入卡里自带的世界书', '卡里带着、但酒馆里还没有的世界书，导入后绑到这张卡上')}
+          ${row('rbt_auto_switch', '自动换成这张卡的预设、世界书和正则', '随时可以撤销')}
+          ${row('rbt_auto_world', '自动导入卡里自带的世界书', '导入后绑到这张卡上')}
         </div>
         <div class="rbt-set-foot">
-          <small>版本 <span id="rbt_version"></span></small>
+          <span>版本 <span id="rbt_version"></span></span>
           <button type="button" class="rbt-set-link" id="rbt_check_update">检查更新</button>
           <a class="rbt-set-link" href="https://github.com/RebBirdTD/SillyTavern-RedBird-Tools#readme" target="_blank" rel="noopener">使用说明 ↗</a>
         </div>
@@ -91,8 +101,14 @@ function addSettingsDrawer(): void {
   host.appendChild(wrap);
   // 不是在本机电脑上打开时，说明首页卡片为什么用缩略图、怎么变清楚
   if (!['localhost', '127.0.0.1', '[::1]', '::1'].includes(location.hostname)) wrap.querySelector<HTMLElement>('#rbt_thumb_tip')?.removeAttribute('hidden');
-  wrap.querySelector('#rbt_open_global')?.addEventListener('click', () => openGlobal());
-  wrap.querySelector('#rbt_open_chat')?.addEventListener('click', () => openPanel());
+  // 「工具箱」两行：整行都能点，也能用键盘（Enter / 空格）
+  const navRow = (id: string, go: () => void) => {
+    const el = wrap.querySelector<HTMLElement>(`#${id}`);
+    el?.addEventListener('click', go);
+    el?.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  };
+  navRow('rbt_open_global', () => openGlobal());
+  navRow('rbt_open_chat', () => openPanel());
   const bind = (id: string, get: () => boolean, set: (v: boolean) => void) => {
     const cb = wrap.querySelector<HTMLInputElement>(`#${id}`)!;
     cb.checked = get();
@@ -108,6 +124,15 @@ function addSettingsDrawer(): void {
   const ver = wrap.querySelector<HTMLElement>('#rbt_version');
   if (ver) ver.textContent = installedVersion() || '?';
   wrap.querySelector('#rbt_check_update')?.addEventListener('click', () => { void checkForUpdate(true); });
+  // 有新版本时，在设置里直接给一个「更新到 vX」按钮（打开设置时查一次 GitHub 上的版本号）
+  wrap.querySelector('#rbt_update_now')?.addEventListener('click', () => { void updateNow(); });
+  void newerVersion().then((v) => {
+    if (!v) return;
+    const row = wrap.querySelector<HTMLElement>('#rbt_update_row');
+    const title = wrap.querySelector<HTMLElement>('#rbt_update_title');
+    if (title) title.textContent = `有新版本 ${v}`;
+    row?.removeAttribute('hidden');
+  });
 }
 
 function addSlashCommand(): void {
