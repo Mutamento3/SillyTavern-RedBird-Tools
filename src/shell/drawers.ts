@@ -118,18 +118,50 @@ function syncCharacterTitle(): void {
   if (span.textContent !== text) span.textContent = text;
 }
 
+/**
+ * 有些编辑层是酒馆单独盖在面板上面的，不在面板里面：预设的单条提示词编辑器、角色的「高级定义」。
+ * 面板关掉（点 ✕、回首页、换到聊天…）时它们不会跟着关，会留在屏幕上像卡住一样。
+ * 所以面板一关，就用酒馆自己的关闭按钮把它们也关掉（和用户自己点「取消」一样，不保存）。
+ */
+const NESTED_OF: Partial<Record<DrawerKey, { layer: string; close: string }[]>> = {
+  preset: [{ layer: '#completion_prompt_manager_popup', close: '#completion_prompt_manager_popup_entry_form_close' }],
+  characters: [{ layer: '#character_popup', close: '#character_cross' }],
+};
+function closeNestedOf(key: DrawerKey): void {
+  for (const { layer, close } of NESTED_OF[key] ?? []) {
+    const el = document.querySelector<HTMLElement>(layer);
+    if (!el || getComputedStyle(el).display === 'none') continue;
+    // 用原生 click：酒馆用 addEventListener 绑的，jQuery 的 trigger 触发不到
+    document.querySelector<HTMLElement>(close)?.click();
+  }
+}
+
 function syncOpenState(): void {
   const open = DRAWERS.filter((d) => el(d)?.classList.contains('openDrawer')).map((d) => d.key);
+  for (const k of openDrawers.value) if (!open.includes(k)) closeNestedOf(k);
   if (open.includes('characters')) syncCharacterTitle();
   const prev = openDrawers.value;
   if (open.length !== prev.length || open.some((k, i) => k !== prev[i])) openDrawers.value = open;
   document.body.classList.toggle('rbt-open-modal', open.length > 0);
 }
 
+/**
+ * 面板里还开着酒馆自己的一层（提示词编辑器、高级定义、存档、消息编辑…）时，Esc 交给酒馆，
+ * 只关那一层，不要把整个面板关掉。这些元素不是 <dialog>，要看它们实际有没有显示。
+ */
+const NESTED = ['#completion_prompt_manager_popup', '#character_popup', '#select_chat_popup', '#dialogue_popup', '#curEditTextarea'];
+function nestedOpen(): boolean {
+  if (document.querySelector('dialog[open], .popup.open, #shadow_popup[style*="block"]')) return true;
+  return NESTED.some((sel) => {
+    const el = document.querySelector<HTMLElement>(sel);
+    return !!el && getComputedStyle(el).display !== 'none' && el.getClientRects().length > 0;
+  });
+}
+
 function onKeyDown(e: KeyboardEvent): void {
   if (e.key !== 'Escape' || !document.body.classList.contains('rbt-shell')) return;
-  // Leave Esc to ST's own popups (confirm dialogs, character editor…) when one is open.
-  if (document.querySelector('dialog[open], .popup.open, #shadow_popup[style*="block"]')) return;
+  // Leave Esc to ST's own popups / nested editors when one is open.
+  if (nestedOpen()) return;
   const open = openDrawers.value;
   if (!open.length) return;
   closeDrawer(open[open.length - 1]);
@@ -200,8 +232,17 @@ export function installDrawers(): void {
     const node = el(d);
     if (node) mo.observe(node, { attributes: true, attributeFilter: ['class'] });
   }
-  document.addEventListener('keydown', onKeyDown);
+  // capture：在酒馆自己的 Esc 处理（会先关掉嵌套的那一层）之前判断，免得关完那一层又把面板也关了
+  document.addEventListener('keydown', onKeyDown, true);
   document.addEventListener('mousedown', onBackdropDown);
+  // 换到别的聊天、回首页时，关掉还开着的面板（手机上面板是整页的，不关就一直盖在新页面上）
+  const c = (window as unknown as { SillyTavern?: { getContext?: () => { eventSource?: { on: (e: string, f: () => void) => void }; eventTypes?: Record<string, string> } } }).SillyTavern?.getContext?.();
+  if (c?.eventSource && c.eventTypes?.CHAT_CHANGED) {
+    c.eventSource.on(c.eventTypes.CHAT_CHANGED, () => {
+      if (!document.body.classList.contains('rbt-shell')) return;
+      for (const k of openDrawers.value) closeDrawer(k);
+    });
+  }
   // 存档弹窗：每次打开时更新标题里的名字
   const shadow = document.getElementById('shadow_select_chat_popup');
   if (shadow) {

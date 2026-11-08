@@ -1162,7 +1162,7 @@ async function retireOldTheme() {
   const stamp2 = (/* @__PURE__ */ new Date()).toISOString().replace(/[-:]/g, "").replace(/\..+$/, "").replace("T", "-");
   const file = `rbt-custom-css-backup-${stamp2}.css`;
   try {
-    const up = await fetch("/api/files/upload", { method: "POST", headers: ctx().getRequestHeaders(), body: JSON.stringify({ name: file, data: toBase64$1(css) }) });
+    const up = await fetch("/api/files/upload", { method: "POST", headers: ctx().getRequestHeaders(), body: JSON.stringify({ name: file, data: toBase64$2(css) }) });
     if (!up.ok) throw new Error(String(up.status));
   } catch (e2) {
     console.warn("[RedBird] 旧美化的自定义 CSS 备份失败，先不清除", e2);
@@ -1231,36 +1231,11 @@ async function useBuiltInLook(id) {
   setLook(true);
   themeTick.value++;
 }
-function toBase64$1(text) {
+function toBase64$2(text) {
   const bytes = new TextEncoder().encode(text);
   let bin = "";
   for (let i2 = 0; i2 < bytes.length; i2 += 32768) bin += String.fromCharCode(...bytes.subarray(i2, i2 + 32768));
   return btoa(bin);
-}
-async function deleteStTheme(name) {
-  const t2 = stThemes.value.find((x2) => x2.name === name);
-  if (!t2 || name === currentStTheme()) return null;
-  const ok = await confirmText(`删除美化「${name}」？`, "会先把它备份到「data/你的用户名/user/files」里，想要回来可以从那里重新导入。");
-  if (!ok) return null;
-  const ascii = name.normalize("NFKD").replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
-  const stamp2 = (/* @__PURE__ */ new Date()).toISOString().replace(/[-:]/g, "").replace(/\..+$/, "").replace("T", "-");
-  const file = `rbt-theme-backup-${stamp2}${ascii ? `-${ascii}` : ""}.json`;
-  const up = await fetch("/api/files/upload", { method: "POST", headers: ctx().getRequestHeaders(), body: JSON.stringify({ name: file, data: toBase64$1(JSON.stringify(t2, null, 2)) }) });
-  if (!up.ok) {
-    toast("error", `备份失败，没有删除：${up.status}`, "美化");
-    return null;
-  }
-  const res = await fetch("/api/themes/delete", { method: "POST", headers: ctx().getRequestHeaders(), body: JSON.stringify({ name }) });
-  if (!res.ok) {
-    toast("error", `删除失败：${res.status}`, "美化");
-    return null;
-  }
-  document.querySelectorAll("#themes option").forEach((o2) => {
-    if (o2.value === name) o2.remove();
-  });
-  stThemes.value = stThemes.value.filter((x2) => x2.name !== name);
-  toast("success", `已删除「${name}」，备份在 user/files/${file}`, "美化");
-  return file;
 }
 function watchStThemeSwitch() {
   const $2 = window.jQuery;
@@ -1614,11 +1589,11 @@ function attribute(input) {
       tokens: segments.reduce((n2, s2) => n2 + s2.tokens, 0)
     };
   });
-  let after = 0;
+  let after2 = 0;
   for (let i2 = messages.length - 1; i2 >= 0; i2--) {
     const m2 = messages[i2];
-    if (m2.kind === "chat") after++;
-    else if (m2.kind === "injection") m2.depth = after;
+    if (m2.kind === "chat") after2++;
+    else if (m2.kind === "injection") m2.depth = after2;
   }
   const totals = Object.fromEntries(CATEGORY_ORDER.map((c2) => [c2, 0]));
   for (const m2 of messages) for (const s2 of m2.segments) totals[s2.category] += s2.tokens;
@@ -2122,8 +2097,8 @@ async function applyProfile() {
     saveSettings();
     if (ctx().getCurrentChatId?.()) await ctx().reloadCurrentChat();
   }
-  const after = refreshEnv();
-  if (after.drift?.count) toast("warning", `还有 ${after.drift.count} 项没能恢复，请在面板里检查`);
+  const after2 = refreshEnv();
+  if (after2.drift?.count) toast("warning", `还有 ${after2.drift.count} 项没能恢复，请在面板里检查`);
   else toast("success", `已恢复「${r2.cardName}」记住的环境`);
 }
 let lastAvatar$2 = null;
@@ -2196,9 +2171,9 @@ function same(a2, b2) {
     return false;
   }
 }
-function diffVars(before, after) {
+function diffVars(before, after2) {
   const a2 = flattenVars(before);
-  const b2 = flattenVars(after);
+  const b2 = flattenVars(after2);
   const changes = [];
   for (const [path, leaf] of b2) {
     const old = a2.get(path);
@@ -2260,8 +2235,8 @@ function floorDiffs(floors) {
   return floors.map((floor, i2) => {
     const prev = i2 > 0 ? floors[i2 - 1] : null;
     const before = prev ? prev.statData ?? prev.vars : void 0;
-    const after = floor.statData ?? floor.vars;
-    return { floor, prev, changes: diffVars(before, after) };
+    const after2 = floor.statData ?? floor.vars;
+    return { floor, prev, changes: diffVars(before, after2) };
   });
 }
 function chatLocalVars() {
@@ -2931,16 +2906,36 @@ function syncCharacterTitle() {
   const text = name ? `编辑卡片 · ${name}` : drawerByKey.characters.label;
   if (span.textContent !== text) span.textContent = text;
 }
+const NESTED_OF = {
+  preset: [{ layer: "#completion_prompt_manager_popup", close: "#completion_prompt_manager_popup_entry_form_close" }],
+  characters: [{ layer: "#character_popup", close: "#character_cross" }]
+};
+function closeNestedOf(key) {
+  for (const { layer, close } of NESTED_OF[key] ?? []) {
+    const el2 = document.querySelector(layer);
+    if (!el2 || getComputedStyle(el2).display === "none") continue;
+    document.querySelector(close)?.click();
+  }
+}
 function syncOpenState() {
   const open = DRAWERS.filter((d2) => el(d2)?.classList.contains("openDrawer")).map((d2) => d2.key);
+  for (const k2 of openDrawers.value) if (!open.includes(k2)) closeNestedOf(k2);
   if (open.includes("characters")) syncCharacterTitle();
   const prev = openDrawers.value;
   if (open.length !== prev.length || open.some((k2, i2) => k2 !== prev[i2])) openDrawers.value = open;
   document.body.classList.toggle("rbt-open-modal", open.length > 0);
 }
+const NESTED = ["#completion_prompt_manager_popup", "#character_popup", "#select_chat_popup", "#dialogue_popup", "#curEditTextarea"];
+function nestedOpen() {
+  if (document.querySelector('dialog[open], .popup.open, #shadow_popup[style*="block"]')) return true;
+  return NESTED.some((sel) => {
+    const el2 = document.querySelector(sel);
+    return !!el2 && getComputedStyle(el2).display !== "none" && el2.getClientRects().length > 0;
+  });
+}
 function onKeyDown(e2) {
   if (e2.key !== "Escape" || !document.body.classList.contains("rbt-shell")) return;
-  if (document.querySelector('dialog[open], .popup.open, #shadow_popup[style*="block"]')) return;
+  if (nestedOpen()) return;
   const open = openDrawers.value;
   if (!open.length) return;
   closeDrawer(open[open.length - 1]);
@@ -2986,8 +2981,15 @@ function installDrawers() {
     const node = el(d2);
     if (node) mo.observe(node, { attributes: true, attributeFilter: ["class"] });
   }
-  document.addEventListener("keydown", onKeyDown);
+  document.addEventListener("keydown", onKeyDown, true);
   document.addEventListener("mousedown", onBackdropDown);
+  const c2 = window.SillyTavern?.getContext?.();
+  if (c2?.eventSource && c2.eventTypes?.CHAT_CHANGED) {
+    c2.eventSource.on(c2.eventTypes.CHAT_CHANGED, () => {
+      if (!document.body.classList.contains("rbt-shell")) return;
+      for (const k2 of openDrawers.value) closeDrawer(k2);
+    });
+  }
   const shadow = document.getElementById("shadow_select_chat_popup");
   if (shadow) {
     syncChatsHead();
@@ -3328,7 +3330,7 @@ async function checkWorld(info) {
   if (!f2 || !data) return null;
   return diffBooks(cardBookEntries(f2.char.data?.character_book), worldBookEntries(data));
 }
-function toBase64(text) {
+function toBase64$1(text) {
   const bytes = new TextEncoder().encode(text);
   let bin = "";
   for (let i2 = 0; i2 < bytes.length; i2 += 32768) bin += String.fromCharCode(...bytes.subarray(i2, i2 + 32768));
@@ -3341,7 +3343,7 @@ async function backupWorld(name) {
   const res = await fetch("/api/files/upload", {
     method: "POST",
     headers: ctx().getRequestHeaders(),
-    body: JSON.stringify({ name: file, data: toBase64(JSON.stringify({ ...data, rbtBackupOf: name }, null, 2)) })
+    body: JSON.stringify({ name: file, data: toBase64$1(JSON.stringify({ ...data, rbtBackupOf: name }, null, 2)) })
   });
   if (!res.ok) throw new Error(`备份失败：${res.status} ${await res.text()}`);
   settings().worldBackups.push({ file, world: name, at: (/* @__PURE__ */ new Date()).toISOString() });
@@ -3358,8 +3360,8 @@ async function importCardWorld(avatar, { overwrite = false, quiet: quiet2 = fals
   const exists = worldNames().includes(name);
   if (exists && !overwrite) return "exists";
   try {
-    let backup = "";
-    if (exists) backup = await backupWorld(name);
+    let backup2 = "";
+    if (exists) backup2 = await backupWorld(name);
     await wi.saveWorldInfo(name, wi.convertCharacterBook(structuredClone(book)), true);
     await wi.updateWorldInfoList();
     if (f2.char.data?.extensions?.world !== name) await ctx().writeExtensionField(f2.chid, "world", name);
@@ -4643,7 +4645,7 @@ async function runImport(items, hooks) {
 }
 const GLOBAL = 0;
 const lastApplied = y$1(null);
-function globalWorlds() {
+function globalWorlds$1() {
   return [...loaded.worldInfo?.selected_world_info ?? []];
 }
 function globalRegex() {
@@ -4684,7 +4686,7 @@ function planFor(char) {
   const targetPreset = plan.preset ?? cur;
   const wantModel = profile?.model ?? s2.presetInfo?.[targetPreset]?.model;
   if (wantModel && modelsApply()) plan.model = wantModel;
-  const now = globalWorlds();
+  const now = globalWorlds$1();
   const existing = new Set(loaded.worldInfo?.world_names ?? []);
   if (profile?.globalWorlds) {
     plan.worldsOn = profile.globalWorlds.filter((w2) => !now.includes(w2) && existing.has(w2));
@@ -4742,7 +4744,7 @@ async function applyPlan(plan) {
   const snapshot = {
     preset: currentPresetName(),
     model: currentModel(),
-    globalWorlds: globalWorlds(),
+    globalWorlds: globalWorlds$1(),
     regexDisabled: Object.fromEntries(globalRegex().map((r2) => [r2.id, !!r2.disabled]))
   };
   const changes = [];
@@ -4781,7 +4783,7 @@ async function undoLastApply() {
     if (s2.preset && s2.preset !== currentPresetName()) await switchPreset(s2.preset);
     if (s2.model && !sameModel(s2.model, currentModel())) await setModel(s2.model);
   });
-  const now = globalWorlds();
+  const now = globalWorlds$1();
   await setWorlds(s2.globalWorlds.filter((w2) => !now.includes(w2)), now.filter((w2) => !s2.globalWorlds.includes(w2)));
   const rx = {};
   for (const r2 of globalRegex()) {
@@ -5153,6 +5155,142 @@ function FlowView() {
     sub === "wi" && /* @__PURE__ */ u$2(WIList, { wi: cap.wi })
   ] });
 }
+const TRASH_LABEL = { preset: "预设", world: "世界书", theme: "美化", regex: "正则" };
+function toBase64(text) {
+  const bytes = new TextEncoder().encode(text);
+  let bin = "";
+  for (let i2 = 0; i2 < bytes.length; i2 += 32768) bin += String.fromCharCode(...bytes.subarray(i2, i2 + 32768));
+  return btoa(bin);
+}
+async function backup(kind, items) {
+  const stamp2 = (/* @__PURE__ */ new Date()).toISOString().replace(/[-:]/g, "").replace(/\..+$/, "").replace("T", "-");
+  const file = `rbt-deleted-${kind}-${stamp2}.json`;
+  const body = JSON.stringify({ rbtDeleted: kind, at: (/* @__PURE__ */ new Date()).toISOString(), items: items.map(({ name, data, wasGlobal, index }) => ({ name, data, wasGlobal, index })) }, null, 2);
+  const res = await fetch("/api/files/upload", { method: "POST", headers: ctx().getRequestHeaders(), body: JSON.stringify({ name: file, data: toBase64(body) }) });
+  if (!res.ok) throw new Error(`备份失败：${res.status}`);
+  return file;
+}
+const presetManager = () => ctx().getPresetManager?.();
+const globalWorlds = () => loaded.worldInfo?.selected_world_info ?? [];
+const REGEX_GLOBAL = 0;
+async function collect(kind, ids) {
+  const out = [];
+  if (kind === "preset") {
+    for (const name of ids) {
+      const data = presetManager()?.getPresetSettings?.(name);
+      if (data) out.push({ kind, id: name, name, data: structuredClone(data) });
+    }
+  } else if (kind === "world") {
+    for (const name of ids) {
+      const data = await loaded.worldInfo?.loadWorldInfo?.(name);
+      if (data) out.push({ kind, id: name, name, data: structuredClone(data), wasGlobal: globalWorlds().includes(name) });
+    }
+  } else if (kind === "theme") {
+    for (const name of ids) {
+      const t2 = stThemes.value.find((x2) => x2.name === name);
+      if (t2) out.push({ kind, id: name, name, data: structuredClone(t2) });
+    }
+  } else {
+    const list = loaded.regexEngine?.getScriptsByType?.(REGEX_GLOBAL) ?? [];
+    list.forEach((s2, index) => {
+      if (ids.includes(s2.id)) out.push({ kind, id: s2.id, name: s2.scriptName || "(未命名正则)", data: structuredClone(s2), index });
+    });
+  }
+  return out;
+}
+async function remove(items) {
+  const done = [];
+  const kind = items[0]?.kind;
+  if (kind === "regex") {
+    const re = loaded.regexEngine;
+    const ids = new Set(items.map((i2) => i2.id));
+    const list = re?.getScriptsByType?.(REGEX_GLOBAL) ?? [];
+    await re?.saveScriptsByType?.(list.filter((s2) => !ids.has(s2.id)), REGEX_GLOBAL);
+    saveSettings();
+    return items;
+  }
+  for (const it of items) {
+    try {
+      if (kind === "preset") {
+        if (await presetManager()?.deletePreset?.(it.id)) done.push(it);
+      } else if (kind === "world") {
+        if (await loaded.worldInfo?.deleteWorldInfo?.(it.id)) done.push(it);
+      } else if (kind === "theme") {
+        const res = await fetch("/api/themes/delete", { method: "POST", headers: ctx().getRequestHeaders(), body: JSON.stringify({ name: it.id }) });
+        if (res.ok) {
+          document.querySelectorAll("#themes option").forEach((o2) => {
+            if (o2.value === it.id) o2.remove();
+          });
+          stThemes.value = stThemes.value.filter((x2) => x2.name !== it.id);
+          done.push(it);
+        }
+      }
+    } catch (e2) {
+      console.error("[RedBird] delete failed", it.name, e2);
+    }
+  }
+  return done;
+}
+async function restore(items) {
+  const kind = items[0]?.kind;
+  if (kind === "regex") {
+    const re = loaded.regexEngine;
+    const list = [...re?.getScriptsByType?.(REGEX_GLOBAL) ?? []];
+    for (const it of [...items].sort((a2, b2) => (a2.index ?? 0) - (b2.index ?? 0))) list.splice(Math.min(it.index ?? list.length, list.length), 0, it.data);
+    await re?.saveScriptsByType?.(list, REGEX_GLOBAL);
+    saveSettings();
+    return;
+  }
+  for (const it of items) {
+    if (kind === "preset") await presetManager()?.savePreset?.(it.name, it.data);
+    else if (kind === "world") {
+      await loaded.worldInfo?.saveWorldInfo?.(it.name, it.data, true);
+      await loaded.worldInfo?.updateWorldInfoList?.();
+      if (it.wasGlobal) await runSlash(`/world state=on silent=true ${slashQuote(it.name)}`);
+    } else if (kind === "theme") {
+      await fetch("/api/themes/save", { method: "POST", headers: ctx().getRequestHeaders(), body: JSON.stringify(it.data) });
+    }
+  }
+  if (kind === "theme") await loadThemes();
+}
+function after() {
+  archiveVersion.value++;
+  refreshEnv();
+  if (ctx().getCurrentChatId?.()) void ctx().reloadCurrentChat?.();
+}
+async function trash(kind, ids) {
+  const label = TRASH_LABEL[kind];
+  const items = await collect(kind, ids);
+  if (!items.length) return 0;
+  let file = "";
+  try {
+    file = await backup(kind, items);
+  } catch (e2) {
+    toast("error", `${e2.message}，没有删除。`, "删除");
+    return 0;
+  }
+  const done = await remove(items);
+  after();
+  if (!done.length) {
+    toast("error", `没能删除${label}。`, "删除");
+    return 0;
+  }
+  const failed = items.length - done.length;
+  const what = done.length === 1 ? `「${done[0].name}」` : `${done.length} 个${label}`;
+  let undone = false;
+  toast("success", `已删除${what}${failed ? `，另有 ${failed} 个没删掉` : ""}。点这里撤销。备份在 user/files/${file}`, "删除", {
+    timeOut: 15e3,
+    extendedTimeOut: 8e3,
+    onclick: async () => {
+      if (undone) return;
+      undone = true;
+      await restore(done);
+      after();
+      toast("success", `已恢复${what}。`, "删除");
+    }
+  });
+  return done.length;
+}
 const KIND_LABEL = {
   worldbook: "世界书",
   regex: "正则",
@@ -5260,8 +5398,53 @@ function GlobalRegexList({ items }) {
     const label = kind === "extension" ? exts.find((e2) => e2.id === key)?.name ?? key : kind === "card" ? findChar(key)?.char?.name ?? key : key;
     setRegexOwner(id, { kind, key, label });
   };
+  const [selecting, setSelecting] = d$1(false);
+  const [picked, setPicked] = d$1([]);
+  const [busy, setBusy] = d$1(false);
   if (!scripts.length) return /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: "没有全局正则。" });
+  const allOn = scripts.every((r2) => picked.includes(r2.id));
+  const done = () => {
+    setSelecting(false);
+    setPicked([]);
+  };
+  const del = async () => {
+    const list = scripts.filter((r2) => picked.includes(r2.id));
+    if (!list.length) return;
+    const shown = list.length <= 6 ? list.map((r2) => `「${r2.scriptName}」`).join("") : `${list.slice(0, 6).map((r2) => `「${r2.scriptName}」`).join("")} 等 ${list.length} 条`;
+    if (!await confirmText(`删除 ${list.length} 条全局正则？`, `${shown}　删除前会先备份，删完 15 秒内可以撤销。`)) return;
+    setBusy(true);
+    try {
+      if (await trash("regex", list.map((r2) => r2.id))) setPicked([]);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (selecting) {
+    return /* @__PURE__ */ u$2(S$1, { children: [
+      /* @__PURE__ */ u$2("div", { class: "rbt-org-bar", children: [
+        /* @__PURE__ */ u$2("span", { class: "rbt-org-count", children: [
+          "已选 ",
+          picked.length,
+          " 条"
+        ] }),
+        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-linkbtn", onClick: () => setPicked(allOn ? [] : scripts.map((r2) => r2.id)), children: allOn ? "全不选" : "全选" }),
+        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-push", onClick: done, children: "完成" })
+      ] }),
+      scripts.map((r2) => /* @__PURE__ */ u$2("label", { class: `rbt-pickrow ${picked.includes(r2.id) ? "on" : ""}`, children: [
+        /* @__PURE__ */ u$2("input", { type: "checkbox", checked: picked.includes(r2.id), onChange: () => setPicked((cur) => cur.includes(r2.id) ? cur.filter((x2) => x2 !== r2.id) : [...cur, r2.id]) }),
+        /* @__PURE__ */ u$2("span", { class: "rbt-navrow-main", children: [
+          /* @__PURE__ */ u$2("span", { class: "rbt-navrow-title", children: r2.scriptName || "(未命名正则)" }),
+          /* @__PURE__ */ u$2("span", { class: "rbt-navrow-sub", children: [
+            r2.disabled ? "关着" : "开着",
+            owners[r2.id] ? ` · 属于 ${owners[r2.id].label}` : ""
+          ] })
+        ] })
+      ] }, r2.id)),
+      /* @__PURE__ */ u$2("div", { class: "rbt-selbar", role: "toolbar", "aria-label": "对选中的正则", children: /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-btn-danger rbt-push", disabled: !picked.length || busy, onClick: del, children: busy ? "正在删除…" : `删除${picked.length ? ` ${picked.length} 条` : ""}` }) })
+    ] });
+  }
   return /* @__PURE__ */ u$2(S$1, { children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-org-bar", children: /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-push", onClick: () => setSelecting(true), children: "选择" }) }),
     /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "给正则选好「属于」，换卡时就会自动开关：属于当前的卡或预设就打开，属于别的就关掉。" }),
     guesses.length > 1 && /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", onClick: () => {
       for (const { r: r2, g: g2 } of guesses) setRegexOwner(r2.id, g2);
@@ -7747,55 +7930,117 @@ function SeriesSuggestions({ kind, names }) {
     ] })
   ] }, g2.series)) });
 }
-function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filters, defaultFilter = 0 }) {
+function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filters, defaultFilter = 0, locked, deleteNote }) {
   void sourcesTick.value;
-  const [organizing, setOrganizing] = d$1(false);
+  const [selecting, setSelecting] = d$1(false);
   const [picked, setPicked] = d$1([]);
+  const [naming, setNaming] = d$1(false);
   const [series, setSeriesName] = d$1("");
+  const [busy, setBusy] = d$1(false);
   const [fi, setFi] = d$1(defaultFilter);
   const names = filters ? allNames.filter(filters[fi]?.test ?? (() => true)) : allNames;
   const groups = groupBySeries(kind, names);
+  const pickable = names.filter((n2) => !locked?.(n2));
   const listId = `rbt-org-${kind}`;
   const toggle = (n2) => setPicked((cur) => cur.includes(n2) ? cur.filter((x2) => x2 !== n2) : [...cur, n2]);
+  const allOn = pickable.length > 0 && pickable.every((n2) => picked.includes(n2));
   const done = () => {
-    setOrganizing(false);
+    setSelecting(false);
     setPicked([]);
+    setNaming(false);
     setSeriesName("");
   };
   const apply = (name) => {
     setSeries(kind, picked, name);
     setPicked([]);
+    setNaming(false);
+    setSeriesName("");
+  };
+  const del = async () => {
+    const list = picked.filter((n2) => !locked?.(n2));
+    if (!list.length) return;
+    const label = TRASH_LABEL[kind];
+    const shown = list.length <= 6 ? list.map((n2) => `「${n2}」`).join("") : `${list.slice(0, 6).map((n2) => `「${n2}」`).join("")} 等 ${list.length} 个`;
+    const note = deleteNote?.(list);
+    const ok = await confirmText(`删除 ${list.length} 个${label}？`, `${shown}
+
+${note ? `${note}
+
+` : ""}删除前会先备份，删完 15 秒内可以撤销。`);
+    if (!ok) return;
+    setBusy(true);
+    try {
+      if (await trash(kind, list)) {
+        for (const n2 of list) updateSource(kind, n2, { author: "", links: [], series: "", version: "", notes: "" });
+        setPicked([]);
+      }
+    } finally {
+      setBusy(false);
+    }
   };
   return /* @__PURE__ */ u$2(S$1, { children: [
-    !organizing && /* @__PURE__ */ u$2(SeriesSuggestions, { kind, names: allNames }),
+    !selecting && /* @__PURE__ */ u$2(SeriesSuggestions, { kind, names: allNames }),
     filters && /* @__PURE__ */ u$2("div", { class: "rbt-vseg rbt-list-filter", role: "tablist", children: filters.map((f2, i2) => /* @__PURE__ */ u$2("button", { type: "button", class: fi === i2 ? "active" : "", onClick: () => setFi(i2), children: [
       f2.label,
       " ",
       allNames.filter(f2.test).length
     ] }, f2.label)) }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-org-bar", children: organizing ? /* @__PURE__ */ u$2(S$1, { children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-org-bar", children: selecting ? /* @__PURE__ */ u$2(S$1, { children: [
       /* @__PURE__ */ u$2("span", { class: "rbt-org-count", children: [
         "已选 ",
         picked.length,
         " 个"
       ] }),
-      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", list: listId, placeholder: "系列名，比如：小狗之神", value: series, onInput: (e2) => setSeriesName(e2.currentTarget.value) }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-linkbtn", disabled: !pickable.length, onClick: () => setPicked(allOn ? [] : pickable), children: allOn ? "全不选" : "全选" }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-push", onClick: done, children: "完成" })
+    ] }) : /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-push", onClick: () => setSelecting(true), children: "选择" }) }),
+    groups.map((g2) => /* @__PURE__ */ u$2(Section, { title: g2.series ? `${g2.series} 系列` : groups.length > 1 ? `其他${restTitle}` : `全部${restTitle}`, hint: `${g2.names.length} 个`, children: g2.names.map((n2) => {
+      if (!selecting) return /* @__PURE__ */ u$2(NavRow, { title: n2, sub: sub(n2) || void 0, trailing: trail?.(n2), onClick: () => openItem(kind, n2, back) }, n2);
+      const why = locked?.(n2);
+      return /* @__PURE__ */ u$2("label", { class: `rbt-pickrow ${picked.includes(n2) ? "on" : ""} ${why ? "locked" : ""}`, title: why ?? void 0, children: [
+        /* @__PURE__ */ u$2("input", { type: "checkbox", checked: picked.includes(n2), disabled: !!why, onChange: () => toggle(n2) }),
+        /* @__PURE__ */ u$2("span", { class: "rbt-navrow-main", children: [
+          /* @__PURE__ */ u$2("span", { class: "rbt-navrow-title", children: n2 }),
+          (why || sub(n2)) && /* @__PURE__ */ u$2("span", { class: "rbt-navrow-sub", children: why ?? sub(n2) })
+        ] })
+      ] }, n2);
+    }) }, g2.series || "_")),
+    selecting && /* @__PURE__ */ u$2("div", { class: "rbt-selbar", role: "toolbar", "aria-label": "对选中的项目", children: naming ? /* @__PURE__ */ u$2(S$1, { children: [
+      /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", list: listId, placeholder: "系列名，比如：小狗之神", value: series, autoFocus: true, onInput: (e2) => setSeriesName(e2.currentTarget.value), onKeyDown: (e2) => {
+        if (e2.key === "Enter" && picked.length && series.trim()) apply(series.trim());
+      } }),
       /* @__PURE__ */ u$2("datalist", { id: listId, children: allSeries(kind).map((x2) => /* @__PURE__ */ u$2("option", { value: x2 }, x2)) }),
-      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-btn-primary", disabled: !picked.length || !series.trim(), onClick: () => apply(series.trim()), children: "归为这个系列" }),
-      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", disabled: !picked.length, onClick: () => apply(""), children: "移出系列" }),
-      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", onClick: done, children: "完成" })
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-btn-primary", disabled: !picked.length || !series.trim(), onClick: () => apply(series.trim()), children: "归入" }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", onClick: () => setNaming(false), children: "取消" })
     ] }) : /* @__PURE__ */ u$2(S$1, { children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "点一项看详情。想把几个归成一组，点「整理」。" }),
-      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", onClick: () => setOrganizing(true), children: "整理" })
-    ] }) }),
-    groups.map((g2) => /* @__PURE__ */ u$2(Section, { title: g2.series ? `${g2.series} 系列` : groups.length > 1 ? `其他${restTitle}` : `全部${restTitle}`, hint: `${g2.names.length} 个`, children: g2.names.map((n2) => organizing ? /* @__PURE__ */ u$2("label", { class: `rbt-pickrow ${picked.includes(n2) ? "on" : ""}`, children: [
-      /* @__PURE__ */ u$2("input", { type: "checkbox", checked: picked.includes(n2), onChange: () => toggle(n2) }),
-      /* @__PURE__ */ u$2("span", { class: "rbt-navrow-main", children: [
-        /* @__PURE__ */ u$2("span", { class: "rbt-navrow-title", children: n2 }),
-        sub(n2) && /* @__PURE__ */ u$2("span", { class: "rbt-navrow-sub", children: sub(n2) })
-      ] })
-    ] }, n2) : /* @__PURE__ */ u$2(NavRow, { title: n2, sub: sub(n2) || void 0, trailing: trail?.(n2), onClick: () => openItem(kind, n2, back) }, n2)) }, g2.series || "_"))
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", disabled: !picked.length, onClick: () => setNaming(true), children: "归入系列" }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", disabled: !picked.length, onClick: () => apply(""), children: "移出系列" }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-btn-danger rbt-push", disabled: !picked.length || busy, onClick: del, children: busy ? "正在删除…" : `删除${picked.length ? ` ${picked.length} 个` : ""}` })
+    ] }) })
   ] });
+}
+function DeleteOne({ kind, name, locked, note }) {
+  const [busy, setBusy] = d$1(false);
+  const label = TRASH_LABEL[kind];
+  if (locked) return /* @__PURE__ */ u$2("small", { class: "rbt-muted rbt-delete-one", children: [
+    locked,
+    "，不能删除。"
+  ] });
+  return /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-btn-danger rbt-delete-one", disabled: busy, onClick: async () => {
+    const ok = await confirmText(`删除${label}「${name}」？`, `${note ? `${note}
+
+` : ""}删除前会先备份，删完 15 秒内可以撤销。`);
+    if (!ok) return;
+    setBusy(true);
+    try {
+      if (await trash(kind, [name])) {
+        if (kind !== "regex") updateSource(kind, name, { author: "", links: [], series: "", version: "", notes: "" });
+        goBack();
+      }
+    } finally {
+      setBusy(false);
+    }
+  }, children: busy ? "正在删除…" : `删除这个${label}` });
 }
 function VersionSection({ kind, id }) {
   const v2 = sourceFor(kind, id);
@@ -7869,7 +8114,12 @@ function PresetsPage() {
           const m2 = settings().presetInfo[n2]?.model;
           return [v2.version && `版本 ${v2.version}`, m2 && `模型 ${m2.model}`, v2.author && `作者 ${v2.author}`, rec?.length && `${rec.length} 张卡推荐`, rx && `${rx} 条正则`].filter(Boolean).join(" · ");
         },
-        trail: (n2) => n2 === cur ? /* @__PURE__ */ u$2(Tag, { tone: "accent", children: "正在用" }) : null
+        trail: (n2) => n2 === cur ? /* @__PURE__ */ u$2(Tag, { tone: "accent", children: "正在用" }) : null,
+        locked: (n2) => n2 === cur ? "正在用" : null,
+        deleteNote: (list) => {
+          const used = list.filter((n2) => ov.byPreset.get(n2)?.length);
+          return used.length ? `这些是角色卡推荐的预设：${used.map((n2) => `「${n2}」`).join("")}。删除后那些卡的推荐会失效。` : "";
+        }
       }
     ) })
   ] }) });
@@ -7912,7 +8162,8 @@ function PresetDetail({ name }) {
         /* @__PURE__ */ u$2(PresetModelSection, { name, isCurrent: name === cur }),
         /* @__PURE__ */ u$2(Section, { title: "推荐它的卡", hint: "切到这些卡时会自动换上这个预设", children: /* @__PURE__ */ u$2(CardRows, { cards: ov.byPreset.get(name) ?? [], back: name, empty: "还没有卡推荐它。在角色档案的「推荐预设」里设置。" }) })
       ] })
-    ] })
+    ] }),
+    exists && /* @__PURE__ */ u$2(DeleteOne, { kind: "preset", name, locked: name === cur ? "正在用这个预设" : null, note: ov.byPreset.get(name)?.length ? `有 ${ov.byPreset.get(name).length} 张卡推荐这个预设，删除后它们的推荐会失效。` : void 0 })
   ] });
 }
 function WorldsPage() {
@@ -7983,6 +8234,10 @@ function WorldsPage() {
             { label: "未绑定角色", test: (n2) => !ov.byWorld.has(n2) }
           ],
           defaultFilter: 2,
+          deleteNote: (list) => {
+            const used = list.filter((n2) => ov.byWorld.has(n2));
+            return used.length ? `这些世界书还绑在角色卡上：${used.map((n2) => `「${n2}」（${cardsOf(ov.byWorld.get(n2))}）`).join("、")}。删除后那些卡会找不到它。` : "";
+          },
           trail: (n2) => /* @__PURE__ */ u$2(S$1, { children: [
             scopes.global.has(n2) && /* @__PURE__ */ u$2(Tag, { tone: "warn", children: "全局开着" }),
             /* @__PURE__ */ u$2(AvatarStack, { cards: ov.byWorld.get(n2) ?? [] })
@@ -8030,7 +8285,8 @@ function WorldDetail({ name }) {
           busy ? /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "…" }) : /* @__PURE__ */ u$2(Toggle, { checked: on2, onChange: toggle })
         ] }) })
       ] })
-    ] })
+    ] }),
+    /* @__PURE__ */ u$2(DeleteOne, { kind: "world", name, note: ov.byWorld.get(name)?.length ? `还绑在 ${cardsOf(ov.byWorld.get(name))} 上，删除后那些卡会找不到它。` : void 0 })
   ] });
 }
 function RegexPage() {
@@ -8212,7 +8468,8 @@ function LooksPage() {
               !builtIn && n2 === cur && /* @__PURE__ */ u$2(Tag, { tone: "accent", children: "正在用" }),
               t2 && /* @__PURE__ */ u$2(Swatches, { t: t2 })
             ] });
-          }
+          },
+          locked: (n2) => n2 === cur ? "酒馆正在用这个主题" : null
         }
       )
     ] })
@@ -8242,18 +8499,7 @@ function ThemeDetail({ name }) {
         } finally {
           setBusy(false);
         }
-      }, children: "换成这个" }),
-      t2 && name !== cur && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", disabled: busy, onClick: async () => {
-        setBusy(true);
-        try {
-          if (await deleteStTheme(name)) {
-            updateSource("theme", name, { author: "", links: [], series: "", version: "", notes: "" });
-            goBack();
-          }
-        } finally {
-          setBusy(false);
-        }
-      }, children: "删除…" })
+      }, children: "换成这个" })
     ] }),
     !t2 && !themesLoading.value && /* @__PURE__ */ u$2("div", { class: "rbt-warn", children: "找不到这个美化，可能被删除了。" }),
     lookOn.value && t2 && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "现在用的是工具箱自带的美化。换成这个会把它关掉。" }),
@@ -8266,7 +8512,8 @@ function ThemeDetail({ name }) {
         /* @__PURE__ */ u$2(SourceSection, { kind: "theme", id: name })
       ] }),
       /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: /* @__PURE__ */ u$2(VersionSection, { kind: "theme", id: name }) })
-    ] })
+    ] }),
+    t2 && /* @__PURE__ */ u$2(DeleteOne, { kind: "theme", name, locked: name === cur ? "酒馆正在用这个主题" : null })
   ] });
 }
 function DetailBody() {

@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "手机入口和存档更好用，角色档案集中显示配套状态，远程首页改用缩略图，加载更快。"
+  "rbt_whats_new": "全局资源可批量删除，15 秒内可撤销；修复换聊天后编辑界面残留。"
 }

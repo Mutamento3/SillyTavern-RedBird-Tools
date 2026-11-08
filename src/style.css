@@ -1304,3 +1304,20 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-frow { grid-template-columns: auto minmax(0, 1fr) auto; }
 #rbt_settings .rbt-set-tip { display: block; margin: -4px 0 4px 34px; font-size: 12px; line-height: 1.5; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 45%, transparent)); }
 #rbt_settings .rbt-set-tip[hidden] { display: none; }
+
+/* =================================================== 选择模式和删除（全局工具箱） ===
+   常见的「选择」模式：顶上「已选 N 个 · 全选 · 完成」，底部固定一条操作栏（删除是红色，在最右边）。
+   正在用的那一行变灰、不能勾。 */
+.rbt-org-bar { display: flex; align-items: center; gap: 10px; min-height: 32px; }
+.rbt-selbar {
+  position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  margin: 4px calc(-1 * var(--rbd-s-2)) 0; padding: 10px var(--rbd-s-2);
+  border-top: 1px solid var(--hair, var(--rbt-border)); background: var(--rbd-bg1, #1e1e21);
+}
+.rbt-selbar .rbt-input { flex: 1 1 160px; min-width: 0; }
+.rbt-panel .rbt-btn-danger, .rbt-scope .rbt-btn-danger { color: #ff453a; box-shadow: inset 0 0 0 1px color-mix(in srgb, #ff453a 45%, transparent); background: color-mix(in srgb, #ff453a 8%, transparent); }
+.rbt-panel .rbt-btn-danger:hover, .rbt-scope .rbt-btn-danger:hover { background: color-mix(in srgb, #ff453a 16%, transparent); }
+.rbt-pickrow.locked { opacity: 0.55; cursor: default; }
+.rbt-delete-one { align-self: flex-start; margin-top: var(--rbd-s-3); }
+/* 操作栏在卡片里时（全局正则），底色和卡片一样，不出现一条深色带 */
+.rbt-card-section .rbt-selbar { background: var(--g2); margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }

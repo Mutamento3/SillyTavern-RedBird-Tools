@@ -1,9 +1,10 @@
 /**
  * 全局工具箱各标签共用的零件：一行开关、全局正则列表、加全局世界书、切预设、插件开关。
  */
+import { trash } from '../../tools/trash';
 import { useEffect, useState } from 'preact/hooks';
 import type { RegexOwner } from '../../core/cards';
-import { loaded, runSlash, settings, slashQuote } from '../../st/st';
+import { confirmText, loaded, runSlash, settings, slashQuote } from '../../st/st';
 import { allCharacters, archiveVersion, currentPresetName, findChar, globalRegexScripts, guessRegexOwner, installedExtensions, presetNames, setRegexOwner, switchPreset, worldNames } from '../../tools/cards/cards';
 import { currentBookScopes } from '../../tools/flow/capture';
 import { openDrawer } from '../../shell/drawers';
@@ -125,9 +126,44 @@ export function GlobalRegexList({ items }: { items: EnvItem[] }) {
     const label = kind === 'extension' ? exts.find((e) => e.id === key)?.name ?? key : kind === 'card' ? findChar(key)?.char?.name ?? key : key;
     setRegexOwner(id, { kind, key, label });
   };
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
   if (!scripts.length) return <div class="rbt-muted">没有全局正则。</div>;
+  const allOn = scripts.every((r) => picked.includes(r.id));
+  const done = () => { setSelecting(false); setPicked([]); };
+  const del = async () => {
+    const list = scripts.filter((r) => picked.includes(r.id));
+    if (!list.length) return;
+    const shown = list.length <= 6 ? list.map((r) => `「${r.scriptName}」`).join('') : `${list.slice(0, 6).map((r) => `「${r.scriptName}」`).join('')} 等 ${list.length} 条`;
+    if (!(await confirmText(`删除 ${list.length} 条全局正则？`, `${shown}　删除前会先备份，删完 15 秒内可以撤销。`))) return;
+    setBusy(true);
+    try { if (await trash('regex', list.map((r) => r.id))) setPicked([]); } finally { setBusy(false); }
+  };
+  // 「选择」模式：每行一个勾选框，底部一条操作栏（和预设、世界书、美化的列表一样）
+  if (selecting) {
+    return (
+      <>
+        <div class="rbt-org-bar">
+          <span class="rbt-org-count">已选 {picked.length} 条</span>
+          <button type="button" class="rbt-linkbtn" onClick={() => setPicked(allOn ? [] : scripts.map((r) => r.id))}>{allOn ? '全不选' : '全选'}</button>
+          <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={done}>完成</button>
+        </div>
+        {scripts.map((r) => (
+          <label key={r.id} class={`rbt-pickrow ${picked.includes(r.id) ? 'on' : ''}`}>
+            <input type="checkbox" checked={picked.includes(r.id)} onChange={() => setPicked((cur) => (cur.includes(r.id) ? cur.filter((x) => x !== r.id) : [...cur, r.id]))} />
+            <span class="rbt-navrow-main"><span class="rbt-navrow-title">{r.scriptName || '(未命名正则)'}</span><span class="rbt-navrow-sub">{r.disabled ? '关着' : '开着'}{owners[r.id] ? ` · 属于 ${owners[r.id].label}` : ''}</span></span>
+          </label>
+        ))}
+        <div class="rbt-selbar" role="toolbar" aria-label="对选中的正则">
+          <button type="button" class="rbt-btn rbt-btn-small rbt-btn-danger rbt-push" disabled={!picked.length || busy} onClick={del}>{busy ? '正在删除…' : `删除${picked.length ? ` ${picked.length} 条` : ''}`}</button>
+        </div>
+      </>
+    );
+  }
   return (
     <>
+      <div class="rbt-org-bar"><button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={() => setSelecting(true)}>选择</button></div>
       <small class="rbt-muted">给正则选好「属于」，换卡时就会自动开关：属于当前的卡或预设就打开，属于别的就关掉。</small>
       {guesses.length > 1 && (
         <div class="rbt-row"><button class="rbt-btn rbt-btn-small" onClick={() => { for (const { r, g } of guesses) setRegexOwner(r.id, g!); }}>按名字自动选好 {guesses.length} 条</button></div>

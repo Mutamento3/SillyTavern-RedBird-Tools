@@ -1304,6 +1304,23 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-frow { grid-template-columns: auto minmax(0, 1fr) auto; }
 #rbt_settings .rbt-set-tip { display: block; margin: -4px 0 4px 34px; font-size: 12px; line-height: 1.5; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 45%, transparent)); }
 #rbt_settings .rbt-set-tip[hidden] { display: none; }
+
+/* =================================================== 选择模式和删除（全局工具箱） ===
+   常见的「选择」模式：顶上「已选 N 个 · 全选 · 完成」，底部固定一条操作栏（删除是红色，在最右边）。
+   正在用的那一行变灰、不能勾。 */
+.rbt-org-bar { display: flex; align-items: center; gap: 10px; min-height: 32px; }
+.rbt-selbar {
+  position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  margin: 4px calc(-1 * var(--rbd-s-2)) 0; padding: 10px var(--rbd-s-2);
+  border-top: 1px solid var(--hair, var(--rbt-border)); background: var(--rbd-bg1, #1e1e21);
+}
+.rbt-selbar .rbt-input { flex: 1 1 160px; min-width: 0; }
+.rbt-panel .rbt-btn-danger, .rbt-scope .rbt-btn-danger { color: #ff453a; box-shadow: inset 0 0 0 1px color-mix(in srgb, #ff453a 45%, transparent); background: color-mix(in srgb, #ff453a 8%, transparent); }
+.rbt-panel .rbt-btn-danger:hover, .rbt-scope .rbt-btn-danger:hover { background: color-mix(in srgb, #ff453a 16%, transparent); }
+.rbt-pickrow.locked { opacity: 0.55; cursor: default; }
+.rbt-delete-one { align-self: flex-start; margin-top: var(--rbd-s-3); }
+/* 操作栏在卡片里时（全局正则），底色和卡片一样，不出现一条深色带 */
+.rbt-card-section .rbt-selbar { background: var(--g2); margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
 /* =====================================================================
    三栏外壳：左栏 + 导航条 + 酒馆面板的位置。
    电脑上是三栏；≤ 1000px 时（文件最后）换成手机排法：☰ 抽屉 + 一行导航 + 全屏面板。
@@ -2605,7 +2622,7 @@ body.rbt-shell #selectChatPopupHeaderText, body.rbt-shell #select_chat_cross { d
 /* 存档顶上一排（新聊天、导入聊天、备份）：用工具箱的按钮样式，左对齐、间距 8px；搜索框占满下一行 */
 body.rbt-shell #select_chat_popup > [name="selectChatPopupHeader"] { flex-wrap: wrap; justify-content: flex-start !important; gap: 8px !important; margin-bottom: var(--rbd-s-3); }
 body.rbt-shell #select_chat_popup > [name="selectChatPopupHeader"] .menu_button {
-  display: inline-flex !important; align-items: center; justify-content: center; gap: 6px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   height: 32px; margin: 0 !important; padding: 0 12px !important;
   border: 0 !important; border-radius: var(--rbd-r-s) !important;
   background: color-mix(in srgb, var(--rbd-text1) 9%, transparent) !important;
@@ -2711,15 +2728,15 @@ body.rbt-shell #WorldInfo .rbt-wi-sum { display: none; }
 
   /* 标题区：12 格。第一行 展开 | 开关 | 标题 + 触发方式；收起时第二行是摘要；展开后第二行 位置 + 移动/复制/删除，第三行 深度/顺序/概率 */
   body.rbt-shell #WorldInfo .world_entry > form > .inline-drawer > .inline-drawer-header {
-    display: grid !important; grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: center;
+    display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: center;
     column-gap: 6px; row-gap: 10px; padding: 10px 10px 12px !important;
   }
   body.rbt-shell #WorldInfo .world_entry .world_entry_thin_controls:not([name]),
   body.rbt-shell #WorldInfo .world_entry .world_entry_thin_controls:not([name]) > .flex-container,
-  body.rbt-shell #WorldInfo .world_entry .WIEnteryHeaderControls { display: contents !important; }
+  body.rbt-shell #WorldInfo .world_entry .WIEnteryHeaderControls { display: contents; }
   body.rbt-shell #WorldInfo .world_entry .inline-drawer-header > .world_entry_thin_controls > .inline-drawer-toggle { grid-column: 1; grid-row: 1; justify-self: center; font-size: 20px; min-width: 32px; min-height: 32px; display: grid; place-items: center; }
   body.rbt-shell #WorldInfo .world_entry .killSwitch { grid-column: 2; grid-row: 1; justify-self: center; font-size: 20px; min-width: 32px; min-height: 32px; display: grid; place-items: center; }
-  body.rbt-shell #WorldInfo .world_entry .WIEntryTitleAndStatus { grid-column: 3 / -1; grid-row: 1; min-width: 0; display: flex !important; align-items: center !important; gap: 6px; }
+  body.rbt-shell #WorldInfo .world_entry .WIEntryTitleAndStatus { grid-column: 3 / -1; grid-row: 1; min-width: 0; display: flex; align-items: center !important; gap: 6px; }
   body.rbt-shell #WorldInfo .world_entry .WIEntryTitleAndStatus > * { margin: 0 !important; }
   body.rbt-shell #WorldInfo .world_entry .WIEntryTitleAndStatus > .flex-container { flex: 1 1 auto; min-width: 0; }
   body.rbt-shell #WorldInfo .world_entry textarea[name="comment"] { width: 100% !important; height: 36px !important; min-height: 36px !important; resize: none !important; overflow: hidden; white-space: nowrap; font-size: 15px !important; font-weight: 600; line-height: 1.4 !important; padding-top: 7px !important; padding-bottom: 7px !important; }
@@ -2765,6 +2782,15 @@ body.rbt-shell #WorldInfo .rbt-wi-sum { display: none; }
   body.rbt-shell #WorldInfo .world_entry .world_entry_edit > .flex-container.flexGap10 > * { flex: 1 1 calc(50% - 6px) !important; min-width: 0 !important; }
   body.rbt-shell #WorldInfo .world_entry .world_entry_edit > .flex-container.flexGap10 > .flex4 { flex-basis: 100% !important; }
 }
+
+/* ============================================================ 预设：单条提示词编辑器 ===
+   酒馆的编辑器（#completion_prompt_manager_popup）不在预设面板里面，是盖在上面的一层。
+   - 取消 / 重置 / 保存挪到最上面：手机上原来在屏幕最底下，常落在系统手势条和浏览器底栏下面，点不准；
+   - 编辑器开着时，藏掉我们面板标题栏的 ✕（它会关掉整个预设面板），只留酒馆自己的「取消」，免得两个 ✕；
+   - 「编辑」小标题和面板标题重复，藏掉。只改排版，不碰酒馆的显示 / 隐藏。 */
+body.rbt-shell #completion_prompt_manager_popup .completion_prompt_manager_popup_entry_form_footer { order: -1; margin: 0 0 var(--rbd-s-3) !important; }
+body.rbt-shell #completion_prompt_manager_popup_edit > h3 { display: none; }
+body.rbt-shell:has(#completion_prompt_manager_popup[style*="block"]) #left-nav-panel > .rbt-sheet-head .rbt-titlebar-x { visibility: hidden; }
 /* =====================================================================
    RedBird 美化：苹果风深色。只改「长什么样」——颜色、字体、字号、间距、圆角；
    不改布局（布局由三栏界面负责），不碰消息里卡片自己渲染的 HTML 的样式。

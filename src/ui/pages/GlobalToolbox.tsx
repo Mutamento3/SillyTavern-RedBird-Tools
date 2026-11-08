@@ -43,9 +43,10 @@ import { installPlugin } from '../../tools/importer';
 import { importOpen, openImport } from '../ImportDialog';
 import { CardPage } from './CardPage';
 import { AddGlobalWorld, GlobalRegexList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
+import { trash, TRASH_LABEL, type TrashKind } from '../../tools/trash';
 import { Section } from './parts';
 import {
-  ACCENTS, accentId, currentStTheme, deleteStTheme, loadThemes, LOOKS, lookId, lookOn, setAccent, setLook, stThemes, themeHasCss, themesLoading,
+  ACCENTS, accentId, currentStTheme, loadThemes, LOOKS, lookId, lookOn, setAccent, setLook, stThemes, themeHasCss, themesLoading,
   useBuiltInLook, useStTheme, type StTheme,
 } from '../../look/look';
 
@@ -111,11 +112,11 @@ function SeriesSuggestions({ kind, names }: { kind: SourceKind; names: string[] 
 }
 
 /**
- * 按系列分组的列表。平时每行是 ›（打开详情）；点「整理」后每行变成勾选框，
- * 选几个、写一个系列名，就能归到一组或移出。
+ * 按系列分组的列表。平时每行是 ›（打开详情）；点「选择」后每行变成勾选框（常见的「选择」模式），
+ * 底部一条操作栏：归入系列、移出系列、删除。正在用的不能选（`locked` 返回原因）。
  */
-function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filters, defaultFilter = 0 }: {
-  kind: SourceKind;
+function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filters, defaultFilter = 0, locked, deleteNote }: {
+  kind: SourceKind & TrashKind;
   names: string[];
   /** Optional quick filters shown as a segmented control (first one = all). */
   filters?: { label: string; test: (n: string) => boolean }[];
@@ -125,56 +126,104 @@ function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filter
   sub: (n: string) => string;
   trail?: (n: string) => preact.ComponentChildren;
   restTitle: string;
+  /** 不能删、也不能选的（比如正在用的），返回原因。 */
+  locked?: (n: string) => string | null;
+  /** 删除确认框里额外要说的话（比如哪些卡在用这本世界书）。 */
+  deleteNote?: (names: string[]) => string;
 }) {
   void sourcesTick.value;
-  const [organizing, setOrganizing] = useState(false);
+  const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
+  const [naming, setNaming] = useState(false);
   const [series, setSeriesName] = useState('');
+  const [busy, setBusy] = useState(false);
   const [fi, setFi] = useState(defaultFilter);
   const names = filters ? allNames.filter(filters[fi]?.test ?? (() => true)) : allNames;
   const groups = groupBySeries(kind, names);
+  const pickable = names.filter((n) => !locked?.(n));
   const listId = `rbt-org-${kind}`;
   const toggle = (n: string) => setPicked((cur) => (cur.includes(n) ? cur.filter((x) => x !== n) : [...cur, n]));
-  const done = () => { setOrganizing(false); setPicked([]); setSeriesName(''); };
-  const apply = (name: string) => { setSeries(kind, picked, name); setPicked([]); };
+  const allOn = pickable.length > 0 && pickable.every((n) => picked.includes(n));
+  const done = () => { setSelecting(false); setPicked([]); setNaming(false); setSeriesName(''); };
+  const apply = (name: string) => { setSeries(kind, picked, name); setPicked([]); setNaming(false); setSeriesName(''); };
+  const del = async () => {
+    const list = picked.filter((n) => !locked?.(n));
+    if (!list.length) return;
+    const label = TRASH_LABEL[kind];
+    const shown = list.length <= 6 ? list.map((n) => `「${n}」`).join('') : `${list.slice(0, 6).map((n) => `「${n}」`).join('')} 等 ${list.length} 个`;
+    const note = deleteNote?.(list);
+    const ok = await confirmText(`删除 ${list.length} 个${label}？`, `${shown}\n\n${note ? `${note}\n\n` : ''}删除前会先备份，删完 15 秒内可以撤销。`);
+    if (!ok) return;
+    setBusy(true);
+    try { if (await trash(kind, list)) { for (const n of list) updateSource(kind, n, { author: '', links: [], series: '', version: '', notes: '' }); setPicked([]); } } finally { setBusy(false); }
+  };
   return (
     <>
-      {!organizing && <SeriesSuggestions kind={kind} names={allNames} />}
+      {!selecting && <SeriesSuggestions kind={kind} names={allNames} />}
       {filters && (
         <div class="rbt-vseg rbt-list-filter" role="tablist">
           {filters.map((f, i) => <button key={f.label} type="button" class={fi === i ? 'active' : ''} onClick={() => setFi(i)}>{f.label} {allNames.filter(f.test).length}</button>)}
         </div>
       )}
       <div class="rbt-org-bar">
-        {organizing ? (
+        {selecting ? (
           <>
             <span class="rbt-org-count">已选 {picked.length} 个</span>
-            <input class="text_pole rbt-input" list={listId} placeholder="系列名，比如：小狗之神" value={series} onInput={(e) => setSeriesName((e.currentTarget as HTMLInputElement).value)} />
-            <datalist id={listId}>{allSeries(kind).map((x) => <option key={x} value={x} />)}</datalist>
-            <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={!picked.length || !series.trim()} onClick={() => apply(series.trim())}>归为这个系列</button>
-            <button type="button" class="rbt-btn rbt-btn-small" disabled={!picked.length} onClick={() => apply('')}>移出系列</button>
-            <button type="button" class="rbt-btn rbt-btn-small" onClick={done}>完成</button>
+            <button type="button" class="rbt-linkbtn" disabled={!pickable.length} onClick={() => setPicked(allOn ? [] : pickable)}>{allOn ? '全不选' : '全选'}</button>
+            <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={done}>完成</button>
           </>
         ) : (
-          <>
-            <small class="rbt-muted">点一项看详情。想把几个归成一组，点「整理」。</small>
-            <button type="button" class="rbt-btn rbt-btn-small" onClick={() => setOrganizing(true)}>整理</button>
-          </>
+          <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={() => setSelecting(true)}>选择</button>
         )}
       </div>
       {groups.map((g) => (
         <Section key={g.series || '_'} title={g.series ? `${g.series} 系列` : (groups.length > 1 ? `其他${restTitle}` : `全部${restTitle}`)} hint={`${g.names.length} 个`}>
-          {g.names.map((n) => organizing ? (
-            <label key={n} class={`rbt-pickrow ${picked.includes(n) ? 'on' : ''}`}>
-              <input type="checkbox" checked={picked.includes(n)} onChange={() => toggle(n)} />
-              <span class="rbt-navrow-main"><span class="rbt-navrow-title">{n}</span>{sub(n) && <span class="rbt-navrow-sub">{sub(n)}</span>}</span>
-            </label>
-          ) : (
-            <NavRow key={n} title={n} sub={sub(n) || undefined} trailing={trail?.(n)} onClick={() => openItem(kind, n, back)} />
-          ))}
+          {g.names.map((n) => {
+            if (!selecting) return <NavRow key={n} title={n} sub={sub(n) || undefined} trailing={trail?.(n)} onClick={() => openItem(kind, n, back)} />;
+            const why = locked?.(n);
+            return (
+              <label key={n} class={`rbt-pickrow ${picked.includes(n) ? 'on' : ''} ${why ? 'locked' : ''}`} title={why ?? undefined}>
+                <input type="checkbox" checked={picked.includes(n)} disabled={!!why} onChange={() => toggle(n)} />
+                <span class="rbt-navrow-main"><span class="rbt-navrow-title">{n}</span>{(why || sub(n)) && <span class="rbt-navrow-sub">{why ?? sub(n)}</span>}</span>
+              </label>
+            );
+          })}
         </Section>
       ))}
+      {selecting && (
+        <div class="rbt-selbar" role="toolbar" aria-label="对选中的项目">
+          {naming ? (
+            <>
+              <input class="text_pole rbt-input" list={listId} placeholder="系列名，比如：小狗之神" value={series} autoFocus onInput={(e) => setSeriesName((e.currentTarget as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter' && picked.length && series.trim()) apply(series.trim()); }} />
+              <datalist id={listId}>{allSeries(kind).map((x) => <option key={x} value={x} />)}</datalist>
+              <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={!picked.length || !series.trim()} onClick={() => apply(series.trim())}>归入</button>
+              <button type="button" class="rbt-btn rbt-btn-small" onClick={() => setNaming(false)}>取消</button>
+            </>
+          ) : (
+            <>
+              <button type="button" class="rbt-btn rbt-btn-small" disabled={!picked.length} onClick={() => setNaming(true)}>归入系列</button>
+              <button type="button" class="rbt-btn rbt-btn-small" disabled={!picked.length} onClick={() => apply('')}>移出系列</button>
+              <button type="button" class="rbt-btn rbt-btn-small rbt-btn-danger rbt-push" disabled={!picked.length || busy} onClick={del}>{busy ? '正在删除…' : `删除${picked.length ? ` ${picked.length} 个` : ''}`}</button>
+            </>
+          )}
+        </div>
+      )}
     </>
+  );
+}
+
+/** 详情页最下面的「删除」：和批量删除走同一套（先确认、先备份、可以撤销）。 */
+function DeleteOne({ kind, name, locked, note }: { kind: TrashKind; name: string; locked?: string | null; note?: string }) {
+  const [busy, setBusy] = useState(false);
+  const label = TRASH_LABEL[kind];
+  if (locked) return <small class="rbt-muted rbt-delete-one">{locked}，不能删除。</small>;
+  return (
+    <button type="button" class="rbt-btn rbt-btn-small rbt-btn-danger rbt-delete-one" disabled={busy} onClick={async () => {
+      const ok = await confirmText(`删除${label}「${name}」？`, `${note ? `${note}\n\n` : ''}删除前会先备份，删完 15 秒内可以撤销。`);
+      if (!ok) return;
+      setBusy(true);
+      try { if (await trash(kind, [name])) { if (kind !== 'regex') updateSource(kind as SourceKind, name, { author: '', links: [], series: '', version: '', notes: '' }); goBack(); } } finally { setBusy(false); }
+    }}>{busy ? '正在删除…' : `删除这个${label}`}</button>
   );
 }
 
@@ -269,6 +318,8 @@ function PresetsPage() {
               return [v.version && `版本 ${v.version}`, m && `模型 ${m.model}`, v.author && `作者 ${v.author}`, rec?.length && `${rec.length} 张卡推荐`, rx && `${rx} 条正则`].filter(Boolean).join(' · ');
             }}
             trail={(n) => (n === cur ? <Tag tone="accent">正在用</Tag> : null)}
+            locked={(n) => (n === cur ? '正在用' : null)}
+            deleteNote={(list) => { const used = list.filter((n) => ov.byPreset.get(n)?.length); return used.length ? `这些是角色卡推荐的预设：${used.map((n) => `「${n}」`).join('')}。删除后那些卡的推荐会失效。` : ''; }}
           />
         </div>
       </div>
@@ -304,6 +355,7 @@ function PresetDetail({ name }: { name: string }) {
           </Section>
         </div>
       </div>
+      {exists && <DeleteOne kind="preset" name={name} locked={name === cur ? '正在用这个预设' : null} note={ov.byPreset.get(name)?.length ? `有 ${ov.byPreset.get(name)!.length} 张卡推荐这个预设，删除后它们的推荐会失效。` : undefined} />}
     </div>
   );
 }
@@ -357,6 +409,7 @@ function WorldsPage() {
               { label: '未绑定角色', test: (n) => !ov.byWorld.has(n) },
             ]}
             defaultFilter={2}
+            deleteNote={(list) => { const used = list.filter((n) => ov.byWorld.has(n)); return used.length ? `这些世界书还绑在角色卡上：${used.map((n) => `「${n}」（${cardsOf(ov.byWorld.get(n))}）`).join('、')}。删除后那些卡会找不到它。` : ''; }}
             trail={(n) => (
               <>
                 {scopes.global.has(n) && <Tag tone="warn">全局开着</Tag>}
@@ -402,6 +455,7 @@ function WorldDetail({ name }: { name: string }) {
           </Section>
         </div>
       </div>
+      <DeleteOne kind="world" name={name} note={ov.byWorld.get(name)?.length ? `还绑在 ${cardsOf(ov.byWorld.get(name))} 上，删除后那些卡会找不到它。` : undefined} />
     </div>
   );
 }
@@ -599,6 +653,7 @@ function LooksPage() {
                 const t = list.find((x) => x.name === n);
                 return <>{!builtIn && n === cur && <Tag tone="accent">正在用</Tag>}{t && <Swatches t={t} />}</>;
               }}
+              locked={(n) => (n === cur ? '酒馆正在用这个主题' : null)}
             />
           )}
         </div>
@@ -622,7 +677,6 @@ function ThemeDetail({ name }: { name: string }) {
       <div class="rbt-detail-head">
         <h2>{name}</h2>
         {inUse ? <Tag tone="accent">正在用</Tag> : t && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={async () => { setBusy(true); try { await useStTheme(name); } finally { setBusy(false); } }}>换成这个</button>}
-        {t && name !== cur && <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={async () => { setBusy(true); try { if (await deleteStTheme(name)) { updateSource('theme', name, { author: '', links: [], series: '', version: '', notes: '' }); goBack(); } } finally { setBusy(false); } }}>删除…</button>}
       </div>
       {!t && !themesLoading.value && <div class="rbt-warn">找不到这个美化，可能被删除了。</div>}
       {lookOn.value && t && <small class="rbt-muted">现在用的是工具箱自带的美化。换成这个会把它关掉。</small>}
@@ -643,6 +697,7 @@ function ThemeDetail({ name }: { name: string }) {
           <VersionSection kind="theme" id={name} />
         </div>
       </div>
+      {t && <DeleteOne kind="theme" name={name} locked={name === cur ? '酒馆正在用这个主题' : null} />}
     </div>
   );
 }
