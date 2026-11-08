@@ -15,7 +15,7 @@ function AttentionBox({ char }: { char: unknown }) {
   void statusTick.value;
   const [busy, setBusy] = useState(false);
   const issues = cardIssues(char);
-  if (!issues.length) return <div class="rbt-attn ok"><i class={`fa-solid ${LEVEL_ICON.ok}`} /> 这张卡需要的都已就位</div>;
+  if (!issues.length) return null;
   return (
     <div class="rbt-attn">
       <div class="rbt-attn-title">{issues.length} 项需要注意</div>
@@ -51,52 +51,45 @@ function SwitchSection({ avatar, isCurrent }: { avatar: string; isCurrent: boole
   const remembered = profile && (profile.globalWorlds || profile.globalRegexEnabled);
 
   return (
-    <Section title="换卡时" hint="切到这张卡时，把世界书、正则和预设换成它的配置">
+    <Section title="换到这张卡时">
       <CheckRow
-        label="自动切换"
-        detail="对所有卡生效。关掉后只提醒，不会自动改。"
+        label="自动换成这张卡的预设、世界书和正则"
         checked={auto}
         onChange={(v) => { settings().autoApplyEnv = v; saveSettings(); setAuto(v); }}
       />
 
       {applied && (
         <div class="rbt-card-sub">
-          <small class="rbt-muted">{applied.undone ? '已撤销刚才的自动切换：' : `${new Date(applied.at).toLocaleTimeString()} 切到这张卡时，自动做了这些：`}</small>
+          <small class="rbt-muted">{applied.undone ? '已撤销：' : '刚才自动做了：'}</small>
           <ul class="rbt-drift">{applied.changes.map((t, i) => <li key={i}>{t}</li>)}</ul>
-          {!applied.undone && <button class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => run(undoLastApply)}>撤销</button>}
+          {!applied.undone && <button class="rbt-btn rbt-btn-small rbt-self-start" disabled={busy} onClick={() => run(undoLastApply)}>撤销</button>}
         </div>
       )}
 
-      <div class="rbt-card-sub">
-        {remembered ? (
-          <>
-            <small class="rbt-muted">记住的配置（{new Date(profile!.savedAt).toLocaleString()}）：</small>
-            <ul class="rbt-drift">
-              <li>全局世界书：{profile!.globalWorlds?.length ? profile!.globalWorlds.join('、') : '全部关'}</li>
-              <li>全局正则：{profile!.globalRegexEnabled?.length ? `开 ${profile!.globalRegexEnabled.length} 条` : '全部关'}</li>
-              {profile!.preset && <li>预设：{profile!.preset.name}</li>}
-            </ul>
-            {isCurrent && (drift?.count
-              ? <div class="rbt-warn rbt-row-between"><span>现在的设置和记住的有 {drift.count} 处不同。</span><button class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={busy} onClick={() => run(applyProfile)}>恢复记住的</button></div>
-              : <small class="rbt-ok">和现在的设置一致 ✓</small>)}
-            {isCurrent && (
-              <div class="rbt-row">
-                <button class="rbt-btn" disabled={busy} onClick={() => run(rememberProfile)}>改为记住现在的</button>
-                <button class="rbt-btn" disabled={busy} onClick={() => run(forgetProfile)}>不再记住</button>
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <small class="rbt-muted">
-              还没记住这张卡的配置。现在切到这张卡时，只会关掉别的卡的世界书和正则，并换上推荐预设。
-            </small>
-            {isCurrent
-              ? <div class="rbt-row"><button class="rbt-btn rbt-btn-primary" disabled={busy} onClick={() => run(rememberProfile)}>记住现在的配置</button></div>
-              : <small class="rbt-muted">打开这张卡后才能记住它的配置。</small>}
-          </>
-        )}
-      </div>
+      {remembered ? (
+        <div class="rbt-card-sub">
+          <div class="rbt-row-between">
+            <small class="rbt-muted">记住的设置{isCurrent && !drift?.count && <i class="fa-solid fa-circle-check rbt-inuse" title="和现在的设置一样" />}</small>
+            {isCurrent && <span class="rbt-row">
+              <button class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => run(rememberProfile)}>更新</button>
+              <button class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => run(forgetProfile)}>不再记住</button>
+            </span>}
+          </div>
+          <ul class="rbt-drift">
+            <li>全局世界书：{profile!.globalWorlds?.length ? profile!.globalWorlds.join('、') : '全部关掉'}</li>
+            <li>全局正则：{profile!.globalRegexEnabled?.length ? `打开 ${profile!.globalRegexEnabled.length} 条` : '全部关掉'}</li>
+            {profile!.preset && <li>预设：{profile!.preset.name}</li>}
+          </ul>
+          {isCurrent && !!drift?.count && (
+            <div class="rbt-differ"><span class="rbt-differ-text">有 {drift.count} 处和现在不一样</span><button class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={busy} onClick={() => run(applyProfile)}>恢复</button></div>
+          )}
+        </div>
+      ) : isCurrent && (
+        <div class="rbt-card-sub">
+          <button class="rbt-btn rbt-btn-small rbt-self-start" disabled={busy} onClick={() => run(rememberProfile)}>记住现在的设置</button>
+          <small class="rbt-muted">记住后，每次换到这张卡都恢复成这一套。</small>
+        </div>
+      )}
     </Section>
   );
 }
@@ -113,18 +106,24 @@ export function CardPage({ avatar: forced, embedded }: { avatar?: string; embedd
   const info = cardInfo(f.char);
   return (
     <div class="rbt-page">
-      <CardHeader info={info} embedded={embedded} />
+      {/* 第一块「卡面」：这是哪张卡、谁做的、去哪编辑，以及作者的链接和说明 */}
+      <section class="rbt-card-section rbt-card-hero">
+        <CardHeader info={info} embedded={embedded} />
+        <div class="rbt-card-hero-source">
+          <h3 class="rbt-card-section-title rbt-card-hero-sub">来源和作者说明</h3>
+          <SourceSection info={info} bare />
+        </div>
+      </section>
       {info.isCurrent && <AttentionBox char={f.char} />}
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
-          <div class="rbt-page-group-title">配套环境</div>
+          <h2 class="rbt-page-group-title">配套环境</h2>
           <WorldSection info={info} />
           <PresetSection info={info} />
           <RegexSection info={info} />
           <ExtSection info={info} />
         </div>
         <div class="rbt-page-group">
-          <SourceSection info={info} />
           <SwitchSection avatar={info.avatar} isCurrent={info.isCurrent} />
         </div>
       </div>

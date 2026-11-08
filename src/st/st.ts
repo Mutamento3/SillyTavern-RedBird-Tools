@@ -99,7 +99,7 @@ export function slashQuote(v: string): string {
 }
 
 export function toast(kind: 'info' | 'success' | 'warning' | 'error', msg: string, title = 'RedBird 工具箱', opts: Any = {}): void {
-  window.toastr?.[kind]?.(msg, title, opts);
+  window.toastr?.[kind]?.(msg, title, { closeButton: true, ...opts });
 }
 
 /** Escape text for HTML. ST's Popup renders its content as HTML, and names come from imported files. */

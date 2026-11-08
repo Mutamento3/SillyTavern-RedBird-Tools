@@ -369,18 +369,35 @@ html.rbt-look .popup .popup-content { padding: 0; }
 html.rbt-look .popup .popup-controls { gap: var(--rbd-s-3); }
 html.rbt-look .popup::backdrop { background-color: rgba(0, 0, 0, 0.5); }
 
+/* 通知：像系统通知一样的圆角卡片，一圈细边；类型用左边一个有颜色的图标表示（不再用左边那条色条）；右上角 ✕ 可以关掉 */
 html.rbt-look #toast-container > div {
+  position: relative;
+  padding: 12px 38px 12px 46px;
   background-color: var(--rbd-bg2);
+  background-image: none !important;
   color: var(--rbd-text1);
-  border-radius: var(--rbd-r-m);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--rbd-line);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   opacity: 1;
   font-family: var(--rbd-font);
+  font-size: 13px;
+  line-height: 1.5;
 }
-html.rbt-look #toast-container > div:hover { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55); }
-html.rbt-look #toast-container .toast-title { font-weight: 600; }
-/* 类型只用左边一条颜色表示 */
-html.rbt-look #toast-container > .toast-success { box-shadow: inset 3px 0 0 #30d158, 0 12px 32px rgba(0, 0, 0, 0.45); }
-html.rbt-look #toast-container > .toast-info { box-shadow: inset 3px 0 0 var(--rbd-accent), 0 12px 32px rgba(0, 0, 0, 0.45); }
-html.rbt-look #toast-container > .toast-warning { box-shadow: inset 3px 0 0 #ff9f0a, 0 12px 32px rgba(0, 0, 0, 0.45); }
-html.rbt-look #toast-container > .toast-error { box-shadow: inset 3px 0 0 #ff453a, 0 12px 32px rgba(0, 0, 0, 0.45); }
+html.rbt-look #toast-container > div:hover { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); }
+html.rbt-look #toast-container .toast-title { margin-bottom: 2px; font-size: 13.5px; font-weight: 600; }
+html.rbt-look #toast-container .toast-message { color: var(--rbd-text2); }
+html.rbt-look #toast-container > div::before {
+  position: absolute; left: 16px; top: 13px;
+  font-family: "Font Awesome 6 Free"; font-weight: 900; font-size: 17px; line-height: 1;
+  content: "\f05a"; color: var(--rbd-accent);
+}
+html.rbt-look #toast-container > .toast-success::before { content: "\f058"; color: #30d158; }
+html.rbt-look #toast-container > .toast-warning::before { content: "\f071"; color: #ff9f0a; }
+html.rbt-look #toast-container > .toast-error::before { content: "\f057"; color: #ff453a; }
+html.rbt-look #toast-container .toast-close-button {
+  position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; margin: 0; padding: 0;
+  border-radius: 50%; background: none; color: var(--rbd-text3); text-shadow: none; opacity: 1;
+  font-size: 18px; font-weight: 400; line-height: 22px; text-align: center;
+}
+html.rbt-look #toast-container .toast-close-button:hover { background: var(--rbd-bg2-hover); color: var(--rbd-text1); }

@@ -121,7 +121,7 @@ export function relate(items: ImportItem[]): ImportItem[] {
       if (looksLikeCardBook(card, baseName(it.file), it.entries ?? 0)) {
         it.skip = true;
         it.dupOf = card.name;
-        it.note = `就是「${card.name}」卡里自带的那本（卡里 ${card.bookEntries} 条，这个文件 ${it.entries ?? '?'} 条），打开这张卡时会自动导入。`;
+        it.note = `就是「${card.name}」卡里自带的那本（卡里 ${card.bookEntries} 条，这个文件 ${it.entries ?? '?'} 条），导入这张卡时会自动一起导入。`;
       } else {
         it.toCard = true;
         it.note = card.bookEntries ? '卡里已经自带一本世界书，这本作为附加世界书绑上' : '';
@@ -164,6 +164,11 @@ export async function runImport(items: ImportItem[], hooks: {
   /** `extra`: the card already carries a book, so add this one as an extra book. */
   bindWorld: (avatar: string, world: string, extra: boolean) => Promise<void>;
   setCardPreset: (avatar: string, preset: string) => void;
+  /**
+   * 卡里自带世界书时，导入后马上把它导入并绑到卡上（设置里开着「自动导入卡里自带的世界书」时）。
+   * 这样酒馆不会再弹英文的「要不要导入」，也不会接着自动打开世界书面板。
+   */
+  importCardWorld?: (avatar: string) => Promise<unknown>;
   normalizeUrl: (s: string) => string;
   /** Switch ST's UI theme to this one (and turn the toolbox's own look off). */
   useTheme: (name: string) => Promise<void>;
@@ -217,6 +222,7 @@ export async function runImport(items: ImportItem[], hooks: {
     if (avatar && it.activate) lastCard = avatar;
     // 一起发布的世界书 / 预设：绑到这张卡上
     if (avatar) {
+      if (it.card?.bookEntries && hooks.importCardWorld) await hooks.importCardWorld(avatar);
       for (const w of toCardWorlds) await hooks.bindWorld(avatar, w, !!it.card?.bookEntries);
       if (toCardPreset) hooks.setCardPreset(avatar, toCardPreset);
     }

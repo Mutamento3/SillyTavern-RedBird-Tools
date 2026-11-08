@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { openGlobal } from '../ui/views';
 import { openImport } from '../ui/ImportDialog';
+import { Menu } from '../ui/Menu';
 import {
   allTags,
   charsTick,
@@ -68,8 +69,15 @@ function sampleTint(img: HTMLImageElement): string | null {
 
 // -------------------------------------------------------------- bits ---
 
-function fullImage(it: CharItem): string {
-  return it.kind === 'character' ? `/characters/${encodeURIComponent(it.key.slice(2))}` : it.thumb;
+/**
+ * 卡片用哪张图。角色卡 PNG 里嵌着整张卡的数据，一张常有 1–9MB；手机或远程打开时，首屏几张就要下载几十 MB，
+ * 点卡片进聊天的请求还得排在后面。所以只有在本机电脑上打开（localhost）才用原图，其余都用酒馆的缩略图（jpg，十几 KB）。
+ * 缩略图默认只有 96×144，放大会糊，可以在酒馆的 config.yaml 里把 thumbnails.dimensions.avatar 调大（README 有写）。
+ */
+const LOCAL = ['localhost', '127.0.0.1', '[::1]', '::1'].includes(location.hostname);
+function cardImage(it: CharItem): string {
+  if (it.kind !== 'character' || !LOCAL || window.matchMedia?.('(max-width: 1000px)').matches) return it.thumb;
+  return `/characters/${encodeURIComponent(it.key.slice(2))}`;
 }
 
 function lastChatText(t: number, now = Date.now()): string {
@@ -88,9 +96,10 @@ function lastChatText(t: number, now = Date.now()): string {
 function NewMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const away = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const away = (e: PointerEvent) => { const t = e.target as Node; if (!ref.current?.contains(t) && !menuRef.current?.contains(t)) setOpen(false); };
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('pointerdown', away, true);
     document.addEventListener('keydown', esc);
@@ -103,10 +112,10 @@ function NewMenu() {
         <i class="fa-solid fa-plus" /> 新建 <i class="fa-solid fa-chevron-down rbt-home-new-chev" />
       </button>
       {open && (
-        <div class="rbt-home-newmenu" role="menu">
+        <Menu title="新建" cls="rbt-home-newmenu" menuRef={menuRef} onClose={() => setOpen(false)}>
           <button type="button" role="menuitem" onClick={run(createCharacter)}><i class="fa-solid fa-user-plus fa-fw" /> 新建角色</button>
           <button type="button" role="menuitem" onClick={run(createGroup)}><i class="fa-solid fa-users fa-fw" /> 新建群组</button>
-        </div>
+        </Menu>
       )}
     </div>
   );
@@ -124,17 +133,17 @@ function CardMenu({ it, onClose }: { it: CharItem; onClose: () => void }) {
   }, []);
   const run = (fn: () => unknown) => () => { onClose(); void fn(); };
   return (
-    <div class="rbt-hcard-menu" ref={ref} role="menu">
+    <Menu title={it.name} cls="rbt-hcard-menu" menuRef={ref} onClose={onClose}>
       <button type="button" role="menuitem" onClick={run(() => exportCharacter(it, 'png'))}><i class="fa-solid fa-file-image fa-fw" /> 导出 PNG</button>
       <button type="button" role="menuitem" onClick={run(() => exportCharacter(it, 'json'))}><i class="fa-solid fa-file-code fa-fw" /> 导出 JSON</button>
       <button type="button" role="menuitem" onClick={run(() => duplicateCharacter(it))}><i class="fa-solid fa-clone fa-fw" /> 复制一份</button>
       <button type="button" role="menuitem" class="danger" onClick={run(() => deleteCharacters([it]))}><i class="fa-solid fa-trash-can fa-fw" /> 删除…</button>
-    </div>
+    </Menu>
   );
 }
 
 function Card({ it, managing, selected, onSelect }: { it: CharItem; managing?: boolean; selected?: boolean; onSelect?: (it: CharItem) => void }) {
-  const src = fullImage(it);
+  const src = cardImage(it);
   const [tint, setTint] = useState(tints.get(src) ?? '');
   const [broken, setBroken] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -254,7 +263,7 @@ export function HomeGallery() {
   );
 
   return (
-    <main class="rbt-home-gallery" aria-label="角色">
+    <main class="rbt-home-gallery" aria-label="角色" data-lint-spacing="ok">
       <header class="rbt-home-head">
         <h1>角色 <small>{all.length}</small></h1>
         <label class="rbt-search rbt-home-search">

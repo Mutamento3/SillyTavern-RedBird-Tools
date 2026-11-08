@@ -16,6 +16,7 @@ import { installModelGuard } from './tools/model';
 import { installCharactersWatch } from './shell/characters';
 import { closeDrawer, installDrawers, openDrawers } from './shell/drawers';
 import { installWorldNote } from './shell/worldNote';
+import { installWorldEntries } from './shell/worldEntries';
 import { installRecentWatch } from './shell/recent';
 import { SheetHost } from './shell/Sheet';
 import { ImportDialog } from './ui/ImportDialog';
@@ -58,13 +59,21 @@ function addSettingsDrawer(): void {
         <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
       </div>
       <div class="inline-drawer-content rbt-set">
+        <p class="rbt-set-intro">给酒馆换一套更好找东西的界面，并帮你检查每张卡要配的预设、世界书和正则。第一次用？先看<a href="https://github.com/RebBirdTD/SillyTavern-RedBird-Tools#readme" target="_blank" rel="noopener">使用说明 ↗</a></p>
         <div class="rbt-set-open">
-          <div class="menu_button" id="rbt_open_global"><i class="fa-solid fa-globe"></i>全局工具箱</div>
-          <div class="menu_button" id="rbt_open_chat"><i class="fa-solid fa-feather-pointed"></i>聊天工具箱</div>
+          <div class="rbt-set-tool">
+            <div class="menu_button" id="rbt_open_chat"><i class="fa-solid fa-toolbox"></i>打开聊天工具箱</div>
+            <small>当前这张卡：缺什么、这一轮发给 AI 的内容、变量</small>
+          </div>
+          <div class="rbt-set-tool">
+            <div class="menu_button" id="rbt_open_global"><i class="fa-solid fa-globe"></i>打开全局工具箱</div>
+            <small>所有卡共用的：预设、世界书、正则、插件、美化、备份</small>
+          </div>
         </div>
         <div class="rbt-set-group">
           <div class="rbt-set-title">界面</div>
-          ${row('rbt_shell_switch', '三栏界面', '电脑上用左栏和顶部导航代替酒馆原来的图标栏')}
+          ${row('rbt_shell_switch', '三栏界面', '把酒馆换成三栏布局：左边是最近的聊天和常用入口，中间聊天，右边是聊天工具箱。手机上左栏收进左上角的 ☰。想换回原来的样子，点左栏底部的「原版界面」。')}
+          <small class="rbt-set-tip" id="rbt_thumb_tip" hidden>手机或远程打开时，首页卡片用的是酒馆的缩略图，加载快但可能模糊。想更清楚：在酒馆的 config.yaml 里把 thumbnails 下的 avatar 尺寸调大（比如 [384, 576]），再删掉 data/你的用户名/thumbnails/avatar 文件夹，酒馆会按新尺寸重新生成。</small>
           ${row('rbt_look_switch', '美化', '酒馆和工具箱用同一套配色和字体。深色、浅色、护眼三套和强调色在「全局工具箱 › 美化」里选')}
         </div>
         <div class="rbt-set-group">
@@ -75,10 +84,13 @@ function addSettingsDrawer(): void {
         <div class="rbt-set-foot">
           <small>版本 <span id="rbt_version"></span></small>
           <button type="button" class="rbt-set-link" id="rbt_check_update">检查更新</button>
+          <a class="rbt-set-link" href="https://github.com/RebBirdTD/SillyTavern-RedBird-Tools#readme" target="_blank" rel="noopener">使用说明 ↗</a>
         </div>
       </div>
     </div>`;
   host.appendChild(wrap);
+  // 不是在本机电脑上打开时，说明首页卡片为什么用缩略图、怎么变清楚
+  if (!['localhost', '127.0.0.1', '[::1]', '::1'].includes(location.hostname)) wrap.querySelector<HTMLElement>('#rbt_thumb_tip')?.removeAttribute('hidden');
   wrap.querySelector('#rbt_open_global')?.addEventListener('click', () => openGlobal());
   wrap.querySelector('#rbt_open_chat')?.addEventListener('click', () => openPanel());
   const bind = (id: string, get: () => boolean, set: (v: boolean) => void) => {
@@ -171,6 +183,9 @@ async function init(): Promise<void> {
 
   // 世界书面板：标题栏列出实际加载的书（可点），换卡后第一次打开时自动打开这张卡的书
   installWorldNote();
+  installWorldEntries();
+  // 所有通知（包括酒馆和别的插件发的）右上角都有 ✕，可以直接关掉
+  if (window.toastr?.options) window.toastr.options.closeButton = true;
 
   initShellState();
   const shellRoot = document.createElement('div');

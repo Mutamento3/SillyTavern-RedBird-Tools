@@ -11,13 +11,14 @@
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { normalizeUrl } from '../core/cards';
-import { charaFileName, ctx, loaded, runSlash, slashQuote, toast } from '../st/st';
-import { presetNames, setRecommendedPreset, switchPreset, updateRecord, worldNames, archiveVersion } from '../tools/cards/cards';
+import { charaFileName, ctx, loaded, runSlash, settings, slashQuote, toast } from '../st/st';
+import { importCardWorld, presetNames, setRecommendedPreset, switchPreset, updateRecord, worldNames, archiveVersion } from '../tools/cards/cards';
 import { KIND_LABEL, KIND_TAB, prepareImport, runImport, type ImportItem } from '../tools/importer';
 import { updateSource } from '../tools/sources';
 import { refreshStatus } from '../shell/EnvStatus';
 import { importCharacterUrl } from '../shell/characters';
 import { CheckRow } from './common';
+import { TitleBar } from './TitleBar';
 import { loadThemes, useStTheme } from '../look/look';
 import { setGlobalTab, sheetOpen } from './views';
 
@@ -83,10 +84,7 @@ function PickStep() {
     <>
       <div class="rbt-sheet-backdrop rbt-imp-backdrop" onMouseDown={closeImport} {...dropHandlers} />
       <section class="rbt-sheet rbt-scope rbt-imp rbt-imp-pick" role="dialog" aria-label="导入文件" {...dropHandlers}>
-        <header class="rbt-sheet-bar">
-          <span class="rbt-sheet-title"><i class="fa-solid fa-file-import fa-fw" />导入文件</span>
-          <button type="button" class="rbt-sheet-close" title="关闭（Esc）" aria-label="关闭" onClick={closeImport}>✕</button>
-        </header>
+        <TitleBar class="rbt-sheet-bar" icon="fa-file-import" title="导入文件" onClose={closeImport} />
         <div class="rbt-sheet-body">
           <div class={`rbt-imp-drop ${over.value ? 'over' : ''}`} onClick={pick}>
             <i class="fa-solid fa-arrow-up-from-bracket rbt-imp-drop-ico" />
@@ -288,6 +286,7 @@ export function ImportDialog() {
           ctx().saveSettingsDebounced();
         },
         useTheme: useStTheme,
+        importCardWorld: settings().autoImportWorld ? (avatar) => importCardWorld(avatar, { quiet: true }) : undefined,
         setCardPreset: (avatar, preset) => {
           const ch = (ctx().characters ?? []).find((c: { avatar: string }) => c.avatar === avatar);
           setRecommendedPreset(avatar, ch?.name ?? avatar, preset);
@@ -310,10 +309,7 @@ export function ImportDialog() {
     <>
       <div class="rbt-sheet-backdrop rbt-imp-backdrop" onMouseDown={() => { if (!busy) closeImport(); }} {...dropHandlers} />
       <section class="rbt-sheet rbt-scope rbt-imp" role="dialog" aria-label="导入" {...dropHandlers}>
-        <header class="rbt-sheet-bar">
-          <span class="rbt-sheet-title"><i class="fa-solid fa-file-import fa-fw" />导入 {items.length} 个文件</span>
-          <button type="button" class="rbt-sheet-close" title="取消（Esc）" aria-label="取消" disabled={busy} onClick={closeImport}>✕</button>
-        </header>
+        <TitleBar class="rbt-sheet-bar" icon="fa-file-import" title={`导入 ${items.length} 个文件`} closeLabel="取消" disabled={busy} onClose={closeImport} />
         <div class="rbt-sheet-body">
           {main && (
             <Item it={main} onChange={(p) => set(main, p)}>

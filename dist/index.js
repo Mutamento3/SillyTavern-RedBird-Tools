@@ -1,4 +1,4 @@
-var n$1, l$2, u$3, t$2, i$2, r$2, o$2, e$2, f$3, c$2, a$2, s$2, h$3, p$3, v$2, d$2 = {}, w$3 = [], _$1 = /acit|ex(?:s|g|n|p|$)|rph|grid|ows|mnc|ntw|ine[ch]|zoo|^ord|itera/i, g$2 = Array.isArray;
+var n$1, l$2, u$3, t$2, i$2, r$2, o$2, e$2, f$3, c$2, a$2, s$2, h$3, p$3, v$2, d$2 = {}, w$3 = [], _$1 = /acit|ex(?:s|g|n|p|$)|rph|grid|ows|mnc|ntw|ine[ch]|zoo|^ord|itera/i, g$3 = Array.isArray;
 function m$3(n2, l2) {
   for (var u2 in l2) n2[u2] = l2[u2];
   return n2;
@@ -22,56 +22,61 @@ function S$1(n2) {
 function C$1(n2, l2) {
   this.props = n2, this.context = l2;
 }
-function $(n2, l2) {
-  if (null == l2) return n2.__ ? $(n2.__, n2.__i + 1) : null;
+function $$1(n2, l2) {
+  if (null == l2) return n2.__ ? $$1(n2.__, n2.__i + 1) : null;
   for (var u2; l2 < n2.__k.length; l2++) if (null != (u2 = n2.__k[l2]) && null != u2.__e) return u2.__e;
-  return "function" == typeof n2.type ? $(n2) : null;
+  return "function" == typeof n2.type ? $$1(n2) : null;
 }
 function I(n2) {
   if (n2.__P && n2.__d) {
     var u2 = n2.__v, t2 = u2.__e, i2 = [], r2 = [], o2 = m$3({}, u2);
-    o2.__v = u2.__v + 1, l$2.vnode && l$2.vnode(o2), q(n2.__P, o2, u2, n2.__n, n2.__P.namespaceURI, 32 & u2.__u ? [t2] : null, i2, null == t2 ? $(u2) : t2, !!(32 & u2.__u), r2), o2.__v = u2.__v, o2.__.__k[o2.__i] = o2, D$1(i2, o2, r2), u2.__e = u2.__ = null, o2.__e != t2 && P(o2);
+    o2.__v = u2.__v + 1, l$2.vnode && l$2.vnode(o2), q$1(n2.__P, o2, u2, n2.__n, n2.__P.namespaceURI, 32 & u2.__u ? [t2] : null, i2, null == t2 ? $$1(u2) : t2, !!(32 & u2.__u), r2), o2.__v = u2.__v, o2.__.__k[o2.__i] = o2, D$1(i2, o2, r2), u2.__e = u2.__ = null, o2.__e != t2 && P$1(o2);
   }
 }
-function P(n2) {
+function P$1(n2) {
   if (null != (n2 = n2.__) && null != n2.__c) return n2.__e = n2.__c.base = null, n2.__k.some(function(l2) {
     if (null != l2 && null != l2.__e) return n2.__e = n2.__c.base = l2.__e;
-  }), P(n2);
+  }), P$1(n2);
 }
 function A$2(n2) {
-  (!n2.__d && (n2.__d = true) && i$2.push(n2) && !H.__r++ || r$2 != l$2.debounceRendering) && ((r$2 = l$2.debounceRendering) || o$2)(H);
+  (!n2.__d && (n2.__d = true) && i$2.push(n2) && !H$1.__r++ || r$2 != l$2.debounceRendering) && ((r$2 = l$2.debounceRendering) || o$2)(H$1);
 }
-function H() {
+function H$1() {
   try {
     for (var n2, l2 = 1; i$2.length; ) i$2.length > l2 && i$2.sort(e$2), n2 = i$2.shift(), l2 = i$2.length, I(n2);
   } finally {
-    i$2.length = H.__r = 0;
+    i$2.length = H$1.__r = 0;
   }
 }
 function L(n2, l2, u2, t2, i2, r2, o2, e2, f2, c2, a2) {
   var s2, h2, p2, v2, y2, _2, g2 = t2 && t2.__k || w$3, m2 = l2.length;
-  for (f2 = T$1(u2, l2, g2, f2, m2), s2 = 0; s2 < m2; s2++) null != (p2 = u2.__k[s2]) && (h2 = -1 != p2.__i && g2[p2.__i] || d$2, p2.__i = s2, _2 = q(n2, p2, h2, i2, r2, o2, e2, f2, c2, a2), v2 = p2.__e, p2.ref && h2.ref != p2.ref && (h2.ref && J(h2.ref, null, p2), a2.push(p2.ref, p2.__c || v2, p2)), null == y2 && null != v2 && (y2 = v2), 4 & p2.__u ? (f2 = j$2(p2, f2, n2), h2.__e && (h2.__e = null)) : "function" == typeof p2.type && void 0 !== _2 ? f2 = _2 : v2 && (f2 = v2.nextSibling), p2.__u &= -7);
+  for (f2 = T$2(u2, l2, g2, f2, m2), s2 = 0; s2 < m2; s2++) null != (p2 = u2.__k[s2]) && (h2 = -1 != p2.__i && g2[p2.__i] || d$2, p2.__i = s2, _2 = q$1(n2, p2, h2, i2, r2, o2, e2, f2, c2, a2), v2 = p2.__e, p2.ref && h2.ref != p2.ref && (h2.ref && J$1(h2.ref, null, p2), a2.push(p2.ref, p2.__c || v2, p2)), null == y2 && null != v2 && (y2 = v2), 4 & p2.__u ? (f2 = j$3(p2, f2, n2), h2.__e && (h2.__e = null)) : "function" == typeof p2.type && void 0 !== _2 ? f2 = _2 : v2 && (f2 = v2.nextSibling), p2.__u &= -7);
   return u2.__e = y2, f2;
 }
-function T$1(n2, l2, u2, t2, i2) {
+function T$2(n2, l2, u2, t2, i2) {
   var r2, o2, e2, f2, c2, a2 = u2.length, s2 = a2, h2 = 0;
-  for (n2.__k = new Array(i2), r2 = 0; r2 < i2; r2++) null != (o2 = l2[r2]) && "boolean" != typeof o2 && "function" != typeof o2 ? ("string" == typeof o2 || "number" == typeof o2 || "bigint" == typeof o2 || o2.constructor == String ? o2 = n2.__k[r2] = x$1(null, o2, null, null, null) : g$2(o2) ? o2 = n2.__k[r2] = x$1(S$1, { children: o2 }, null, null, null) : void 0 === o2.constructor && o2.__b > 0 ? o2 = n2.__k[r2] = x$1(o2.type, o2.props, o2.key, o2.ref ? o2.ref : null, o2.__v) : n2.__k[r2] = o2, f2 = r2 + h2, o2.__ = n2, o2.__b = n2.__b + 1, e2 = null, -1 != (c2 = o2.__i = O$1(o2, u2, f2, s2)) && (s2--, (e2 = u2[c2]) && (e2.__u |= 2)), null == e2 || null == e2.__v ? (-1 == c2 && (i2 > a2 ? h2-- : i2 < a2 && h2++), "function" != typeof o2.type && (o2.__u |= 4)) : c2 != f2 && (c2 == f2 - 1 ? h2-- : c2 == f2 + 1 ? h2++ : (c2 > f2 ? h2-- : h2++, o2.__u |= 4))) : n2.__k[r2] = null;
-  if (s2) for (r2 = 0; r2 < a2; r2++) null != (e2 = u2[r2]) && 0 == (2 & e2.__u) && (e2.__e == t2 && (t2 = $(e2)), K(e2, e2));
+  for (n2.__k = new Array(i2), r2 = 0; r2 < i2; r2++) null != (o2 = l2[r2]) && "boolean" != typeof o2 && "function" != typeof o2 ? ("string" == typeof o2 || "number" == typeof o2 || "bigint" == typeof o2 || o2.constructor == String ? o2 = n2.__k[r2] = x$1(null, o2, null, null, null) : g$3(o2) ? o2 = n2.__k[r2] = x$1(S$1, { children: o2 }, null, null, null) : void 0 === o2.constructor && o2.__b > 0 ? o2 = n2.__k[r2] = x$1(o2.type, o2.props, o2.key, o2.ref ? o2.ref : null, o2.__v) : n2.__k[r2] = o2, f2 = r2 + h2, o2.__ = n2, o2.__b = n2.__b + 1, e2 = null, -1 != (c2 = o2.__i = O$2(o2, u2, f2, s2)) && (s2--, (e2 = u2[c2]) && (e2.__u |= 2)), null == e2 || null == e2.__v ? (-1 == c2 && (i2 > a2 ? h2-- : i2 < a2 && h2++), "function" != typeof o2.type && (o2.__u |= 4)) : c2 != f2 && (c2 == f2 - 1 ? h2-- : c2 == f2 + 1 ? h2++ : (c2 > f2 ? h2-- : h2++, o2.__u |= 4))) : n2.__k[r2] = null;
+  if (s2) for (r2 = 0; r2 < a2; r2++) null != (e2 = u2[r2]) && 0 == (2 & e2.__u) && (e2.__e == t2 && (t2 = $$1(e2)), K$1(e2, e2));
   return t2;
 }
-function j$2(n2, l2, u2) {
+function j$3(n2, l2, u2) {
   var t2, i2;
   if ("function" == typeof n2.type) {
-    for (t2 = n2.__k, i2 = 0; t2 && i2 < t2.length; i2++) t2[i2] && (t2[i2].__ = n2, l2 = j$2(t2[i2], l2, u2));
+    for (t2 = n2.__k, i2 = 0; t2 && i2 < t2.length; i2++) t2[i2] && (t2[i2].__ = n2, l2 = j$3(t2[i2], l2, u2));
     return l2;
   }
-  n2.__e != l2 && (l2 && n2.type && !l2.parentNode && (l2 = $(n2)), l2 = u2.insertBefore(n2.__e, l2 || null));
+  n2.__e != l2 && (l2 && n2.type && !l2.parentNode && (l2 = $$1(n2)), l2 = u2.insertBefore(n2.__e, l2 || null));
   do {
     l2 = l2 && l2.nextSibling;
   } while (null != l2 && 8 == l2.nodeType);
   return l2;
 }
-function O$1(n2, l2, u2, t2) {
+function F$1(n2, l2) {
+  return l2 = l2 || [], null == n2 || "boolean" == typeof n2 || (g$3(n2) ? n2.some(function(n3) {
+    F$1(n3, l2);
+  }) : l2.push(n2)), l2;
+}
+function O$2(n2, l2, u2, t2) {
   var i2, r2, o2, e2 = n2.key, f2 = n2.type, c2 = l2[u2], a2 = null != c2 && 0 == (2 & c2.__u);
   if (null === c2 && null == e2 || a2 && e2 == c2.key && f2 == c2.type) return u2;
   if (t2 > (a2 ? 1 : 0)) {
@@ -100,7 +105,7 @@ function N(n2, l2, u2, t2, i2) {
     "function" == typeof u2 || (null == u2 || false === u2 && "-" != l2[4] ? n2.removeAttribute(l2) : n2.setAttribute(l2, "popover" == l2 && 1 == u2 ? "" : u2));
   }
 }
-function V(n2) {
+function V$1(n2) {
   return function(u2) {
     if (this.l) {
       var t2 = this.l[u2.type + n2];
@@ -110,19 +115,19 @@ function V(n2) {
     }
   };
 }
-function q(n2, u2, t2, i2, r2, o2, e2, f2, c2, a2) {
+function q$1(n2, u2, t2, i2, r2, o2, e2, f2, c2, a2) {
   var s2, h2, p2, v2, y2, d2, _2, k2, x2, M2, I2, P2, A2, H2, T2, j2, F2 = u2.type;
   if (void 0 !== u2.constructor) return null;
   128 & t2.__u && (c2 = !!(32 & t2.__u), o2 = [f2 = u2.__e = t2.__e]), (s2 = l$2.__b) && s2(u2);
   n: if ("function" == typeof F2) {
     h2 = e2.length;
     try {
-      if (x2 = u2.props, M2 = F2.prototype && F2.prototype.render, I2 = (s2 = F2.contextType) && i2[s2.__c], P2 = s2 ? I2 ? I2.props.value : s2.__ : i2, t2.__c ? k2 = (p2 = u2.__c = t2.__c).__ = p2.__E : (M2 ? u2.__c = p2 = new F2(x2, P2) : (u2.__c = p2 = new C$1(x2, P2), p2.constructor = F2, p2.render = Q), I2 && I2.sub(p2), p2.state || (p2.state = {}), p2.__n = i2, v2 = p2.__d = true, p2.__h = [], p2._sb = []), M2 && null == p2.__s && (p2.__s = p2.state), M2 && null != F2.getDerivedStateFromProps && (p2.__s == p2.state && (p2.__s = m$3({}, p2.__s)), m$3(p2.__s, F2.getDerivedStateFromProps(x2, p2.__s))), y2 = p2.props, d2 = p2.state, p2.__v = u2, v2) M2 && null == F2.getDerivedStateFromProps && null != p2.componentWillMount && p2.componentWillMount(), M2 && null != p2.componentDidMount && p2.__h.push(p2.componentDidMount);
+      if (x2 = u2.props, M2 = F2.prototype && F2.prototype.render, I2 = (s2 = F2.contextType) && i2[s2.__c], P2 = s2 ? I2 ? I2.props.value : s2.__ : i2, t2.__c ? k2 = (p2 = u2.__c = t2.__c).__ = p2.__E : (M2 ? u2.__c = p2 = new F2(x2, P2) : (u2.__c = p2 = new C$1(x2, P2), p2.constructor = F2, p2.render = Q$1), I2 && I2.sub(p2), p2.state || (p2.state = {}), p2.__n = i2, v2 = p2.__d = true, p2.__h = [], p2._sb = []), M2 && null == p2.__s && (p2.__s = p2.state), M2 && null != F2.getDerivedStateFromProps && (p2.__s == p2.state && (p2.__s = m$3({}, p2.__s)), m$3(p2.__s, F2.getDerivedStateFromProps(x2, p2.__s))), y2 = p2.props, d2 = p2.state, p2.__v = u2, v2) M2 && null == F2.getDerivedStateFromProps && null != p2.componentWillMount && p2.componentWillMount(), M2 && null != p2.componentDidMount && p2.__h.push(p2.componentDidMount);
       else {
         if (M2 && null == F2.getDerivedStateFromProps && x2 !== y2 && null != p2.componentWillReceiveProps && p2.componentWillReceiveProps(x2, P2), u2.__v == t2.__v || !p2.__e && null != p2.shouldComponentUpdate && false === p2.shouldComponentUpdate(x2, p2.__s, P2)) {
           u2.__v != t2.__v && (p2.props = x2, p2.state = p2.__s, p2.__d = false), u2.__e = t2.__e, u2.__k = t2.__k, u2.__k.some(function(n3) {
             n3 && (n3.__ = u2);
-          }), w$3.push.apply(p2.__h, p2._sb), p2._sb = [], p2.__h.length && e2.push(p2), f2 = $(t2);
+          }), w$3.push.apply(p2.__h, p2._sb), p2._sb = [], p2.__h.length && e2.push(p2), f2 = $$1(t2);
           break n;
         }
         null != p2.componentWillUpdate && p2.componentWillUpdate(x2, p2.__s, P2), M2 && null != p2.componentDidUpdate && p2.__h.push(function() {
@@ -133,7 +138,7 @@ function q(n2, u2, t2, i2, r2, o2, e2, f2, c2, a2) {
       else do {
         p2.__d = false, A2 && A2(u2), s2 = p2.render(p2.props, p2.state, p2.context), p2.state = p2.__s;
       } while (p2.__d && ++H2 < 25);
-      p2.state = p2.__s, null != p2.getChildContext && (i2 = m$3(m$3({}, i2), p2.getChildContext())), M2 && !v2 && null != p2.getSnapshotBeforeUpdate && (_2 = p2.getSnapshotBeforeUpdate(y2, d2)), T2 = null != s2 && s2.type === S$1 && null == s2.key ? E(s2.props.children) : s2, f2 = L(n2, g$2(T2) ? T2 : [T2], u2, t2, i2, r2, o2, e2, f2, c2, a2), p2.base = u2.__e, u2.__u &= -161, p2.__h.length && e2.push(p2), k2 && (p2.__E = p2.__ = null);
+      p2.state = p2.__s, null != p2.getChildContext && (i2 = m$3(m$3({}, i2), p2.getChildContext())), M2 && !v2 && null != p2.getSnapshotBeforeUpdate && (_2 = p2.getSnapshotBeforeUpdate(y2, d2)), T2 = null != s2 && s2.type === S$1 && null == s2.key ? E$1(s2.props.children) : s2, f2 = L(n2, g$3(T2) ? T2 : [T2], u2, t2, i2, r2, o2, e2, f2, c2, a2), p2.base = u2.__e, u2.__u &= -161, p2.__h.length && e2.push(p2), k2 && (p2.__E = p2.__ = null);
     } catch (n3) {
       if (e2.length = h2, u2.__v = null, c2 || null != o2) {
         if (n3.then) {
@@ -141,16 +146,16 @@ function q(n2, u2, t2, i2, r2, o2, e2, f2, c2, a2) {
           null != o2 && (o2[o2.indexOf(f2)] = null), u2.__e = f2;
         } else if (null != o2) for (j2 = o2.length; j2--; ) b$2(o2[j2]);
       } else u2.__e = t2.__e;
-      null == u2.__k && (u2.__k = t2.__k || []), n3.then || B$1(u2), l$2.__e(n3, u2, t2);
+      null == u2.__k && (u2.__k = t2.__k || []), n3.then || B$2(u2), l$2.__e(n3, u2, t2);
     }
-  } else null == o2 && u2.__v == t2.__v ? (u2.__k = t2.__k, u2.__e = t2.__e) : f2 = u2.__e = G(t2.__e, u2, t2, i2, r2, o2, e2, c2, a2);
+  } else null == o2 && u2.__v == t2.__v ? (u2.__k = t2.__k, u2.__e = t2.__e) : f2 = u2.__e = G$1(t2.__e, u2, t2, i2, r2, o2, e2, c2, a2);
   return (s2 = l$2.diffed) && s2(u2), 128 & u2.__u ? void 0 : f2;
 }
-function B$1(n2) {
-  n2 && (n2.__c && (n2.__c.__e = true), n2.__k && n2.__k.some(B$1));
+function B$2(n2) {
+  n2 && (n2.__c && (n2.__c.__e = true), n2.__k && n2.__k.some(B$2));
 }
 function D$1(n2, u2, t2) {
-  for (var i2 = 0; i2 < t2.length; i2++) J(t2[i2], t2[++i2], t2[++i2]);
+  for (var i2 = 0; i2 < t2.length; i2++) J$1(t2[i2], t2[++i2], t2[++i2]);
   l$2.__c && l$2.__c(u2, n2), n2.some(function(u3) {
     try {
       n2 = u3.__h, u3.__h = [], n2.some(function(n3) {
@@ -161,10 +166,10 @@ function D$1(n2, u2, t2) {
     }
   });
 }
-function E(n2) {
-  return "object" != typeof n2 || null == n2 || n2.__b > 0 ? n2 : g$2(n2) ? n2.map(E) : void 0 !== n2.constructor ? null : m$3({}, n2);
+function E$1(n2) {
+  return "object" != typeof n2 || null == n2 || n2.__b > 0 ? n2 : g$3(n2) ? n2.map(E$1) : void 0 !== n2.constructor ? null : m$3({}, n2);
 }
-function G(u2, t2, i2, r2, o2, e2, f2, c2, a2) {
+function G$1(u2, t2, i2, r2, o2, e2, f2, c2, a2) {
   var s2, h2, p2, v2, y2, w2, _2, m2 = i2.props || d$2, k2 = t2.props, x2 = t2.type;
   if ("svg" == x2 ? o2 = "http://www.w3.org/2000/svg" : "math" == x2 ? o2 = "http://www.w3.org/1998/Math/MathML" : o2 || (o2 = "http://www.w3.org/1999/xhtml"), null != e2) {
     for (s2 = 0; s2 < e2.length; s2++) if ((y2 = e2[s2]) && "setAttribute" in y2 == !!x2 && (x2 ? y2.localName == x2 : 3 == y2.nodeType)) {
@@ -182,12 +187,12 @@ function G(u2, t2, i2, r2, o2, e2, f2, c2, a2) {
     for (s2 in m2) y2 = m2[s2], "dangerouslySetInnerHTML" == s2 ? p2 = y2 : "children" == s2 || s2 in k2 || "value" == s2 && "defaultValue" in k2 || "checked" == s2 && "defaultChecked" in k2 || N(u2, s2, null, y2, o2);
     for (s2 in k2) y2 = k2[s2], "children" == s2 ? v2 = y2 : "dangerouslySetInnerHTML" == s2 ? h2 = y2 : "value" == s2 ? w2 = y2 : "checked" == s2 ? _2 = y2 : c2 && "function" != typeof y2 || m2[s2] === y2 || N(u2, s2, y2, m2[s2], o2);
     if (h2) c2 || p2 && (h2.__html == p2.__html || h2.__html == u2.innerHTML) || (u2.innerHTML = h2.__html), t2.__k = [];
-    else if (p2 && (u2.innerHTML = ""), L("template" == t2.type ? u2.content : u2, g$2(v2) ? v2 : [v2], t2, i2, r2, "foreignObject" == x2 ? "http://www.w3.org/1999/xhtml" : o2, e2, f2, e2 ? e2[0] : i2.__k && $(i2, 0), c2, a2), null != e2) for (s2 = e2.length; s2--; ) b$2(e2[s2]);
+    else if (p2 && (u2.innerHTML = ""), L("template" == t2.type ? u2.content : u2, g$3(v2) ? v2 : [v2], t2, i2, r2, "foreignObject" == x2 ? "http://www.w3.org/1999/xhtml" : o2, e2, f2, e2 ? e2[0] : i2.__k && $$1(i2, 0), c2, a2), null != e2) for (s2 = e2.length; s2--; ) b$2(e2[s2]);
     c2 && "textarea" != x2 || (s2 = "value", "progress" == x2 && null == w2 ? u2.removeAttribute("value") : null != w2 && (w2 !== u2[s2] || "progress" == x2 && !w2 || "option" == x2 && w2 != m2[s2]) && N(u2, s2, w2, m2[s2], o2), s2 = "checked", null != _2 && _2 != u2[s2] && N(u2, s2, _2, m2[s2], o2));
   }
   return u2;
 }
-function J(n2, u2, t2) {
+function J$1(n2, u2, t2) {
   try {
     if ("function" == typeof n2) {
       var i2 = "function" == typeof n2.__u;
@@ -197,9 +202,9 @@ function J(n2, u2, t2) {
     l$2.__e(n3, t2);
   }
 }
-function K(n2, u2, t2) {
+function K$1(n2, u2, t2) {
   var i2, r2;
-  if (l$2.unmount && l$2.unmount(n2), (i2 = n2.ref) && (i2.current && i2.current != n2.__e || J(i2, null, u2)), null != (i2 = n2.__c)) {
+  if (l$2.unmount && l$2.unmount(n2), (i2 = n2.ref) && (i2.current && i2.current != n2.__e || J$1(i2, null, u2)), null != (i2 = n2.__c)) {
     if (i2.componentWillUnmount) try {
       i2.componentWillUnmount();
     } catch (n3) {
@@ -207,15 +212,15 @@ function K(n2, u2, t2) {
     }
     i2.base = i2.__P = i2.__n = null;
   }
-  if (i2 = n2.__k) for (r2 = 0; r2 < i2.length; r2++) i2[r2] && K(i2[r2], u2, t2 || "function" != typeof n2.type);
+  if (i2 = n2.__k) for (r2 = 0; r2 < i2.length; r2++) i2[r2] && K$1(i2[r2], u2, t2 || "function" != typeof n2.type);
   t2 || b$2(n2.__e), n2.__c = n2.__ = n2.__e = void 0;
 }
-function Q(n2, l2, u2) {
+function Q$1(n2, l2, u2) {
   return this.constructor(n2, u2);
 }
 function R(u2, t2, i2) {
   var r2, o2, e2, f2;
-  t2 == document && (t2 = document.documentElement), l$2.__ && l$2.__(u2, t2), o2 = (r2 = false) ? null : t2.__k, e2 = [], f2 = [], q(t2, u2 = t2.__k = k$2(S$1, null, [u2]), o2 || d$2, d$2, t2.namespaceURI, o2 ? null : t2.firstChild ? n$1.call(t2.childNodes) : null, e2, o2 ? o2.__e : t2.firstChild, r2, f2), D$1(e2, u2, f2), u2.props.children = null;
+  t2 == document && (t2 = document.documentElement), l$2.__ && l$2.__(u2, t2), o2 = (r2 = false) ? null : t2.__k, e2 = [], f2 = [], q$1(t2, u2 = t2.__k = k$2(S$1, null, [u2]), o2 || d$2, d$2, t2.namespaceURI, o2 ? null : t2.firstChild ? n$1.call(t2.childNodes) : null, e2, o2 ? o2.__e : t2.firstChild, r2, f2), D$1(e2, u2, f2), u2.props.children = null;
 }
 n$1 = w$3.slice, l$2 = { __e: function(n2, l2, u2, t2) {
   for (var i2, r2, o2; l2 = l2.__; ) if ((i2 = l2.__c) && !i2.__) try {
@@ -233,7 +238,7 @@ n$1 = w$3.slice, l$2 = { __e: function(n2, l2, u2, t2) {
   this.__v && (this.__e = true, n2 && this.__h.push(n2), A$2(this));
 }, C$1.prototype.render = S$1, i$2 = [], o$2 = "function" == typeof Promise ? Promise.prototype.then.bind(Promise.resolve()) : setTimeout, e$2 = function(n2, l2) {
   return n2.__v.__b - l2.__v.__b;
-}, H.__r = 0, f$3 = Math.random().toString(8), c$2 = "__d" + f$3, a$2 = "__a" + f$3, s$2 = /(PointerCapture)$|Capture$/i, h$3 = 0, p$3 = V(false), v$2 = V(true);
+}, H$1.__r = 0, f$3 = Math.random().toString(8), c$2 = "__d" + f$3, a$2 = "__a" + f$3, s$2 = /(PointerCapture)$|Capture$/i, h$3 = 0, p$3 = V$1(false), v$2 = V$1(true);
 var f$2 = 0;
 function u$2(e2, t2, n2, o2, i2, u2) {
   t2 || (t2 = {});
@@ -254,7 +259,7 @@ function d$1(n2) {
 }
 function y$2(n2, u2, i2) {
   var o2 = s$1(t$1++, 2);
-  if (o2.t = n2, !o2.__c && (o2.__ = [D(void 0, u2), function(n3) {
+  if (o2.t = n2, !o2.__c && (o2.__ = [i2 ? i2(u2) : D(void 0, u2), function(n3) {
     var t2 = o2.__N ? o2.__N[0] : o2.__[0], r2 = o2.t(t2, n3);
     t2 !== r2 && (o2.__N = [r2, o2.__[1]], o2.__c.setState({}));
   }], o2.__c = r$1, !r$1.__f)) {
@@ -290,19 +295,19 @@ function h$2(n2, u2) {
   !c$1.__s && C(i2.__H, u2) && (i2.__ = n2, i2.u = u2, r$1.__H.__h.push(i2));
 }
 function A$1(n2) {
-  return o$1 = 5, T(function() {
+  return o$1 = 5, T$1(function() {
     return { current: n2 };
   }, []);
 }
-function T(n2, r2) {
+function T$1(n2, r2) {
   var u2 = s$1(t$1++, 7);
   return C(u2.__H, r2) && (u2.__ = n2(), u2.__H = r2, u2.__h = n2), u2.__;
 }
-function j$1() {
+function j$2() {
   for (var n2; n2 = f$1.shift(); ) {
     var t2 = n2.__H;
     if (n2.__P && t2) try {
-      t2.__h.some(z), t2.__h.some(B), t2.__h = [];
+      t2.__h.some(z), t2.__h.some(B$1), t2.__h = [];
     } catch (r2) {
       t2.__h = [], c$1.__e(r2, n2.__v);
     }
@@ -317,18 +322,18 @@ c$1.__b = function(n2) {
   var i2 = (r$1 = n2.__c).__H;
   i2 && (u$1 === r$1 ? (i2.__h = [], r$1.__h = [], i2.__.some(function(n3) {
     n3.__N && (n3.__ = n3.__N), n3.u = n3.__N = void 0;
-  })) : (i2.__h.some(z), i2.__h.some(B), i2.__h = [], t$1 = 0)), u$1 = r$1;
+  })) : (i2.__h.some(z), i2.__h.some(B$1), i2.__h = [], t$1 = 0)), u$1 = r$1;
 }, c$1.diffed = function(n2) {
   v$1 && v$1(n2);
   var t2 = n2.__c;
-  t2 && t2.__H && (t2.__H.__h.length && (1 !== f$1.push(t2) && i$1 === c$1.requestAnimationFrame || ((i$1 = c$1.requestAnimationFrame) || w$2)(j$1)), t2.__H.__.some(function(n3) {
+  t2 && t2.__H && (t2.__H.__h.length && (1 !== f$1.push(t2) && i$1 === c$1.requestAnimationFrame || ((i$1 = c$1.requestAnimationFrame) || w$2)(j$2)), t2.__H.__.some(function(n3) {
     n3.u && (n3.__H = n3.u, n3.u = void 0);
   })), u$1 = r$1 = null;
 }, c$1.__c = function(n2, t2) {
   t2.some(function(n3) {
     try {
       n3.__h.some(z), n3.__h = n3.__h.filter(function(n4) {
-        return !n4.__ || B(n4);
+        return !n4.__ || B$1(n4);
       });
     } catch (r2) {
       t2.some(function(n4) {
@@ -358,7 +363,7 @@ function z(n2) {
   var t2 = r$1, u2 = n2.__c;
   "function" == typeof u2 && (n2.__c = void 0, u2()), r$1 = t2;
 }
-function B(n2) {
+function B$1(n2) {
   var t2 = r$1;
   n2.__c = n2.__(), r$1 = t2;
 }
@@ -587,15 +592,15 @@ function _(i2) {
   }
   i2.s = r2;
 }
-function j(i2, t2) {
+function j$1(i2, t2) {
   l.call(this, void 0, t2);
   this.x = i2;
   this.s = void 0;
   this.g = a - 1;
   this.f = 4;
 }
-j.prototype = new l();
-j.prototype.h = function() {
+j$1.prototype = new l();
+j$1.prototype.h = function() {
   this.f &= -3;
   if (1 & this.f) return false;
   if (32 == (36 & this.f)) return true;
@@ -627,14 +632,14 @@ j.prototype.h = function() {
   this.f &= -2;
   return true;
 };
-j.prototype.S = function(i2) {
+j$1.prototype.S = function(i2) {
   if (void 0 === this.t) {
     this.f |= 36;
     for (var t2 = this.s; void 0 !== t2; t2 = t2.n) t2.S.S(t2);
   }
   l.prototype.S.call(this, i2);
 };
-j.prototype.U = function(i2) {
+j$1.prototype.U = function(i2) {
   if (void 0 !== this.t) {
     l.prototype.U.call(this, i2);
     if (void 0 === this.t) {
@@ -643,13 +648,13 @@ j.prototype.U = function(i2) {
     }
   }
 };
-j.prototype.N = function() {
+j$1.prototype.N = function() {
   if (!(2 & this.f)) {
     this.f |= 6;
     for (var i2 = this.t; void 0 !== i2; i2 = i2.x) i2.t.N();
   }
 };
-Object.defineProperty(j.prototype, "value", { get: function() {
+Object.defineProperty(j$1.prototype, "value", { get: function() {
   if (1 & this.f) throw new Error("Cycle detected");
   var i2 = d(this);
   this.h();
@@ -657,8 +662,8 @@ Object.defineProperty(j.prototype, "value", { get: function() {
   if (16 & this.f) throw this.v;
   return this.v;
 } });
-function O(i2, t2) {
-  return new j(i2, t2);
+function O$1(i2, t2) {
+  return new j$1(i2, t2);
 }
 function p$1(i2) {
   var r2 = i2.j;
@@ -672,7 +677,7 @@ function p$1(i2) {
     } catch (t2) {
       i2.f &= -2;
       i2.f |= 8;
-      g$1(i2);
+      g$2(i2);
       throw t2;
     } finally {
       o = n2;
@@ -680,7 +685,7 @@ function p$1(i2) {
     }
   }
 }
-function g$1(i2) {
+function g$2(i2) {
   for (var t2 = i2.s; void 0 !== t2; t2 = t2.n) t2.S.U(t2);
   i2.x = void 0;
   i2.s = void 0;
@@ -692,7 +697,7 @@ function S(i2) {
   o = i2;
   this.f &= -2;
   try {
-    if (8 & this.f) g$1(this);
+    if (8 & this.f) g$2(this);
   } finally {
     t();
   }
@@ -737,7 +742,7 @@ m$1.prototype.N = function() {
 };
 m$1.prototype.d = function() {
   this.f |= 8;
-  if (!(1 & this.f)) g$1(this);
+  if (!(1 & this.f)) g$2(this);
 };
 m$1.prototype.dispose = function() {
   this.d();
@@ -754,7 +759,7 @@ function x(i2, t2) {
   n2[Symbol.dispose] = n2;
   return n2;
 }
-var h, p, m = "undefined" != typeof window && !!window.__PREACT_SIGNALS_DEVTOOLS__, g = [];
+var h, p, m = "undefined" != typeof window && !!window.__PREACT_SIGNALS_DEVTOOLS__, g$1 = [];
 x(function() {
   h = this.N;
 })();
@@ -774,19 +779,19 @@ function w(i2) {
   var n2 = this, r2 = i2.data, t2 = useSignal(r2);
   t2.name = "ReactiveDom";
   t2.value = r2;
-  var e2 = T(function() {
+  var e2 = T$1(function() {
     var i3 = n2, r3 = n2.__v;
     while (r3 = r3.__) if (r3.__c) {
       r3.__c.__$f |= 4;
       break;
     }
-    var o2 = O(function() {
+    var o2 = O$1(function() {
       var i4 = t2.value.value;
       return 0 === i4 ? 0 : true === i4 ? "" : i4 || "";
-    }), e3 = O(function() {
+    }), e3 = O$1(function() {
       return !Array.isArray(o2.value) && !t$2(o2.value);
     }), u3 = x(function() {
-      this.N = M;
+      this.N = M$1;
       if (e3.value) {
         var n3 = o2.value;
         if (i3.__v && i3.__v.__e && 3 === i3.__v.__e.nodeType) i3.__v.__e.data = n3;
@@ -886,7 +891,7 @@ function k(i2, n2, r2, t2) {
     o2.value = i3;
     t2 = n3;
   }, d: x(function() {
-    this.N = M;
+    this.N = M$1;
     var r3 = o2.value.value;
     if (t2[n2] !== r3) {
       t2[n2] = r3;
@@ -949,7 +954,7 @@ C$1.prototype.shouldComponentUpdate = function(i2, n2) {
   return false;
 };
 function useSignal(i2, n2) {
-  return T(function() {
+  return T$1(function() {
     return y$1(i2, n2);
   }, []);
 }
@@ -961,11 +966,11 @@ var A = function(i2) {
 function F() {
   r(function() {
     var i2;
-    while (i2 = g.shift()) h.call(i2);
+    while (i2 = g$1.shift()) h.call(i2);
   });
 }
-function M() {
-  if (1 === g.push(this)) (l$2.requestAnimationFrame || A)(F);
+function M$1() {
+  if (1 === g$1.push(this)) (l$2.requestAnimationFrame || A)(F);
 }
 function ctx() {
   const st = window.SillyTavern;
@@ -1032,7 +1037,7 @@ function slashQuote(v2) {
   return `"${v2.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 function toast(kind, msg, title = "RedBird 工具箱", opts = {}) {
-  window.toastr?.[kind]?.(msg, title, opts);
+  window.toastr?.[kind]?.(msg, title, { closeButton: true, ...opts });
 }
 function escHtml(v2) {
   return String(v2 ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
@@ -1069,8 +1074,8 @@ function settings() {
   return s2;
 }
 let afterSave = null;
-function onSaveSettings(fn) {
-  afterSave = fn;
+function onSaveSettings(fn2) {
+  afterSave = fn2;
 }
 function saveSettings() {
   ctx().saveSettingsDebounced();
@@ -1107,8 +1112,8 @@ function applyLook() {
   for (const l2 of LOOKS) root.classList.toggle(`rbt-look-${l2.id}`, lookOn.value && lookId.value === l2.id && l2.id !== "dark");
   root.style.setProperty("--rbd-accent", accentColor());
 }
-function setLook(on) {
-  settings().look = on;
+function setLook(on2) {
+  settings().look = on2;
   saveSettings();
   applyLook();
 }
@@ -1838,7 +1843,7 @@ const RX = { GLOBAL: 0, SCOPED: 1, PRESET: 2 };
 function regexEffectLabel(r2) {
   return [r2.markdownOnly ? "只改显示" : "", r2.promptOnly ? "只改发给 AI 的" : ""].filter(Boolean).join("、") || "改消息原文";
 }
-async function setRegexEnabled(type, id, on) {
+async function setRegexEnabled(type, id, on2) {
   const re = loaded.regexEngine;
   if (!re) throw new Error("regex engine not loaded");
   const list = re.getScriptsByType(type) ?? [];
@@ -1846,22 +1851,22 @@ async function setRegexEnabled(type, id, on) {
     toast("error", '没找到这条正则，可能已经被改名或删除。请点"刷新"。');
     return;
   }
-  const next = list.map((s2) => s2.id === id ? { ...s2, disabled: !on } : s2);
+  const next = list.map((s2) => s2.id === id ? { ...s2, disabled: !on2 } : s2);
   await re.saveScriptsByType(next, type);
   saveSettings();
   if (ctx().getCurrentChatId?.()) await ctx().reloadCurrentChat();
 }
-async function setRegexGroupAllowed(type, on) {
+async function setRegexGroupAllowed(type, on2) {
   const re = loaded.regexEngine;
   if (!re) return;
   if (type === RX.PRESET) {
     const api = re.getCurrentPresetAPI();
     const name = re.getCurrentPresetName();
-    if (on) re.allowPresetScripts(api, name);
+    if (on2) re.allowPresetScripts(api, name);
     else re.disallowPresetScripts(api, name);
   } else if (type === RX.SCOPED) {
     const char = currentCharacter();
-    if (on) re.allowScopedScripts(char);
+    if (on2) re.allowScopedScripts(char);
     else re.disallowScopedScripts(char);
   }
   saveSettings();
@@ -1873,7 +1878,7 @@ function regexSubItems(type, scripts) {
     name: r2.scriptName || "(未命名正则)",
     detail: regexEffectLabel(r2),
     enabled: !r2.disabled,
-    toggle: (on) => setRegexEnabled(type, r2.id, on)
+    toggle: (on2) => setRegexEnabled(type, r2.id, on2)
   }));
 }
 const envReport = y$1(null);
@@ -1934,7 +1939,7 @@ function buildEnvReport() {
       enabled: true,
       leaks: !scopes.character.has(name) && !scopes.chat.has(name),
       detail: scopes.character.has(name) ? "也绑在当前卡上" : "对所有卡生效",
-      toggle: async (on) => runSlash(`/world state=${on ? "on" : "off"} silent=true ${slashQuote(name)}`)
+      toggle: async (on2) => runSlash(`/world state=${on2 ? "on" : "off"} silent=true ${slashQuote(name)}`)
     });
   }
   for (const r2 of es.regex ?? []) {
@@ -1950,20 +1955,20 @@ function buildEnvReport() {
       leaks: !r2.disabled,
       misplaced: elsewhere && !r2.disabled ? ownerText : void 0,
       detail: [regexEffectLabel(r2), ownerText].filter(Boolean).join(" · "),
-      toggle: (on) => setRegexEnabled(RX.GLOBAL, r2.id, on)
+      toggle: (on2) => setRegexEnabled(RX.GLOBAL, r2.id, on2)
     });
   }
   const thSettings = es.tavern_helper?.script;
   const thGlobal = thScripts(thSettings?.scripts);
   if (thGlobal.length) {
-    const on = thSettings?.enabled?.global !== false;
+    const on2 = thSettings?.enabled?.global !== false;
     items.push({
       id: "th:g",
       scope: "global",
       kind: "script",
       name: `酒馆助手全局脚本 ${thGlobal.length} 个`,
-      enabled: on,
-      leaks: on && thGlobal.some((s2) => s2.enabled),
+      enabled: on2,
+      leaks: on2 && thGlobal.some((s2) => s2.enabled),
       children: thGlobal.map((s2) => `${s2.enabled ? "●" : "○"} ${s2.name}`)
     });
   }
@@ -1994,21 +1999,21 @@ function buildEnvReport() {
       enabled: allowed,
       leaks: allowed && active.length > 0,
       detail: allowed ? "用这个预设时对所有卡生效。右边的开关决定是否允许运行" : "未允许运行，打开右边的开关才会生效",
-      toggle: (on) => setRegexGroupAllowed(RX.PRESET, on),
+      toggle: (on2) => setRegexGroupAllowed(RX.PRESET, on2),
       subItems: regexSubItems(RX.PRESET, preset.regex)
     });
   }
   const thPreset = thScripts(preset.th);
   if (thPreset.length) {
-    const on = (thSettings?.enabled?.presets ?? []).includes(preset.name);
+    const on2 = (thSettings?.enabled?.presets ?? []).includes(preset.name);
     items.push({
       id: "th:p",
       scope: "preset",
       kind: "script",
       name: `预设里的酒馆助手脚本 ${thPreset.length} 个`,
-      enabled: on,
-      leaks: on,
-      detail: on ? "用这个预设时对所有卡生效" : "未启用",
+      enabled: on2,
+      leaks: on2,
+      detail: on2 ? "用这个预设时对所有卡生效" : "未启用",
       children: thPreset.map((s2) => `${s2.enabled ? "●" : "○"} ${s2.name}`)
     });
   }
@@ -2028,21 +2033,21 @@ function buildEnvReport() {
         enabled: allowed,
         leaks: false,
         detail: allowed ? "右边的开关决定是否允许运行" : "未允许运行，卡里的正则不会生效",
-        toggle: (on) => setRegexGroupAllowed(RX.SCOPED, on),
+        toggle: (on2) => setRegexGroupAllowed(RX.SCOPED, on2),
         subItems: regexSubItems(RX.SCOPED, cardRegex)
       });
     }
     const thChar = thScripts(char.data?.extensions?.tavern_helper ?? char.data?.extensions?.TavernHelper_scripts);
     if (thChar.length) {
-      const on = thCharacterScriptsEnabled(es, char);
+      const on2 = thCharacterScriptsEnabled(es, char);
       items.push({
         id: "th:c",
         scope: "character",
         kind: "script",
         name: `角色脚本（酒馆助手）${thChar.length} 个`,
-        enabled: on,
+        enabled: on2,
         leaks: false,
-        detail: on ? "已启用" : "未启用，卡里的脚本不会运行",
+        detail: on2 ? "已启用" : "未启用，卡里的脚本不会运行",
         children: thChar.map((s2) => `${s2.enabled ? "●" : "○"} ${s2.name}`)
       });
     }
@@ -2144,9 +2149,9 @@ function installEnvWatch(openPanel2) {
       if (r2.profile) return;
       const leaks = r2.items.filter((i2) => i2.leaks);
       if (leaks.length) {
-        const books = leaks.filter((i2) => i2.kind === "worldbook").length;
+        const books2 = leaks.filter((i2) => i2.kind === "worldbook").length;
         const rx = leaks.filter((i2) => i2.kind === "regex" && i2.scope === "global").length;
-        const parts = [books && `全局世界书 ${books} 本`, rx && `全局正则 ${rx} 条`, leaks.some((i2) => i2.id === "rx:p") && "预设正则", leaks.some((i2) => i2.kind === "script") && "全局/预设脚本"].filter(Boolean);
+        const parts = [books2 && `全局世界书 ${books2} 本`, rx && `全局正则 ${rx} 条`, leaks.some((i2) => i2.id === "rx:p") && "预设正则", leaks.some((i2) => i2.kind === "script") && "全局/预设脚本"].filter(Boolean);
         toast("info", `这张卡还没记住环境。当前对所有卡都生效的有：${parts.join("、")}。点这里查看。`, "换卡提醒", open);
       }
     }, 600);
@@ -2268,9 +2273,9 @@ async function loadTextSources(force = false) {
   const chatId = String(c2.getCurrentChatId?.() ?? "");
   if (!force && sourceCache?.chatId === chatId) return sourceCache.sources;
   const scopes = currentBookScopes();
-  const books = /* @__PURE__ */ new Set([...scopes.character, ...scopes.chat, ...scopes.persona, ...scopes.global]);
+  const books2 = /* @__PURE__ */ new Set([...scopes.character, ...scopes.chat, ...scopes.persona, ...scopes.global]);
   const sources = [];
-  for (const name of books) {
+  for (const name of books2) {
     try {
       const data = await c2.loadWorldInfo(name);
       for (const e2 of Object.values(data?.entries ?? {})) {
@@ -2648,10 +2653,10 @@ function activeConnection() {
   return { api: MAIN_API_LABEL[main] ?? (main || "API"), model };
 }
 let quiet = 0;
-async function withoutModelGuard(fn) {
+async function withoutModelGuard(fn2) {
   quiet++;
   try {
-    return await fn();
+    return await fn2();
   } finally {
     setTimeout(() => {
       quiet--;
@@ -2836,6 +2841,29 @@ function installRecentWatch() {
     if (ev) es.on(ev, () => refreshRecentSoon(1500));
   }
 }
+function TitleBar({ icon, title, onClose, closeLabel = "关闭", onBack, children, class: cls = "", disabled }) {
+  return /* @__PURE__ */ u$2("header", { class: `rbt-titlebar ${cls}`, children: [
+    onBack && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-titlebar-back", onClick: onBack, "aria-label": "返回", children: [
+      /* @__PURE__ */ u$2("i", { class: "fa-solid fa-chevron-left" }),
+      " 返回"
+    ] }),
+    /* @__PURE__ */ u$2("h2", { class: "rbt-titlebar-title", children: [
+      icon && /* @__PURE__ */ u$2("i", { class: `fa-solid ${icon} fa-fw` }),
+      /* @__PURE__ */ u$2("span", { class: "rbt-titlebar-text", children: title })
+    ] }),
+    children,
+    onClose && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-titlebar-x", title: `${closeLabel}（Esc）`, "aria-label": closeLabel, disabled, onClick: onClose, children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-xmark" }) })
+  ] });
+}
+function titleBarElement(icon, title, onClose, extraClass = "") {
+  const bar = document.createElement("header");
+  bar.className = `rbt-titlebar ${extraClass}`.trim();
+  bar.innerHTML = `<h2 class="rbt-titlebar-title"><i class="fa-solid ${icon} fa-fw"></i><span class="rbt-titlebar-text"></span></h2><button type="button" class="rbt-titlebar-x" title="关闭（Esc）" aria-label="关闭"><i class="fa-solid fa-xmark"></i></button>`;
+  const text = bar.querySelector(".rbt-titlebar-text");
+  text.textContent = title;
+  bar.querySelector("button").addEventListener("click", onClose);
+  return { bar, text };
+}
 const DRAWERS = [
   { key: "preset", id: "left-nav-panel", holder: "ai-config-button", label: "预设", icon: "fa-sliders", size: "wide" },
   { key: "api", id: "rm_api_block", holder: "sys-settings-button", label: "API", icon: "fa-plug", size: "form" },
@@ -2886,15 +2914,26 @@ function injectHeaders() {
   for (const d2 of DRAWERS) {
     const node = el(d2);
     if (!node || node.querySelector(":scope > .rbt-sheet-head")) continue;
-    const head = document.createElement("div");
-    head.className = "rbt-sheet-head";
-    head.innerHTML = `<span class="rbt-sheet-title"><i class="fa-solid ${d2.icon} fa-fw"></i>${d2.label}</span><span class="rbt-sheet-note"></span><button type="button" class="rbt-sheet-close" title="关闭（Esc）" aria-label="关闭">✕</button>`;
-    head.querySelector("button").addEventListener("click", () => closeDrawer(d2.key));
+    const { bar: head } = titleBarElement(d2.icon, d2.label, () => closeDrawer(d2.key), "rbt-sheet-head");
+    const note = document.createElement("span");
+    note.className = "rbt-sheet-note";
+    head.insertBefore(note, head.querySelector(".rbt-titlebar-x"));
     node.prepend(head);
   }
 }
+function syncCharacterTitle() {
+  const node = el(drawerByKey.characters);
+  const span = node?.querySelector(":scope > .rbt-sheet-head .rbt-titlebar-text");
+  if (!span) return;
+  const st = window.SillyTavern?.getContext?.();
+  const id = st?.characterId;
+  const name = !st?.groupId && id !== void 0 && id !== null && String(id) !== "" ? st?.characters?.[Number(id)]?.name : void 0;
+  const text = name ? `编辑卡片 · ${name}` : drawerByKey.characters.label;
+  if (span.textContent !== text) span.textContent = text;
+}
 function syncOpenState() {
   const open = DRAWERS.filter((d2) => el(d2)?.classList.contains("openDrawer")).map((d2) => d2.key);
+  if (open.includes("characters")) syncCharacterTitle();
   const prev = openDrawers.value;
   if (open.length !== prev.length || open.some((k2, i2) => k2 !== prev[i2])) openDrawers.value = open;
   document.body.classList.toggle("rbt-open-modal", open.length > 0);
@@ -2917,10 +2956,29 @@ function onBackdropDown(e2) {
 function sheetNoteElement(key) {
   return el(drawerByKey[key])?.querySelector(":scope > .rbt-sheet-head .rbt-sheet-note") ?? null;
 }
-let installed = false;
+function chatsTitle() {
+  const st = window.SillyTavern?.getContext?.();
+  const group = st?.groupId ? st.groups?.find((g2) => g2.id === st.groupId) : void 0;
+  const id = st?.characterId;
+  const name = group?.name ?? (id !== void 0 && id !== null && String(id) !== "" ? st?.characters?.[Number(id)]?.name : void 0);
+  return name ? `存档 · ${name}` : "存档";
+}
+function syncChatsHead() {
+  const pop = document.getElementById("select_chat_popup");
+  if (!pop) return;
+  let head = pop.querySelector(":scope > .rbt-sheet-head");
+  if (!head) {
+    head = titleBarElement("fa-clock-rotate-left", "存档", () => document.getElementById("select_chat_cross")?.click(), "rbt-sheet-head rbt-chats-head").bar;
+    pop.prepend(head);
+  }
+  const text = chatsTitle();
+  const span = head.querySelector(".rbt-titlebar-text");
+  if (span.textContent !== text) span.textContent = text;
+}
+let installed$1 = false;
 function installDrawers() {
-  if (installed) return;
-  installed = true;
+  if (installed$1) return;
+  installed$1 = true;
   injectHeaders();
   syncOpenState();
   const mo = new MutationObserver(syncOpenState);
@@ -2930,6 +2988,11 @@ function installDrawers() {
   }
   document.addEventListener("keydown", onKeyDown);
   document.addEventListener("mousedown", onBackdropDown);
+  const shadow = document.getElementById("shadow_select_chat_popup");
+  if (shadow) {
+    syncChatsHead();
+    new MutationObserver(syncChatsHead).observe(shadow, { attributes: true, attributeFilter: ["style", "class"] });
+  }
 }
 function emptyRecord(cardName) {
   return { cardName, links: [], notes: "", extensions: [], updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
@@ -3767,6 +3830,115 @@ function installWorldNote() {
     if (e2.target?.id === "world_editor_select") render();
   });
 }
+const books = /* @__PURE__ */ new Map();
+const loading = /* @__PURE__ */ new Set();
+function bookName() {
+  const sel = document.getElementById("world_editor_select");
+  return sel?.selectedOptions[0]?.textContent?.trim() ?? "";
+}
+async function loadBook(name) {
+  if (!name || loading.has(name)) return;
+  loading.add(name);
+  try {
+    const data = await ctx().loadWorldInfo?.(name);
+    books.set(name, data?.entries ?? {});
+  } catch {
+  } finally {
+    loading.delete(name);
+  }
+  refreshAll();
+}
+function keywords(entry) {
+  const field = entry.querySelector('[name="key"]');
+  if (field instanceof HTMLTextAreaElement || field instanceof HTMLInputElement) return field.value.split(",").map((s2) => s2.trim()).filter(Boolean).join(", ");
+  if (field instanceof HTMLSelectElement) return [...field.selectedOptions].map((o2) => o2.text.trim()).filter(Boolean).join(", ");
+  const uid = entry.getAttribute("uid");
+  const keys = uid !== null ? books.get(bookName())?.[uid]?.key : void 0;
+  return (keys ?? []).map((k2) => String(k2).trim()).filter(Boolean).join(", ");
+}
+function summary(entry) {
+  const parts = [];
+  const state = entry.querySelector('select[name="entryStateSelector"]');
+  if (state?.value !== "constant") parts.push(keywords(entry) || "没有关键词");
+  const pos = entry.querySelector('select[name="position"]');
+  const posText = pos?.selectedOptions[0]?.textContent?.trim() ?? "";
+  const depth = entry.querySelector('input[name="depth"]');
+  if (posText) parts.push(depth && !depth.disabled && depth.value ? `${posText} · 深度 ${depth.value}` : posText);
+  const order = entry.querySelector('input[name="order"]');
+  if (order?.value) parts.push(`顺序 ${order.value}`);
+  const prob = entry.querySelector('input[name="probability"]');
+  if (prob?.value && prob.value !== "100") parts.push(`触发 ${prob.value}%`);
+  return parts.join(" · ");
+}
+function refresh(entry) {
+  const el2 = entry.querySelector(".rbt-wi-sum");
+  if (!el2) return;
+  const s2 = summary(entry);
+  if (el2.textContent !== s2) el2.textContent = s2;
+}
+function refreshAll() {
+  for (const el2 of document.querySelectorAll("#world_popup_entries_list .world_entry")) refresh(el2);
+}
+function enhance(entry) {
+  const header = entry.querySelector(":scope > form > .inline-drawer > .inline-drawer-header");
+  if (header && !header.querySelector(":scope > .rbt-wi-sum")) {
+    const sum = document.createElement("div");
+    sum.className = "rbt-wi-sum";
+    header.appendChild(sum);
+    entry.addEventListener("input", () => refresh(entry));
+    entry.addEventListener("change", () => refresh(entry));
+  }
+  refresh(entry);
+  const edit = entry.querySelector(".world_entry_edit");
+  if (edit && !edit.querySelector(":scope > .rbt-wi-more")) {
+    const more = document.createElement("button");
+    more.type = "button";
+    more.className = "rbt-wi-more";
+    const label = () => {
+      more.innerHTML = entry.classList.contains("rbt-wi-adv") ? '<i class="fa-solid fa-chevron-up"></i> 收起更多设置' : '<i class="fa-solid fa-chevron-down"></i> 更多设置';
+    };
+    label();
+    more.addEventListener("click", (e2) => {
+      e2.preventDefault();
+      e2.stopPropagation();
+      entry.classList.toggle("rbt-wi-adv");
+      label();
+    });
+    edit.appendChild(more);
+  }
+}
+let pending = false;
+function scan() {
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(() => {
+    pending = false;
+    if (!document.body.classList.contains("rbt-shell")) return;
+    const name = bookName();
+    if (name && !books.has(name)) void loadBook(name);
+    for (const el2 of document.querySelectorAll("#world_popup_entries_list .world_entry")) enhance(el2);
+  });
+}
+let installed = false;
+function installWorldEntries(tries = 0) {
+  if (installed) return;
+  const list = document.getElementById("world_popup_entries_list");
+  if (!list) {
+    if (tries < 30) setTimeout(() => installWorldEntries(tries + 1), 2e3);
+    return;
+  }
+  installed = true;
+  new MutationObserver(() => scan()).observe(list, { childList: true, subtree: true });
+  let t2;
+  list.addEventListener("change", () => {
+    clearTimeout(t2);
+    t2 = setTimeout(() => {
+      books.delete(bookName());
+      scan();
+    }, 1500);
+  });
+  scan();
+}
 const sourcesTick = y$1(0);
 const SECTION = { preset: "presetInfo", world: "worldSources", plugin: "pluginInfo", theme: "themeInfo" };
 function store(kind) {
@@ -4048,7 +4220,7 @@ function SourceEditor({ kind, id }) {
     ] })
   ] });
 }
-function ModelPicker({ value, onChange, fallback, offerSwitch }) {
+function ModelPicker({ value, onChange, fallback, offerSwitch, compact: compact2 }) {
   const cur = currentModel();
   const [editing, setEditing] = d$1(false);
   const [source, setSource] = d$1(value?.source ?? cur?.source ?? "openrouter");
@@ -4088,6 +4260,10 @@ function ModelPicker({ value, onChange, fallback, offerSwitch }) {
       /* @__PURE__ */ u$2("div", { class: "rbt-row-between", children: [
         /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "模型名要和酒馆 API 面板里的一样。" }),
         /* @__PURE__ */ u$2("span", { class: "rbt-row", children: [
+          compact2 && value && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", onClick: () => {
+            onChange(null);
+            setEditing(false);
+          }, children: "清除" }),
           /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", onClick: () => setEditing(false), children: "取消" }),
           /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-btn-primary", disabled: !model.trim(), onClick: () => {
             onChange({ source, model: model.trim() });
@@ -4097,13 +4273,29 @@ function ModelPicker({ value, onChange, fallback, offerSwitch }) {
       ] })
     ] });
   }
+  if (compact2) {
+    return /* @__PURE__ */ u$2("div", { class: "rbt-model-line", children: [
+      value ? /* @__PURE__ */ u$2("span", { class: "rbt-model-value", children: modelLabel(value) }) : /* @__PURE__ */ u$2("span", { class: "rbt-muted", children: fallback ? `${modelLabel(fallback.model)}（${fallback.text}）` : "不指定" }),
+      /* @__PURE__ */ u$2("span", { class: "rbt-row rbt-push", children: [
+        !value && cur && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-linkbtn", onClick: () => onChange(cur), children: "推荐正在用的" }),
+        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-iconbtn", title: "修改推荐的模型", "aria-label": "修改推荐的模型", onClick: startEdit, children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-pen" }) })
+      ] })
+    ] });
+  }
   return /* @__PURE__ */ u$2("div", { class: "rbt-model-line", children: [
-    value ? /* @__PURE__ */ u$2("span", { class: "rbt-model-value", children: modelLabel(value) }) : /* @__PURE__ */ u$2("span", { class: "rbt-muted", children: fallback ? `不指定，用${fallback.text}：${modelLabel(fallback.model)}` : "不指定" }),
+    value ? /* @__PURE__ */ u$2("span", { class: "rbt-model-value", children: modelLabel(value) }) : /* @__PURE__ */ u$2("span", { class: "rbt-muted", children: fallback ? `不指定，用${fallback.text}：${modelLabel(fallback.model)}` : "没有指定" }),
     /* @__PURE__ */ u$2("span", { class: "rbt-row rbt-push", children: [
-      offerSwitch && effective && cur && !sameModel(effective, cur) && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-btn-primary", disabled: busy, onClick: sw, children: busy ? "正在切换…" : "换上" }),
-      cur && !sameModel(value, cur) && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", title: `现在用的是 ${modelLabel(cur)}`, onClick: () => onChange(cur), children: "用现在的模型" }),
-      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", onClick: startEdit, children: value ? "改" : "手动填" }),
-      value && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", title: "不再推荐", onClick: () => onChange(null), children: "✕" })
+      offerSwitch && effective && cur && !sameModel(effective, cur) && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small rbt-btn-primary", disabled: busy, onClick: sw, children: busy ? "正在换…" : "换成推荐的" }),
+      cur && !sameModel(value, cur) && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", title: `把现在用的 ${modelLabel(cur)} 设为推荐`, onClick: () => onChange(cur), children: "把现在用的设为推荐" }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", onClick: startEdit, children: [
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-pen" }),
+        " ",
+        value ? "修改" : "手动填写"
+      ] }),
+      value && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", title: "不再推荐这个模型", onClick: () => onChange(null), children: [
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-xmark" }),
+        " 清除"
+      ] })
     ] })
   ] });
 }
@@ -4297,12 +4489,12 @@ function feed(inputId, files, event) {
 }
 const wait = (ms) => new Promise((r2) => setTimeout(r2, ms));
 async function installPlugin(url) {
-  const fn = loaded.extensions?.installExtension;
-  if (!fn) {
+  const fn2 = loaded.extensions?.installExtension;
+  if (!fn2) {
     toast("error", "这个版本的酒馆不支持从这里安装插件，请在「扩展 › 安装扩展程序」里装。", "安装插件");
     return false;
   }
-  const ok = await fn(url.trim(), false);
+  const ok = await fn2(url.trim(), false);
   return ok !== false;
 }
 async function prepareImport(files) {
@@ -4349,7 +4541,7 @@ function relate(items) {
       if (looksLikeCardBook(card, baseName(it.file), it.entries ?? 0)) {
         it.skip = true;
         it.dupOf = card.name;
-        it.note = `就是「${card.name}」卡里自带的那本（卡里 ${card.bookEntries} 条，这个文件 ${it.entries ?? "?"} 条），打开这张卡时会自动导入。`;
+        it.note = `就是「${card.name}」卡里自带的那本（卡里 ${card.bookEntries} 条，这个文件 ${it.entries ?? "?"} 条），导入这张卡时会自动一起导入。`;
       } else {
         it.toCard = true;
         it.note = card.bookEntries ? "卡里已经自带一本世界书，这本作为附加世界书绑上" : "";
@@ -4439,6 +4631,7 @@ async function runImport(items, hooks) {
     if (avatar && (linksOf(it).length || it.notes.trim())) hooks.saveCardRecord(avatar, { links: linksOf(it), notes: it.notes.trim() });
     if (avatar && it.activate) lastCard = avatar;
     if (avatar) {
+      if (it.card?.bookEntries && hooks.importCardWorld) await hooks.importCardWorld(avatar);
       for (const w2 of toCardWorlds) await hooks.bindWorld(avatar, w2, !!it.card?.bookEntries);
       if (toCardPreset) hooks.setCardPreset(avatar, toCardPreset);
     }
@@ -4510,9 +4703,9 @@ function planFor(char) {
       else if (o2?.kind === "preset") want = o2.key === targetPreset;
     }
     if (want === void 0) continue;
-    const on = !r2.disabled;
-    if (want && !on) plan.regexOn.push({ id: r2.id, name: r2.scriptName });
-    if (!want && on) plan.regexOff.push({ id: r2.id, name: r2.scriptName });
+    const on2 = !r2.disabled;
+    if (want && !on2) plan.regexOn.push({ id: r2.id, name: r2.scriptName });
+    if (!want && on2) plan.regexOff.push({ id: r2.id, name: r2.scriptName });
   }
   const installed2 = installedExtensions();
   for (const r2 of requiredExtensions(cardInfo(char))) {
@@ -4541,9 +4734,9 @@ async function setRegexStates(changes, { duringChatLoad = false } = {}) {
     if (ctx().getCurrentChatId?.() === chatId) void ctx().reloadCurrentChat();
   }, 1e3);
 }
-async function setWorlds(on, off) {
+async function setWorlds(on2, off) {
   for (const w2 of off) await runSlash(`/world state=off silent=true ${slashQuote(w2)}`);
-  for (const w2 of on) await runSlash(`/world state=on silent=true ${slashQuote(w2)}`);
+  for (const w2 of on2) await runSlash(`/world state=on silent=true ${slashQuote(w2)}`);
 }
 async function applyPlan(plan) {
   const snapshot = {
@@ -4870,7 +5063,7 @@ const SCOPE_OF = {
   wi_other: "其他"
 };
 function WIList({ wi }) {
-  const byBook = T(() => {
+  const byBook = T$1(() => {
     const m2 = /* @__PURE__ */ new Map();
     for (const e2 of wi) m2.set(e2.book, [...m2.get(e2.book) ?? [], e2]);
     return [...m2.entries()];
@@ -4904,7 +5097,7 @@ function FlowView() {
   const [selectedId, setSelectedId] = d$1(null);
   const [sub, setSub] = d$1("stack");
   const cap = list.find((c2) => c2.id === selectedId) ?? list[0];
-  const rows = T(() => cap ? groupRows(cap.result.messages) : [], [cap]);
+  const rows = T$1(() => cap ? groupRows(cap.result.messages) : [], [cap]);
   if (!cap) {
     return /* @__PURE__ */ u$2(Empty, { children: [
       "发一条消息或重新生成后，这里会显示这一轮实际发给 AI 的全部内容。",
@@ -4976,11 +5169,11 @@ function editFor(item) {
 }
 function ItemRow({ item }) {
   const [busy, setBusy] = d$1(false);
-  const onToggle = async (on) => {
+  const onToggle = async (on2) => {
     if (!item.toggle) return;
     setBusy(true);
     try {
-      await item.toggle(on);
+      await item.toggle(on2);
     } finally {
       setBusy(false);
       refreshEnv();
@@ -5011,10 +5204,10 @@ function ItemRow({ item }) {
 }
 function SubItemRow({ sub }) {
   const [busy, setBusy] = d$1(false);
-  const onToggle = async (on) => {
+  const onToggle = async (on2) => {
     setBusy(true);
     try {
-      await sub.toggle(on);
+      await sub.toggle(on2);
     } finally {
       setBusy(false);
       refreshEnv();
@@ -5197,16 +5390,16 @@ function PluginList() {
   };
   return /* @__PURE__ */ u$2(S$1, { children: [
     list.map((e2) => {
-      const on = e2.id in want ? want[e2.id] : e2.enabled;
+      const on2 = e2.id in want ? want[e2.id] : e2.enabled;
       return /* @__PURE__ */ u$2("div", { class: "rbt-plugin", children: [
-        /* @__PURE__ */ u$2("div", { class: `rbt-env-item ${on ? "" : "off"}`, children: [
+        /* @__PURE__ */ u$2("div", { class: `rbt-env-item ${on2 ? "" : "off"}`, children: [
           /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-plugin-name", title: "作者和链接", onClick: () => setOpen(open === e2.id ? null : e2.id), children: [
             /* @__PURE__ */ u$2("i", { class: `fa-solid fa-chevron-${open === e2.id ? "down" : "right"} rbt-plugin-caret` }),
             /* @__PURE__ */ u$2("span", { class: "rbt-env-name", children: e2.name })
           ] }),
           sourceFor("plugin", e2.id).author && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: sourceFor("plugin", e2.id).author }),
           e2.id in want && want[e2.id] !== e2.enabled && /* @__PURE__ */ u$2(Chip, { color: "#f0a43a", children: "刷新后生效" }),
-          /* @__PURE__ */ u$2("span", { class: "rbt-env-toggle", children: /* @__PURE__ */ u$2(Toggle, { checked: on, onChange: (v2) => setWant({ ...want, [e2.id]: v2 }), title: "启用 / 停用这个插件" }) })
+          /* @__PURE__ */ u$2("span", { class: "rbt-env-toggle", children: /* @__PURE__ */ u$2(Toggle, { checked: on2, onChange: (v2) => setWant({ ...want, [e2.id]: v2 }), title: "启用 / 停用这个插件" }) })
         ] }),
         open === e2.id && /* @__PURE__ */ u$2("div", { class: "rbt-plugin-more", children: /* @__PURE__ */ u$2(SourceEditor, { kind: "plugin", id: e2.id }) })
       ] }, e2.id);
@@ -5238,14 +5431,14 @@ function LongText({ text, limit = 400 }) {
     long && /* @__PURE__ */ u$2("div", { children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", onClick: () => setOpen(!open), children: open ? "收起" : "展开全部" }) })
   ] });
 }
-function Section({ title, hint, children }) {
-  return /* @__PURE__ */ u$2("div", { class: "rbt-card-section", children: [
+function Section({ title, hint, actions, children }) {
+  return /* @__PURE__ */ u$2("section", { class: "rbt-card-section", children: [
     /* @__PURE__ */ u$2("div", { class: "rbt-card-section-head", children: [
-      /* @__PURE__ */ u$2("b", { children: title }),
-      hint && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
-        " ",
-        hint
-      ] })
+      /* @__PURE__ */ u$2("div", { class: "rbt-card-section-top", children: [
+        /* @__PURE__ */ u$2("h3", { class: "rbt-card-section-title", children: title }),
+        actions && /* @__PURE__ */ u$2("div", { class: "rbt-card-section-actions", children: actions })
+      ] }),
+      hint && /* @__PURE__ */ u$2("p", { class: "rbt-card-section-hint", children: hint })
     ] }),
     children
   ] });
@@ -5287,12 +5480,15 @@ function CardHeader({ info, embedded }) {
       ] })),
       info.tags.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-chips", children: info.tags.map((t2) => /* @__PURE__ */ u$2(Chip, { children: t2 }, t2)) })
     ] }),
-    !embedded && !info.isCurrent && currentCharacter() && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", onClick: () => {
-      archiveTarget.value = null;
-    }, children: "回到当前卡" })
+    /* @__PURE__ */ u$2("div", { class: "rbt-card-head-actions", children: [
+      info.isCurrent && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", title: `在酒馆的角色面板里编辑「${info.name}」`, onClick: () => openDrawer("characters"), children: "编辑卡片 ↗" }),
+      !embedded && !info.isCurrent && currentCharacter() && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", onClick: () => {
+        archiveTarget.value = null;
+      }, children: "回到当前卡" })
+    ] })
   ] });
 }
-function SourceSection$1({ info }) {
+function SourceSection$1({ info, bare }) {
   const rec = info.record;
   const links = rec?.links ?? [];
   const [label, setLabel] = d$1("");
@@ -5306,9 +5502,9 @@ function SourceSection$1({ info }) {
     setLabel("");
     setUrl("");
   };
-  return /* @__PURE__ */ u$2(Section, { title: "来源与作者说明", children: [
+  const body = /* @__PURE__ */ u$2(S$1, { children: [
     (info.contacts.length > 0 || info.autoSource) && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "卡里写的来源和联系方式：" }),
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "卡里的联系方式" }),
       /* @__PURE__ */ u$2("div", { class: "rbt-chips", children: [
         info.contacts.map((c2, i2) => c2.kind === "url" ? /* @__PURE__ */ u$2("a", { href: c2.value, target: "_blank", rel: "noopener noreferrer", children: c2.value }, i2) : /* @__PURE__ */ u$2(Chip, { title: "从卡的作者信息里找到的", children: [
           CONTACT_LABEL[c2.kind],
@@ -5319,18 +5515,18 @@ function SourceSection$1({ info }) {
       ] })
     ] }),
     info.creatorNotes.trim() && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "作者写在卡里的备注：" }),
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "卡里的备注" }),
       /* @__PURE__ */ u$2(LongText, { text: info.creatorNotes })
     ] }),
     /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "相关链接，比如发布帖、更新帖、教程：" }),
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "链接" }),
       links.map((l2, i2) => /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
         /* @__PURE__ */ u$2("a", { href: l2.url, target: "_blank", rel: "noopener noreferrer", title: l2.url, children: l2.label }),
         /* @__PURE__ */ u$2("small", { class: "rbt-muted rbt-ellipsis", children: l2.url }),
-        /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", title: "删除这条链接", onClick: () => updateRecord(info.avatar, info.name, { links: links.filter((_2, j2) => j2 !== i2) }), children: "✕" })
+        /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", title: "删除这条链接", onClick: () => updateRecord(info.avatar, info.name, { links: links.filter((_2, j2) => j2 !== i2) }), children: "删除" })
       ] }, i2)),
       /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
-        /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input rbt-w-label", placeholder: "名称，如：发布帖", value: label, onInput: (e2) => setLabel(inputValue(e2)) }),
+        /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input rbt-w-label", placeholder: "名称，如发布帖", value: label, onInput: (e2) => setLabel(inputValue(e2)) }),
         /* @__PURE__ */ u$2("input", { class: "text_pole rbt-input", placeholder: "https://…", value: url, onInput: (e2) => setUrl(inputValue(e2)), onKeyDown: (e2) => {
           if (e2.key === "Enter") addLink();
         } }),
@@ -5338,12 +5534,12 @@ function SourceSection$1({ info }) {
       ] })
     ] }),
     /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
-      /* @__PURE__ */ u$2("div", { class: "rbt-row-between", children: [
-        /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "作者说明：" }),
-        !editing && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", onClick: () => {
+      (rec?.notes || editing) && /* @__PURE__ */ u$2("div", { class: "rbt-row-between", children: [
+        /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "作者说明" }),
+        !editing && /* @__PURE__ */ u$2(IconBtn, { icon: "fa-pen", title: "编辑作者说明", onClick: () => {
           setDraft(rec?.notes ?? "");
           setEditing(true);
-        }, children: rec?.notes ? "编辑" : "填写" })
+        } })
       ] }),
       editing ? /* @__PURE__ */ u$2(S$1, { children: [
         /* @__PURE__ */ u$2("textarea", { class: "text_pole rbt-textarea", rows: 10, value: draft2, placeholder: "把发布帖里的推荐设置、玩法和注意事项粘进来。网址会自动变成链接。", onInput: (e2) => setDraft(e2.currentTarget.value) }),
@@ -5354,8 +5550,37 @@ function SourceSection$1({ info }) {
           }, children: "保存" }),
           /* @__PURE__ */ u$2("button", { class: "rbt-btn", onClick: () => setEditing(false), children: "取消" })
         ] })
-      ] }) : rec?.notes ? /* @__PURE__ */ u$2(LongText, { text: rec.notes, limit: 600 }) : /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: "还没填写。可以把发布帖里的推荐设置和玩法粘进来。" })
+      ] }) : rec?.notes ? /* @__PURE__ */ u$2(LongText, { text: rec.notes, limit: 600 }) : /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-linkbtn rbt-self-start", onClick: () => {
+        setDraft("");
+        setEditing(true);
+      }, children: "＋ 添加作者说明" })
     ] })
+  ] });
+  return bare ? body : /* @__PURE__ */ u$2(Section, { title: "来源与作者说明", children: body });
+}
+function openWorldInST$1(name) {
+  openDrawer("worldinfo");
+  setTimeout(() => openBookInEditor(name), 300);
+}
+function OpenBtn({ label, title, onClick }) {
+  return /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-btn rbt-btn-small", title, onClick, children: [
+    label,
+    " ↗"
+  ] });
+}
+function IconBtn({ icon, title, onClick }) {
+  return /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-iconbtn", title, "aria-label": title, onClick, children: /* @__PURE__ */ u$2("i", { class: `fa-solid ${icon}` }) });
+}
+function InUse({ title }) {
+  return /* @__PURE__ */ u$2("i", { class: "fa-solid fa-circle-check rbt-inuse", title, "aria-label": title });
+}
+function Differs({ now, children }) {
+  return /* @__PURE__ */ u$2("div", { class: "rbt-differ", children: [
+    /* @__PURE__ */ u$2("span", { class: "rbt-differ-text", children: [
+      /* @__PURE__ */ u$2("span", { class: "rbt-differ-k", children: "正在用" }),
+      now
+    ] }),
+    children
   ] });
 }
 function PresetSection({ info }) {
@@ -5363,46 +5588,47 @@ function PresetSection({ info }) {
   const rec = info.preset;
   const current = currentPresetName();
   const otherApi = rec && rec.api !== presetApi();
-  return /* @__PURE__ */ u$2(Section, { title: "推荐预设和模型", hint: "切到这张卡时自动换上", children: [
-    /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
+  const recModel = settings().profiles[info.avatar]?.model;
+  const fallbackModel = rec && settings().presetInfo[rec.name]?.model ? settings().presetInfo[rec.name].model : void 0;
+  const wantModel = recModel ?? fallbackModel;
+  const curModel = currentModel();
+  const live = info.isCurrent;
+  const presetDiffers = live && !!rec && !otherApi && !!current && rec.name !== current;
+  const modelDiffers = live && !!wantModel && !!curModel && !sameModel(wantModel, curModel);
+  return /* @__PURE__ */ u$2(Section, { title: "推荐预设和模型", actions: /* @__PURE__ */ u$2(S$1, { children: [
+    /* @__PURE__ */ u$2(OpenBtn, { label: "预设设置", title: "打开酒馆的预设面板", onClick: () => openDrawer("preset") }),
+    /* @__PURE__ */ u$2(OpenBtn, { label: "API 设置", title: "打开酒馆的 API 面板", onClick: () => openDrawer("api") })
+  ] }), children: [
+    /* @__PURE__ */ u$2("div", { class: "rbt-frow", children: [
+      /* @__PURE__ */ u$2("span", { class: "rbt-frow-k", children: "预设" }),
       /* @__PURE__ */ u$2("select", { class: "text_pole rbt-select", value: rec?.name ?? "", onChange: (e2) => setRecommendedPreset(info.avatar, info.name, e2.currentTarget.value || null), children: [
         /* @__PURE__ */ u$2("option", { value: "", children: "不指定" }),
         rec && !names.includes(rec.name) && /* @__PURE__ */ u$2("option", { value: rec.name, children: [
           rec.name,
-          "（已不存在）"
+          "（已经删掉了）"
         ] }),
         names.map((n2) => /* @__PURE__ */ u$2("option", { value: n2, children: n2 }, n2))
       ] }),
-      !rec && info.isCurrent && current && /* @__PURE__ */ u$2("button", { class: "rbt-btn", onClick: () => setRecommendedPreset(info.avatar, info.name, current), children: "用现在这个" })
+      live && rec && !otherApi && rec.name === current ? /* @__PURE__ */ u$2(InUse, { title: "正在用这个预设" }) : /* @__PURE__ */ u$2("span", {})
     ] }),
-    rec && names.includes(rec.name) && /* @__PURE__ */ u$2(SourceLine, { kind: "preset", id: rec.name }),
+    presetDiffers && /* @__PURE__ */ u$2(Differs, { now: current }),
+    live && !rec && current && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-linkbtn rbt-self-start", onClick: () => setRecommendedPreset(info.avatar, info.name, current), children: [
+      "推荐正在用的「",
+      current,
+      "」"
+    ] }),
     otherApi && /* @__PURE__ */ u$2("div", { class: "rbt-hint", children: [
       "这个推荐是在「",
       rec.api,
       "」下设的，和现在用的 API 不同，所以不会自动换。"
     ] }),
-    rec && info.isCurrent && !otherApi && rec.name !== current && /* @__PURE__ */ u$2("div", { class: "rbt-warn rbt-row-between", children: [
-      /* @__PURE__ */ u$2("span", { children: [
-        "现在用的是「",
-        current,
-        "」，推荐的是「",
-        rec.name,
-        "」。"
-      ] }),
-      /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-primary rbt-btn-small", onClick: () => switchPreset(rec.name), children: "换上推荐的" })
+    /* @__PURE__ */ u$2("div", { class: "rbt-frow", children: [
+      /* @__PURE__ */ u$2("span", { class: "rbt-frow-k", children: "模型" }),
+      /* @__PURE__ */ u$2(ModelPicker, { compact: true, value: recModel, onChange: (m2) => setCardModel(info.avatar, info.name, m2), fallback: fallbackModel ? { text: "推荐预设里的", model: fallbackModel } : void 0 }),
+      live && wantModel && curModel && sameModel(wantModel, curModel) ? /* @__PURE__ */ u$2(InUse, { title: "正在用这个模型" }) : /* @__PURE__ */ u$2("span", {})
     ] }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "推荐模型：" }),
-      /* @__PURE__ */ u$2(
-        ModelPicker,
-        {
-          value: settings().profiles[info.avatar]?.model,
-          onChange: (m2) => setCardModel(info.avatar, info.name, m2),
-          fallback: rec && settings().presetInfo[rec.name]?.model ? { text: "推荐预设的", model: settings().presetInfo[rec.name].model } : void 0,
-          offerSwitch: info.isCurrent
-        }
-      )
-    ] })
+    modelDiffers && /* @__PURE__ */ u$2(Differs, { now: modelLabel(curModel) }),
+    live && !curModel && /* @__PURE__ */ u$2(Differs, { now: "没有连上 API" })
   ] });
 }
 function ExtSection({ info }) {
@@ -5422,7 +5648,6 @@ function ExtSection({ info }) {
     setUrl("");
   };
   return /* @__PURE__ */ u$2(Section, { title: "需要的插件", children: [
-    !list.length && /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: "还没登记。从下面选一个已装的插件，或手动填一个没装的。" }),
     list.map((l2, i2) => {
       const st = extStatus(l2.req, installed2);
       const chip = STATUS_CHIP[st.status];
@@ -5432,19 +5657,19 @@ function ExtSection({ info }) {
           /* @__PURE__ */ u$2("span", { class: "rbt-env-name", children: st.match?.name ?? l2.req.name }),
           l2.auto && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: l2.reason }),
           st.status === "missing" && l2.req.url && /* @__PURE__ */ u$2("a", { href: l2.req.url, target: "_blank", rel: "noopener noreferrer", children: "安装地址" }),
-          !l2.auto && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small rbt-push", title: "从列表里删除", onClick: () => updateRecord(info.avatar, info.name, { extensions: manual.filter((m2) => m2 !== l2.req) }), children: "✕" })
+          !l2.auto && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small rbt-push", title: "从列表里删除", onClick: () => updateRecord(info.avatar, info.name, { extensions: manual.filter((m2) => m2 !== l2.req) }), children: "删除" })
         ] }),
         st.match && /* @__PURE__ */ u$2(SourceLine, { kind: "plugin", id: st.match.id })
       ] }, `${l2.req.name}${i2}`);
     }),
     /* @__PURE__ */ u$2("div", { class: "rbt-form-row", children: [
       /* @__PURE__ */ u$2("select", { class: "text_pole rbt-select", value: pick, onChange: (e2) => setPick(e2.currentTarget.value), children: [
-        /* @__PURE__ */ u$2("option", { value: "", children: "添加插件…" }),
+        /* @__PURE__ */ u$2("option", { value: "", children: "添加需要的插件…" }),
         installed2.filter((e2) => !listed.has(e2.id)).map((e2) => /* @__PURE__ */ u$2("option", { value: e2.id, children: [
           e2.name,
           e2.enabled ? "" : "（未启用）"
         ] }, e2.id)),
-        /* @__PURE__ */ u$2("option", { value: "__other", children: "没装的插件，手动填写…" })
+        /* @__PURE__ */ u$2("option", { value: "__other", children: "没装的插件（手动填写）…" })
       ] }),
       pick && pick !== "__other" && /* @__PURE__ */ u$2("button", { class: "rbt-btn", onClick: add, children: "添加" })
     ] }),
@@ -5510,15 +5735,14 @@ function WorldSection({ info }) {
     }
   };
   const nameTaken = worldNames().includes(w2.importName);
-  return /* @__PURE__ */ u$2(Section, { title: "世界书", children: [
+  return /* @__PURE__ */ u$2(Section, { title: "世界书", actions: w2.state === "ok" && w2.name ? /* @__PURE__ */ u$2(OpenBtn, { label: "编辑", title: "在酒馆的世界书面板里打开", onClick: () => openWorldInST$1(w2.name) }) : void 0, children: [
     w2.state === "none" && /* @__PURE__ */ u$2("div", { class: "rbt-muted", children: "这张卡没有世界书。" }),
     w2.state !== "none" && /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
       /* @__PURE__ */ u$2("span", { class: "rbt-env-name", children: w2.name || w2.importName }),
-      w2.state === "ok" && /* @__PURE__ */ u$2(Chip, { color: OK, children: "已绑定" }),
+      w2.state === "ok" && /* @__PURE__ */ u$2(InUse, { title: "已绑定到这张卡" }),
       w2.state === "missing" && /* @__PURE__ */ u$2(Chip, { color: BAD, children: "找不到这本世界书" }),
       w2.state === "unbound" && /* @__PURE__ */ u$2(Chip, { color: WARN, children: "还没导入" }),
       w2.embedded !== null && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
-        "卡里自带 ",
         w2.embedded,
         " 条"
       ] })
@@ -5531,7 +5755,7 @@ function WorldSection({ info }) {
       ] }),
       /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", disabled: busy, onClick: () => run(true), children: "用卡里的版本覆盖" })
     ] }) : /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-primary", disabled: busy, onClick: () => run(false), children: busy ? "正在导入…" : "导入并绑定" }) })),
-    w2.state === "ok" && w2.embedded !== null && (diff === "loading" ? /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "正在对比…" }) : diff && (diff.onlyCard.length || diff.onlyWorld.length) ? /* @__PURE__ */ u$2("div", { class: "rbt-warn", children: [
+    w2.state === "ok" && w2.embedded !== null && (diff === "loading" ? null : diff && (diff.onlyCard.length || diff.onlyWorld.length) ? /* @__PURE__ */ u$2("div", { class: "rbt-warn", children: [
       /* @__PURE__ */ u$2("div", { children: [
         "卡里自带的和现在用的不一样：卡里 ",
         diff.card,
@@ -5545,7 +5769,7 @@ function WorldSection({ info }) {
       /* @__PURE__ */ u$2(DiffList, { title: "只在卡里", entries: diff.onlyCard }),
       /* @__PURE__ */ u$2(DiffList, { title: "只在现在这本里", entries: diff.onlyWorld }),
       /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", disabled: busy, onClick: () => run(true), children: "用卡里的版本覆盖" }) })
-    ] }) : diff ? /* @__PURE__ */ u$2("small", { class: "rbt-ok", children: "和卡里自带的一致 ✓" }) : null),
+    ] }) : null),
     w2.extra.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
       /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "附加世界书：" }),
       w2.extra.map((b2) => /* @__PURE__ */ u$2(Chip, { children: b2 }, b2))
@@ -5557,27 +5781,19 @@ function RegexSection({ info }) {
     const o2 = settings().regexOwners[r2.id];
     return o2?.kind === "card" && o2.key === info.avatar;
   });
-  const preset = info.isCurrent ? currentPresetName() : "";
-  const presetRx = preset ? presetRegexCount(preset) : 0;
-  return /* @__PURE__ */ u$2(Section, { title: "正则与脚本", children: [
+  return /* @__PURE__ */ u$2(Section, { title: "正则与脚本", actions: info.isCurrent && (info.regex.total > 0 || info.scripts.total > 0) ? /* @__PURE__ */ u$2(S$1, { children: [
+    info.regex.total > 0 && /* @__PURE__ */ u$2(OpenBtn, { label: info.scripts.total > 0 ? "编辑正则" : "编辑", title: "在酒馆的正则面板里编辑这张卡的正则", onClick: () => openRegexManager("scoped") }),
+    info.scripts.total > 0 && /* @__PURE__ */ u$2(OpenBtn, { label: info.regex.total > 0 ? "编辑脚本" : "编辑", title: "在酒馆助手里编辑这张卡的脚本", onClick: openScriptManager })
+  ] }) : void 0, children: [
     /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
-      /* @__PURE__ */ u$2("span", { children: [
-        "卡里的正则 ",
-        /* @__PURE__ */ u$2("b", { children: info.regex.total }),
-        " 条",
-        info.regex.total > 0 && `，开着 ${info.regex.enabled} 条`
-      ] }),
-      info.regex.total > 0 && (info.regex.allowed ? /* @__PURE__ */ u$2(Chip, { color: OK, children: "已允许运行" }) : /* @__PURE__ */ u$2(Chip, { color: BAD, children: "未允许运行" })),
-      info.regex.total > 0 && info.isCurrent && /* @__PURE__ */ u$2(EditButton, { title: "在正则面板里编辑这张卡的正则", onClick: () => openRegexManager("scoped") })
+      /* @__PURE__ */ u$2("span", { class: "rbt-frow-k", children: "卡里的正则" }),
+      /* @__PURE__ */ u$2("span", { children: info.regex.total ? `${info.regex.enabled} / ${info.regex.total} 条开着` : "没有" }),
+      info.regex.total > 0 && (info.regex.allowed ? /* @__PURE__ */ u$2(InUse, { title: "已允许运行" }) : /* @__PURE__ */ u$2(Chip, { color: BAD, children: "没有允许运行" }))
     ] }),
     /* @__PURE__ */ u$2("div", { class: "rbt-link-row", children: [
-      /* @__PURE__ */ u$2("span", { children: [
-        "酒馆助手角色脚本 ",
-        /* @__PURE__ */ u$2("b", { children: info.scripts.total }),
-        " 个"
-      ] }),
-      info.scripts.total > 0 && (info.scripts.enabled ? /* @__PURE__ */ u$2(Chip, { color: OK, children: "已启用" }) : /* @__PURE__ */ u$2(Chip, { color: BAD, children: "未启用" })),
-      info.scripts.total > 0 && info.isCurrent && /* @__PURE__ */ u$2(EditButton, { title: "在酒馆助手里编辑脚本", onClick: openScriptManager })
+      /* @__PURE__ */ u$2("span", { class: "rbt-frow-k", children: "角色脚本" }),
+      /* @__PURE__ */ u$2("span", { children: info.scripts.total ? `${info.scripts.total} 个` : "没有" }),
+      info.scripts.total > 0 && (info.scripts.enabled ? /* @__PURE__ */ u$2(InUse, { title: "已启用" }) : /* @__PURE__ */ u$2(Chip, { color: BAD, children: "没有启用" }))
     ] }),
     info.scripts.names.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-chips", children: info.scripts.names.map((n2, i2) => /* @__PURE__ */ u$2(Chip, { children: n2 }, i2)) }),
     owned.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
@@ -5587,25 +5803,14 @@ function RegexSection({ info }) {
         r2.disabled ? /* @__PURE__ */ u$2(Chip, { children: "关" }) : /* @__PURE__ */ u$2(Chip, { color: OK, children: "开" }),
         /* @__PURE__ */ u$2(EditButton, { title: "编辑这条正则", onClick: () => editRegex(r2.id) })
       ] }, r2.id))
-    ] }),
-    preset && presetRx > 0 && /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
-      "另外，正在用的预设「",
-      preset,
-      "」带了 ",
-      presetRx,
-      " 条正则，对所有卡生效。"
-    ] }),
-    /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "全局正则在左栏「全局工具箱」里逐条开关。" })
+    ] })
   ] });
 }
 function AttentionBox({ char }) {
   void statusTick.value;
   const [busy, setBusy] = d$1(false);
   const issues = cardIssues(char);
-  if (!issues.length) return /* @__PURE__ */ u$2("div", { class: "rbt-attn ok", children: [
-    /* @__PURE__ */ u$2("i", { class: `fa-solid ${LEVEL_ICON.ok}` }),
-    " 这张卡需要的都已就位"
-  ] });
+  if (!issues.length) return null;
   return /* @__PURE__ */ u$2("div", { class: "rbt-attn", children: [
     /* @__PURE__ */ u$2("div", { class: "rbt-attn-title", children: [
       issues.length,
@@ -5654,12 +5859,11 @@ function SwitchSection({ avatar, isCurrent: isCurrent2 }) {
     }
   };
   const remembered = profile && (profile.globalWorlds || profile.globalRegexEnabled);
-  return /* @__PURE__ */ u$2(Section, { title: "换卡时", hint: "切到这张卡时，把世界书、正则和预设换成它的配置", children: [
+  return /* @__PURE__ */ u$2(Section, { title: "换到这张卡时", children: [
     /* @__PURE__ */ u$2(
       CheckRow,
       {
-        label: "自动切换",
-        detail: "对所有卡生效。关掉后只提醒，不会自动改。",
+        label: "自动换成这张卡的预设、世界书和正则",
         checked: auto,
         onChange: (v2) => {
           settings().autoApplyEnv = v2;
@@ -5669,46 +5873,47 @@ function SwitchSection({ avatar, isCurrent: isCurrent2 }) {
       }
     ),
     applied && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: applied.undone ? "已撤销刚才的自动切换：" : `${new Date(applied.at).toLocaleTimeString()} 切到这张卡时，自动做了这些：` }),
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: applied.undone ? "已撤销：" : "刚才自动做了：" }),
       /* @__PURE__ */ u$2("ul", { class: "rbt-drift", children: applied.changes.map((t2, i2) => /* @__PURE__ */ u$2("li", { children: t2 }, i2)) }),
-      !applied.undone && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", disabled: busy, onClick: () => run(undoLastApply), children: "撤销" })
+      !applied.undone && /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small rbt-self-start", disabled: busy, onClick: () => run(undoLastApply), children: "撤销" })
     ] }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: remembered ? /* @__PURE__ */ u$2(S$1, { children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
-        "记住的配置（",
-        new Date(profile.savedAt).toLocaleString(),
-        "）："
+    remembered ? /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
+      /* @__PURE__ */ u$2("div", { class: "rbt-row-between", children: [
+        /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: [
+          "记住的设置",
+          isCurrent2 && !drift?.count && /* @__PURE__ */ u$2("i", { class: "fa-solid fa-circle-check rbt-inuse", title: "和现在的设置一样" })
+        ] }),
+        isCurrent2 && /* @__PURE__ */ u$2("span", { class: "rbt-row", children: [
+          /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", disabled: busy, onClick: () => run(rememberProfile), children: "更新" }),
+          /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small", disabled: busy, onClick: () => run(forgetProfile), children: "不再记住" })
+        ] })
       ] }),
       /* @__PURE__ */ u$2("ul", { class: "rbt-drift", children: [
         /* @__PURE__ */ u$2("li", { children: [
           "全局世界书：",
-          profile.globalWorlds?.length ? profile.globalWorlds.join("、") : "全部关"
+          profile.globalWorlds?.length ? profile.globalWorlds.join("、") : "全部关掉"
         ] }),
         /* @__PURE__ */ u$2("li", { children: [
           "全局正则：",
-          profile.globalRegexEnabled?.length ? `开 ${profile.globalRegexEnabled.length} 条` : "全部关"
+          profile.globalRegexEnabled?.length ? `打开 ${profile.globalRegexEnabled.length} 条` : "全部关掉"
         ] }),
         profile.preset && /* @__PURE__ */ u$2("li", { children: [
           "预设：",
           profile.preset.name
         ] })
       ] }),
-      isCurrent2 && (drift?.count ? /* @__PURE__ */ u$2("div", { class: "rbt-warn rbt-row-between", children: [
-        /* @__PURE__ */ u$2("span", { children: [
-          "现在的设置和记住的有 ",
+      isCurrent2 && !!drift?.count && /* @__PURE__ */ u$2("div", { class: "rbt-differ", children: [
+        /* @__PURE__ */ u$2("span", { class: "rbt-differ-text", children: [
+          "有 ",
           drift.count,
-          " 处不同。"
+          " 处和现在不一样"
         ] }),
-        /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small rbt-btn-primary", disabled: busy, onClick: () => run(applyProfile), children: "恢复记住的" })
-      ] }) : /* @__PURE__ */ u$2("small", { class: "rbt-ok", children: "和现在的设置一致 ✓" })),
-      isCurrent2 && /* @__PURE__ */ u$2("div", { class: "rbt-row", children: [
-        /* @__PURE__ */ u$2("button", { class: "rbt-btn", disabled: busy, onClick: () => run(rememberProfile), children: "改为记住现在的" }),
-        /* @__PURE__ */ u$2("button", { class: "rbt-btn", disabled: busy, onClick: () => run(forgetProfile), children: "不再记住" })
+        /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small rbt-btn-primary", disabled: busy, onClick: () => run(applyProfile), children: "恢复" })
       ] })
-    ] }) : /* @__PURE__ */ u$2(S$1, { children: [
-      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "还没记住这张卡的配置。现在切到这张卡时，只会关掉别的卡的世界书和正则，并换上推荐预设。" }),
-      isCurrent2 ? /* @__PURE__ */ u$2("div", { class: "rbt-row", children: /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-primary", disabled: busy, onClick: () => run(rememberProfile), children: "记住现在的配置" }) }) : /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "打开这张卡后才能记住它的配置。" })
-    ] }) })
+    ] }) : isCurrent2 && /* @__PURE__ */ u$2("div", { class: "rbt-card-sub", children: [
+      /* @__PURE__ */ u$2("button", { class: "rbt-btn rbt-btn-small rbt-self-start", disabled: busy, onClick: () => run(rememberProfile), children: "记住现在的设置" }),
+      /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "记住后，每次换到这张卡都恢复成这一套。" })
+    ] })
   ] });
 }
 function CardPage({ avatar: forced, embedded } = {}) {
@@ -5723,20 +5928,23 @@ function CardPage({ avatar: forced, embedded } = {}) {
   if (!f2) return /* @__PURE__ */ u$2(Empty, { children: "没有打开单人角色卡。在左栏「角色」里点一张卡，就能看到它的档案。" });
   const info = cardInfo(f2.char);
   return /* @__PURE__ */ u$2("div", { class: "rbt-page", children: [
-    /* @__PURE__ */ u$2(CardHeader, { info, embedded }),
+    /* @__PURE__ */ u$2("section", { class: "rbt-card-section rbt-card-hero", children: [
+      /* @__PURE__ */ u$2(CardHeader, { info, embedded }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-card-hero-source", children: [
+        /* @__PURE__ */ u$2("h3", { class: "rbt-card-section-title rbt-card-hero-sub", children: "来源和作者说明" }),
+        /* @__PURE__ */ u$2(SourceSection$1, { info, bare: true })
+      ] })
+    ] }),
     info.isCurrent && /* @__PURE__ */ u$2(AttentionBox, { char: f2.char }),
     /* @__PURE__ */ u$2("div", { class: "rbt-page-cols", children: [
       /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
-        /* @__PURE__ */ u$2("div", { class: "rbt-page-group-title", children: "配套环境" }),
+        /* @__PURE__ */ u$2("h2", { class: "rbt-page-group-title", children: "配套环境" }),
         /* @__PURE__ */ u$2(WorldSection, { info }),
         /* @__PURE__ */ u$2(PresetSection, { info }),
         /* @__PURE__ */ u$2(RegexSection, { info }),
         /* @__PURE__ */ u$2(ExtSection, { info })
       ] }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: [
-        /* @__PURE__ */ u$2(SourceSection$1, { info }),
-        /* @__PURE__ */ u$2(SwitchSection, { avatar: info.avatar, isCurrent: info.isCurrent })
-      ] })
+      /* @__PURE__ */ u$2("div", { class: "rbt-page-group", children: /* @__PURE__ */ u$2(SwitchSection, { avatar: info.avatar, isCurrent: info.isCurrent }) })
     ] })
   ] });
 }
@@ -5757,7 +5965,7 @@ function buildGroups(leaves, changes) {
 }
 function VarRow({ r: r2, sources }) {
   const [open, setOpen] = d$1(false);
-  const refs = T(() => open && sources ? findReferences(r2.path, sources) : [], [open, r2.path, sources]);
+  const refs = T$1(() => open && sources ? findReferences(r2.path, sources) : [], [open, r2.path, sources]);
   const ch = r2.change;
   const removed = ch?.kind === "removed";
   return /* @__PURE__ */ u$2("div", { class: `rbt-vrow ${ch ? "changed" : ""} ${removed ? "removed" : ""} ${open ? "open" : ""}`, children: [
@@ -5809,7 +6017,7 @@ function filterGroups(groups, q2) {
   return groups.map((g2) => ({ ...g2, rows: g2.rows.filter((r2) => r2.path.toLowerCase().includes(query) || formatValue(r2.value, 400).toLowerCase().includes(query) || (r2.desc ?? "").toLowerCase().includes(query)) })).filter((g2) => g2.rows.length);
 }
 function LocalVars({ data }) {
-  const leaves = T(() => [...flattenVars(data).values()], [data]);
+  const leaves = T$1(() => [...flattenVars(data).values()], [data]);
   if (!leaves.length) return null;
   return /* @__PURE__ */ u$2("details", { class: "rbt-vlocal", children: [
     /* @__PURE__ */ u$2("summary", { children: [
@@ -5844,9 +6052,9 @@ function VarsView() {
   }, [floors.length]);
   const current = diffs.find((d2) => d2.floor.index === selected) ?? diffs[diffs.length - 1];
   const latest = current && current === diffs[diffs.length - 1];
-  const leaves = T(() => current ? [...flattenVars(current.floor.statData ?? current.floor.vars).values()] : [], [current]);
+  const leaves = T$1(() => current ? [...flattenVars(current.floor.statData ?? current.floor.vars).values()] : [], [current]);
   const changes = current?.prev ? current.changes : [];
-  const groups = T(() => buildGroups(leaves, changes), [leaves, changes]);
+  const groups = T$1(() => buildGroups(leaves, changes), [leaves, changes]);
   const shown = filterGroups(groups, q2);
   if (!current) {
     return /* @__PURE__ */ u$2("div", { class: "rbt-vars", children: [
@@ -5975,21 +6183,14 @@ function Panel() {
   };
   return /* @__PURE__ */ u$2("aside", { class: "rbt-panel rbt-dock", children: [
     /* @__PURE__ */ u$2("div", { class: "rbt-resize-handle", title: "拖动调整宽度", onPointerDown: onResizeStart }),
-    /* @__PURE__ */ u$2("div", { class: "rbt-header", children: [
-      /* @__PURE__ */ u$2("span", { class: "rbt-title", title: shellActive.value ? "聊天工具箱" : "RedBird 工具箱", children: [
-        "🐦",
-        /* @__PURE__ */ u$2("span", { class: "rbt-title-text", children: shellActive.value ? " 聊天工具箱" : " RedBird 工具箱" })
-      ] }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-tabs", children: tabsNow().map((id) => /* @__PURE__ */ u$2("button", { class: activeTab.value === id ? "active" : "", onClick: () => {
-        activeTab.value = id;
-      }, children: id === "global" ? "全局" : VIEW_LABELS[id] }, id)) }),
-      /* @__PURE__ */ u$2("button", { class: "rbt-close", title: "导出诊断文件，用来排查问题", onClick: () => {
-        void exportDiagnostics();
-      }, children: "⤓" }),
-      /* @__PURE__ */ u$2("button", { class: "rbt-close", title: "关闭", onClick: () => {
-        panelOpen.value = false;
-      }, children: "✕" })
-    ] }),
+    /* @__PURE__ */ u$2(TitleBar, { class: "rbt-dock-titlebar", icon: shellActive.value ? "fa-toolbox" : "fa-feather-pointed", title: shellActive.value ? "聊天工具箱" : "RedBird 工具箱", onClose: () => {
+      panelOpen.value = false;
+    }, children: /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-titlebar-btn", title: "导出诊断文件，用来排查问题", "aria-label": "导出诊断文件", onClick: () => {
+      void exportDiagnostics();
+    }, children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-arrow-down" }) }) }),
+    /* @__PURE__ */ u$2("div", { class: "rbt-header-tabs", children: /* @__PURE__ */ u$2("div", { class: "rbt-tabs", role: "tablist", children: tabsNow().map((id) => /* @__PURE__ */ u$2("button", { role: "tab", "aria-selected": activeTab.value === id, class: activeTab.value === id ? "active" : "", onClick: () => {
+      activeTab.value = id;
+    }, children: id === "global" ? "全局" : VIEW_LABELS[id] }, id)) }) }),
     /* @__PURE__ */ u$2("div", { class: "rbt-body", children: [
       activeTab.value === "flow" && /* @__PURE__ */ u$2(FlowView, {}),
       activeTab.value === "vars" && /* @__PURE__ */ u$2(VarsView, {}),
@@ -6008,6 +6209,204 @@ function DockGlobal() {
     /* @__PURE__ */ u$2(GlobalToolbox, {}),
     drop.dragging !== null && /* @__PURE__ */ u$2(DropHint, { count: drop.dragging })
   ] });
+}
+function g(n2, t2) {
+  for (var e2 in t2) n2[e2] = t2[e2];
+  return n2;
+}
+function E(n2, t2) {
+  for (var e2 in n2) if ("__source" !== e2 && !(e2 in t2)) return true;
+  for (var r2 in t2) if ("__source" !== r2 && n2[r2] !== t2[r2]) return true;
+  return false;
+}
+function M(n2, t2) {
+  this.props = n2, this.context = t2;
+}
+(M.prototype = new C$1()).isPureReactComponent = true, M.prototype.shouldComponentUpdate = function(n2, t2) {
+  return E(this.props, n2) || E(this.state, t2);
+};
+var T = l$2.__b;
+l$2.__b = function(n2) {
+  n2.type && n2.type.__f && n2.ref && (n2.props.ref = n2.ref, n2.ref = null), T && T(n2);
+};
+var O = l$2.__e;
+l$2.__e = function(n2, t2, e2, r2) {
+  if (n2.then) {
+    for (var u2, o2 = t2; o2 = o2.__; ) if ((u2 = o2.__c) && u2.__c) return null == t2.__e && (t2.__e = e2.__e, t2.__k = e2.__k || []), u2.__c(n2, t2);
+  }
+  O(n2, t2, e2, r2);
+};
+var U = l$2.unmount;
+function V(n2, t2, e2) {
+  return n2 && (n2.__c && n2.__c.__H && (n2.__c.__H.__.forEach(function(n3) {
+    "function" == typeof n3.__c && n3.__c();
+  }), n2.__c.__H = null), null != (n2 = g({}, n2)).__c && (n2.__c.__P === e2 && (n2.__c.__P = t2), n2.__c.__e = true, n2.__c = null), n2.__k = n2.__k && n2.__k.map(function(n3) {
+    return V(n3, t2, e2);
+  })), n2;
+}
+function W(n2, t2, e2) {
+  return n2 && e2 && (n2.__v = null, n2.__k = n2.__k && n2.__k.map(function(n3) {
+    return W(n3, t2, e2);
+  }), n2.__c && n2.__c.__P === t2 && (n2.__e && e2.appendChild(n2.__e), n2.__c.__e = true, n2.__c.__P = e2)), n2;
+}
+function P() {
+  this.__u = 0, this.o = null, this.__b = null;
+}
+function j(n2) {
+  var t2 = n2.__ && n2.__.__c;
+  return t2 && t2.__a && t2.__a(n2);
+}
+function B() {
+  this.i = null, this.l = null;
+}
+l$2.unmount = function(n2) {
+  var t2 = n2.__c;
+  t2 && (t2.__z = true), t2 && t2.__R && t2.__R(), t2 && 32 & n2.__u && (n2.type = null), U && U(n2);
+}, (P.prototype = new C$1()).__c = function(n2, t2) {
+  var e2 = t2.__c, r2 = this;
+  null == r2.o && (r2.o = []), r2.o.push(e2);
+  var u2 = j(r2.__v), o2 = false, i2 = function() {
+    o2 || r2.__z || (o2 = true, e2.__R = null, u2 ? u2(f2) : f2());
+  };
+  e2.__R = i2;
+  var l2 = e2.__P;
+  e2.__P = null;
+  var f2 = function() {
+    if (!--r2.__u) {
+      if (r2.state.__a) {
+        var n3 = r2.state.__a;
+        r2.__v.__k[0] = W(n3, n3.__c.__P, n3.__c.__O);
+      }
+      var t3;
+      for (r2.setState({ __a: r2.__b = null }); t3 = r2.o.pop(); ) t3.__P = l2, t3.forceUpdate();
+    }
+  };
+  r2.__u++ || 32 & t2.__u || r2.setState({ __a: r2.__b = r2.__v.__k[0] }), n2.then(i2, i2);
+}, P.prototype.componentWillUnmount = function() {
+  this.o = [];
+}, P.prototype.render = function(n2, e2) {
+  if (this.__b) {
+    if (this.__v.__k) {
+      var r2 = document.createElement("div"), o2 = this.__v.__k[0].__c;
+      this.__v.__k[0] = V(this.__b, r2, o2.__O = o2.__P);
+    }
+    this.__b = null;
+  }
+  var i2 = e2.__a && k$2(S$1, null, n2.fallback);
+  return i2 && (i2.__u &= -33), [k$2(S$1, null, e2.__a ? null : n2.children), i2];
+};
+var H = function(n2, t2, e2) {
+  if (++e2[1] === e2[0] && n2.l.delete(t2), n2.props.revealOrder && ("t" !== n2.props.revealOrder[0] || !n2.l.size)) for (e2 = n2.i; e2; ) {
+    for (; e2.length > 3; ) e2.pop()();
+    if (e2[1] < e2[0]) break;
+    n2.i = e2 = e2[2];
+  }
+};
+function Z(n2) {
+  return this.getChildContext = function() {
+    return n2.context;
+  }, n2.children;
+}
+function Y(n2) {
+  var e2 = this, r2 = n2.h;
+  if (e2.componentWillUnmount = function() {
+    R(null, e2.v), e2.v = null, e2.h = null;
+  }, e2.h && e2.h !== r2 && e2.componentWillUnmount(), !e2.v) {
+    for (var u2 = e2.__v; null !== u2 && !u2.__m && null !== u2.__; ) u2 = u2.__;
+    e2.h = r2, e2.v = { nodeType: 1, parentNode: r2, childNodes: [], __k: { __m: u2.__m }, contains: function() {
+      return true;
+    }, namespaceURI: r2.namespaceURI, insertBefore: function(n3, t2) {
+      this.childNodes.push(n3), e2.h.insertBefore(n3, t2);
+    }, removeChild: function(n3) {
+      this.childNodes.splice(this.childNodes.indexOf(n3) >>> 1, 1), e2.h.removeChild(n3);
+    } };
+  }
+  R(k$2(Z, { context: e2.context }, n2.__v), e2.v);
+}
+function $(n2, e2) {
+  var r2 = k$2(Y, { __v: n2, h: e2 });
+  return r2.containerInfo = e2, r2;
+}
+(B.prototype = new C$1()).__a = function(n2) {
+  var t2 = this, e2 = j(t2.__v), r2 = t2.l.get(n2);
+  return r2[0]++, function(u2) {
+    var o2 = function() {
+      t2.props.revealOrder ? (r2.push(u2), H(t2, n2, r2)) : u2();
+    };
+    e2 ? e2(o2) : o2();
+  };
+}, B.prototype.render = function(n2) {
+  this.i = null, this.l = /* @__PURE__ */ new Map();
+  var t2 = F$1(n2.children);
+  n2.revealOrder && "b" === n2.revealOrder[0] && t2.reverse();
+  for (var e2 = t2.length; e2--; ) this.l.set(t2[e2], this.i = [1, 0, this.i]);
+  return n2.children;
+}, B.prototype.componentDidUpdate = B.prototype.componentDidMount = function() {
+  var n2 = this;
+  this.l.forEach(function(t2, e2) {
+    H(n2, e2, t2);
+  });
+};
+var q = "undefined" != typeof Symbol && Symbol.for && Symbol.for("react.element") || 60103, G = /^(?:accent|alignment|arabic|baseline|cap|clip(?!PathU)|color|dominant|fill|flood|font|glyph(?!R)|horiz|image(!S)|letter|lighting|marker(?!H|W|U)|overline|paint|pointer|shape|stop|strikethrough|stroke|text(?!L)|transform|underline|unicode|units|v|vector|vert|word|writing|x(?!C))[A-Z]/, J = /^on(Ani|Tra|Tou|BeforeInp|Compo)/, K = /[A-Z0-9]/g, Q = "undefined" != typeof document, X = function(n2) {
+  return ("undefined" != typeof Symbol && "symbol" == typeof Symbol() ? /fil|che|rad/ : /fil|che|ra/).test(n2);
+};
+C$1.prototype.isReactComponent = true, ["componentWillMount", "componentWillReceiveProps", "componentWillUpdate"].forEach(function(t2) {
+  Object.defineProperty(C$1.prototype, t2, { configurable: true, get: function() {
+    return this["UNSAFE_" + t2];
+  }, set: function(n2) {
+    Object.defineProperty(this, t2, { configurable: true, writable: true, value: n2 });
+  } });
+});
+var en = l$2.event;
+l$2.event = function(n2) {
+  return en && (n2 = en(n2)), n2.persist = function() {
+  }, n2.isPropagationStopped = function() {
+    return this.cancelBubble;
+  }, n2.isDefaultPrevented = function() {
+    return this.defaultPrevented;
+  }, n2.nativeEvent = n2;
+};
+var un = { configurable: true, get: function() {
+  return this.class;
+} }, on = l$2.vnode;
+l$2.vnode = function(n2) {
+  "string" == typeof n2.type && (function(n3) {
+    var t2 = n3.props, e2 = n3.type, u2 = {}, o2 = -1 == e2.indexOf("-");
+    for (var i2 in t2) {
+      var l2 = t2[i2];
+      if (!("value" === i2 && "defaultValue" in t2 && null == l2 || Q && "children" === i2 && "noscript" === e2 || "class" === i2 || "className" === i2)) {
+        var f2 = i2.toLowerCase();
+        "defaultValue" === i2 && "value" in t2 && null == t2.value ? i2 = "value" : "download" === i2 && true === l2 ? l2 = "" : "translate" === f2 && "no" === l2 ? l2 = false : "o" === f2[0] && "n" === f2[1] ? "ondoubleclick" === f2 ? i2 = "ondblclick" : "onchange" !== f2 || "input" !== e2 && "textarea" !== e2 || X(t2.type) ? "onfocus" === f2 ? i2 = "onfocusin" : "onblur" === f2 ? i2 = "onfocusout" : J.test(i2) && (i2 = f2) : f2 = i2 = "oninput" : o2 && G.test(i2) ? i2 = i2.replace(K, "-$&").toLowerCase() : null === l2 && (l2 = void 0), "oninput" === f2 && u2[i2 = f2] && (i2 = "oninputCapture"), u2[i2] = l2;
+      }
+    }
+    "select" == e2 && (u2.multiple && Array.isArray(u2.value) && (u2.value = F$1(t2.children).forEach(function(n4) {
+      n4.props.selected = -1 != u2.value.indexOf(n4.props.value);
+    })), null != u2.defaultValue && (u2.value = F$1(t2.children).forEach(function(n4) {
+      n4.props.selected = u2.multiple ? -1 != u2.defaultValue.indexOf(n4.props.value) : u2.defaultValue == n4.props.value;
+    }))), t2.class && !t2.className ? (u2.class = t2.class, Object.defineProperty(u2, "className", un)) : t2.className && (u2.class = u2.className = t2.className), n3.props = u2;
+  })(n2), n2.$$typeof = q, on && on(n2);
+};
+var ln = l$2.__r;
+l$2.__r = function(n2) {
+  ln && ln(n2), n2.__c;
+};
+var fn = l$2.diffed;
+l$2.diffed = function(n2) {
+  fn && fn(n2);
+  var t2 = n2.props, e2 = n2.__e;
+  null != e2 && "textarea" === n2.type && "value" in t2 && t2.value !== e2.value && (e2.value = null == t2.value ? "" : t2.value);
+};
+const isPhone = () => !!window.matchMedia?.("(max-width: 1000px)").matches;
+function Menu({ title, cls, menuRef, onClose, children }) {
+  if (!isPhone()) return /* @__PURE__ */ u$2("div", { class: cls, ref: menuRef, role: "menu", children });
+  return $(
+    /* @__PURE__ */ u$2("div", { class: "rbt-asheet-wrap", children: /* @__PURE__ */ u$2("div", { class: "rbt-asheet", ref: menuRef, role: "menu", "aria-label": title, children: [
+      /* @__PURE__ */ u$2("div", { class: "rbt-asheet-title", children: title }),
+      /* @__PURE__ */ u$2("div", { class: "rbt-asheet-items", children }),
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-asheet-cancel", onClick: onClose, children: "取消" })
+    ] }) }),
+    document.body
+  );
 }
 function Item$1({ kind, icon, img, text, title, warn, badge, drawer }) {
   const active = openDrawers.value.includes(drawer);
@@ -6095,14 +6494,14 @@ function worldStatus() {
   void statusTick.value;
   const char = currentCharacter();
   const scopes = currentBookScopes();
-  const books = [.../* @__PURE__ */ new Set([...scopes.character, ...scopes.chat, ...scopes.persona, ...scopes.global])];
+  const books2 = [.../* @__PURE__ */ new Set([...scopes.character, ...scopes.chat, ...scopes.persona, ...scopes.global])];
   const stray = char ? planFor(char).worldsOff : [];
   const worldWarn = stray.length ? `全局开着别的卡的世界书：${stray.join("、")}` : void 0;
-  const worldTitle = books.length ? ["这张卡", "这个聊天", "用户设定", "全局"].map((label, i2) => {
+  const worldTitle = books2.length ? ["这张卡", "这个聊天", "用户设定", "全局"].map((label, i2) => {
     const list = [...[scopes.character, scopes.chat, scopes.persona, scopes.global][i2]];
     return list.length ? `${label}：${list.join("、")}` : "";
   }).filter(Boolean).join("\n") : "现在没有加载世界书";
-  return { count: books.length, title: `世界书（${books.length} 本）
+  return { count: books2.length, title: `世界书（${books2.length} 本）
 ${worldTitle}`, warn: worldWarn };
 }
 const SORT_KEY = "rbt-shell-char-sort";
@@ -6148,8 +6547,10 @@ function sampleTint(img) {
     return null;
   }
 }
-function fullImage(it) {
-  return it.kind === "character" ? `/characters/${encodeURIComponent(it.key.slice(2))}` : it.thumb;
+const LOCAL = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(location.hostname);
+function cardImage(it) {
+  if (it.kind !== "character" || !LOCAL || window.matchMedia?.("(max-width: 1000px)").matches) return it.thumb;
+  return `/characters/${encodeURIComponent(it.key.slice(2))}`;
 }
 function lastChatText(t2, now = Date.now()) {
   if (!t2) return "还没聊过";
@@ -6165,10 +6566,12 @@ function lastChatText(t2, now = Date.now()) {
 function NewMenu() {
   const [open, setOpen] = d$1(false);
   const ref = A$1(null);
+  const menuRef = A$1(null);
   h$2(() => {
     if (!open) return;
     const away = (e2) => {
-      if (!ref.current?.contains(e2.target)) setOpen(false);
+      const t2 = e2.target;
+      if (!ref.current?.contains(t2) && !menuRef.current?.contains(t2)) setOpen(false);
     };
     const esc = (e2) => {
       if (e2.key === "Escape") setOpen(false);
@@ -6180,9 +6583,9 @@ function NewMenu() {
       document.removeEventListener("keydown", esc);
     };
   }, [open]);
-  const run = (fn) => () => {
+  const run = (fn2) => () => {
     setOpen(false);
-    fn();
+    fn2();
   };
   return /* @__PURE__ */ u$2("div", { class: "rbt-home-new", ref, children: [
     /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-home-btn" + (open ? " active" : ""), "aria-haspopup": "menu", "aria-expanded": open, onClick: () => setOpen(!open), children: [
@@ -6190,7 +6593,7 @@ function NewMenu() {
       " 新建 ",
       /* @__PURE__ */ u$2("i", { class: "fa-solid fa-chevron-down rbt-home-new-chev" })
     ] }),
-    open && /* @__PURE__ */ u$2("div", { class: "rbt-home-newmenu", role: "menu", children: [
+    open && /* @__PURE__ */ u$2(Menu, { title: "新建", cls: "rbt-home-newmenu", menuRef, onClose: () => setOpen(false), children: [
       /* @__PURE__ */ u$2("button", { type: "button", role: "menuitem", onClick: run(createCharacter), children: [
         /* @__PURE__ */ u$2("i", { class: "fa-solid fa-user-plus fa-fw" }),
         " 新建角色"
@@ -6218,11 +6621,11 @@ function CardMenu({ it, onClose }) {
       document.removeEventListener("keydown", esc);
     };
   }, []);
-  const run = (fn) => () => {
+  const run = (fn2) => () => {
     onClose();
-    void fn();
+    void fn2();
   };
-  return /* @__PURE__ */ u$2("div", { class: "rbt-hcard-menu", ref, role: "menu", children: [
+  return /* @__PURE__ */ u$2(Menu, { title: it.name, cls: "rbt-hcard-menu", menuRef: ref, onClose, children: [
     /* @__PURE__ */ u$2("button", { type: "button", role: "menuitem", onClick: run(() => exportCharacter(it, "png")), children: [
       /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-image fa-fw" }),
       " 导出 PNG"
@@ -6242,7 +6645,7 @@ function CardMenu({ it, onClose }) {
   ] });
 }
 function Card({ it, managing, selected, onSelect }) {
-  const src = fullImage(it);
+  const src = cardImage(it);
   const [tint, setTint] = d$1(tints.get(src) ?? "");
   const [broken, setBroken] = d$1(false);
   const [menu, setMenu] = d$1(false);
@@ -6356,7 +6759,7 @@ function HomeGallery() {
   const [managing, setManaging] = d$1(false);
   const [picked, setPicked] = d$1(/* @__PURE__ */ new Set());
   const all = listCharacters();
-  const tags = T(() => allTags(all), [all.length, charsTick.value]);
+  const tags = T$1(() => allTags(all), [all.length, charsTick.value]);
   const query = q2.trim().toLowerCase();
   const shown = sortCharacters(all.filter((it) => {
     if (filter === "fav" && !it.fav) return false;
@@ -6387,7 +6790,7 @@ function HomeGallery() {
     dot && /* @__PURE__ */ u$2("span", { class: "rbt-home-pill-dot" }),
     label
   ] });
-  return /* @__PURE__ */ u$2("main", { class: "rbt-home-gallery", "aria-label": "角色", children: [
+  return /* @__PURE__ */ u$2("main", { class: "rbt-home-gallery", "aria-label": "角色", "data-lint-spacing": "ok", children: [
     /* @__PURE__ */ u$2("header", { class: "rbt-home-head", children: [
       /* @__PURE__ */ u$2("h1", { children: [
         "角色 ",
@@ -6478,9 +6881,9 @@ function applyBodyClasses() {
   homeActive.value = home;
   shellActive.value = shellOn.value;
 }
-function setShellEnabled(on) {
-  shellOn.value = on;
-  settings().shellEnabled = on;
+function setShellEnabled(on2) {
+  shellOn.value = on2;
+  settings().shellEnabled = on2;
   saveSettings();
   applyBodyClasses();
 }
@@ -6549,7 +6952,7 @@ function ChatList({ q: q2 }) {
   h$2(() => {
     if (!recentChats.value.length) void loadRecentChats();
   }, []);
-  const groups = T(() => {
+  const groups = T$1(() => {
     const query = q2.trim().toLowerCase();
     const list = recentChats.value.filter((r2) => !query || r2.name.toLowerCase().includes(query) || r2.preview.toLowerCase().includes(query) || r2.chatId.toLowerCase().includes(query));
     const out = [];
@@ -6602,7 +7005,7 @@ function AddedRow({ it }) {
 function AddedList({ q: q2 }) {
   void charsTick.value;
   void chatTick.value;
-  const groups = T(() => {
+  const groups = T$1(() => {
     const query = q2.trim().toLowerCase();
     const items = sortCharacters(listCharacters().filter((i2) => i2.kind === "character"), "added").filter((i2) => !query || i2.name.toLowerCase().includes(query) || i2.note.toLowerCase().includes(query));
     const out = [];
@@ -6654,21 +7057,40 @@ function loadVersion() {
   }).catch(() => {
   });
 }
-function CurrentCharacter() {
-  void chatTick.value;
-  const c2 = ctx();
-  const char = currentCharacter();
-  const group = c2.groupId ? c2.groups?.find((g2) => g2.id === c2.groupId) : null;
-  if (!char && !group) return null;
-  const name = char?.name ?? group?.name ?? "";
-  return /* @__PURE__ */ u$2("div", { class: "rbt-left-current", children: [
-    /* @__PURE__ */ u$2("div", { class: "rbt-left-title", children: name }),
-    /* @__PURE__ */ u$2("nav", { class: "rbt-globals rbt-globals-current", "aria-label": "当前角色", children: [
-      char && /* @__PURE__ */ u$2(DrawerButton, { k: "characters", label: "编辑卡片", title: `编辑「${name}」的角色卡` }),
-      /* @__PURE__ */ u$2(WorldButton, { grid: true }),
-      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-gbtn", title: "切换 / 管理这个角色的存档", onClick: () => trigger("#option_select_chat"), children: [
-        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-clock-rotate-left fa-fw" }),
-        /* @__PURE__ */ u$2("span", { children: "存档" })
+function FootMore({ version }) {
+  const [open, setOpen] = d$1(false);
+  const ref = A$1(null);
+  const menuRef = A$1(null);
+  h$2(() => {
+    if (!open) return;
+    const away = (e2) => {
+      const t2 = e2.target;
+      if (!ref.current?.contains(t2) && !menuRef.current?.contains(t2)) setOpen(false);
+    };
+    const esc = (e2) => {
+      if (e2.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", away, true);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", away, true);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  const link = (href, icon, label) => /* @__PURE__ */ u$2("a", { role: "menuitem", href, target: "_blank", rel: "noopener", onClick: () => setOpen(false), children: [
+    /* @__PURE__ */ u$2("i", { class: `${icon} fa-fw` }),
+    " ",
+    label
+  ] });
+  return /* @__PURE__ */ u$2("div", { class: "rbt-foot-more", ref, children: [
+    /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-foot-btn" + (open ? " active" : ""), title: "更多：酒馆的文档、GitHub、Discord", "aria-label": "更多", "aria-haspopup": "menu", "aria-expanded": open, onClick: () => setOpen(!open), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-ellipsis fa-fw" }) }),
+    open && /* @__PURE__ */ u$2(Menu, { title: "SillyTavern", cls: "rbt-foot-menu", menuRef, onClose: () => setOpen(false), children: [
+      link("https://docs.sillytavern.app/", "fa-solid fa-circle-question", "酒馆文档"),
+      link("https://github.com/SillyTavern/SillyTavern", "fa-brands fa-github", "GitHub"),
+      link("https://discord.gg/sillytavern", "fa-brands fa-discord", "Discord"),
+      version && /* @__PURE__ */ u$2("div", { class: "rbt-menu-caption", children: [
+        "SillyTavern ",
+        version
       ] })
     ] })
   ] });
@@ -6689,17 +7111,19 @@ function LeftColumn() {
         goHome();
         if (phone) setNavOpen(false);
       }, children: [
-        /* @__PURE__ */ u$2("span", { class: "rbt-brand-mark", children: "🐦" }),
+        /* @__PURE__ */ u$2("i", { class: "rbt-brand-mark fa-solid fa-crow", "aria-hidden": "true" }),
         /* @__PURE__ */ u$2("span", { children: "首页" })
       ] }),
       phone ? /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn", title: "关闭", "aria-label": "关闭", onClick: () => setNavOpen(false), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-xmark" }) }) : /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn", title: "收起左栏", onClick: () => setCollapsed(true), children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-angles-left" }) })
     ] }),
-    phone && /* @__PURE__ */ u$2(CurrentCharacter, {}),
     /* @__PURE__ */ u$2("div", { class: "rbt-gtool-row", children: [
       /* @__PURE__ */ u$2(ImportButton, { big: true }),
       /* @__PURE__ */ u$2(GlobalButton, {})
     ] }),
-    /* @__PURE__ */ u$2("nav", { class: "rbt-globals", "aria-label": "酒馆设定", children: ST_KEYS.map((k2) => /* @__PURE__ */ u$2(DrawerButton, { k: k2, title: k2 === "api" && !apiOnline.value ? "API（没连上）" : void 0, dot: k2 === "api" && !apiOnline.value ? "没连上 API" : void 0 }, k2)) }),
+    /* @__PURE__ */ u$2("nav", { class: "rbt-globals", "aria-label": "酒馆设定", children: [
+      ST_KEYS.map((k2) => /* @__PURE__ */ u$2(DrawerButton, { k: k2, title: k2 === "api" && !apiOnline.value ? "API（没连上）" : void 0, dot: k2 === "api" && !apiOnline.value ? "没连上 API" : void 0 }, k2)),
+      /* @__PURE__ */ u$2(WorldButton, { grid: true })
+    ] }),
     /* @__PURE__ */ u$2("div", { class: "rbt-left-actions", children: [
       /* @__PURE__ */ u$2("div", { class: "rbt-segctl", role: "tablist", "aria-label": "左栏列表", children: [
         /* @__PURE__ */ u$2("button", { type: "button", role: "tab", class: leftMode.value === "chats" ? "active" : "", "aria-selected": leftMode.value === "chats", onClick: () => setLeftMode("chats"), children: "最近聊过" }),
@@ -6716,32 +7140,13 @@ function LeftColumn() {
         /* @__PURE__ */ u$2("i", { class: "fa-solid fa-comment-dots fa-fw" }),
         " 临时聊天"
       ] }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-foot-links", children: [
-        /* @__PURE__ */ u$2("a", { href: "https://docs.sillytavern.app/", target: "_blank", rel: "noopener", children: [
-          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-circle-question" }),
-          " 文档"
-        ] }),
-        /* @__PURE__ */ u$2("a", { href: "https://github.com/SillyTavern/SillyTavern", target: "_blank", rel: "noopener", children: [
-          /* @__PURE__ */ u$2("i", { class: "fa-brands fa-github" }),
-          " GitHub"
-        ] }),
-        /* @__PURE__ */ u$2("a", { href: "https://discord.gg/sillytavern", target: "_blank", rel: "noopener", children: [
-          /* @__PURE__ */ u$2("i", { class: "fa-brands fa-discord" }),
-          " Discord"
-        ] })
+      /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-foot-btn", title: "关掉三栏界面，回到酒馆原来的界面", onClick: () => {
+        void leaveShell();
+      }, children: [
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-table-columns fa-fw" }),
+        " 原版界面"
       ] }),
-      /* @__PURE__ */ u$2("div", { class: "rbt-foot-row", children: [
-        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-foot-btn", title: "关掉三栏界面，回到酒馆原来的界面", onClick: () => {
-          void leaveShell();
-        }, children: [
-          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-table-columns fa-fw" }),
-          " 原版界面"
-        ] }),
-        version && /* @__PURE__ */ u$2("span", { class: "rbt-foot-version", children: [
-          "SillyTavern ",
-          version
-        ] })
-      ] })
+      /* @__PURE__ */ u$2(FootMore, { version })
     ] })
   ] });
 }
@@ -6768,6 +7173,7 @@ function NavBar() {
         chatId && /* @__PURE__ */ u$2("i", { class: "fa-solid fa-chevron-down" })
       ] }) }),
       /* @__PURE__ */ u$2("div", { class: "rbt-nav-actions", children: [
+        char && /* @__PURE__ */ u$2(DrawerButton, { k: "characters", compact: true, label: "编辑卡片", title: `编辑「${name}」的角色卡` }),
         !home && /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-icon-btn", title: `给「${name}」开一个新存档`, "aria-label": "新聊天", onClick: newChat, children: /* @__PURE__ */ u$2("i", { class: "fa-solid fa-pen-to-square" }) }),
         !home && /* @__PURE__ */ u$2(ToolboxButton, {})
       ] })
@@ -6785,7 +7191,7 @@ function NavBar() {
         /* @__PURE__ */ u$2("i", { class: "fa-solid fa-chevron-down" })
       ] }),
       /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-gbtn compact rbt-nav-new", title: `给「${name}」开一个新存档`, onClick: newChat, children: [
-        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-plus fa-fw" }),
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-pen-to-square fa-fw" }),
         /* @__PURE__ */ u$2("span", { children: "新聊天" })
       ] })
     ] }) }),
@@ -6794,9 +7200,9 @@ function NavBar() {
   ] });
 }
 function Shell() {
-  const on = shellOn.value;
-  h$2(() => on ? installWindowDrop() : void 0, [on]);
-  if (!on) return null;
+  const on2 = shellOn.value;
+  h$2(() => on2 ? installWindowDrop() : void 0, [on2]);
+  if (!on2) return null;
   const phone = compact.value;
   const drag = windowDrag.value;
   return /* @__PURE__ */ u$2(S$1, { children: [
@@ -6887,7 +7293,7 @@ function buildSections(char) {
   const rec = info.preset;
   if (rec && rec.api === presetApi()) {
     if (rec.name === cur) pr.push({ level: "ok", text: `「${cur}」`, detail: "就是这张卡的推荐预设" });
-    else pr.push({ level: "warn", text: `现在用的是「${cur}」`, detail: `这张卡推荐「${rec.name}」`, action: { label: "换上推荐的", run: async () => {
+    else pr.push({ level: "warn", text: `现在用的是「${cur}」`, detail: `这张卡推荐「${rec.name}」`, action: { label: "换成推荐的", run: async () => {
       await switchPreset(rec.name);
       bump2();
     } } });
@@ -6907,7 +7313,7 @@ function buildSections(char) {
   const wantModel = settings().profiles[info.avatar]?.model ?? (rec ? settings().presetInfo[rec.name]?.model : void 0);
   const nowModel = currentModel();
   if (wantModel && modelsApply() && !sameModel(wantModel, nowModel)) {
-    pr.push({ level: "warn", text: `现在的模型是 ${nowModel ? modelLabel(nowModel) : "（没选）"}`, detail: `这张卡推荐 ${modelLabel(wantModel)}`, action: { label: "换上推荐的", run: async () => {
+    pr.push({ level: "warn", text: `现在的模型是 ${nowModel ? modelLabel(nowModel) : "（没选）"}`, detail: `这张卡推荐 ${modelLabel(wantModel)}`, action: { label: "换成推荐的", run: async () => {
       await setModel(wantModel);
       bump2();
     } } });
@@ -6951,7 +7357,7 @@ function buildSections(char) {
   const issues = sections.reduce((n2, s2) => n2 + s2.lines.filter((l2) => l2.level === "warn").length, 0);
   return { sections, issues };
 }
-const LEVEL_ICON = { ok: "fa-circle-check", warn: "fa-circle-exclamation" };
+const LEVEL_ICON = { warn: "fa-circle-exclamation" };
 function cardIssues(char) {
   return buildSections(char).sections.flatMap((s2) => s2.lines.filter((l2) => l2.level === "warn").map((line) => ({ section: s2.title, line })));
 }
@@ -6964,14 +7370,15 @@ function ToolboxButton() {
     "button",
     {
       type: "button",
-      class: `rbt-gbtn compact ${panelOpen.value ? "active" : ""}`,
+      class: `rbt-gbtn compact rbt-toolbox-btn ${panelOpen.value ? "active" : ""}`,
       title: issues ? `聊天工具箱：角色档案里有 ${issues} 项需要注意` : "聊天工具箱：角色档案、信息流、变量",
       onClick: () => {
         panelOpen.value = !panelOpen.value;
       },
       children: [
-        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-feather-pointed fa-fw" }),
-        /* @__PURE__ */ u$2("span", { children: "聊天工具箱" }),
+        /* @__PURE__ */ u$2("i", { class: "fa-solid fa-toolbox fa-fw" }),
+        /* @__PURE__ */ u$2("span", { class: "rbt-tb-long", children: "聊天工具箱" }),
+        /* @__PURE__ */ u$2("span", { class: "rbt-tb-short", children: "工具箱" }),
         issues > 0 && /* @__PURE__ */ u$2("span", { class: "rbt-dot" })
       ]
     }
@@ -7033,13 +7440,7 @@ function PickStep() {
   return /* @__PURE__ */ u$2(S$1, { children: [
     /* @__PURE__ */ u$2("div", { class: "rbt-sheet-backdrop rbt-imp-backdrop", onMouseDown: closeImport, ...dropHandlers }),
     /* @__PURE__ */ u$2("section", { class: "rbt-sheet rbt-scope rbt-imp rbt-imp-pick", role: "dialog", "aria-label": "导入文件", ...dropHandlers, children: [
-      /* @__PURE__ */ u$2("header", { class: "rbt-sheet-bar", children: [
-        /* @__PURE__ */ u$2("span", { class: "rbt-sheet-title", children: [
-          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-import fa-fw" }),
-          "导入文件"
-        ] }),
-        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-sheet-close", title: "关闭（Esc）", "aria-label": "关闭", onClick: closeImport, children: "✕" })
-      ] }),
+      /* @__PURE__ */ u$2(TitleBar, { class: "rbt-sheet-bar", icon: "fa-file-import", title: "导入文件", onClose: closeImport }),
       /* @__PURE__ */ u$2("div", { class: "rbt-sheet-body", children: [
         /* @__PURE__ */ u$2("div", { class: `rbt-imp-drop ${over.value ? "over" : ""}`, onClick: pick, children: [
           /* @__PURE__ */ u$2("i", { class: "fa-solid fa-arrow-up-from-bracket rbt-imp-drop-ico" }),
@@ -7097,7 +7498,7 @@ function facts(it) {
   return k2;
 }
 function useThumb(it) {
-  const url = T(() => it.kind === "character" && /\.png$/i.test(it.file.name) ? URL.createObjectURL(it.file) : null, [it.file]);
+  const url = T$1(() => it.kind === "character" && /\.png$/i.test(it.file.name) ? URL.createObjectURL(it.file) : null, [it.file]);
   h$2(() => () => {
     if (url) URL.revokeObjectURL(url);
   }, [url]);
@@ -7248,6 +7649,7 @@ function ImportDialog() {
           ctx().saveSettingsDebounced();
         },
         useTheme: useStTheme,
+        importCardWorld: settings().autoImportWorld ? (avatar) => importCardWorld(avatar, { quiet: true }) : void 0,
         setCardPreset: (avatar, preset) => {
           const ch = (ctx().characters ?? []).find((c2) => c2.avatar === avatar);
           setRecommendedPreset(avatar, ch?.name ?? avatar, preset);
@@ -7270,15 +7672,7 @@ function ImportDialog() {
       if (!busy) closeImport();
     }, ...dropHandlers }),
     /* @__PURE__ */ u$2("section", { class: "rbt-sheet rbt-scope rbt-imp", role: "dialog", "aria-label": "导入", ...dropHandlers, children: [
-      /* @__PURE__ */ u$2("header", { class: "rbt-sheet-bar", children: [
-        /* @__PURE__ */ u$2("span", { class: "rbt-sheet-title", children: [
-          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-file-import fa-fw" }),
-          "导入 ",
-          items.length,
-          " 个文件"
-        ] }),
-        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-sheet-close", title: "取消（Esc）", "aria-label": "取消", disabled: busy, onClick: closeImport, children: "✕" })
-      ] }),
+      /* @__PURE__ */ u$2(TitleBar, { class: "rbt-sheet-bar", icon: "fa-file-import", title: `导入 ${items.length} 个文件`, closeLabel: "取消", disabled: busy, onClose: closeImport }),
       /* @__PURE__ */ u$2("div", { class: "rbt-sheet-body", children: [
         main && /* @__PURE__ */ u$2(Item, { it: main, onChange: (p2) => set(main, p2), children: companions.length > 0 && /* @__PURE__ */ u$2("div", { class: "rbt-imp-group", children: [
           /* @__PURE__ */ u$2("div", { class: "rbt-imp-group-title", children: [
@@ -7601,7 +7995,7 @@ function WorldsPage() {
 function WorldDetail({ name }) {
   void archiveVersion.value;
   const ov = buildOverview();
-  const on = currentBookScopes().global.has(name);
+  const on2 = currentBookScopes().global.has(name);
   const [busy, setBusy] = d$1(false);
   const toggle = async (v2) => {
     setBusy(true);
@@ -7633,7 +8027,7 @@ function WorldDetail({ name }) {
             /* @__PURE__ */ u$2("span", { children: "作为全局世界书打开" }),
             /* @__PURE__ */ u$2("small", { children: "打开后对所有卡生效。" })
           ] }),
-          busy ? /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "…" }) : /* @__PURE__ */ u$2(Toggle, { checked: on, onChange: toggle })
+          busy ? /* @__PURE__ */ u$2("small", { class: "rbt-muted", children: "…" }) : /* @__PURE__ */ u$2(Toggle, { checked: on2, onChange: toggle })
         ] }) })
       ] })
     ] })
@@ -7648,7 +8042,7 @@ function RegexPage() {
   const items = report?.items ?? [];
   const regex = items.filter((i2) => i2.scope === "global" && i2.kind === "regex");
   const scripts = items.filter((i2) => i2.scope === "global" && i2.kind === "script");
-  const cardRx = T(() => allCharacters().map(cardInfo).filter((c2) => c2.regex.total > 0).sort((a2, b2) => b2.regex.total - a2.regex.total), [archiveVersion.value]);
+  const cardRx = T$1(() => allCharacters().map(cardInfo).filter((c2) => c2.regex.total > 0).sort((a2, b2) => b2.regex.total - a2.regex.total), [archiveVersion.value]);
   const presetRx = presetNames().map((p2) => ({ p: p2, n: presetRegexCount(p2) })).filter((x2) => x2.n > 0);
   const cur = currentPresetName();
   const back = GLOBAL_TAB_LABELS.regex;
@@ -7754,9 +8148,9 @@ function useThemes() {
     if (!stThemes.value.length && !themesLoading.value) void loadThemes();
   }, []);
 }
-function LookCard({ l: l2, on }) {
+function LookCard({ l: l2, on: on2 }) {
   const p2 = l2.preview;
-  return /* @__PURE__ */ u$2("button", { type: "button", class: `rbt-lookcard ${on ? "on" : ""}`, "aria-pressed": on, onClick: () => {
+  return /* @__PURE__ */ u$2("button", { type: "button", class: `rbt-lookcard ${on2 ? "on" : ""}`, "aria-pressed": on2, onClick: () => {
     void useBuiltInLook(l2.id);
   }, children: [
     /* @__PURE__ */ u$2("span", { class: "rbt-lookcard-art", style: { background: p2.canvas }, children: /* @__PURE__ */ u$2("span", { class: "rbt-lookcard-panel", style: { background: p2.panel }, children: [
@@ -7766,7 +8160,7 @@ function LookCard({ l: l2, on }) {
     ] }) }),
     /* @__PURE__ */ u$2("span", { class: "rbt-lookcard-name", children: [
       l2.label,
-      on && /* @__PURE__ */ u$2("i", { class: "fa-solid fa-circle-check" })
+      on2 && /* @__PURE__ */ u$2("i", { class: "fa-solid fa-circle-check" })
     ] }),
     /* @__PURE__ */ u$2("span", { class: "rbt-lookcard-desc", children: l2.desc })
   ] });
@@ -8048,14 +8442,7 @@ function SheetHost() {
   return /* @__PURE__ */ u$2(S$1, { children: [
     /* @__PURE__ */ u$2("div", { class: "rbt-sheet-backdrop", onMouseDown: () => closeSheet() }),
     /* @__PURE__ */ u$2("section", { class: "rbt-sheet rbt-scope", role: "dialog", "aria-label": title, children: [
-      /* @__PURE__ */ u$2("header", { class: "rbt-sheet-bar", children: [
-        /* @__PURE__ */ u$2("span", { class: "rbt-sheet-title", children: [
-          /* @__PURE__ */ u$2("i", { class: "fa-solid fa-globe fa-fw" }),
-          title
-        ] }),
-        /* @__PURE__ */ u$2(GlobalTabs, {}),
-        /* @__PURE__ */ u$2("button", { type: "button", class: "rbt-sheet-close", title: "关闭（Esc）", "aria-label": "关闭", onClick: () => closeSheet(), children: "✕" })
-      ] }),
+      /* @__PURE__ */ u$2(TitleBar, { class: "rbt-sheet-bar", icon: "fa-globe", title, onClose: () => closeSheet(), children: /* @__PURE__ */ u$2(GlobalTabs, {}) }),
       /* @__PURE__ */ u$2("div", { class: "rbt-sheet-body", children: /* @__PURE__ */ u$2(GlobalToolbox, {}) })
     ] })
   ] });
@@ -8086,13 +8473,21 @@ function addSettingsDrawer() {
         <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
       </div>
       <div class="inline-drawer-content rbt-set">
+        <p class="rbt-set-intro">给酒馆换一套更好找东西的界面，并帮你检查每张卡要配的预设、世界书和正则。第一次用？先看<a href="https://github.com/RebBirdTD/SillyTavern-RedBird-Tools#readme" target="_blank" rel="noopener">使用说明 ↗</a></p>
         <div class="rbt-set-open">
-          <div class="menu_button" id="rbt_open_global"><i class="fa-solid fa-globe"></i>全局工具箱</div>
-          <div class="menu_button" id="rbt_open_chat"><i class="fa-solid fa-feather-pointed"></i>聊天工具箱</div>
+          <div class="rbt-set-tool">
+            <div class="menu_button" id="rbt_open_chat"><i class="fa-solid fa-toolbox"></i>打开聊天工具箱</div>
+            <small>当前这张卡：缺什么、这一轮发给 AI 的内容、变量</small>
+          </div>
+          <div class="rbt-set-tool">
+            <div class="menu_button" id="rbt_open_global"><i class="fa-solid fa-globe"></i>打开全局工具箱</div>
+            <small>所有卡共用的：预设、世界书、正则、插件、美化、备份</small>
+          </div>
         </div>
         <div class="rbt-set-group">
           <div class="rbt-set-title">界面</div>
-          ${row("rbt_shell_switch", "三栏界面", "电脑上用左栏和顶部导航代替酒馆原来的图标栏")}
+          ${row("rbt_shell_switch", "三栏界面", "把酒馆换成三栏布局：左边是最近的聊天和常用入口，中间聊天，右边是聊天工具箱。手机上左栏收进左上角的 ☰。想换回原来的样子，点左栏底部的「原版界面」。")}
+          <small class="rbt-set-tip" id="rbt_thumb_tip" hidden>手机或远程打开时，首页卡片用的是酒馆的缩略图，加载快但可能模糊。想更清楚：在酒馆的 config.yaml 里把 thumbnails 下的 avatar 尺寸调大（比如 [384, 576]），再删掉 data/你的用户名/thumbnails/avatar 文件夹，酒馆会按新尺寸重新生成。</small>
           ${row("rbt_look_switch", "美化", "酒馆和工具箱用同一套配色和字体。深色、浅色、护眼三套和强调色在「全局工具箱 › 美化」里选")}
         </div>
         <div class="rbt-set-group">
@@ -8103,10 +8498,12 @@ function addSettingsDrawer() {
         <div class="rbt-set-foot">
           <small>版本 <span id="rbt_version"></span></small>
           <button type="button" class="rbt-set-link" id="rbt_check_update">检查更新</button>
+          <a class="rbt-set-link" href="https://github.com/RebBirdTD/SillyTavern-RedBird-Tools#readme" target="_blank" rel="noopener">使用说明 ↗</a>
         </div>
       </div>
     </div>`;
   host.appendChild(wrap);
+  if (!["localhost", "127.0.0.1", "[::1]", "::1"].includes(location.hostname)) wrap.querySelector("#rbt_thumb_tip")?.removeAttribute("hidden");
   wrap.querySelector("#rbt_open_global")?.addEventListener("click", () => openGlobal());
   wrap.querySelector("#rbt_open_chat")?.addEventListener("click", () => openPanel());
   const bind = (id, get, set) => {
@@ -8195,8 +8592,8 @@ async function init() {
   openDrawers.subscribe((open) => {
     if (open.length && sheetOpen.value) closeSheet();
   });
-  shellActive.subscribe((on) => {
-    if (!on && sheetOpen.value) closeSheet();
+  shellActive.subscribe((on2) => {
+    if (!on2 && sheetOpen.value) closeSheet();
   });
   const onSwitch = async () => {
     try {
@@ -8216,6 +8613,8 @@ async function init() {
     });
   }
   installWorldNote();
+  installWorldEntries();
+  if (window.toastr?.options) window.toastr.options.closeButton = true;
   initShellState();
   const shellRoot = document.createElement("div");
   shellRoot.id = "rbt-shell-root";

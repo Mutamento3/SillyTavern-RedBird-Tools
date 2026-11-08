@@ -61,7 +61,7 @@ function buildSections(char: Any): { sections: Section[]; issues: number } {
   const rec = info.preset;
   if (rec && rec.api === presetApi()) {
     if (rec.name === cur) pr.push({ level: 'ok', text: `「${cur}」`, detail: '就是这张卡的推荐预设' });
-    else pr.push({ level: 'warn', text: `现在用的是「${cur}」`, detail: `这张卡推荐「${rec.name}」`, action: { label: '换上推荐的', run: async () => { await switchPreset(rec.name); bump(); } } });
+    else pr.push({ level: 'warn', text: `现在用的是「${cur}」`, detail: `这张卡推荐「${rec.name}」`, action: { label: '换成推荐的', run: async () => { await switchPreset(rec.name); bump(); } } });
   } else {
     pr.push({ level: 'info', text: `「${cur}」`, detail: '这张卡还没设推荐预设',
       action: { label: '设为推荐', run: () => { setRecommendedPreset(info.avatar, info.name, cur); bump(); } } });
@@ -72,7 +72,7 @@ function buildSections(char: Any): { sections: Section[]; issues: number } {
   const wantModel = settings().profiles[info.avatar]?.model ?? (rec ? settings().presetInfo[rec.name]?.model : undefined);
   const nowModel = currentModel();
   if (wantModel && modelsApply() && !sameModel(wantModel, nowModel)) {
-    pr.push({ level: 'warn', text: `现在的模型是 ${nowModel ? modelLabel(nowModel) : '（没选）'}`, detail: `这张卡推荐 ${modelLabel(wantModel)}`, action: { label: '换上推荐的', run: async () => { await setModel(wantModel); bump(); } } });
+    pr.push({ level: 'warn', text: `现在的模型是 ${nowModel ? modelLabel(nowModel) : '（没选）'}`, detail: `这张卡推荐 ${modelLabel(wantModel)}`, action: { label: '换成推荐的', run: async () => { await setModel(wantModel); bump(); } } });
   }
   sections.push({ title: '预设', lines: pr });
 
@@ -138,12 +138,13 @@ export function ToolboxButton() {
   return (
     <button
       type="button"
-      class={`rbt-gbtn compact ${panelOpen.value ? 'active' : ''}`}
+      class={`rbt-gbtn compact rbt-toolbox-btn ${panelOpen.value ? 'active' : ''}`}
       title={issues ? `聊天工具箱：角色档案里有 ${issues} 项需要注意` : '聊天工具箱：角色档案、信息流、变量'}
       onClick={() => { panelOpen.value = !panelOpen.value; }}
     >
-      <i class="fa-solid fa-feather-pointed fa-fw" />
-      <span>聊天工具箱</span>
+      <i class="fa-solid fa-toolbox fa-fw" />
+      <span class="rbt-tb-long">聊天工具箱</span>
+      <span class="rbt-tb-short">工具箱</span>
       {issues > 0 && <span class="rbt-dot" />}
     </button>
   );

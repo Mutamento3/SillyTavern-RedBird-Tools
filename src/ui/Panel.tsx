@@ -1,4 +1,5 @@
 import { signal } from '@preact/signals';
+import { TitleBar } from './TitleBar';
 import { useEffect } from 'preact/hooks';
 import { exportDiagnostics } from '../tools/diag';
 import { FlowView } from './FlowView';
@@ -94,15 +95,16 @@ export function Panel() {
   return (
     <aside class="rbt-panel rbt-dock">
       <div class="rbt-resize-handle" title="拖动调整宽度" onPointerDown={onResizeStart} />
-      <div class="rbt-header">
-        <span class="rbt-title" title={shellActive.value ? "聊天工具箱" : "RedBird 工具箱"}>🐦<span class="rbt-title-text">{shellActive.value ? ' 聊天工具箱' : ' RedBird 工具箱'}</span></span>
-        <div class="rbt-tabs">
+      {/* 第一行：这是哪里（标题）和怎么离开（✕）；第二行：标签 */}
+      <TitleBar class="rbt-dock-titlebar" icon={shellActive.value ? 'fa-toolbox' : 'fa-feather-pointed'} title={shellActive.value ? '聊天工具箱' : 'RedBird 工具箱'} onClose={() => { panelOpen.value = false; }}>
+        <button type="button" class="rbt-titlebar-btn" title="导出诊断文件，用来排查问题" aria-label="导出诊断文件" onClick={() => { void exportDiagnostics(); }}><i class="fa-solid fa-file-arrow-down" /></button>
+      </TitleBar>
+      <div class="rbt-header-tabs">
+        <div class="rbt-tabs" role="tablist">
           {tabsNow().map((id) => (
-            <button key={id} class={activeTab.value === id ? 'active' : ''} onClick={() => { activeTab.value = id; }}>{id === 'global' ? '全局' : VIEW_LABELS[id]}</button>
+            <button key={id} role="tab" aria-selected={activeTab.value === id} class={activeTab.value === id ? 'active' : ''} onClick={() => { activeTab.value = id; }}>{id === 'global' ? '全局' : VIEW_LABELS[id]}</button>
           ))}
         </div>
-        <button class="rbt-close" title="导出诊断文件，用来排查问题" onClick={() => { void exportDiagnostics(); }}>⤓</button>
-        <button class="rbt-close" title="关闭" onClick={() => { panelOpen.value = false; }}>✕</button>
       </div>
       <div class="rbt-body">
         {activeTab.value === 'flow' && <FlowView />}

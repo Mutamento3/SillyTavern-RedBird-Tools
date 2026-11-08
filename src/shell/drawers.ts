@@ -6,6 +6,7 @@
  * 开关一律通过点击酒馆自己的 .drawer-toggle 完成，所以酒馆的逻辑（互斥、钉住、动画）都保留。
  */
 import { signal } from '@preact/signals';
+import { titleBarElement } from '../ui/TitleBar';
 
 export type DrawerKey =
   | 'preset' | 'api' | 'persona' | 'extensions' | 'settings' | 'backgrounds' | 'formatting'
@@ -93,18 +94,33 @@ function injectHeaders(): void {
   for (const d of DRAWERS) {
     const node = el(d);
     if (!node || node.querySelector(':scope > .rbt-sheet-head')) continue;
-    const head = document.createElement('div');
-    head.className = 'rbt-sheet-head';
-    head.innerHTML = `<span class="rbt-sheet-title"><i class="fa-solid ${d.icon} fa-fw"></i>${d.label}</span>`
-      + '<span class="rbt-sheet-note"></span>'
-      + '<button type="button" class="rbt-sheet-close" title="关闭（Esc）" aria-label="关闭">✕</button>';
-    head.querySelector('button')!.addEventListener('click', () => closeDrawer(d.key));
+    const { bar: head } = titleBarElement(d.icon, d.label, () => closeDrawer(d.key), 'rbt-sheet-head');
+    // 标题栏里的一句说明（比如这张卡已经加载了哪些世界书），在标题和 ✕ 之间
+    const note = document.createElement('span');
+    note.className = 'rbt-sheet-note';
+    head.insertBefore(note, head.querySelector('.rbt-titlebar-x'));
     node.prepend(head);
   }
 }
 
+/**
+ * 角色面板的标题跟着打开它的按钮走：有角色在聊时是「编辑卡片 · 名字」，否则是「角色」。
+ * （面板是酒馆的 right-nav-panel，两种情况共用一个。）
+ */
+function syncCharacterTitle(): void {
+  const node = el(drawerByKey.characters);
+  const span = node?.querySelector<HTMLElement>(':scope > .rbt-sheet-head .rbt-titlebar-text');
+  if (!span) return;
+  const st = (window as unknown as { SillyTavern?: { getContext?: () => { characterId?: string | number; characters?: { name?: string }[]; groupId?: string | null } } }).SillyTavern?.getContext?.();
+  const id = st?.characterId;
+  const name = !st?.groupId && id !== undefined && id !== null && String(id) !== '' ? st?.characters?.[Number(id)]?.name : undefined;
+  const text = name ? `编辑卡片 · ${name}` : drawerByKey.characters.label;
+  if (span.textContent !== text) span.textContent = text;
+}
+
 function syncOpenState(): void {
   const open = DRAWERS.filter((d) => el(d)?.classList.contains('openDrawer')).map((d) => d.key);
+  if (open.includes('characters')) syncCharacterTitle();
   const prev = openDrawers.value;
   if (open.length !== prev.length || open.some((k, i) => k !== prev[i])) openDrawers.value = open;
   document.body.classList.toggle('rbt-open-modal', open.length > 0);
@@ -147,6 +163,31 @@ export function setSheetNote(key: DrawerKey, text: string): void {
   }
 }
 
+// --------------------------------------------- 存档（酒馆的聊天记录弹窗） ---
+// 酒馆的标题是「名字 聊天记录 ?」，关闭按钮是搜索框右边一个半透明的 ⊗，容易被当成「清空搜索」。
+// 三栏界面里换成和面板一样的标题栏：「存档 · 名字」+ ✕；手机上整页显示（见 shell.css）。
+
+function chatsTitle(): string {
+  const st = (window as unknown as { SillyTavern?: { getContext?: () => { characterId?: string | number; characters?: { name?: string }[]; groupId?: string | null; groups?: { id: string; name?: string }[] } } }).SillyTavern?.getContext?.();
+  const group = st?.groupId ? st.groups?.find((g) => g.id === st.groupId) : undefined;
+  const id = st?.characterId;
+  const name = group?.name ?? (id !== undefined && id !== null && String(id) !== '' ? st?.characters?.[Number(id)]?.name : undefined);
+  return name ? `存档 · ${name}` : '存档';
+}
+
+function syncChatsHead(): void {
+  const pop = document.getElementById('select_chat_popup');
+  if (!pop) return;
+  let head = pop.querySelector<HTMLElement>(':scope > .rbt-sheet-head');
+  if (!head) {
+    head = titleBarElement('fa-clock-rotate-left', '存档', () => document.getElementById('select_chat_cross')?.click(), 'rbt-sheet-head rbt-chats-head').bar;
+    pop.prepend(head);
+  }
+  const text = chatsTitle();
+  const span = head.querySelector<HTMLElement>('.rbt-titlebar-text')!;
+  if (span.textContent !== text) span.textContent = text;
+}
+
 let installed = false;
 
 export function installDrawers(): void {
@@ -161,4 +202,10 @@ export function installDrawers(): void {
   }
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('mousedown', onBackdropDown);
+  // 存档弹窗：每次打开时更新标题里的名字
+  const shadow = document.getElementById('shadow_select_chat_popup');
+  if (shadow) {
+    syncChatsHead();
+    new MutationObserver(syncChatsHead).observe(shadow, { attributes: true, attributeFilter: ['style', 'class'] });
+  }
 }

@@ -5,6 +5,7 @@
 import { useEffect } from 'preact/hooks';
 import { GlobalTabs, GlobalToolbox } from '../ui/pages/GlobalToolbox';
 import { closeSheet, sheetOpen } from '../ui/views';
+import { TitleBar } from '../ui/TitleBar';
 
 export function SheetHost() {
   const open = sheetOpen.value;
@@ -25,11 +26,9 @@ export function SheetHost() {
     <>
       <div class="rbt-sheet-backdrop" onMouseDown={() => closeSheet()} />
       <section class="rbt-sheet rbt-scope" role="dialog" aria-label={title}>
-        <header class="rbt-sheet-bar">
-          <span class="rbt-sheet-title"><i class="fa-solid fa-globe fa-fw" />{title}</span>
+        <TitleBar class="rbt-sheet-bar" icon="fa-globe" title={title} onClose={() => closeSheet()}>
           <GlobalTabs />
-          <button type="button" class="rbt-sheet-close" title="关闭（Esc）" aria-label="关闭" onClick={() => closeSheet()}>✕</button>
-        </header>
+        </TitleBar>
         <div class="rbt-sheet-body">
           <GlobalToolbox />
         </div>

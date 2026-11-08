@@ -45,6 +45,9 @@ import {
 import { Chip } from '../common';
 import { SourceLine } from '../SourceEditor';
 import { ModelPicker } from '../ModelPicker';
+import { openDrawer } from '../../shell/drawers';
+import { openBookInEditor } from '../../shell/worldNote';
+import { currentModel, modelLabel, sameModel, setModel } from '../../tools/model';
 
 export const OK = '#2fbf8f';
 export const WARN = '#f0a43a';
@@ -73,12 +76,22 @@ export function LongText({ text, limit = 400 }: { text: string; limit?: number }
   );
 }
 
-export function Section({ title, hint, children }: { title: string; hint?: string; children: ComponentChildren }) {
+/**
+ * 分区：标题在左上，打开酒馆对应编辑面板的按钮（「编辑」「预设设置」…）统一放在右上，
+ * 和卡面的「编辑卡片」同一个位置（DESIGN.md「按钮」）。
+ */
+export function Section({ title, hint, actions, children }: { title: string; hint?: string; actions?: ComponentChildren; children: ComponentChildren }) {
   return (
-    <div class="rbt-card-section">
-      <div class="rbt-card-section-head"><b>{title}</b>{hint && <small class="rbt-muted"> {hint}</small>}</div>
+    <section class="rbt-card-section">
+      <div class="rbt-card-section-head">
+        <div class="rbt-card-section-top">
+          <h3 class="rbt-card-section-title">{title}</h3>
+          {actions && <div class="rbt-card-section-actions">{actions}</div>}
+        </div>
+        {hint && <p class="rbt-card-section-hint">{hint}</p>}
+      </div>
       {children}
-    </div>
+    </section>
   );
 }
 
@@ -117,14 +130,18 @@ export function CardHeader({ info, embedded }: { info: CardInfo; embedded?: bool
         )}
         {info.tags.length > 0 && <div class="rbt-chips">{info.tags.map((t) => <Chip key={t}>{t}</Chip>)}</div>}
       </div>
-      {!embedded && !info.isCurrent && currentCharacter() && <button class="rbt-btn rbt-btn-small" onClick={() => { archiveTarget.value = null; }}>回到当前卡</button>}
+      <div class="rbt-card-head-actions">
+        {info.isCurrent && <button type="button" class="rbt-btn rbt-btn-small" title={`在酒馆的角色面板里编辑「${info.name}」`} onClick={() => openDrawer('characters')}>编辑卡片 ↗</button>}
+        {!embedded && !info.isCurrent && currentCharacter() && <button class="rbt-btn rbt-btn-small" onClick={() => { archiveTarget.value = null; }}>回到当前卡</button>}
+      </div>
     </div>
   );
 }
 
 // ------------------------------------------------------------ source ---
 
-export function SourceSection({ info }: { info: CardInfo }) {
+/** `bare`: 只要内容（放进「卡面」那一块里），不要外面的分区框。 */
+export function SourceSection({ info, bare }: { info: CardInfo; bare?: boolean }) {
   const rec = info.record;
   const links = rec?.links ?? [];
   const [label, setLabel] = useState('');
@@ -140,11 +157,11 @@ export function SourceSection({ info }: { info: CardInfo }) {
     setUrl('');
   };
 
-  return (
-    <Section title="来源与作者说明">
+  const body = (
+    <>
       {(info.contacts.length > 0 || info.autoSource) && (
         <div class="rbt-card-sub">
-          <small class="rbt-muted">卡里写的来源和联系方式：</small>
+          <small class="rbt-muted">卡里的联系方式</small>
           <div class="rbt-chips">
             {info.contacts.map((c, i) => (c.kind === 'url'
               ? <a key={i} href={c.value} target="_blank" rel="noopener noreferrer">{c.value}</a>
@@ -155,32 +172,34 @@ export function SourceSection({ info }: { info: CardInfo }) {
       )}
       {info.creatorNotes.trim() && (
         <div class="rbt-card-sub">
-          <small class="rbt-muted">作者写在卡里的备注：</small>
+          <small class="rbt-muted">卡里的备注</small>
           <LongText text={info.creatorNotes} />
         </div>
       )}
 
       <div class="rbt-card-sub">
-        <small class="rbt-muted">相关链接，比如发布帖、更新帖、教程：</small>
+        <small class="rbt-muted">链接</small>
         {links.map((l, i) => (
           <div key={i} class="rbt-link-row">
             <a href={l.url} target="_blank" rel="noopener noreferrer" title={l.url}>{l.label}</a>
             <small class="rbt-muted rbt-ellipsis">{l.url}</small>
-            <button class="rbt-btn rbt-btn-small" title="删除这条链接" onClick={() => updateRecord(info.avatar, info.name, { links: links.filter((_, j) => j !== i) })}>✕</button>
+            <button class="rbt-btn rbt-btn-small" title="删除这条链接" onClick={() => updateRecord(info.avatar, info.name, { links: links.filter((_, j) => j !== i) })}>删除</button>
           </div>
         ))}
         <div class="rbt-form-row">
-          <input class="text_pole rbt-input rbt-w-label" placeholder="名称，如：发布帖" value={label} onInput={(e) => setLabel(inputValue(e))} />
+          <input class="text_pole rbt-input rbt-w-label" placeholder="名称，如发布帖" value={label} onInput={(e) => setLabel(inputValue(e))} />
           <input class="text_pole rbt-input" placeholder="https://…" value={url} onInput={(e) => setUrl(inputValue(e))} onKeyDown={(e) => { if (e.key === 'Enter') addLink(); }} />
           <button class="rbt-btn" disabled={!urlOk} onClick={addLink}>添加</button>
         </div>
       </div>
 
       <div class="rbt-card-sub">
-        <div class="rbt-row-between">
-          <small class="rbt-muted">作者说明：</small>
-          {!editing && <button class="rbt-btn rbt-btn-small" onClick={() => { setDraft(rec?.notes ?? ''); setEditing(true); }}>{rec?.notes ? '编辑' : '填写'}</button>}
-        </div>
+        {(rec?.notes || editing) && (
+          <div class="rbt-row-between">
+            <small class="rbt-muted">作者说明</small>
+            {!editing && <IconBtn icon="fa-pen" title="编辑作者说明" onClick={() => { setDraft(rec?.notes ?? ''); setEditing(true); }} />}
+          </div>
+        )}
         {editing ? (
           <>
             <textarea class="text_pole rbt-textarea" rows={10} value={draft} placeholder="把发布帖里的推荐设置、玩法和注意事项粘进来。网址会自动变成链接。" onInput={(e) => setDraft((e.currentTarget as HTMLTextAreaElement).value)} />
@@ -189,46 +208,84 @@ export function SourceSection({ info }: { info: CardInfo }) {
               <button class="rbt-btn" onClick={() => setEditing(false)}>取消</button>
             </div>
           </>
-        ) : rec?.notes ? <LongText text={rec.notes} limit={600} /> : <div class="rbt-muted">还没填写。可以把发布帖里的推荐设置和玩法粘进来。</div>}
+        ) : rec?.notes ? <LongText text={rec.notes} limit={600} /> : <button type="button" class="rbt-linkbtn rbt-self-start" onClick={() => { setDraft(''); setEditing(true); }}>＋ 添加作者说明</button>}
       </div>
-    </Section>
+    </>
   );
+  return bare ? body : <Section title="来源与作者说明">{body}</Section>;
 }
 
 // ---------------------------------------------------- preset & extensions ---
+
+/** 打开酒馆的世界书面板，并选中这本书。 */
+function openWorldInST(name: string): void {
+  openDrawer('worldinfo');
+  setTimeout(() => openBookInEditor(name), 300);
+}
+
+/** 分区右上角打开酒馆编辑面板的按钮：短字（「编辑」「API 设置」），带 ↗ 表示会打开别的面板。 */
+function OpenBtn({ label, title, onClick }: { label: string; title: string; onClick: () => void }) {
+  return <button type="button" class="rbt-btn rbt-btn-small" title={title} onClick={onClick}>{label} ↗</button>;
+}
+
+/** 一个只有图标的按钮（有边框，看得出能点）。 */
+function IconBtn({ icon, title, onClick }: { icon: string; title: string; onClick: () => void }) {
+  return <button type="button" class="rbt-iconbtn" title={title} aria-label={title} onClick={onClick}><i class={`fa-solid ${icon}`} /></button>;
+}
+
+/** 正在用的就是推荐的：一个绿色的勾，不写字。 */
+function InUse({ title }: { title: string }) {
+  return <i class="fa-solid fa-circle-check rbt-inuse" title={title} aria-label={title} />;
+}
+
+/** 正在用的和推荐的不一样：琥珀色一行，写出正在用的是什么，右边一个按钮换过去。 */
+function Differs({ now, children }: { now: string; children?: ComponentChildren }) {
+  return (
+    <div class="rbt-differ">
+      <span class="rbt-differ-text"><span class="rbt-differ-k">正在用</span>{now}</span>
+      {children}
+    </div>
+  );
+}
 
 export function PresetSection({ info }: { info: CardInfo }) {
   const names = presetNames();
   const rec = info.preset;
   const current = currentPresetName();
   const otherApi = rec && rec.api !== presetApi();
+  const recModel = settings().profiles[info.avatar]?.model;
+  const fallbackModel = rec && settings().presetInfo[rec.name]?.model ? settings().presetInfo[rec.name]!.model! : undefined;
+  const wantModel = recModel ?? fallbackModel;
+  const curModel = currentModel();
+  const live = info.isCurrent;
+  const presetDiffers = live && !!rec && !otherApi && !!current && rec.name !== current;
+  const modelDiffers = live && !!wantModel && !!curModel && !sameModel(wantModel, curModel);
   return (
-    <Section title="推荐预设和模型" hint="切到这张卡时自动换上">
-      <div class="rbt-form-row">
+    <Section title="推荐预设和模型" actions={<>
+      <OpenBtn label="预设设置" title="打开酒馆的预设面板" onClick={() => openDrawer('preset')} />
+      <OpenBtn label="API 设置" title="打开酒馆的 API 面板" onClick={() => openDrawer('api')} />
+    </>}>
+      <div class="rbt-frow">
+        <span class="rbt-frow-k">预设</span>
         <select class="text_pole rbt-select" value={rec?.name ?? ''} onChange={(e) => setRecommendedPreset(info.avatar, info.name, (e.currentTarget as HTMLSelectElement).value || null)}>
           <option value="">不指定</option>
-          {rec && !names.includes(rec.name) && <option value={rec.name}>{rec.name}（已不存在）</option>}
+          {rec && !names.includes(rec.name) && <option value={rec.name}>{rec.name}（已经删掉了）</option>}
           {names.map((n) => <option key={n} value={n}>{n}</option>)}
         </select>
-        {!rec && info.isCurrent && current && <button class="rbt-btn" onClick={() => setRecommendedPreset(info.avatar, info.name, current)}>用现在这个</button>}
+        {live && rec && !otherApi && rec.name === current ? <InUse title="正在用这个预设" /> : <span />}
       </div>
-      {rec && names.includes(rec.name) && <SourceLine kind="preset" id={rec.name} />}
+      {/* 「换成推荐的」按钮在页面顶上的「需要注意」里，这里只标出正在用的是什么，不重复放按钮 */}
+      {presetDiffers && <Differs now={current} />}
+      {live && !rec && current && <button type="button" class="rbt-linkbtn rbt-self-start" onClick={() => setRecommendedPreset(info.avatar, info.name, current)}>推荐正在用的「{current}」</button>}
       {otherApi && <div class="rbt-hint">这个推荐是在「{rec!.api}」下设的，和现在用的 API 不同，所以不会自动换。</div>}
-      {rec && info.isCurrent && !otherApi && rec.name !== current && (
-        <div class="rbt-warn rbt-row-between">
-          <span>现在用的是「{current}」，推荐的是「{rec.name}」。</span>
-          <button class="rbt-btn rbt-btn-primary rbt-btn-small" onClick={() => switchPreset(rec.name)}>换上推荐的</button>
-        </div>
-      )}
-      <div class="rbt-card-sub">
-        <small class="rbt-muted">推荐模型：</small>
-        <ModelPicker
-          value={settings().profiles[info.avatar]?.model}
-          onChange={(m) => setCardModel(info.avatar, info.name, m)}
-          fallback={rec && settings().presetInfo[rec.name]?.model ? { text: '推荐预设的', model: settings().presetInfo[rec.name]!.model! } : undefined}
-          offerSwitch={info.isCurrent}
-        />
+
+      <div class="rbt-frow">
+        <span class="rbt-frow-k">模型</span>
+        <ModelPicker compact value={recModel} onChange={(m) => setCardModel(info.avatar, info.name, m)} fallback={fallbackModel ? { text: '推荐预设里的', model: fallbackModel } : undefined} />
+        {live && wantModel && curModel && sameModel(wantModel, curModel) ? <InUse title="正在用这个模型" /> : <span />}
       </div>
+      {modelDiffers && <Differs now={modelLabel(curModel!)} />}
+      {live && !curModel && <Differs now="没有连上 API" />}
     </Section>
   );
 }
@@ -251,7 +308,6 @@ export function ExtSection({ info }: { info: CardInfo }) {
   };
   return (
     <Section title="需要的插件">
-      {!list.length && <div class="rbt-muted">还没登记。从下面选一个已装的插件，或手动填一个没装的。</div>}
       {list.map((l, i) => {
         const st = extStatus(l.req, installed);
         const chip = STATUS_CHIP[st.status];
@@ -262,7 +318,7 @@ export function ExtSection({ info }: { info: CardInfo }) {
             <span class="rbt-env-name">{st.match?.name ?? l.req.name}</span>
             {l.auto && <small class="rbt-muted">{l.reason}</small>}
             {st.status === 'missing' && l.req.url && <a href={l.req.url} target="_blank" rel="noopener noreferrer">安装地址</a>}
-            {!l.auto && <button class="rbt-btn rbt-btn-small rbt-push" title="从列表里删除" onClick={() => updateRecord(info.avatar, info.name, { extensions: manual.filter((m) => m !== l.req) })}>✕</button>}
+            {!l.auto && <button class="rbt-btn rbt-btn-small rbt-push" title="从列表里删除" onClick={() => updateRecord(info.avatar, info.name, { extensions: manual.filter((m) => m !== l.req) })}>删除</button>}
           </div>
           {st.match && <SourceLine kind="plugin" id={st.match.id} />}
           </div>
@@ -270,9 +326,9 @@ export function ExtSection({ info }: { info: CardInfo }) {
       })}
       <div class="rbt-form-row">
         <select class="text_pole rbt-select" value={pick} onChange={(e) => setPick((e.currentTarget as HTMLSelectElement).value)}>
-          <option value="">添加插件…</option>
+          <option value="">添加需要的插件…</option>
           {installed.filter((e) => !listed.has(e.id)).map((e) => <option key={e.id} value={e.id}>{e.name}{e.enabled ? '' : '（未启用）'}</option>)}
-          <option value="__other">没装的插件，手动填写…</option>
+          <option value="__other">没装的插件（手动填写）…</option>
         </select>
         {pick && pick !== '__other' && <button class="rbt-btn" onClick={add}>添加</button>}
       </div>
@@ -325,15 +381,15 @@ export function WorldSection({ info }: { info: CardInfo }) {
 
   const nameTaken = worldNames().includes(w.importName);
   return (
-    <Section title="世界书">
+    <Section title="世界书" actions={w.state === 'ok' && w.name ? <OpenBtn label="编辑" title="在酒馆的世界书面板里打开" onClick={() => openWorldInST(w.name)} /> : undefined}>
       {w.state === 'none' && <div class="rbt-muted">这张卡没有世界书。</div>}
       {w.state !== 'none' && (
         <div class="rbt-link-row">
           <span class="rbt-env-name">{w.name || w.importName}</span>
-          {w.state === 'ok' && <Chip color={OK}>已绑定</Chip>}
+          {w.state === 'ok' && <InUse title="已绑定到这张卡" />}
           {w.state === 'missing' && <Chip color={BAD}>找不到这本世界书</Chip>}
           {w.state === 'unbound' && <Chip color={WARN}>还没导入</Chip>}
-          {w.embedded !== null && <small class="rbt-muted">卡里自带 {w.embedded} 条</small>}
+          {w.embedded !== null && <small class="rbt-muted">{w.embedded} 条</small>}
         </div>
       )}
       {(w.state === 'missing' || w.state === 'unbound') && w.embedded !== null && (
@@ -342,7 +398,7 @@ export function WorldSection({ info }: { info: CardInfo }) {
           : <div class="rbt-row"><button class="rbt-btn rbt-btn-primary" disabled={busy} onClick={() => run(false)}>{busy ? '正在导入…' : '导入并绑定'}</button></div>
       )}
       {w.state === 'ok' && w.embedded !== null && (
-        diff === 'loading' ? <small class="rbt-muted">正在对比…</small>
+        diff === 'loading' ? null
           : diff && (diff.onlyCard.length || diff.onlyWorld.length) ? (
             <div class="rbt-warn">
               <div>卡里自带的和现在用的不一样：卡里 {diff.card} 条，现在 {diff.world} 条，其中 {diff.same} 条相同。</div>
@@ -351,7 +407,7 @@ export function WorldSection({ info }: { info: CardInfo }) {
               <DiffList title="只在现在这本里" entries={diff.onlyWorld} />
               <div class="rbt-row"><button class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => run(true)}>用卡里的版本覆盖</button></div>
             </div>
-          ) : diff ? <small class="rbt-ok">和卡里自带的一致 ✓</small> : null
+          ) : null
       )}
       {w.extra.length > 0 && <div class="rbt-card-sub"><small class="rbt-muted">附加世界书：</small>{w.extra.map((b) => <Chip key={b}>{b}</Chip>)}</div>}
     </Section>
@@ -365,19 +421,20 @@ export function RegexSection({ info }: { info: CardInfo }) {
     const o = settings().regexOwners[r.id];
     return o?.kind === 'card' && o.key === info.avatar;
   });
-  const preset = info.isCurrent ? currentPresetName() : '';
-  const presetRx = preset ? presetRegexCount(preset) : 0;
   return (
-    <Section title="正则与脚本">
+    <Section title="正则与脚本" actions={info.isCurrent && (info.regex.total > 0 || info.scripts.total > 0) ? <>
+      {info.regex.total > 0 && <OpenBtn label={info.scripts.total > 0 ? '编辑正则' : '编辑'} title="在酒馆的正则面板里编辑这张卡的正则" onClick={() => openRegexManager('scoped')} />}
+      {info.scripts.total > 0 && <OpenBtn label={info.regex.total > 0 ? '编辑脚本' : '编辑'} title="在酒馆助手里编辑这张卡的脚本" onClick={openScriptManager} />}
+    </> : undefined}>
       <div class="rbt-link-row">
-        <span>卡里的正则 <b>{info.regex.total}</b> 条{info.regex.total > 0 && `，开着 ${info.regex.enabled} 条`}</span>
-        {info.regex.total > 0 && (info.regex.allowed ? <Chip color={OK}>已允许运行</Chip> : <Chip color={BAD}>未允许运行</Chip>)}
-        {info.regex.total > 0 && info.isCurrent && <EditButton title="在正则面板里编辑这张卡的正则" onClick={() => openRegexManager('scoped')} />}
+        <span class="rbt-frow-k">卡里的正则</span>
+        <span>{info.regex.total ? `${info.regex.enabled} / ${info.regex.total} 条开着` : '没有'}</span>
+        {info.regex.total > 0 && (info.regex.allowed ? <InUse title="已允许运行" /> : <Chip color={BAD}>没有允许运行</Chip>)}
       </div>
       <div class="rbt-link-row">
-        <span>酒馆助手角色脚本 <b>{info.scripts.total}</b> 个</span>
-        {info.scripts.total > 0 && (info.scripts.enabled ? <Chip color={OK}>已启用</Chip> : <Chip color={BAD}>未启用</Chip>)}
-        {info.scripts.total > 0 && info.isCurrent && <EditButton title="在酒馆助手里编辑脚本" onClick={openScriptManager} />}
+        <span class="rbt-frow-k">角色脚本</span>
+        <span>{info.scripts.total ? `${info.scripts.total} 个` : '没有'}</span>
+        {info.scripts.total > 0 && (info.scripts.enabled ? <InUse title="已启用" /> : <Chip color={BAD}>没有启用</Chip>)}
       </div>
       {info.scripts.names.length > 0 && <div class="rbt-chips">{info.scripts.names.map((n, i) => <Chip key={i}>{n}</Chip>)}</div>}
       {owned.length > 0 && (
@@ -386,8 +443,6 @@ export function RegexSection({ info }: { info: CardInfo }) {
           {owned.map((r) => <div key={r.id} class="rbt-link-row"><span>{r.scriptName}</span>{r.disabled ? <Chip>关</Chip> : <Chip color={OK}>开</Chip>}<EditButton title="编辑这条正则" onClick={() => editRegex(r.id)} /></div>)}
         </div>
       )}
-      {preset && presetRx > 0 && <small class="rbt-muted">另外，正在用的预设「{preset}」带了 {presetRx} 条正则，对所有卡生效。</small>}
-      <small class="rbt-muted">全局正则在左栏「全局工具箱」里逐条开关。</small>
     </Section>
   );
 }

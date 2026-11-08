@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "「导入文件」支持拖放文件；三栏界面的状态栏移至聊天顶栏，首页支持角色卡批量管理。"
+  "rbt_whats_new": "手机入口和存档更好用，角色档案集中显示配套状态，远程首页改用缩略图，加载更快。"
 }

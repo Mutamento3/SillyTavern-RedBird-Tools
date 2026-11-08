@@ -4,7 +4,8 @@
  * 导航条只留 ☰、角色名（点了切换存档）、新聊天和聊天工具箱；状态栏不显示。
  */
 import { signal } from '@preact/signals';
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { Menu } from '../ui/Menu';
 import { ctx, currentCharacter, saveSettings, settings, confirmText } from '../st/st';
 import { panelOpen } from '../ui/Panel';
 import { openGlobal, sheetOpen, shellActive } from '../ui/views';
@@ -264,24 +265,36 @@ function loadVersion(): void {
 }
 
 /** 手机上：当前这张卡的入口（电脑上它们在导航条里）。 */
-function CurrentCharacter() {
-  void chatTick.value;
-  const c = ctx();
-  const char = currentCharacter();
-  const group = c.groupId ? c.groups?.find((g: { id: string }) => g.id === c.groupId) : null;
-  if (!char && !group) return null;
-  const name = char?.name ?? group?.name ?? '';
+
+/** 左栏底部的 ⋯：酒馆的文档、GitHub、Discord 和版本号。 */
+function FootMore({ version }: { version: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => { const t = e.target as Node; if (!ref.current?.contains(t) && !menuRef.current?.contains(t)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('pointerdown', away, true);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc); };
+  }, [open]);
+  const link = (href: string, icon: string, label: string) => (
+    <a role="menuitem" href={href} target="_blank" rel="noopener" onClick={() => setOpen(false)}><i class={`${icon} fa-fw`} /> {label}</a>
+  );
   return (
-    <div class="rbt-left-current">
-      <div class="rbt-left-title">{name}</div>
-      <nav class="rbt-globals rbt-globals-current" aria-label="当前角色">
-        {char && <DrawerButton k="characters" label="编辑卡片" title={`编辑「${name}」的角色卡`} />}
-        <WorldButton grid />
-        <button type="button" class="rbt-gbtn" title="切换 / 管理这个角色的存档" onClick={() => trigger('#option_select_chat')}>
-          <i class="fa-solid fa-clock-rotate-left fa-fw" />
-          <span>存档</span>
-        </button>
-      </nav>
+    <div class="rbt-foot-more" ref={ref}>
+      <button type="button" class={'rbt-foot-btn' + (open ? ' active' : '')} title="更多：酒馆的文档、GitHub、Discord" aria-label="更多" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <i class="fa-solid fa-ellipsis fa-fw" />
+      </button>
+      {open && (
+        <Menu title="SillyTavern" cls="rbt-foot-menu" menuRef={menuRef} onClose={() => setOpen(false)}>
+          {link('https://docs.sillytavern.app/', 'fa-solid fa-circle-question', '酒馆文档')}
+          {link('https://github.com/SillyTavern/SillyTavern', 'fa-brands fa-github', 'GitHub')}
+          {link('https://discord.gg/sillytavern', 'fa-brands fa-discord', 'Discord')}
+          {version && <div class="rbt-menu-caption">SillyTavern {version}</div>}
+        </Menu>
+      )}
     </div>
   );
 }
@@ -302,7 +315,7 @@ function LeftColumn() {
     <aside class="rbt-left" aria-label="RedBird 左栏" onClickCapture={autoClose}>
       <div class="rbt-left-head">
         <button type="button" class="rbt-brand" title="回到首页" onClick={() => { goHome(); if (phone) setNavOpen(false); }}>
-          <span class="rbt-brand-mark">🐦</span>
+          <i class="rbt-brand-mark fa-solid fa-crow" aria-hidden="true" />
           <span>首页</span>
         </button>
         {phone ? (
@@ -316,13 +329,13 @@ function LeftColumn() {
         )}
       </div>
 
-      {phone && <CurrentCharacter />}
-
       <div class="rbt-gtool-row"><ImportButton big /><GlobalButton /></div>
       <nav class="rbt-globals" aria-label="酒馆设定">
         {ST_KEYS.map((k) => (
           <DrawerButton key={k} k={k} title={k === 'api' && !apiOnline.value ? 'API（没连上）' : undefined} dot={k === 'api' && !apiOnline.value ? '没连上 API' : undefined} />
         ))}
+        {/* 世界书也放进这一格（手机上没有状态栏，原来只能从「当前角色」那块进） */}
+        <WorldButton grid />
       </nav>
 
       <div class="rbt-left-actions">
@@ -338,21 +351,15 @@ function LeftColumn() {
 
       {leftMode.value === 'chats' ? <ChatList q={q} /> : <AddedList q={q} />}
 
+      {/* 底部一行：临时聊天、原版界面（离开三栏界面的出口，要一眼看到），其余收进 ⋯ */}
       <div class="rbt-left-foot">
         <button type="button" class="rbt-foot-btn" title="和酒馆助手临时聊几句，不会保存" onClick={openTemporaryChat}>
           <i class="fa-solid fa-comment-dots fa-fw" /> 临时聊天
         </button>
-        <div class="rbt-foot-links">
-          <a href="https://docs.sillytavern.app/" target="_blank" rel="noopener"><i class="fa-solid fa-circle-question" /> 文档</a>
-          <a href="https://github.com/SillyTavern/SillyTavern" target="_blank" rel="noopener"><i class="fa-brands fa-github" /> GitHub</a>
-          <a href="https://discord.gg/sillytavern" target="_blank" rel="noopener"><i class="fa-brands fa-discord" /> Discord</a>
-        </div>
-        <div class="rbt-foot-row">
-          <button type="button" class="rbt-foot-btn" title="关掉三栏界面，回到酒馆原来的界面" onClick={() => { void leaveShell(); }}>
-            <i class="fa-solid fa-table-columns fa-fw" /> 原版界面
-          </button>
-          {version && <span class="rbt-foot-version">SillyTavern {version}</span>}
-        </div>
+        <button type="button" class="rbt-foot-btn" title="关掉三栏界面，回到酒馆原来的界面" onClick={() => { void leaveShell(); }}>
+          <i class="fa-solid fa-table-columns fa-fw" /> 原版界面
+        </button>
+        <FootMore version={version} />
       </div>
     </aside>
   );
@@ -394,7 +401,9 @@ function NavBar() {
             </button>
           )}
         </div>
+        {/* 和电脑上同样的三个入口、同样的图标：编辑卡片、新聊天、聊天工具箱 */}
         <div class="rbt-nav-actions">
+          {char && <DrawerButton k="characters" compact label="编辑卡片" title={`编辑「${name}」的角色卡`} />}
           {!home && (
             <button type="button" class="rbt-icon-btn" title={`给「${name}」开一个新存档`} aria-label="新聊天" onClick={newChat}>
               <i class="fa-solid fa-pen-to-square" />
@@ -427,7 +436,7 @@ function NavBar() {
               </button>
             )}
             <button type="button" class="rbt-gbtn compact rbt-nav-new" title={`给「${name}」开一个新存档`} onClick={newChat}>
-              <i class="fa-solid fa-plus fa-fw" />
+              <i class="fa-solid fa-pen-to-square fa-fw" />
               <span>新聊天</span>
             </button>
           </>

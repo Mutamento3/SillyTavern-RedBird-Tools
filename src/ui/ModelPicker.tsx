@@ -4,13 +4,15 @@
 import { useState } from 'preact/hooks';
 import { currentModel, modelLabel, modelsApply, sameModel, setModel, SOURCE_LABEL, type ModelChoice } from '../tools/model';
 
-export function ModelPicker({ value, onChange, fallback, offerSwitch }: {
+export function ModelPicker({ value, onChange, fallback, offerSwitch, compact }: {
   value?: ModelChoice;
   onChange: (m: ModelChoice | null) => void;
   /** Shown when nothing is set, e.g. 「不填就用推荐预设的：…」. */
   fallback?: { text: string; model: ModelChoice };
   /** Show 「换上」 when the current model differs (only for the card / preset being played). */
   offerSwitch?: boolean;
+  /** 角色档案里的一行：只显示模型名和一个「修改」图标按钮，清除放进修改里。 */
+  compact?: boolean;
 }) {
   const cur = currentModel();
   const [editing, setEditing] = useState(false);
@@ -37,6 +39,7 @@ export function ModelPicker({ value, onChange, fallback, offerSwitch }: {
         <div class="rbt-row-between">
           <small class="rbt-muted">模型名要和酒馆 API 面板里的一样。</small>
           <span class="rbt-row">
+            {compact && value && <button type="button" class="rbt-btn rbt-btn-small" onClick={() => { onChange(null); setEditing(false); }}>清除</button>}
             <button type="button" class="rbt-btn rbt-btn-small" onClick={() => setEditing(false)}>取消</button>
             <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={!model.trim()} onClick={() => { onChange({ source, model: model.trim() }); setEditing(false); }}>完成</button>
           </span>
@@ -45,18 +48,32 @@ export function ModelPicker({ value, onChange, fallback, offerSwitch }: {
     );
   }
 
+  if (compact) {
+    return (
+      <div class="rbt-model-line">
+        {value
+          ? <span class="rbt-model-value">{modelLabel(value)}</span>
+          : <span class="rbt-muted">{fallback ? `${modelLabel(fallback.model)}（${fallback.text}）` : '不指定'}</span>}
+        <span class="rbt-row rbt-push">
+          {!value && cur && <button type="button" class="rbt-linkbtn" onClick={() => onChange(cur)}>推荐正在用的</button>}
+          <button type="button" class="rbt-iconbtn" title="修改推荐的模型" aria-label="修改推荐的模型" onClick={startEdit}><i class="fa-solid fa-pen" /></button>
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div class="rbt-model-line">
       {value
         ? <span class="rbt-model-value">{modelLabel(value)}</span>
-        : <span class="rbt-muted">{fallback ? `不指定，用${fallback.text}：${modelLabel(fallback.model)}` : '不指定'}</span>}
+        : <span class="rbt-muted">{fallback ? `不指定，用${fallback.text}：${modelLabel(fallback.model)}` : '没有指定'}</span>}
       <span class="rbt-row rbt-push">
         {offerSwitch && effective && cur && !sameModel(effective, cur) && (
-          <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={busy} onClick={sw}>{busy ? '正在切换…' : '换上'}</button>
+          <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={busy} onClick={sw}>{busy ? '正在换…' : '换成推荐的'}</button>
         )}
-        {cur && !sameModel(value, cur) && <button type="button" class="rbt-btn rbt-btn-small" title={`现在用的是 ${modelLabel(cur)}`} onClick={() => onChange(cur)}>用现在的模型</button>}
-        <button type="button" class="rbt-btn rbt-btn-small" onClick={startEdit}>{value ? '改' : '手动填'}</button>
-        {value && <button type="button" class="rbt-btn rbt-btn-small" title="不再推荐" onClick={() => onChange(null)}>✕</button>}
+        {cur && !sameModel(value, cur) && <button type="button" class="rbt-btn rbt-btn-small" title={`把现在用的 ${modelLabel(cur)} 设为推荐`} onClick={() => onChange(cur)}>把现在用的设为推荐</button>}
+        <button type="button" class="rbt-btn rbt-btn-small" onClick={startEdit}><i class="fa-solid fa-pen" /> {value ? '修改' : '手动填写'}</button>
+        {value && <button type="button" class="rbt-btn rbt-btn-small" title="不再推荐这个模型" onClick={() => onChange(null)}><i class="fa-solid fa-xmark" /> 清除</button>}
       </span>
     </div>
   );
