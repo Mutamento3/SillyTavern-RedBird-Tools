@@ -61,6 +61,8 @@ const SCREENS = [
   { key: 'home', root: '.rbt-home-gallery', open: `q('.rbt-nav-menu')?.click(); await wait(400); q('.rbt-brand')?.click(); await wait(1500); if (phone) { q('.rbt-left-scrim')?.click(); await wait(400); }` },
   { key: 'left', root: '.rbt-left', open: `await menu();` },
   { key: 'chat', root: '.rbt-nav', open: `` },
+  // 换卡时换预设的进度条：真实切换在本机太快看不到，直接把进度条放上去看样子
+  { key: 'switching', root: '.rbt-nav', open: `const d = document.createElement('div'); d.className = 'rbt-nav-progress'; q('.rbt-nav').appendChild(d); await wait(1300);` },
   { key: 'toolbox-card', root: '.rbt-panel', open: `q('.rbt-toolbox-btn').click(); await wait(1000); btnText('角色档案', q('.rbt-panel')).click(); await wait(1500);` },
   { key: 'toolbox-flow', root: '.rbt-panel', open: `q('.rbt-toolbox-btn').click(); await wait(1000); btnText('信息流', q('.rbt-panel')).click(); await wait(1200);` },
   { key: 'toolbox-vars', root: '.rbt-panel', open: `q('.rbt-toolbox-btn').click(); await wait(1000); btnText('变量', q('.rbt-panel')).click(); await wait(1200);` },

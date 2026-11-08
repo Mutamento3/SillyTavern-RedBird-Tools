@@ -49,6 +49,11 @@ export interface Applied {
 
 /** The last automatic switch (shown in the status panel with an undo button). */
 export const lastApplied = signal<Applied | null>(null);
+/**
+ * 换卡时正在换成的预设名（换完是 null）。酒馆要等这一步做完才显示聊天，手机上要一秒多，
+ * 导航条下沿显示一条进度条，让人知道没卡住。
+ */
+export const applyingPreset = signal<string | null>(null);
 
 function globalWorlds(): string[] {
   return [...(loaded.worldInfo?.selected_world_info ?? [])];
@@ -269,7 +274,12 @@ export async function autoApplyOnSwitch(openStatus: () => void): Promise<void> {
       let first: string[] | null = null;
       let later: string[] | null = null;
       const both = () => { if (first && later) tell([...first, ...later]); };
-      first = [...imported, ...(await applyPlan(plan, { deferModel: true, onModel: (more) => { later = more; both(); } }))];
+      applyingPreset.value = plan.preset ?? null;
+      try {
+        first = [...imported, ...(await applyPlan(plan, { deferModel: true, onModel: (more) => { later = more; both(); } }))];
+      } finally {
+        applyingPreset.value = null;
+      }
       both();
     }
   }

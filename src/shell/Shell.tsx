@@ -11,6 +11,7 @@ import { panelOpen } from '../ui/Panel';
 import { openGlobal, sheetOpen, shellActive } from '../ui/views';
 import { DRAWERS, drawerButtonHandlers, openDrawers, type DrawerKey } from './drawers';
 import { ToolboxButton } from './EnvStatus';
+import { applyingPreset } from '../tools/env/autoapply';
 import { StatusBar, worldStatus } from './StatusBar';
 import { DropHint, ImportButton, installWindowDrop, windowDrag } from '../ui/pages/GlobalToolbox';
 import { HomeGallery } from './Home';
@@ -395,6 +396,13 @@ function WorldButton({ grid }: { grid?: boolean }) {
 ${w.warn}` : w.title} dot={w.warn} />;
 }
 
+/** 换卡时正在换预设：导航条下沿一条细进度条（0.5 秒内就换完的不显示，见 CSS）。 */
+function SwitchProgress() {
+  const p = applyingPreset.value;
+  if (p === null) return null;
+  return <div class="rbt-nav-progress" role="progressbar" aria-label={`正在换成预设「${p}」`} title={`正在换成预设「${p}」`} />;
+}
+
 function NavBar() {
   void chatTick.value;
   void homeActive.value; // re-render when the temporary chat opens
@@ -432,6 +440,7 @@ function NavBar() {
           )}
           {!home && <ToolboxButton />}
         </div>
+        <SwitchProgress />
       </header>
     );
   }
@@ -467,6 +476,7 @@ function NavBar() {
       <div class="rbt-nav-actions">
         {!home && <ToolboxButton />}
       </div>
+      <SwitchProgress />
     </header>
   );
 }
