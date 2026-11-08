@@ -1,0 +1,132 @@
+
+name: RedBird Traffic Tracker
+
+on:
+  schedule:
+    - cron: '17 10 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: redbird-traffic
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Collect GitHub traffic
+        uses: actions/github-script@v7
+        env:
+          TRAFFIC_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const path = "data/traffic.csv";
+
+            const token = process.env.TRAFFIC_TOKEN;
+            if (!token) {
+              throw new Error("TRAFFIC_TOKEN is missing");
+            }
+
+            async function getTraffic(endpoint) {
+              const response = await fetch(
+                `https://api.github.com/repos/${owner}/${repo}/traffic/${endpoint}?per=day`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28"
+                  }
+                }
+              );
+
+              if (!response.ok) {
+                throw new Error(
+                  `${endpoint}: HTTP ${response.status} - ${await response.text()}`
+                );
+              }
+              return response.json();
+            }
+
+            const [clones, views] = await Promise.all([
+              getTraffic("clones"),
+              getTraffic("views")
+            ]);
+
+            // Read existing history, if any
+            let sha;
+            let existing = "";
+
+            try {
+              const file = await github.rest.repos.getContent({
+                owner, repo, path
+              });
+              sha = file.data.sha;
+              existing = Buffer.from(
+                file.data.content, "base64"
+              ).toString("utf8");
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+
+            // Preserve history and update overlapping dates
+            const rows = new Map();
+
+            for (const line of existing.trim().split("\n").slice(1)) {
+              if (line) {
+                rows.set(line.split(",")[0], line);
+              }
+            }
+
+            const viewMap = new Map(
+              views.views.map(v => [
+                v.timestamp.slice(0, 10), v
+              ])
+            );
+
+            for (const c of clones.clones) {
+              const date = c.timestamp.slice(0, 10);
+              const v = viewMap.get(date);
+
+              rows.set(date, [
+                date,
+                c.count,
+                c.uniques,
+                v?.count ?? 0,
+                v?.uniques ?? 0
+              ].join(","));
+            }
+
+            const header =
+              "date,clones,unique_cloners,views,unique_visitors";
+
+            const csv = [
+              header,
+              ...[...rows.entries()]
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([, line]) => line),
+              ""
+            ].join("\n");
+
+            if (csv === existing) {
+              console.log("Traffic data is already up to date.");
+              return;
+            }
+
+            await github.rest.repos.createOrUpdateFileContents({
+              owner,
+              repo,
+              path,
+              message: "chore: update daily traffic statistics",
+              content: Buffer.from(csv).toString("base64"),
+              sha,
+              branch: context.payload.repository.default_branch
+            });
+
+            console.log(`Saved ${rows.size} days of traffic.`);
