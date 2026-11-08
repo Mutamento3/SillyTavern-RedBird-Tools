@@ -67,7 +67,7 @@ export async function checkForUpdate(force = false): Promise<UpdateInfo | null> 
   let skipped = '';
   try { skipped = localStorage.getItem(SKIP_KEY) ?? ''; } catch { /* ignore */ }
   if (!force && skipped === latest.version) return null;
-  toast('info', `有新版本 ${latest.version}（你装的是 ${current}）。${latest.whatsNew ? `\n${latest.whatsNew}\n` : ''}点这里打开「管理扩展程序」，在 RedBird 工具箱那一行点更新，然后刷新页面。`, 'RedBird 工具箱有更新', {
+  toast('info', `新版 ${latest.version}，当前 ${current}。${latest.whatsNew}点此打开「管理扩展程序」，找到 RedBird 工具箱，点更新，完成后刷新页面。`, 'RedBird 工具箱有更新', {
     onclick: openManager,
     timeOut: 15000,
     extendedTimeOut: 8000,
