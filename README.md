@@ -492,16 +492,6 @@ npm run typecheck
 
 本地调试：在 `SillyTavern/data/default-user/extensions/` 下创建指向本仓库的目录链接，Windows 可用 `mklink /J`，然后刷新酒馆。
 
-界面修改参照 [DESIGN.md](DESIGN.md)，其中规定了标题栏、弹窗、底部菜单、整页显示、层级、文字精简、按钮、间距、文案和修改后的检查要求。给 AI 助手的说明见 [CLAUDE.md](CLAUDE.md)。
-
-`dev/ui-audit.mjs` 和 `dev/ui-lint.js` 用于在手机、电脑尺寸下打开各个界面截图，检查横向溢出、对齐、间距、点击区域、被扩展显示出来的酒馆隐藏元素，以及展开和收起是否正常。
-
-运行界面检查：
-
-```bash
-node dev/ui-audit.mjs --url http://localhost:8000/ --char <角色名> --out <目录>
-```
-
 主要目录：
 
 ```text
