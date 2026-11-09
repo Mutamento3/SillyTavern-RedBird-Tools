@@ -946,20 +946,11 @@ select.rbt-home-select.active { background-color: var(--rbd-bg2-hover, color-mix
 .rbt-hcard-pill.warn > i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #f0a43a; }
 .rbt-hcard-pill > i.fa-solid { font-size: 11px; opacity: 0.9; }
 /* 右上角：收藏标记；悬停时换成收藏 / 编辑按钮 */
-.rbt-hcard-favmark {
-  position: absolute; top: 12px; right: 12px;
-  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
-  background: rgba(20, 20, 24, 0.42);
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-  color: #ffd45e; font-size: 12px; pointer-events: none;
-  transition: opacity 0.15s;
-}
+
 .rbt-hcard-acts {
   position: absolute; top: 12px; right: 12px; z-index: 2;
-  display: flex; gap: 6px; opacity: 0; transition: opacity 0.15s;
+  display: flex; gap: 6px;
 }
-.rbt-hcard:hover .rbt-hcard-acts, .rbt-hcard:focus-within .rbt-hcard-acts { opacity: 1; }
-.rbt-hcard:hover .rbt-hcard-favmark, .rbt-hcard:focus-within .rbt-hcard-favmark { opacity: 0; }
 .rbt-hcard-act {
   display: grid; place-items: center; width: 30px; height: 30px; padding: 0;
   border: 0; border-radius: 50%;
@@ -969,7 +960,6 @@ select.rbt-home-select.active { background-color: var(--rbd-bg2-hover, color-mix
 }
 .rbt-hcard-act:hover { background: rgba(20, 20, 24, 0.72); }
 .rbt-hcard-act.on { color: #ffd45e; }
-.rbt-hcard.menu-open .rbt-hcard-acts { opacity: 1; }
 /* 「⋯」菜单：贴在按钮下面，毛玻璃，和右上角按钮同一个语言 */
 .rbt-hcard-menu {
   position: absolute; top: 48px; right: 12px; z-index: 3;
@@ -1065,7 +1055,7 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
 .rbt-stat-text { min-width: 0; max-width: 6em; overflow: hidden; text-overflow: ellipsis; }
 .rbt-stat-badge { flex: none; font-size: 9px; opacity: 0.7; }
 .rbt-stat-dot { position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: #e0a040; }
-/* 顶栏里所有按钮一个高度、一样的内边距和字号（编辑卡片、存档、新聊天、聊天工具箱、状态栏） */
+/* 顶栏里所有按钮一个高度、一样的内边距和字号（编辑角色、存档、新聊天、聊天工具箱、状态栏） */
 .rbt-nav :is(.rbt-gbtn.compact, .rbt-nav-save) { height: 28px; padding: 0 var(--rbd-s-2); font-size: 12.5px; }
 .rbt-nav .rbt-gbtn.compact i { font-size: 12px; }
 .rbt-nav-actions { gap: var(--rbd-s-1); }
@@ -1190,7 +1180,7 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
   body.rbt-shell :is(#right-nav-panel, #WorldInfo) :is(.editor_maximize, .notes-link, .switch_input_type_icon, #hideCharPanelAvatarButton, .fa-ranking-star) { min-width: 32px; min-height: 32px; text-align: center; line-height: 32px; }
   body.rbt-shell .rbt-sheet-note .rbt-note-book { min-height: 32px; }
 
-  /* ---- 编辑卡片顶上：Token 数一行垂直居中；头像右边的图标行左对齐，和下面的「更多…」对齐 ---- */
+  /* ---- 编辑角色顶上：Token 数一行垂直居中；头像右边的图标行左对齐，和下面的「更多…」对齐 ---- */
   body.rbt-shell #right-nav-panel #result_info { align-items: center; gap: 8px; }
   body.rbt-shell #right-nav-panel #result_info > * { margin: 0 !important; }
 
@@ -1236,12 +1226,9 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
   .rbt-hcard-text { padding: 0 10px 14px; }
   .rbt-hcard-name { font-size: 16px; }
   .rbt-hcard-pill { top: 8px; left: 8px; padding: 4px 9px 4px 8px; font-size: 11px; }
-  /* 手机：右上角只放一个「⋯」（收藏、编辑在它的菜单里），收藏的卡在它左边亮一颗星；群组没有菜单，放「编辑」 */
-  .rbt-hcard-acts { top: 6px; right: 6px; opacity: 1; }
+  /* 手机：右上角的「⋯」大一点，好点 */
+  .rbt-hcard-acts { top: 6px; right: 6px; }
   .rbt-hcard-act { width: 36px; height: 36px; font-size: 14px; }
-  .rbt-hcard-act-fav, .rbt-hcard-acts:has(.rbt-hcard-act-more) .rbt-hcard-act-edit { display: none; }
-  .rbt-hcard-favmark { display: none; }
-  .rbt-hcard-namefav { display: inline; margin-right: 5px; font-size: 0.8em; color: #ffd45e; vertical-align: 0.08em; }
   .rbt-hcard-pill { max-width: calc(100% - 52px); }
 
   /* ---- 聊天：头像小一点、消息左右留白少一点，宽度留给正文 ---- */
@@ -1321,7 +1308,7 @@ body.rbt-shell #select_chat_search { flex: 1 1 100% !important; order: 9; height
 /* 「新聊天」的图标和顶栏一致：方框加笔 */
 body.rbt-shell #newChatFromManageScreenButton i.fa-plus::before { content: "\f044"; }
 
-/* 编辑卡片：藏掉酒馆角色面板顶上的角色列表按钮、收藏头像那一排和重复的名字（标题栏已经写了「编辑卡片 · 名字」，换角色在首页） */
+/* 编辑角色：藏掉酒馆角色面板顶上的角色列表按钮、收藏头像那一排和重复的名字（标题栏已经写了「编辑角色 · 名字」，换角色在首页） */
 body.rbt-shell #right-nav-panel #CharListButtonAndHotSwaps,
 body.rbt-shell #right-nav-panel #rm_button_selected_ch { display: none !important; }
 body.rbt-shell #right-nav-panel #rm_PinAndTabs { justify-content: flex-end; }
@@ -1358,7 +1345,7 @@ body.rbt-shell #WorldInfo #world_popup > .flex-container > * { margin-top: 0 !im
   body.rbt-shell #right-nav-panel .tag { min-height: 32px; align-items: center; }
 }
 
-/* 编辑卡片：头像右边那排图标按钮左对齐、间距一致，放不下时换行也从左边排起（和下面的「更多…」左边对齐） */
+/* 编辑角色：头像右边那排图标按钮左对齐、间距一致，放不下时换行也从左边排起（和下面的「更多…」左边对齐） */
 body.rbt-shell #right-nav-panel .form_create_bottom_buttons_block { justify-content: flex-start !important; gap: 6px !important; }
 body.rbt-shell #right-nav-panel .form_create_bottom_buttons_block > .menu_button { margin: 0 !important; }
 body.rbt-shell #right-nav-panel #avatar_controls { gap: 8px; align-items: stretch; }
@@ -1483,14 +1470,14 @@ body.rbt-shell:has(#completion_prompt_manager_popup[style*="block"]) #left-nav-p
    每张卡底部、左上角标签、右上角按钮各有一层背景模糊。手机显卡每一帧都要把它们重算一遍，
    侧边栏滑过、页面滚动时会掉帧。手机上换成半透明底色（卡片底部本来就有图片颜色的渐变托着名字）。 */
 @media (max-width: 1000px) {
-  .rbt-hcard-shade, .rbt-hcard-pill, .rbt-hcard-favmark, .rbt-hcard-act, .rbt-hcard-menu { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .rbt-hcard-shade, .rbt-hcard-pill, .rbt-hcard-act, .rbt-hcard-menu { -webkit-backdrop-filter: none; backdrop-filter: none; }
   .rbt-hcard-shade { background: linear-gradient(to bottom, transparent 38%, color-mix(in srgb, var(--tint) 78%, transparent) 66%, var(--tint) 100%); }
-  .rbt-hcard-pill, .rbt-hcard-favmark { background: rgba(20, 20, 24, 0.6); }
+  .rbt-hcard-pill { background: rgba(20, 20, 24, 0.6); }
   .rbt-hcard-act { background: rgba(20, 20, 24, 0.68); }
   .rbt-hcard-menu { background: rgba(20, 20, 24, 0.94); }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .rbt-hcard-shade, .rbt-hcard-pill, .rbt-hcard-favmark, .rbt-hcard-act, .rbt-hcard-menu { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .rbt-hcard-shade, .rbt-hcard-pill, .rbt-hcard-act, .rbt-hcard-menu { -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 
 /* ============================================================ 换卡时：正在换预设 ===
@@ -1509,22 +1496,21 @@ body.rbt-shell .rbt-nav-progress::before {
   body.rbt-shell .rbt-nav-progress::before { width: 100%; animation: none; opacity: 0.6; }
 }
 
-/* ============================================================ 触屏：首页卡片的收藏和「⋯」一直显示 ===
-   电脑上鼠标移上去才出现；手机没有悬停，原来点不到。触屏上一直显示，按钮放大到好点的尺寸，
-   右上角的小星星标记就不用了（收藏按钮本身会亮）。卡片也不做悬停放大（手指点完会卡在放大状态）。 */
-@media (hover: none) and (min-width: 1001px) {
-  .rbt-hcard-acts { opacity: 1; }
-  .rbt-hcard-favmark { display: none; }
-  .rbt-hcard-act { width: 36px; height: 36px; font-size: 14px; }
-  .rbt-hcard-menu { top: 54px; }
-  .rbt-hcard:hover { transform: none; }
-  .rbt-hcard:hover .rbt-hcard-img { transform: none; }
-}
 
-/* 卡片左上角标签：文字太长时省略，不截断半个字；名字前的收藏星只在手机上显示 */
+/* 卡片左上角标签：文字太长时省略，不截断半个字。置顶的卡名字前有个图钉（电脑、手机一样）。
+   卡片右上角只有一个「⋯」，一直显示（群组是「编辑」），不用鼠标悬停才出现。 */
 .rbt-hcard-pill-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rbt-hcard-namefav { display: none; }
-@media (max-width: 1000px) { .rbt-hcard-namefav { display: inline; } }
+.rbt-hcard-namefav { margin-right: 5px; font-size: 0.8em; color: #ffd45e; vertical-align: 0.08em; }
+.rbt-hcard-pill { max-width: calc(100% - 64px); }
 
-/* 置顶（= 酒馆的收藏）用图钉：没置顶时图钉斜着、淡一点，置顶后立起来、变黄 */
-.rbt-hcard-act-fav:not(.on) i { transform: rotate(45deg); opacity: 0.8; }
+/* ============================================================ 顶栏：存档 ===
+   电脑：和「编辑角色」「新聊天」一样是带图标的按钮，写明「存档 · 11-06 02:45 ▾」，和存档页同一个图标。
+   手机：名字下面一行灰字写存档名；「存档」是右边和编辑角色、新聊天一样的图标按钮。 */
+.rbt-nav .rbt-nav-save { gap: 6px; max-width: 260px; }
+.rbt-nav .rbt-nav-save > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbt-nav .rbt-nav-save > .rbt-nav-save-chev { font-size: 9px; opacity: 0.7; }
+.rbt-nav-who-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; line-height: 1.2; }
+.rbt-nav-sub { display: flex; align-items: center; gap: 4px; max-width: 100%; font-size: 11px; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 50%, transparent)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1000px) {
+  .rbt-nav-phone .rbt-nav-who { cursor: default; padding-right: 0; }
+}

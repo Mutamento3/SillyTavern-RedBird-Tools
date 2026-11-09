@@ -142,6 +142,16 @@ export async function openCharacter(it: CharItem): Promise<void> {
   }
 }
 
+/** 这张卡的所有存档：先打开这张卡，再打开存档页（和顶栏「存档」是同一个页面）。 */
+export async function openSaves(it: CharItem): Promise<void> {
+  await openCharacter(it);
+  // 换卡时会关掉开着的面板，等它关完再打开存档页
+  await new Promise((r) => setTimeout(r, 400));
+  const $ = window.jQuery;
+  if ($) $('#option_select_chat').first().trigger('click');
+  else document.getElementById('option_select_chat')?.click();
+}
+
 /** Edit = select it, then show ST's character editor as an overlay. */
 export async function editCharacter(it: CharItem): Promise<void> {
   await openCharacter(it);

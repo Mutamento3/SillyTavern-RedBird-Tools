@@ -46,6 +46,7 @@ import { Chip } from '../common';
 import { SourceLine } from '../SourceEditor';
 import { ModelPicker } from '../ModelPicker';
 import { openDrawer } from '../../shell/drawers';
+import { closeSheet } from '../views';
 import { openBookInEditor } from '../../shell/worldNote';
 import { currentModel, modelLabel, sameModel, setModel } from '../../tools/model';
 
@@ -78,7 +79,7 @@ export function LongText({ text, limit = 400 }: { text: string; limit?: number }
 
 /**
  * 分区：标题在左上，打开酒馆对应编辑面板的按钮（「编辑」「预设设置」…）统一放在右上，
- * 和卡面的「编辑卡片」同一个位置（DESIGN.md「按钮」）。
+ * 和卡面的「编辑角色」同一个位置（DESIGN.md「按钮」）。
  */
 export function Section({ title, hint, actions, children }: { title: string; hint?: string; actions?: ComponentChildren; children: ComponentChildren }) {
   return (
@@ -109,6 +110,23 @@ export function inputValue(e: Event): string {
 
 // ------------------------------------------------------------ header ---
 
+/**
+ * 角色档案里的按钮在哪里打开都一样。编辑角色、编辑这张卡的正则和脚本，酒馆只能对正在聊的卡做，
+ * 所以看的不是正在聊的卡时（比如从全局工具箱点进来），先打开这张卡，再打开对应的面板。
+ */
+export async function withCardOpen(info: CardInfo, then: () => void): Promise<void> {
+  if (!info.isCurrent) {
+    const c = ctx();
+    const idx = (c.characters ?? []).findIndex((x: { avatar?: string }) => x.avatar === info.avatar);
+    if (idx < 0) return;
+    closeSheet();
+    await c.selectCharacterById(idx);
+    // 换卡时会关掉开着的面板，等它关完再打开
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  then();
+}
+
 export function CardHeader({ info, embedded }: { info: CardInfo; embedded?: boolean }) {
   const [firstLine, ...rest] = info.version.split(/\r?\n/);
   return (
@@ -117,7 +135,6 @@ export function CardHeader({ info, embedded }: { info: CardInfo; embedded?: bool
       <div class="rbt-card-head-main">
         <div class="rbt-card-title">
           <b>{info.name}</b>
-          {!info.isCurrent && <Chip color={WARN}>不是正在玩的卡</Chip>}
         </div>
         {info.creator && <div class="rbt-muted rbt-pre-line">作者：{info.creator}</div>}
         {firstLine && (
@@ -131,7 +148,8 @@ export function CardHeader({ info, embedded }: { info: CardInfo; embedded?: bool
         {info.tags.length > 0 && <div class="rbt-chips">{info.tags.map((t) => <Chip key={t}>{t}</Chip>)}</div>}
       </div>
       <div class="rbt-card-head-actions">
-        {info.isCurrent && <button type="button" class="rbt-btn rbt-btn-small" title={`在酒馆的角色面板里编辑「${info.name}」`} onClick={() => openDrawer('characters')}>编辑卡片 ↗</button>}
+        {!info.isCurrent && <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" title={`打开和「${info.name}」的聊天`} onClick={() => { void withCardOpen(info, () => {}); }}>去聊天</button>}
+        <button type="button" class="rbt-btn rbt-btn-small" title={`在酒馆的角色面板里编辑「${info.name}」`} onClick={() => { void withCardOpen(info, () => openDrawer('characters')); }}>编辑角色 ↗</button>
         {!embedded && !info.isCurrent && currentCharacter() && <button class="rbt-btn rbt-btn-small" onClick={() => { archiveTarget.value = null; }}>回到当前卡</button>}
       </div>
     </div>
@@ -422,9 +440,9 @@ export function RegexSection({ info }: { info: CardInfo }) {
     return o?.kind === 'card' && o.key === info.avatar;
   });
   return (
-    <Section title="正则与脚本" actions={info.isCurrent && (info.regex.total > 0 || info.scripts.total > 0) ? <>
-      {info.regex.total > 0 && <OpenBtn label={info.scripts.total > 0 ? '编辑正则' : '编辑'} title="在酒馆的正则面板里编辑这张卡的正则" onClick={() => openRegexManager('scoped')} />}
-      {info.scripts.total > 0 && <OpenBtn label={info.regex.total > 0 ? '编辑脚本' : '编辑'} title="在酒馆助手里编辑这张卡的脚本" onClick={openScriptManager} />}
+    <Section title="正则与脚本" actions={info.regex.total > 0 || info.scripts.total > 0 ? <>
+      {info.regex.total > 0 && <OpenBtn label={info.scripts.total > 0 ? '编辑正则' : '编辑'} title="在酒馆的正则面板里编辑这张卡的正则" onClick={() => { void withCardOpen(info, () => openRegexManager('scoped')); }} />}
+      {info.scripts.total > 0 && <OpenBtn label={info.regex.total > 0 ? '编辑脚本' : '编辑'} title="在酒馆助手里编辑这张卡的脚本" onClick={() => { void withCardOpen(info, openScriptManager); }} />}
     </> : undefined}>
       <div class="rbt-link-row">
         <span class="rbt-frow-k">卡里的正则</span>

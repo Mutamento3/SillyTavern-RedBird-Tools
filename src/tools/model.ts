@@ -19,7 +19,32 @@ export const SOURCE_LABEL: Record<string, string> = {
 };
 
 function oai(): Any | null {
-  return loaded.openai?.oai_settings ?? null;
+  // 读酒馆模块失败时（比如酒馆不是装在网站根目录），退回酒馆公开给插件的同一份设置
+  try { return loaded.openai?.oai_settings ?? ctx().chatCompletionSettings ?? null; } catch { return null; }
+}
+
+/** 设置里存模型的字段名：大多数是「来源_model」，Google AI Studio 例外。 */
+const MODEL_FIELD: Record<string, string> = { makersuite: 'google_model' };
+
+/**
+ * 现在选的模型名。依次试：酒馆的读取函数 → 设置里对应的字段 → API 面板上显示的值。
+ * 有用户反馈 API 连着却显示「没选模型」：只靠一种读法时，读不到就是空的。
+ */
+function modelName(s: Any): string {
+  const tries: (() => unknown)[] = [
+    () => loaded.openai?.getChatCompletionModel?.(s),
+    () => ctx().getChatCompletionModel?.(),
+    () => s?.[MODEL_FIELD[String(s?.chat_completion_source)] ?? `${s?.chat_completion_source}_model`],
+    () => {
+      const src = String(s?.chat_completion_source ?? '');
+      const el = document.querySelector<HTMLInputElement | HTMLSelectElement>(src === 'custom' ? '#custom_model_id' : `#model_${src}_select`);
+      return el?.value;
+    },
+  ];
+  for (const t of tries) {
+    try { const v = t(); if (typeof v === 'string' && v.trim()) return v.trim(); } catch { /* 下一种 */ }
+  }
+  return '';
 }
 
 /** Chat Completion is the only API where this applies. */
@@ -30,8 +55,8 @@ export function modelsApply(): boolean {
 export function currentModel(): ModelChoice | null {
   const s = oai();
   if (!s) return null;
-  const model = loaded.openai?.getChatCompletionModel?.(s) ?? ctx().getChatCompletionModel?.();
-  return model ? { source: String(s.chat_completion_source), model: String(model) } : null;
+  const model = modelName(s);
+  return model ? { source: String(s.chat_completion_source), model } : null;
 }
 
 export function sameModel(a: ModelChoice | null | undefined, b: ModelChoice | null | undefined): boolean {
@@ -110,11 +135,13 @@ const TEXTGEN_LABEL: Record<string, string> = {
 export function activeConnection(): { api: string; model: string } {
   const c = ctx();
   const main = String(c.mainApi ?? '');
+  const online = String(c.onlineStatus ?? '');
   if (main === 'openai') {
     const src = String(oai()?.chat_completion_source ?? '');
-    return { api: SOURCE_LABEL[src] ?? (src || 'Chat Completion'), model: currentModel()?.model ?? '' };
+    // 实在读不到时，用酒馆连上 API 后显示的状态（连上时一般就是模型名）
+    const fallback = online && online !== 'no_connection' ? online : '';
+    return { api: SOURCE_LABEL[src] ?? (src || 'Chat Completion'), model: currentModel()?.model || fallback };
   }
-  const online = String(c.onlineStatus ?? '');
   const model = online && online !== 'no_connection' ? online : '';
   if (main === 'textgenerationwebui') {
     const type = String(c.textCompletionSettings?.type ?? '');

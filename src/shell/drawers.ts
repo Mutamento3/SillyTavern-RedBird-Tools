@@ -104,7 +104,7 @@ function injectHeaders(): void {
 }
 
 /**
- * 角色面板的标题跟着打开它的按钮走：有角色在聊时是「编辑卡片 · 名字」，否则是「角色」。
+ * 角色面板的标题跟着打开它的按钮走：有角色在聊时是「编辑角色 · 名字」，否则是「角色」。
  * （面板是酒馆的 right-nav-panel，两种情况共用一个。）
  */
 function syncCharacterTitle(): void {
@@ -114,7 +114,7 @@ function syncCharacterTitle(): void {
   const st = (window as unknown as { SillyTavern?: { getContext?: () => { characterId?: string | number; characters?: { name?: string }[]; groupId?: string | null } } }).SillyTavern?.getContext?.();
   const id = st?.characterId;
   const name = !st?.groupId && id !== undefined && id !== null && String(id) !== '' ? st?.characters?.[Number(id)]?.name : undefined;
-  const text = name ? `编辑卡片 · ${name}` : drawerByKey.characters.label;
+  const text = name ? `编辑角色 · ${name}` : drawerByKey.characters.label;
   if (span.textContent !== text) span.textContent = text;
 }
 

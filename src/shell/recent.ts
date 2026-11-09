@@ -185,6 +185,13 @@ export function prettyChatName(chatId: string, charName?: string): string {
   return s;
 }
 
+/** 顶栏里用的短名字：今年的存档不写年份（「11-06 02:45」），改过名的照原样。 */
+export function shortSaveName(chatId: string, charName?: string): string {
+  const s = prettyChatName(chatId, charName);
+  const y = `${new Date().getFullYear()}-`;
+  return /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(s) && s.startsWith(y) ? s.slice(y.length) : s;
+}
+
 let timer: ReturnType<typeof setTimeout> | undefined;
 export function refreshRecentSoon(delay = 1200): void {
   clearTimeout(timer);

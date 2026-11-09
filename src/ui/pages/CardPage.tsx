@@ -105,7 +105,7 @@ export function CardPage({ avatar: forced, embedded }: { avatar?: string; embedd
   if (!f) return <Empty>没有打开单人角色卡。在左栏「角色」里点一张卡，就能看到它的档案。</Empty>;
   const info = cardInfo(f.char);
   return (
-    <div class="rbt-page">
+    <div class="rbt-page rbt-card-page">
       {/* 第一块「卡面」：这是哪张卡、谁做的、去哪编辑，以及作者的链接和说明 */}
       <section class="rbt-card-section rbt-card-hero">
         <CardHeader info={info} embedded={embedded} />
@@ -115,18 +115,15 @@ export function CardPage({ avatar: forced, embedded }: { avatar?: string; embedd
         </div>
       </section>
       {info.isCurrent && <AttentionBox char={f.char} />}
-      <div class="rbt-page-cols">
-        <div class="rbt-page-group">
+      {/* 一列排下来：聊天工具箱里和全局工具箱里点进来的样子一样 */}
+      <div class="rbt-page-group">
           <h2 class="rbt-page-group-title">配套环境</h2>
           <WorldSection info={info} />
           <PresetSection info={info} />
           <RegexSection info={info} />
           <ExtSection info={info} />
-        </div>
-        <div class="rbt-page-group">
-          <SwitchSection avatar={info.avatar} isCurrent={info.isCurrent} />
-        </div>
       </div>
+      <SwitchSection avatar={info.avatar} isCurrent={info.isCurrent} />
     </div>
   );
 }

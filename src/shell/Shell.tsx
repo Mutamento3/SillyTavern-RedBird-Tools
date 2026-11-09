@@ -22,6 +22,7 @@ import {
   openRecentChat,
   refreshRecentSoon,
   prettyChatName,
+  shortSaveName,
   recentChats,
   recentLoading,
   shortTime,
@@ -423,16 +424,24 @@ function NavBar() {
           {home ? (
             <span class="rbt-nav-name">{inTempChat ? '临时聊天' : '首页'}</span>
           ) : (
-            <button type="button" class="rbt-nav-who" title="切换 / 管理存档" onClick={() => trigger('#option_select_chat')}>
+            <div class="rbt-nav-who">
               {char && <img class="rbt-nav-avatar" src={c.getThumbnailUrl('avatar', char.avatar)} alt="" />}
-              <span class="rbt-nav-name">{name}</span>
-              {chatId && <i class="fa-solid fa-chevron-down" />}
-            </button>
+              {/* 名字下面一行灰字：现在是哪个存档。能点的都在右边，用一样的图标按钮 */}
+              <span class="rbt-nav-who-text">
+                <span class="rbt-nav-name">{name}</span>
+                {chatId && <small class="rbt-nav-sub">{shortSaveName(chatId, name)}</small>}
+              </span>
+            </div>
           )}
         </div>
-        {/* 和电脑上同样的三个入口、同样的图标：编辑卡片、新聊天、聊天工具箱 */}
+        {/* 和电脑上同样的入口、同样的顺序和图标：存档、编辑角色、新聊天、聊天工具箱 */}
         <div class="rbt-nav-actions">
-          {char && <DrawerButton k="characters" compact label="编辑卡片" title={`编辑「${name}」的角色卡`} />}
+          {chatId && (
+            <button type="button" class="rbt-icon-btn" title={`「${name}」的所有存档：换一个、改名、删除`} aria-label="存档" onClick={() => trigger('#option_select_chat')}>
+              <i class="fa-solid fa-clock-rotate-left" />
+            </button>
+          )}
+          {char && <DrawerButton k="characters" compact label="编辑角色" title={`编辑角色「${name}」`} />}
           {!home && (
             <button type="button" class="rbt-icon-btn" title={`给「${name}」开一个新存档`} aria-label="新聊天" onClick={newChat}>
               <i class="fa-solid fa-pen-to-square" />
@@ -459,12 +468,15 @@ function NavBar() {
           <>
             {char && <img class="rbt-nav-avatar" src={c.getThumbnailUrl('avatar', char.avatar)} alt="" />}
             <span class="rbt-nav-name">{name}</span>
-            <DrawerButton k="characters" compact label="编辑卡片" title={`编辑「${name}」的角色卡`} />
+            {/* 顺序（电脑、手机一样）：名字 → 存档 → 编辑角色 → 新聊天 */}
             {chatId && (
-              <button type="button" class="rbt-nav-save" title="切换 / 管理这个角色的存档" onClick={() => trigger('#option_select_chat')}>
-                {prettyChatName(chatId, name)} <i class="fa-solid fa-chevron-down" />
+              <button type="button" class="rbt-gbtn compact rbt-nav-save" title={`「${name}」的所有存档：换一个、改名、删除`} onClick={() => trigger('#option_select_chat')}>
+                <i class="fa-solid fa-clock-rotate-left fa-fw" />
+                <span>存档 · {shortSaveName(chatId, name)}</span>
+                <i class="fa-solid fa-chevron-down rbt-nav-save-chev" />
               </button>
             )}
+            <DrawerButton k="characters" compact label="编辑角色" title={`编辑角色「${name}」`} />
             <button type="button" class="rbt-gbtn compact rbt-nav-new" title={`给「${name}」开一个新存档`} onClick={newChat}>
               <i class="fa-solid fa-pen-to-square fa-fw" />
               <span>新聊天</span>

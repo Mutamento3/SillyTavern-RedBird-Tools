@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { openGlobal } from '../ui/views';
 import { openImport } from '../ui/ImportDialog';
-import { isPhone, Menu } from '../ui/Menu';
+import { Menu } from '../ui/Menu';
 import { ctx } from '../st/st';
 import {
   allTags,
@@ -19,6 +19,7 @@ import {
   setFavorite,
   listCharacters,
   openCharacter,
+  openSaves,
   sortCharacters,
   toggleFavorite,
   type CharItem,
@@ -134,7 +135,7 @@ function NewMenu() {
   );
 }
 
-/** 「⋯」菜单：导出、复制、删除（置顶和编辑在电脑上是单独的按钮） */
+/** 「⋯」菜单：卡片上唯一的按钮，电脑和手机一样（置顶、编辑、所有存档、导出、复制、删除）。 */
 function CardMenu({ it, onClose }: { it: CharItem; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -147,13 +148,9 @@ function CardMenu({ it, onClose }: { it: CharItem; onClose: () => void }) {
   const run = (fn: () => unknown) => () => { onClose(); void fn(); };
   return (
     <Menu title={it.name} cls="rbt-hcard-menu" menuRef={ref} onClose={onClose}>
-      {/* 手机上卡片太窄，只放「⋯」一个按钮：置顶和编辑也放进这个菜单 */}
-      {isPhone() && (
-        <>
-          <button type="button" role="menuitem" onClick={run(() => toggleFavorite(it))}><i class="fa-solid fa-thumbtack fa-fw" /> {it.fav ? '取消置顶' : '置顶'}</button>
-          <button type="button" role="menuitem" onClick={run(() => editCharacter(it))}><i class="fa-solid fa-pen fa-fw" /> 编辑角色卡</button>
-        </>
-      )}
+      <button type="button" role="menuitem" onClick={run(() => toggleFavorite(it))}><i class="fa-solid fa-thumbtack fa-fw" /> {it.fav ? '取消置顶' : '置顶'}</button>
+      <button type="button" role="menuitem" onClick={run(() => editCharacter(it))}><i class="fa-solid fa-pen fa-fw" /> 编辑角色</button>
+      <button type="button" role="menuitem" onClick={run(() => openSaves(it))}><i class="fa-solid fa-clock-rotate-left fa-fw" /> 所有存档</button>
       <button type="button" role="menuitem" onClick={run(() => exportCharacter(it, 'png'))}><i class="fa-solid fa-file-image fa-fw" /> 导出 PNG</button>
       <button type="button" role="menuitem" onClick={run(() => exportCharacter(it, 'json'))}><i class="fa-solid fa-file-code fa-fw" /> 导出 JSON</button>
       <button type="button" role="menuitem" onClick={run(() => duplicateCharacter(it))}><i class="fa-solid fa-clone fa-fw" /> 复制一份</button>
@@ -199,23 +196,19 @@ function Card({ it, managing, selected, onSelect }: { it: CharItem; managing?: b
         selectable && <span class="rbt-hcard-check" aria-hidden="true">{selected && <i class="fa-solid fa-check" />}</span>
       ) : (
         <span class="rbt-hcard-acts">
-          {it.kind === 'character' && (
-            <button type="button" class={'rbt-hcard-act rbt-hcard-act-fav' + (it.fav ? ' on' : '')} title={it.fav ? '取消置顶' : '置顶'} onClick={() => { void toggleFavorite(it); }}>
-              <i class="fa-solid fa-thumbtack" />
-            </button>
-          )}
-          <button type="button" class="rbt-hcard-act rbt-hcard-act-edit" title="编辑角色卡" onClick={() => { void editCharacter(it); }}>
+          {/* 群组没有「⋯」菜单，直接放「编辑」 */}
+          {it.kind === 'group' && <button type="button" class="rbt-hcard-act rbt-hcard-act-edit" title="编辑群组" onClick={() => { void editCharacter(it); }}>
             <i class="fa-solid fa-pen" />
-          </button>
+          </button>}
           {it.kind === 'character' && (
-            <button type="button" class="rbt-hcard-act rbt-hcard-act-more" title="更多：置顶、编辑、导出、复制、删除" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(!menu)}>
+            <button type="button" class="rbt-hcard-act rbt-hcard-act-more" title="置顶、编辑、所有存档、导出、复制、删除" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(!menu)}>
               <i class="fa-solid fa-ellipsis" />
             </button>
           )}
         </span>
       )}
       {menu && !managing && <CardMenu it={it} onClose={() => setMenu(false)} />}
-      {it.fav && !managing && <span class="rbt-hcard-favmark" title="已置顶"><i class="fa-solid fa-thumbtack" /></span>}
+      
     </article>
   );
 }

@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.5.11",
+  "version": "0.5.12",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "中文 token 总数与酒馆一致，额度提醒更准。"
+  "rbt_whats_new": "存档入口更清楚，角色卡菜单和角色档案在各处保持一致。"
 }
