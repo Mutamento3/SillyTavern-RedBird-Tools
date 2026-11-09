@@ -1373,3 +1373,24 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 
 /* 删除一律用垃圾桶，不用骷髅（酒馆的删除角色、删除人设、删除存档按钮用 fa-skull）。只换这几个按钮的图标，卡片消息里画的骷髅不动 */
 :is(#delete_button, #persona_delete_button, .PastChat_cross).fa-skull::before { content: "\f2ed" !important; }
+
+/* ============================================================ 角色档案：链接 ===
+   整行是一个链接（点了打开），像列表里的一行；右边「⋯」里才有复制、删除。 */
+.rbt-linklist { display: flex; flex-direction: column; border-radius: var(--rbd-r-m, 12px); background: var(--rbd-bg2, rgba(255, 255, 255, 0.04)); overflow: hidden; }
+.rbt-linkitem { display: flex; align-items: center; min-width: 0; }
+.rbt-linkitem + .rbt-linkitem { border-top: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.07)); }
+.rbt-linkitem-main {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 4px 6px 12px;
+  color: inherit !important; text-decoration: none !important;
+}
+.rbt-linkitem-main:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.06)); }
+.rbt-linkitem-icon { flex: none; color: var(--rbd-accent, #0a84ff); font-size: 15px; }
+.rbt-linkitem-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.rbt-linkitem-label { font-size: 14px; font-weight: 600; color: var(--rbd-accent, #0a84ff); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbt-linkitem-url { font-size: 12px; color: var(--rbd-text3, rgba(255, 255, 255, 0.45)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbt-linkitem-go { flex: none; font-size: 11px; color: var(--rbd-text3, rgba(255, 255, 255, 0.45)); }
+.rbt-linkitem-more {
+  flex: none; display: grid; place-items: center; width: 40px; height: 40px; margin-right: 4px; padding: 0;
+  border: 0; border-radius: var(--rbd-r-s); background: none; color: var(--rbd-text3, inherit); cursor: pointer;
+}
+.rbt-linkitem-more:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.08)); color: var(--rbd-text1, inherit); }

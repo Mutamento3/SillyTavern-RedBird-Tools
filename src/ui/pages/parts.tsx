@@ -6,7 +6,8 @@ import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { normalizeUrl, splitLinks, type BookDiff, type RegexOwner } from '../../core/cards';
-import { ctx, currentCharacter, saveSettings, settings, confirmText } from '../../st/st';
+import { ctx, currentCharacter, saveSettings, settings, confirmText, toast } from '../../st/st';
+import { openFloatMenu } from '../floatMenu';
 import {
   allCharacters,
   archiveTarget,
@@ -166,6 +167,7 @@ export function SourceSection({ info, bare }: { info: CardInfo; bare?: boolean }
   const [url, setUrl] = useState('');
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
+  const [adding, setAdding] = useState(false);
   const urlOk = !!normalizeUrl(url);
 
   const addLink = () => {
@@ -173,6 +175,21 @@ export function SourceSection({ info, bare }: { info: CardInfo; bare?: boolean }
     updateRecord(info.avatar, info.name, { links: [...links, { label: label.trim() || '链接', url: normalizeUrl(url) }] });
     setLabel('');
     setUrl('');
+    setAdding(false);
+  };
+  // 删链接收在每行的「⋯」里（不和「打开」挨着，免得误点）；删完可以撤销
+  const removeLink = (i: number) => {
+    const before = links;
+    const gone = links[i];
+    updateRecord(info.avatar, info.name, { links: links.filter((_, j) => j !== i) });
+    toast('success', `已删除链接「${gone.label}」。点这里撤销。`, 'RedBird 工具箱', { onclick: () => updateRecord(info.avatar, info.name, { links: before }), timeOut: 8000 });
+  };
+  const linkMenu = (i: number, anchor: HTMLElement) => {
+    const l = links[i];
+    openFloatMenu(anchor, l.label, [
+      { label: '复制链接', icon: 'fa-copy', run: async () => { try { await navigator.clipboard.writeText(l.url); toast('success', '已复制链接。'); } catch { toast('error', '没能复制，请长按链接复制。'); } } },
+      { label: '删除', icon: 'fa-trash-can', danger: true, run: () => removeLink(i) },
+    ]);
   };
 
   const body = (
@@ -197,18 +214,33 @@ export function SourceSection({ info, bare }: { info: CardInfo; bare?: boolean }
 
       <div class="rbt-card-sub">
         <small class="rbt-muted">链接</small>
-        {links.map((l, i) => (
-          <div key={i} class="rbt-link-row">
-            <a href={l.url} target="_blank" rel="noopener noreferrer" title={l.url}>{l.label}</a>
-            <small class="rbt-muted rbt-ellipsis">{l.url}</small>
-            <button class="rbt-btn rbt-btn-small" title="删除这条链接" onClick={() => updateRecord(info.avatar, info.name, { links: links.filter((_, j) => j !== i) })}>删除</button>
+        {/* 整行点一下就是打开链接（新标签页）；右边的「⋯」里是复制、删除 */}
+        {links.length > 0 && (
+          <div class="rbt-linklist">
+            {links.map((l, i) => (
+              <div key={i} class="rbt-linkitem">
+                <a class="rbt-linkitem-main" href={l.url} target="_blank" rel="noopener noreferrer" title={`打开 ${l.url}`}>
+                  <i class={`fa-${/discord\.(com|gg)/i.test(l.url) ? 'brands fa-discord' : 'solid fa-link'} fa-fw rbt-linkitem-icon`} aria-hidden="true" />
+                  <span class="rbt-linkitem-text"><span class="rbt-linkitem-label">{l.label}</span><small class="rbt-linkitem-url">{l.url.replace(/^https?:\/\//, '')}</small></span>
+                  <i class="fa-solid fa-arrow-up-right-from-square rbt-linkitem-go" aria-hidden="true" />
+                </a>
+                <button type="button" class="rbt-linkitem-more" title="复制、删除" aria-label="更多" aria-haspopup="menu" onClick={(e) => linkMenu(i, e.currentTarget as HTMLElement)}>
+                  <i class="fa-solid fa-ellipsis" />
+                </button>
+              </div>
+            ))}
           </div>
-        ))}
-        <div class="rbt-form-row">
-          <input class="text_pole rbt-input rbt-w-label" placeholder="名称，如发布帖" value={label} onInput={(e) => setLabel(inputValue(e))} />
-          <input class="text_pole rbt-input" placeholder="https://…" value={url} onInput={(e) => setUrl(inputValue(e))} onKeyDown={(e) => { if (e.key === 'Enter') addLink(); }} />
-          <button class="rbt-btn" disabled={!urlOk} onClick={addLink}>添加</button>
-        </div>
+        )}
+        {adding ? (
+          <div class="rbt-form-row">
+            <input class="text_pole rbt-input rbt-w-label" placeholder="名称，如发布帖" value={label} onInput={(e) => setLabel(inputValue(e))} />
+            <input class="text_pole rbt-input" placeholder="https://…" value={url} autoFocus onInput={(e) => setUrl(inputValue(e))} onKeyDown={(e) => { if (e.key === 'Enter') addLink(); if (e.key === 'Escape') setAdding(false); }} />
+            <button class="rbt-btn rbt-btn-primary" disabled={!urlOk} onClick={addLink}>添加</button>
+            <button class="rbt-btn" onClick={() => { setAdding(false); setLabel(''); setUrl(''); }}>取消</button>
+          </div>
+        ) : (
+          <button type="button" class="rbt-linkbtn rbt-self-start" onClick={() => setAdding(true)}>＋ 添加链接</button>
+        )}
       </div>
 
       <div class="rbt-card-sub">
