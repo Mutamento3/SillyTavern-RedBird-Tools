@@ -1394,3 +1394,6 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
   border: 0; border-radius: var(--rbd-r-s); background: none; color: var(--rbd-text3, inherit); cursor: pointer;
 }
 .rbt-linkitem-more:hover { background: var(--rbd-bg2-hover, rgba(255, 255, 255, 0.08)); color: var(--rbd-text1, inherit); }
+/* 正在改的那条链接：就地变成输入框 */
+.rbt-linkitem-edit { padding: 8px; }
+.rbt-linkitem + .rbt-linkitem-edit, .rbt-linkitem-edit + .rbt-linkitem { border-top: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.07)); }

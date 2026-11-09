@@ -168,6 +168,16 @@ export function SourceSection({ info, bare }: { info: CardInfo; bare?: boolean }
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [adding, setAdding] = useState(false);
+  // 正在改的那条链接（序号），和它的草稿
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+  const [editLabel, setEditLabel] = useState('');
+  const [editUrl, setEditUrl] = useState('');
+  const editOk = !!normalizeUrl(editUrl);
+  const saveEdit = () => {
+    if (editIdx === null || !editOk) return;
+    updateRecord(info.avatar, info.name, { links: links.map((l, j) => (j === editIdx ? { label: editLabel.trim() || '链接', url: normalizeUrl(editUrl) } : l)) });
+    setEditIdx(null);
+  };
   const urlOk = !!normalizeUrl(url);
 
   const addLink = () => {
@@ -187,6 +197,7 @@ export function SourceSection({ info, bare }: { info: CardInfo; bare?: boolean }
   const linkMenu = (i: number, anchor: HTMLElement) => {
     const l = links[i];
     openFloatMenu(anchor, l.label, [
+      { label: '编辑', icon: 'fa-pen', run: () => { setEditLabel(l.label); setEditUrl(l.url); setEditIdx(i); } },
       { label: '复制链接', icon: 'fa-copy', run: async () => { try { await navigator.clipboard.writeText(l.url); toast('success', '已复制链接。'); } catch { toast('error', '没能复制，请长按链接复制。'); } } },
       { label: '删除', icon: 'fa-trash-can', danger: true, run: () => removeLink(i) },
     ]);
@@ -217,18 +228,25 @@ export function SourceSection({ info, bare }: { info: CardInfo; bare?: boolean }
         {/* 整行点一下就是打开链接（新标签页）；右边的「⋯」里是复制、删除 */}
         {links.length > 0 && (
           <div class="rbt-linklist">
-            {links.map((l, i) => (
+            {links.map((l, i) => (editIdx === i ? (
+              <div key={i} class="rbt-form-row rbt-linkitem-edit">
+                <input class="text_pole rbt-input rbt-w-label" placeholder="名称，如发布帖" aria-label="链接名称" value={editLabel} onInput={(e) => setEditLabel(inputValue(e))} />
+                <input class="text_pole rbt-input" placeholder="https://…" aria-label="网址" value={editUrl} autoFocus onInput={(e) => setEditUrl(inputValue(e))} onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditIdx(null); }} />
+                <button class="rbt-btn rbt-btn-primary" disabled={!editOk} onClick={saveEdit}>保存</button>
+                <button class="rbt-btn" onClick={() => setEditIdx(null)}>取消</button>
+              </div>
+            ) : (
               <div key={i} class="rbt-linkitem">
                 <a class="rbt-linkitem-main" href={l.url} target="_blank" rel="noopener noreferrer" title={`打开 ${l.url}`}>
                   <i class={`fa-${/discord\.(com|gg)/i.test(l.url) ? 'brands fa-discord' : 'solid fa-link'} fa-fw rbt-linkitem-icon`} aria-hidden="true" />
                   <span class="rbt-linkitem-text"><span class="rbt-linkitem-label">{l.label}</span><small class="rbt-linkitem-url">{l.url.replace(/^https?:\/\//, '')}</small></span>
                   <i class="fa-solid fa-arrow-up-right-from-square rbt-linkitem-go" aria-hidden="true" />
                 </a>
-                <button type="button" class="rbt-linkitem-more" title="复制、删除" aria-label="更多" aria-haspopup="menu" onClick={(e) => linkMenu(i, e.currentTarget as HTMLElement)}>
+                <button type="button" class="rbt-linkitem-more" title="编辑、复制、删除" aria-label="更多" aria-haspopup="menu" onClick={(e) => linkMenu(i, e.currentTarget as HTMLElement)}>
                   <i class="fa-solid fa-ellipsis" />
                 </button>
               </div>
-            ))}
+            )))}
           </div>
         )}
         {adding ? (

@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.5.14",
+  "version": "0.5.15",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "角色链接整行可打开，删除移入菜单，8 秒内可撤销。"
+  "rbt_whats_new": "链接添加后也能改了，在「⋯」中选择「编辑」即可。"
 }
