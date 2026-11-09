@@ -15,6 +15,7 @@ import {
 } from '../../core/attribute';
 import { contentToText } from '../../core/text';
 import { charaFileName, ctx, currentCharacter, loaded, substitute, type Any } from '../../st/st';
+import { slow } from '../../st/perf';
 
 export interface ActivatedWI extends WIEntryInfo {
   uid: string;
@@ -57,7 +58,8 @@ function readBudget(): Budget | undefined {
 }
 
 export const captures = signal<Capture[]>([]);
-const MAX_CAPTURES = 40;
+/** 留多少轮。每轮都存着整份提示词，长上下文时很占内存（手机内存紧张时页面会被系统重新加载），所以手机上少留。 */
+const maxCaptures = (): number => (window.innerWidth < 1000 ? 10 : 20);
 let nextId = 1;
 
 let pendingWI: Any[] = [];
@@ -126,11 +128,22 @@ function keyMatches(key: string, haystack: string): boolean {
   return haystack.toLowerCase().includes(key.toLowerCase());
 }
 
+/** 只有带宏的文字才需要酒馆替换：{{user}} 这类，或旧写法 <USER> <BOT> <CHAR>。大多数条目都没有，跳过能省下大半时间 */
+const sub = (text: string): string => (text.includes('{{') || /<(USER|BOT|CHAR|CHARIFNOTGROUP|GROUP)>/i.test(text) ? substitute(text) : text);
+
 function collectWI(entries: Any[], scopes: BookScopes, chat: Any[]): ActivatedWI[] {
   const depth = Number(loaded.worldInfo?.world_info_depth ?? 2);
+  // 扫描范围只和扫描深度有关：聊天只过滤一次，同一个深度只拼一次（原来每个条目都把整个聊天过一遍）
+  const visible = chat.filter((m: Any) => !m.is_system);
+  const recentByDepth = new Map<number, string>();
+  const recentFor = (n: number): string => {
+    let r = recentByDepth.get(n);
+    if (r === undefined) { r = visible.slice(-n).map((m: Any) => m.mes ?? '').join('\n'); recentByDepth.set(n, r); }
+    return r;
+  };
   return entries.map((e: Any) => {
     const scanDepth = typeof e.scanDepth === 'number' ? e.scanDepth : depth;
-    const recent = chat.filter((m: Any) => !m.is_system).slice(-Math.max(1, scanDepth)).map((m: Any) => m.mes ?? '').join('\n');
+    const recent = recentFor(Math.max(1, scanDepth));
     const keys: string[] = Array.isArray(e.key) ? e.key.filter(Boolean) : [];
     const book = String(e.world ?? '');
     return {
@@ -138,7 +151,7 @@ function collectWI(entries: Any[], scopes: BookScopes, chat: Any[]): ActivatedWI
       uid: String(e.uid),
       book,
       title: e.comment || keys.slice(0, 3).join(', ') || `#${e.uid}`,
-      content: substitute(String(e.content ?? '')),
+      content: sub(String(e.content ?? '')),
       category: bookCategory(book, scopes),
       position: typeof e.position === 'number' ? e.position : undefined,
       depth: typeof e.depth === 'number' ? e.depth : undefined,
@@ -297,16 +310,25 @@ export function installFlowCapture(): void {
     // 酒馆刚用模型的分词器把这一轮算过一遍（在发这个事件之前），总数以它为准
     const stTokens = Number(loaded.openai?.promptManager?.tokenUsage) || 0;
     pendingWI = [];
-    setTimeout(() => {
+    // 页面空闲时再分析（最多等 1.5 秒），别和酒馆刚开始的流式输出抢时间；「预览」要马上出结果
+    const later = (fn: () => void): void => {
+      if (!data.dryRun && typeof requestIdleCallback === 'function') requestIdleCallback(fn, { timeout: 1500 });
+      else setTimeout(fn, 0);
+    };
+    later(() => {
+      const t0 = performance.now();
       try {
         const cap = buildCapture(chatOut, structured, wiRaw, gen);
         cap.result = scaleTokens(cap.result, stTokens);
         cap.budget = budget;
-        captures.value = [cap, ...captures.value].slice(0, MAX_CAPTURES);
+        // 原始提示词只留最新一轮（导出诊断只用最新的），旧的几轮去掉这一份
+        const older = captures.value.slice(0, maxCaptures() - 1).map((x) => (x.rawChat.length ? { ...x, rawChat: [] } : x));
+        captures.value = [cap, ...older];
       } catch (e) {
         console.error('[RedBird] failed to analyse prompt', e);
       }
-    }, 0);
+      slow('分析这一轮提示词', t0);
+    });
   };
 
   // Run after every other listener (e.g. EJS templates) so we see the final text.

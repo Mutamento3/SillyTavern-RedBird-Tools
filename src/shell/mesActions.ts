@@ -13,9 +13,12 @@
  * 点击是 document 上的委托事件，挪了照样能用。窗口变宽（不是手机布局）时原样放回去。
  */
 import { signal } from '@preact/signals';
-import { saveSettings, settings } from '../st/st';
+import { ctx, saveSettings, settings, toast } from '../st/st';
 import { compact, shellOn } from './Shell';
 import { openFloatMenu, type FloatMenuItem } from '../ui/floatMenu';
+import { lookOn, useBuiltInLook } from '../look/look';
+import { LOOK_COPY } from '../ui/copy';
+import { slow } from '../st/perf';
 
 /** 设置里的「手机消息用工具箱排版」。关掉时手机消息按酒馆原样排（给按原版界面做的美化用）。 */
 export const mesLayoutOn = signal(true);
@@ -204,8 +207,10 @@ function layout(mes: Element): void {
 }
 
 function layoutAll(): void {
+  const t0 = performance.now();
   for (const mes of document.querySelectorAll('#chat > .mes')) layout(mes);
   syncEditBars();
+  slow('排消息', t0);
 }
 
 let queued = false;
@@ -218,12 +223,40 @@ function layoutSoon(): void {
 
 let installed = false;
 
+/**
+ * 防呆：手机上用的别人的美化也改了消息排版（头像、名字那几块），两套排版叠在一起容易错位。
+ * 每个美化提醒一次；点提示就换成工具箱自带的美化。打开酒馆时、换美化时各看一次。
+ */
+const MES_CSS = /\.(mes|mesAvatarWrapper|mes_block|ch_name|name_text|avatar|mes_text)\b/;
+function themeTip(): void {
+  // 已经在用红鸟适配美化（比如刚点了这条提示换过去）就不用提醒
+  if (!shellOn.value || lookOn.value) return;
+  const pu = ctx().powerUserSettings ?? {};
+  const css = String(pu.custom_css ?? '');
+  const theme = String(pu.theme ?? '');
+  if (!theme || !css.trim()) return;
+  // 手机：只在美化也改了消息排版、并开着沉浸阅读时说；电脑：带自定义样式就说一次。两边各记各的
+  const phone = compact.value;
+  if (phone && !(mesLayoutOn.value && MES_CSS.test(css))) return;
+  const key = phone ? 'mesLayoutTipThemes' : 'lookTipThemes';
+  const seen = settings()[key] ?? [];
+  if (seen.includes(theme)) return;
+  settings()[key] = [...seen, theme];
+  saveSettings();
+  // 先说红鸟适配美化的好处，再说现在的美化可能错位；点了换过去（不是关掉排版）
+  toast('info', phone ? LOOK_COPY.phoneTip : LOOK_COPY.deskTip, '美化', {
+    onclick: () => { void useBuiltInLook(); }, timeOut: 12000,
+  });
+}
+
 export function installMesActions(): void {
   if (installed) return;
   const chat = document.getElementById('chat');
   if (!chat) { setTimeout(installMesActions, 1000); return; }
   installed = true;
   mesLayoutOn.value = settings().phoneMesLayout !== false;
+  setTimeout(themeTip, 3000);
+  window.jQuery?.(document).on('change', '#themes', () => setTimeout(themeTip, 800));
   // CSS 只在打开时生效（body.rbt-mes-layout）
   mesLayoutOn.subscribe((v) => { document.body.classList.toggle('rbt-mes-layout', v); layoutAll(); });
   // 新消息、删消息、换聊天：酒馆会往 #chat 里加、删消息，「最后一条」也跟着变
@@ -237,7 +270,8 @@ export function installMesActions(): void {
       if ([...m.addedNodes].some(isEditBox) || [...m.removedNodes].some(isEditBox)) { syncSoon(); return; }
     }
   }).observe(chat, { childList: true, subtree: true });
-  document.addEventListener('click', syncSoon, true);
+  // 只看点在聊天里的（编辑、保存、取消都在消息上）；点别处不用每次都把所有消息检查一遍
+  document.addEventListener('click', (e) => { if ((e.target as Element | null)?.closest?.('#chat')) syncSoon(); }, true);
   // 编辑框跟着内容长高（不支持 field-sizing 的浏览器，比如旧的 iOS Safari；酒馆只在打开时量一次）
   if (!CSS.supports('field-sizing', 'content')) {
     document.addEventListener('input', (e) => {

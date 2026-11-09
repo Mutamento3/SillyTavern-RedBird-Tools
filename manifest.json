@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.5.16",
+  "version": "0.5.17",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "全局工具箱新增「脚本」，可以直接开关酒馆助手的脚本；手机上编辑消息改成「取消」和「保存」。"
+  "rbt_whats_new": "工具箱自带的美化改名「红鸟适配美化」，角色档案新增「人设」；换卡和发消息时更不容易卡住。"
 }

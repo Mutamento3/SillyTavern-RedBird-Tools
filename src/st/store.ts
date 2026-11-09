@@ -12,6 +12,9 @@ import { ctx, onSaveSettings, settings } from './st';
 
 const FILE = 'redbird-tools.json';
 const FORMAT = 'redbird-tools-store';
+/** 一个请求最多等这么久：网慢时不能让同步一直挂着（挂着的话之后的保存都不会再同步）。 */
+const FETCH_MS = 10000;
+const deadline = (): AbortSignal | undefined => (typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal ? AbortSignal.timeout(FETCH_MS) : undefined);
 
 function localSnapshot(): StoreSnapshot {
   const s = settings() as unknown as Record<string, unknown>;
@@ -28,7 +31,7 @@ function applySnapshot(snap: StoreSnapshot): void {
 
 async function readFile(): Promise<StoreSnapshot | null> {
   try {
-    const res = await fetch(`/user/files/${FILE}?t=${Date.now()}`, { cache: 'no-store' });
+    const res = await fetch(`/user/files/${FILE}?t=${Date.now()}`, { cache: 'no-store', signal: deadline() });
     if (!res.ok) return null;
     const j = await res.json();
     if (j?.format !== FORMAT) return null;
@@ -40,7 +43,7 @@ async function readFile(): Promise<StoreSnapshot | null> {
 
 async function writeFile(snap: StoreSnapshot): Promise<void> {
   const body = JSON.stringify({ name: FILE, data: toBase64Utf8(JSON.stringify({ format: FORMAT, version: 1, savedAt: new Date().toISOString(), ...snap })) });
-  const res = await fetch('/api/files/upload', { method: 'POST', headers: ctx().getRequestHeaders(), body });
+  const res = await fetch('/api/files/upload', { method: 'POST', headers: ctx().getRequestHeaders(), body, signal: deadline() });
   if (!res.ok) throw new Error(`${res.status}`);
 }
 

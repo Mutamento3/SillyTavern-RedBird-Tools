@@ -45,6 +45,9 @@ import { CardPage } from './CardPage';
 import { AddGlobalWorld, GlobalRegexList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
 import { trash, TRASH_LABEL, type TrashKind } from '../../tools/trash';
 import { Section } from './parts';
+import { LOOK_COPY, LOOK_NAME } from '../copy';
+import { mesLayoutOn, setMesLayout } from '../../shell/mesActions';
+import { shellOn } from '../../shell/Shell';
 import { PresetScriptsSection, ScriptsPage } from './ScriptsPage';
 import {
   ACCENTS, accentId, currentStTheme, loadThemes, LOOKS, lookId, lookOn, setAccent, setLook, stThemes, themeHasCss, themesLoading,
@@ -682,12 +685,7 @@ function LooksPage() {
     <div class="rbt-page">
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
-          {!builtIn && (
-            <Section title="正在用" hint="酒馆里装的美化">
-              <NavRow title={cur || '酒馆默认'} sub={themeHasCss(curTheme) ? '带自定义样式' : '只换颜色'} trailing={curTheme ? <Swatches t={curTheme} /> : undefined} onClick={() => cur && openDetail({ kind: 'theme', name: cur }, back)} />
-            </Section>
-          )}
-          <Section title="工具箱自带" hint="按三栏界面做的，布局不会冲突">
+          <Section title={LOOK_NAME} hint={LOOK_COPY.builtInHint}>
             <div class="rbt-lookcards">
               {LOOKS.map((l) => <LookCard key={l.id} l={l} on={builtIn && lookId.value === l.id} />)}
             </div>
@@ -704,9 +702,19 @@ function LooksPage() {
             )}
             {!builtIn && <small class="rbt-muted">点一套就换上。换美化时，酒馆面板、三栏界面和工具箱会一起换。</small>}
           </Section>
+          {/* 推荐的放最前面；正在用别人的美化时，再列出是哪一套 */}
+          {!builtIn && (
+            <Section title="正在用" hint="酒馆里装的美化">
+              <NavRow title={cur || '酒馆默认'} sub={themeHasCss(curTheme) ? '带自定义样式' : '只换颜色'} trailing={curTheme ? <Swatches t={curTheme} /> : undefined} onClick={() => cur && openDetail({ kind: 'theme', name: cur }, back)} />
+            </Section>
+          )}
         </div>
         <div class="rbt-page-group">
-          <small class="rbt-muted rbt-looks-note">这些美化是别人按酒馆原版界面做的。工具箱改了部分布局，有的美化可能会错位。工具箱不会为单个美化做适配，有问题请找美化作者。手机上消息排乱了，可以到「扩展 › RedBird 工具箱」关掉「手机消息用工具箱排版」。</small>
+          {/* 别人的美化：先说可能的问题和推荐，再给手机排版的开关（和扩展设置里是同一个开关、同一段文字） */}
+          <div class="rbt-looks-info">
+            <p class="rbt-looks-info-text"><i class="fa-solid fa-circle-info" aria-hidden="true" />{LOOK_COPY.othersRisk}{LOOK_COPY.recommend}{LOOK_COPY.noAdapt}</p>
+            {shellOn.value && <CheckRow label={LOOK_COPY.mesLayoutLabel} detail={LOOK_COPY.mesLayoutDesc} checked={mesLayoutOn.value} onChange={setMesLayout} />}
+          </div>
           {themesLoading.value && !list.length ? <small class="rbt-muted">读取中…</small> : (
             <SeriesList
               kind="theme"
@@ -748,7 +756,7 @@ function ThemeDetail({ name }: { name: string }) {
         {inUse ? <Tag tone="accent">正在用</Tag> : t && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={async () => { setBusy(true); try { await useStTheme(name); } finally { setBusy(false); } }}>换成这个</button>}
       </div>
       {!t && !themesLoading.value && <div class="rbt-warn">找不到这个美化，可能被删除了。</div>}
-      {lookOn.value && t && <small class="rbt-muted">现在用的是工具箱自带的美化。换成这个会把它关掉。</small>}
+      {lookOn.value && t && <small class="rbt-muted">{LOOK_COPY.willTurnOff}</small>}
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
           {t && (

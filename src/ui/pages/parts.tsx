@@ -7,7 +7,7 @@ import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { normalizeUrl, splitLinks, type BookDiff, type RegexOwner } from '../../core/cards';
-import { ctx, currentCharacter, saveSettings, settings, confirmText, toast } from '../../st/st';
+import { ctx, currentCharacter, loaded, saveSettings, settings, confirmText, toast } from '../../st/st';
 import { openFloatMenu } from '../floatMenu';
 import {
   allCharacters,
@@ -367,6 +367,89 @@ export function PresetSection({ info }: { info: CardInfo }) {
       </div>
       {modelDiffers && <Differs now={modelLabel(curModel!)} />}
       {live && !curModel && <Differs now="没有连上 API" />}
+    </Section>
+  );
+}
+
+// ------------------------------------------------------------ 人设 ---
+// 绑定用的是酒馆自己的「连接」（人设 › 连接到角色）：换到这张卡时，酒馆自己会换成绑定的人设，工具箱不再另外换。
+
+const personaTick = signal(0);
+let personaWatch = false;
+function watchPersonas(): void {
+  if (personaWatch) return;
+  personaWatch = true;
+  const c = ctx();
+  const bump = () => { personaTick.value++; };
+  for (const k of ['PERSONA_CHANGED', 'PERSONA_CREATED', 'PERSONA_UPDATED', 'PERSONA_RENAMED', 'PERSONA_DELETED', 'SETTINGS_UPDATED']) {
+    const ev = c.eventTypes?.[k];
+    if (ev) c.eventSource?.on(ev, bump);
+  }
+}
+
+type Conn = { type: string; id: string };
+const isCardConn = (avatar: string) => (x: Conn) => x.type === 'character' && x.id === avatar;
+
+function boundPersonas(avatar: string): string[] {
+  const d = ctx().powerUserSettings?.persona_descriptions ?? {};
+  return Object.keys(d).filter((id) => (d[id]?.connections as Conn[] | undefined)?.some(isCardConn(avatar)));
+}
+
+/** 把人设绑到这张卡。酒馆没开「允许一张卡连多个人设」时，先解开别的人设和这张卡的绑定（和酒馆自己一样）。 */
+function bindPersona(id: string, avatar: string): void {
+  const pu = ctx().powerUserSettings;
+  // 只填了名字和头像、没写过描述的人设还没有这一条：和酒馆一样先建一条空的
+  if (id === String(loaded.personas?.user_avatar ?? '')) loaded.personas?.getOrCreatePersonaDescriptor?.();
+  const all = pu?.persona_descriptions ?? {};
+  if (!all[id]) return;
+  if (!pu.persona_allow_multi_connections) {
+    for (const k of Object.keys(all)) if (k !== id && all[k].connections) all[k].connections = all[k].connections.filter((x: Conn) => !isCardConn(avatar)(x));
+  }
+  all[id].connections = [...(all[id].connections ?? []).filter((x: Conn) => !isCardConn(avatar)(x)), { type: 'character', id: avatar }];
+  ctx().saveSettingsDebounced();
+  personaTick.value++;
+}
+
+function unbindPersona(id: string, avatar: string): void {
+  const d = ctx().powerUserSettings?.persona_descriptions?.[id];
+  if (!d?.connections) return;
+  d.connections = d.connections.filter((x: Conn) => !isCardConn(avatar)(x));
+  ctx().saveSettingsDebounced();
+  personaTick.value++;
+}
+
+export function PersonaSection({ info }: { info: CardInfo }) {
+  void personaTick.value;
+  useEffect(watchPersonas, []);
+  const c = ctx();
+  const names: Record<string, string> = c.powerUserSettings?.personas ?? {};
+  const cur = String(loaded.personas?.user_avatar ?? '');
+  const bound = boundPersonas(info.avatar);
+  const live = info.isCurrent;
+  const curIsPersona = !!cur && cur in names;
+  const name = (id: string) => names[id] || id;
+  return (
+    <Section title="人设" hint="换到这张卡时，酒馆会自动换成绑定的人设。" actions={
+      <OpenBtn label="人设设置" title="打开酒馆的人设面板" onClick={() => openDrawer('persona')} />
+    }>
+      {bound.map((id) => (
+        <div key={id} class="rbt-persona-row">
+          <img class="rbt-persona-avatar" src={c.getThumbnailUrl?.('persona', id) ?? `User Avatars/${id}`} alt="" />
+          <span class="rbt-persona-name">{name(id)}</span>
+          {live && id === cur ? <InUse title="正在用这个人设" /> : <span />}
+          {live && id !== cur && (
+            <button type="button" class="rbt-btn rbt-btn-small" onClick={async () => { await loaded.personas?.setUserAvatar?.(id); personaTick.value++; }}>换上</button>
+          )}
+          <button type="button" class="rbt-btn rbt-btn-small" title={`不再把「${name(id)}」绑在这张卡上`} onClick={() => unbindPersona(id, info.avatar)}>解绑</button>
+        </div>
+      ))}
+      {!bound.length && <small class="rbt-muted">没有绑定人设。</small>}
+      {live && bound.length > 0 && !bound.includes(cur) && cur && <Differs now={name(cur)} />}
+      {curIsPersona && !bound.includes(cur) && (
+        <button type="button" class="rbt-linkbtn rbt-self-start" onClick={() => bindPersona(cur, info.avatar)}>
+          {bound.length && !c.powerUserSettings?.persona_allow_multi_connections ? `改成绑定现在的人设「${name(cur)}」` : `绑定现在的人设「${name(cur)}」`}
+        </button>
+      )}
     </Section>
   );
 }

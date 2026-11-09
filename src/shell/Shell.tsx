@@ -11,7 +11,7 @@ import { panelOpen } from '../ui/Panel';
 import { openGlobal, sheetOpen, shellActive } from '../ui/views';
 import { DRAWERS, drawerButtonHandlers, extButtonHandlers, extDrawers, openDrawers, openExt, type DrawerKey, type ExtDrawer } from './drawers';
 import { ToolboxButton } from './EnvStatus';
-import { applyingPreset } from '../tools/env/autoapply';
+import { applyingCard, applyingPreset } from '../tools/env/autoapply';
 import { StatusBar, worldStatus } from './StatusBar';
 import { DropHint, ImportButton, installWindowDrop, windowDrag } from '../ui/pages/GlobalToolbox';
 import { HomeGallery } from './Home';
@@ -135,9 +135,8 @@ function DrawerButton({ k, compact, label, title, dot, count }: { k: DrawerKey; 
   return (
     <button type="button" class={`rbt-gbtn ${active ? 'active' : ''} ${compact ? 'compact' : ''}`} title={title ?? d.label} {...drawerButtonHandlers(k)}>
       <i class={`fa-solid ${d.icon} fa-fw`} />
-      <span>{label ?? d.label}</span>
-      {/* 图标格里放不下「世界书（2）」，数字放成图标右上角的小数字 */}
-      {count !== undefined && count > 0 && <span class="rbt-gbtn-count">{count}</span>}
+      {/* 本数跟在名字后面，灰色小字（放在图标右上角像未读提醒，玩家会想点掉它） */}
+      <span>{label ?? d.label}{count !== undefined && count > 0 && <small class="rbt-gbtn-n">{count}</small>}</span>
       {dot && <span class="rbt-dot" title={dot} />}
     </button>
   );
@@ -468,8 +467,10 @@ ${w.warn}` : w.title} dot={w.warn} />;
 /** 换卡时正在换预设：导航条下沿一条细进度条（0.5 秒内就换完的不显示，见 CSS）。 */
 function SwitchProgress() {
   const p = applyingPreset.value;
-  if (p === null) return null;
-  return <div class="rbt-nav-progress" role="progressbar" aria-label={`正在换成预设「${p}」`} title={`正在换成预设「${p}」`} />;
+  const card = applyingCard.value;
+  if (p === null && card === null) return null;
+  const label = p !== null ? `正在换成预设「${p}」` : `正在换成「${card}」的配置`;
+  return <div class="rbt-nav-progress" role="progressbar" aria-label={label} title={label} />;
 }
 
 function NavBar() {

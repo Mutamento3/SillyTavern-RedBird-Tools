@@ -8,6 +8,7 @@
  * 6. 文件名——最弱的一行小灰字。
  * 都不勾、不填，就是普通导入。
  */
+import { LOOK_COPY } from './copy';
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { normalizeUrl } from '../core/cards';
@@ -122,7 +123,7 @@ const ACTIVATE: Partial<Record<ImportItem['kind'], { label: string; detail?: str
   preset: { label: '导入后换成这个预设' },
   world: { label: '导入后作为全局世界书打开', detail: '对所有卡生效' },
   character: { label: '导入后打开这张卡' },
-  theme: { label: '导入后换成这个美化', detail: '会关掉工具箱自带的美化' },
+  theme: { label: '导入后换成这个美化', detail: LOOK_COPY.importTurnsOff },
 };
 
 /** 第二层：类型 + 关键事实，一行。 */

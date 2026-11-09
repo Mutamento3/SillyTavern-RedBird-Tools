@@ -55,6 +55,11 @@ export const lastApplied = signal<Applied | null>(null);
  * 导航条下沿显示一条进度条，让人知道没卡住。
  */
 export const applyingPreset = signal<string | null>(null);
+/**
+ * 换卡时正在给哪张卡换配置（导入世界书、换预设 / 世界书 / 正则），换完是 null。
+ * 导航条下沿的进度条看这个：超过 4 秒酒馆先显示聊天（见 index.tsx），这时进度条还在，说明后台还在换。
+ */
+export const applyingCard = signal<string | null>(null);
 
 function globalWorlds(): string[] {
   return [...(loaded.worldInfo?.selected_world_info ?? [])];
@@ -262,6 +267,11 @@ export async function autoApplyOnSwitch(openStatus: () => void): Promise<void> {
   if (!char?.avatar || char.avatar === lastAvatar) return;
   lastAvatar = char.avatar;
   if (!settings().autoApplyEnv) return;
+  applyingCard.value = char.name;
+  try { await applyForCard(char, openStatus); } finally { applyingCard.value = null; }
+}
+
+async function applyForCard(char: Any, openStatus: () => void): Promise<void> {
   // The card's own lorebook first (same rule as 角色档案: only creates, never overwrites).
   const imported: string[] = [];
   const w = cardInfo(char).world;

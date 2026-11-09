@@ -5,6 +5,7 @@
  */
 import { signal } from '@preact/signals';
 import { ctx, saveSettings, settings, toast, confirmText, escHtml } from '../st/st';
+import { LOOK_COPY, LOOK_NAME } from '../ui/copy';
 
 export const ACCENTS: { id: string; label: string; color: string }[] = [
   { id: 'blue', label: '蓝', color: '#0a84ff' },
@@ -43,6 +44,64 @@ export function applyLook(): void {
   root.classList.toggle('rbt-look', lookOn.value);
   for (const l of LOOKS) root.classList.toggle(`rbt-look-${l.id}`, lookOn.value && lookId.value === l.id && l.id !== 'dark');
   root.style.setProperty('--rbd-accent', accentColor());
+  solidSurface();
+}
+
+/** "rgb(1, 2, 3)" / "rgba(1, 2, 3, 0.5)" / "color(srgb …)" → [r, g, b, a] (0–255, a 0–1). */
+function rgba(css: string): [number, number, number, number] | null {
+  const probe = document.createElement('i');
+  probe.style.color = css;
+  if (!probe.style.color) return null;
+  document.body.appendChild(probe);
+  const c = getComputedStyle(probe).color;
+  probe.remove();
+  const n = c.match(/[\d.]+/g)?.map(Number);
+  if (!n || n.length < 3) return null;
+  // color(srgb r g b / a) 是 0–1 的小数
+  const k = c.startsWith('color(') ? 255 : 1;
+  return [n[0] * k, n[1] * k, n[2] * k, n[3] ?? 1];
+}
+
+/**
+ * 别人的主题常把「模糊色调」设成半透明：酒馆原版在它后面加模糊，看起来是毛玻璃。
+ * 三栏界面的左栏、顶栏、面板用这个颜色当底色，后面没有模糊，就成了透明的，字压在聊天上看不清。
+ * 所以没开自带美化时，把它垫在一层实色上（浅色字垫黑、深色字垫白），颜色还是主题的，只是不透明。
+ * 聊天区背后的背景图不受影响（那是 --rbd-canvas）。
+ */
+let lastSolid = '';
+function solidSurface(): void {
+  const root = document.documentElement;
+  const set = (bg1: string, nav: string) => {
+    const key = `${bg1}|${nav}`;
+    if (key === lastSolid) return;
+    lastSolid = key;
+    for (const [k, v] of [['--rbd-bg1', bg1], ['--rbd-canvas-solid', nav]]) {
+      if (v) root.style.setProperty(k, v);
+      else root.style.removeProperty(k);
+    }
+  };
+  // 开着自带美化时，底色是自带美化的实色（写在 CSS 里；行内样式会压过它，所以要拿掉）
+  if (lookOn.value || !document.body) { set('', ''); return; }
+  const cs = getComputedStyle(root);
+  const text = rgba(cs.getPropertyValue('--SmartThemeBodyColor').trim());
+  const lightText = !text || (0.299 * text[0] + 0.587 * text[1] + 0.114 * text[2]) > 128;
+  const base = lightText ? 0 : 255;
+  const solid = (css: string): string => {
+    const c = rgba(css);
+    if (!c || c[3] >= 0.95) return '';
+    const mix = (x: number) => Math.round(x * c[3] + base * (1 - c[3]));
+    return `rgb(${mix(c[0])}, ${mix(c[1])}, ${mix(c[2])})`;
+  };
+  // 左栏、面板用「模糊色调」；顶栏用「聊天色调」（和聊天区同色），都垫成实色。聊天区本身不动，背景图照样看得见
+  set(solid(cs.getPropertyValue('--SmartThemeBlurTintColor').trim()), solid(cs.getPropertyValue('--SmartThemeChatTintColor').trim()));
+}
+
+/** 酒馆换主题、改颜色时把颜色写在 <html style> 上：跟着重新算。 */
+export function watchSurface(): void {
+  let t = 0;
+  new MutationObserver(() => { clearTimeout(t); t = window.setTimeout(solidSurface, 100); })
+    .observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+  solidSurface();
 }
 
 export function setLook(on: boolean): void {
@@ -57,7 +116,7 @@ export function setAccent(id: string): void {
   applyLook();
 }
 
-const WARN = '这套美化是别人按酒馆原版界面做的。在三栏界面里，布局以工具箱为准，个别地方可能不协调。';
+const WARN = LOOK_COPY.othersRisk;
 
 /** Before switching to a theme with its own CSS: say what to expect, with 「以后不再提醒」. */
 async function warnThirdParty(name: string): Promise<boolean> {
@@ -66,7 +125,7 @@ async function warnThirdParty(name: string): Promise<boolean> {
   if (t && !themeHasCss(t)) return true; // 只换颜色的主题不会和布局打架
   const c = ctx();
   if (!c.Popup || !c.POPUP_TYPE) return true;
-  const popup = new c.Popup(`<h3>换成「${escHtml(name)}」？</h3><p>${WARN}</p><p>随时可以在「全局工具箱 › 美化」里换回工具箱自带的。</p>`, c.POPUP_TYPE.CONFIRM, '', {
+  const popup = new c.Popup(`<h3>换成「${escHtml(name)}」？</h3><p>${WARN}</p><p>${LOOK_COPY.recommend}随时可以在「全局工具箱 › 美化」里换回来。</p>`, c.POPUP_TYPE.CONFIRM, '', {
     okButton: '换过去', cancelButton: '取消', customInputs: [{ id: 'rbt_theme_warn_off', label: '以后不再提醒' }],
   });
   const res = await popup.show();
@@ -112,7 +171,7 @@ export async function retireOldTheme(): Promise<void> {
     if ($) { $('#themes').val('Dark V 1.0'); $('#themes option[value="RedBird Dark"]').remove(); }
   }
   ctx().saveSettingsDebounced();
-  toast('info', `旧美化 RedBird Dark 已换成工具箱自带的美化。原来的自定义 CSS 备份在 data/你的用户名/user/files/${file}`, '美化', { timeOut: 10000 });
+  toast('info', `旧美化 RedBird Dark 已换成${LOOK_NAME}。原来的自定义 CSS 备份在 data/你的用户名/user/files/${file}`, '美化', { timeOut: 10000 });
 }
 
 /** Whether the ST theme in use carries its own custom CSS (someone else's 美化). */
@@ -223,7 +282,13 @@ export function watchStThemeSwitch(): void {
     if (!lookOn.value) return;
     setLook(false);
     const name = String($('#themes').val() ?? '');
-    const extra = stThemeHasCss() && !settings().themeWarnOff ? `\n${WARN}` : '';
-    toast('info', `已改用「${name}」，工具箱自带的美化先关掉了。想换回来：全局工具箱 › 美化。${extra}`, '美化', { timeOut: extra ? 9000 : 5000 });
+    const css = stThemeHasCss();
+    // 这条已经说了可能错位、也能点了换回来，手机上那条「美化改了消息排版」的提醒就不再为这个主题弹
+    for (const key of ['mesLayoutTipThemes', 'lookTipThemes'] as const) {
+      const seen = settings()[key] ?? [];
+      if (!seen.includes(name)) settings()[key] = [...seen, name];
+    }
+    saveSettings();
+    toast('info', LOOK_COPY.switched(name, css && !settings().themeWarnOff), '美化', { onclick: () => { void useBuiltInLook(); }, timeOut: 10000 });
   });
 }

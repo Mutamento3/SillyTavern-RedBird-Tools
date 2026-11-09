@@ -12,7 +12,7 @@ import type { EnvProfile } from '../../st/st';
 import { cardIssues, LEVEL_ICON, statusTick } from '../../shell/EnvStatus';
 import { Empty, CheckRow } from '../common';
 import { CardScriptsSection } from './ScriptsPage';
-import { CardHeader, ExtSection, PresetSection, RegexSection, Section, SourceSection, WorldSection } from './parts';
+import { CardHeader, ExtSection, PersonaSection, PresetSection, RegexSection, Section, SourceSection, WorldSection } from './parts';
 
 function AttentionBox({ char }: { char: unknown }) {
   void statusTick.value;
@@ -133,6 +133,7 @@ export function CardPage({ avatar: forced, embedded }: { avatar?: string; embedd
           <h2 class="rbt-page-group-title">配套环境</h2>
           <WorldSection info={info} />
           <PresetSection info={info} />
+          <PersonaSection info={info} />
           <RegexSection info={info} />
           <CardScriptsSection avatar={info.avatar} />
           <ExtSection info={info} />

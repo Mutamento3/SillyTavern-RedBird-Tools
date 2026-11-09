@@ -346,7 +346,8 @@ body.rbt-shell .rbt-nav {
   padding: 0 var(--rbd-s-4);
   box-sizing: border-box;
   color: var(--SmartThemeBodyColor);
-  background: var(--rbd-canvas, var(--SmartThemeBlurTintColor, #0f1013));
+  /* 主题的聊天色调是半透明时，look.ts 会给一个垫了实色的 --rbd-canvas-solid，免得消息从顶栏底下透出来 */
+  background: var(--rbd-canvas-solid, var(--rbd-canvas, var(--SmartThemeBlurTintColor, #0f1013)));
   border-bottom: 1px solid var(--rbd-hairline, color-mix(in srgb, var(--rbd-text1) 6%, transparent));
   font-family: var(--rbd-font, inherit);
   font-size: 13px;
@@ -1516,12 +1517,7 @@ body.rbt-shell .rbt-nav-progress::before {
 
 /* 左栏图标格里插件的按钮：插件给的是图片图标时，和字体图标一样大 */
 .rbt-gbtn-img { width: 18px; height: 18px; object-fit: contain; }
-.rbt-gbtn-count {
-  position: absolute; top: 4px; left: calc(50% + 6px);
-  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
-  background: color-mix(in srgb, var(--rbd-text1, #fff) 14%, transparent); color: var(--rbd-text1, inherit);
-  font-size: 10px; font-weight: 600; line-height: 16px; text-align: center;
-}
+.rbt-gbtn-n { margin-left: 3px; font-size: inherit; font-weight: 400; color: var(--rbd-text3, color-mix(in srgb, currentColor 55%, transparent)); }
 
 /* ============================================================ 管理：批量标签 ===
    电脑上从「标签」按钮往上弹出；手机上是底部菜单（Menu 组件）。每行整行可点，勾选框大一点。 */

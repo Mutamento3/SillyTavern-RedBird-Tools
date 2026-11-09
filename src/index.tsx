@@ -8,7 +8,9 @@ import { render } from 'preact';
 import './style.css';
 import './shell/shell.css';
 import './look/look.css';
-import { applyLook, lookOn, retireOldTheme, setLook, useBuiltInLook, watchStThemeSwitch } from './look/look';
+import { LOOK_COPY } from './ui/copy';
+import { installLongTaskLog, slow, withTimeout } from './st/perf';
+import { applyLook, lookOn, retireOldTheme, setLook, useBuiltInLook, watchStThemeSwitch, watchSurface } from './look/look';
 import { ctx, preloadModules, saveSettings, settings } from './st/st';
 import { installStore } from './st/store';
 import { checkForUpdate, newerVersion, updateNow, installedVersion, installUpdateCheck } from './tools/update';
@@ -35,6 +37,8 @@ import { Panel, openPanel, panelOpen } from './ui/Panel';
 import { closeSheet, configureViews, GLOBAL_TAB_LABELS, GLOBAL_TABS, openGlobal, openView, resolveView, sheetOpen, shellActive, VIEW_LABELS, type GlobalTab, type ViewId } from './ui/views';
 
 const VIEW_IDS = Object.keys(VIEW_LABELS) as ViewId[];
+/** 换卡时最多让酒馆等工具箱多久（见 init 里的 onSwitch） */
+const SWITCH_WAIT_MS = 4000;
 
 function addMenuButton(): void {
   const menu = document.getElementById('extensionsMenu');
@@ -88,8 +92,8 @@ function addSettingsDrawer(): void {
           <div class="rbt-set-title">界面</div>
           ${row('rbt_shell_switch', '三栏界面', '左栏入口、中间聊天、右边工具箱；左栏底部可以切回原版')}
           <small class="rbt-set-tip" id="rbt_thumb_tip" hidden>手机或远程打开时，首页用的是缩略图。觉得模糊，见<a href="https://github.com/RebBirdTD/SillyTavern-RedBird-Tools#调整缩略图清晰度" target="_blank" rel="noopener">怎么调清楚 ↗</a></small>
-          ${row('rbt_mes_layout', '手机消息用工具箱排版', '头像放在名字左边，正文占满屏幕宽。用别人的美化时消息排乱了，关掉就恢复酒馆原来的排版。')}
-          ${row('rbt_look_switch', '自带美化', '深色、浅色、护眼，在全局工具箱 › 美化里选')}
+          ${row('rbt_look_switch', LOOK_COPY.lookLabel, LOOK_COPY.lookDesc)}
+          ${row('rbt_mes_layout', LOOK_COPY.mesLayoutLabel, LOOK_COPY.mesLayoutDesc)}
         </div>
         <div class="rbt-set-group">
           <div class="rbt-set-title">换卡时</div>
@@ -158,7 +162,7 @@ function addSlashCommand(): void {
         else panelOpen.value = !panelOpen.value;
         return '';
       },
-      helpString: '打开/关闭 RedBird 工具箱。参数：card（角色档案）/ flow（信息流）/ vars（变量）/ presets、worlds、regex、plugins、backup（全局工具箱的各标签）；/rbt shell 开关三栏界面。',
+      helpString: '打开/关闭 RedBird 工具箱。参数：card（角色档案）/ flow（信息流）/ vars（变量）/ presets、worlds、regex、scripts、plugins、backup（全局工具箱的各标签）；/rbt shell 开关三栏界面。',
     }));
   } catch (e) {
     console.warn('[RedBird] slash command registration failed', e);
@@ -166,12 +170,16 @@ function addSlashCommand(): void {
 }
 
 async function init(): Promise<void> {
+  installLongTaskLog();
   applyLook();
   void retireOldTheme();
   watchStThemeSwitch();
+  // 别人的主题底色是半透明的时候，三栏界面的底色垫一层实色（见 look.ts）
+  watchSurface();
   await preloadModules();
   // 工具箱自己的存档：先把 settings.json 里旧了的部分补回来（见 st/store.ts）
-  await installStore();
+  // 最多等 5 秒：网慢时别让整个工具箱出不来
+  await withTimeout(installStore(), 5000, false, '读取工具箱存档');
   installModelGuard();
 
   configureViews({
@@ -202,8 +210,14 @@ async function init(): Promise<void> {
 
   // 换卡自动套用配套环境。必须排在所有监听者最前面并等它做完：酒馆按顺序 await 每个监听者，
   // 这样酒馆助手 / MVU 在初始化变量时看到的已经是切换好的世界书和预设。
+  // 但最多等 4 秒：导入世界书、换预设要发请求，网慢（手机远程）时一个请求卡住，酒馆就一直不显示聊天，看起来像卡死。
+  // 超时就先放行，没做完的接着在后台做完。
   const onSwitch = async () => {
-    try { await autoApplyOnSwitch(() => openView('card')); } catch (e) { console.error('[RedBird] auto apply failed', e); }
+    const t0 = performance.now();
+    const work = autoApplyOnSwitch(() => openView('card')).catch((e) => console.error('[RedBird] auto apply failed', e));
+    const late = await Promise.race([work.then(() => false), new Promise<boolean>((r) => setTimeout(() => r(true), SWITCH_WAIT_MS))]);
+    if (late) console.warn(`[RedBird] 换卡的自动切换超过 ${SWITCH_WAIT_MS}ms，先让酒馆显示聊天，剩下的在后台继续`);
+    slow('换卡自动切换', t0);
   };
   const es = ctx().eventSource;
   if (typeof es.makeFirst === 'function') es.makeFirst(ctx().eventTypes.CHAT_CHANGED, onSwitch);

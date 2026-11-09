@@ -129,6 +129,10 @@ export interface RbtSettings {
   shellEnabled: boolean;
   /** 手机上重排消息（头像到名字旁边、按钮到正文下面）。没设过 = 开。 */
   phoneMesLayout?: boolean;
+  /** 已经提醒过「这个美化改了消息排版」的主题名（每个主题只提醒一次） */
+  mesLayoutTipThemes?: string[];
+  /** 电脑上已经提醒过「推荐用红鸟适配美化」的主题名 */
+  lookTipThemes?: string[];
   /** 换卡时自动把预设、全局世界书、全局正则切成这张卡的配套环境。 */
   autoApplyEnv: boolean;
   profiles: Record<string, EnvProfile>;
