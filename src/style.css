@@ -1330,7 +1330,8 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 #rbt_settings .rbt-set-primary { flex: none; margin: 0; padding: 6px 16px; border-radius: 999px; background: var(--rbd-accent, #0a84ff); color: #fff; font-weight: 600; }
 #rbt_settings .rbt-set-row { margin: 0; padding: 10px 0; border-radius: 0; }
 #rbt_settings .rbt-set-tip { display: block; margin: -4px 0 8px 28px; font-size: 12px; line-height: 1.5; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 45%, transparent)); }
-#rbt_settings .rbt-set-tip[hidden] { display: none; }
+#rbt_settings .rbt-set-tip[hidden],
+#rbt_settings .rbt-set-row[hidden] { display: none; }
 #rbt_settings .rbt-set-tip a { color: var(--rbd-accent, #0a84ff); text-decoration: none; }
 #rbt_settings .rbt-set-foot { display: flex; align-items: center; gap: 14px; padding: 0 4px; font-size: 12px; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 45%, transparent)); }
 #rbt_settings .rbt-set-link { display: inline-flex; align-items: center; border: 0; background: none; padding: 0; font: inherit; font-size: 12px; color: var(--rbd-accent, #0a84ff); text-decoration: none; cursor: pointer; }
@@ -1397,3 +1398,12 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 /* 正在改的那条链接：就地变成输入框 */
 .rbt-linkitem-edit { padding: 8px; }
 .rbt-linkitem + .rbt-linkitem-edit, .rbt-linkitem-edit + .rbt-linkitem { border-top: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.07)); }
+
+/* ============================================================ 全局工具箱 › 脚本 ===
+   每行和别的勾选项一样（整行能点）；文件夹里的脚本往里缩一格；没在运行的变淡。 */
+.rbt-script-list { display: flex; flex-direction: column; padding-top: var(--rbd-s-2); border-top: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.07)); }
+.rbt-script-row { align-items: center; }
+.rbt-script-row .rbt-script-icon { flex: none; width: 18px; color: var(--rbd-text3, inherit); font-size: 14px; }
+.rbt-script-row.nested { padding-left: calc(var(--rbd-s-2) + 28px); }
+.rbt-script-row.off .rbt-check-text { opacity: 0.5; }
+.rbt-script-row.disabled { cursor: default; }

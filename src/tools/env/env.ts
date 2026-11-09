@@ -309,11 +309,18 @@ export function refreshEnv(): EnvReport {
   return r;
 }
 
+/** 「记住现在的设置」会记下什么（给界面在点之前先列出来）。 */
+export function snapshotNow(): Omit<EnvProfile, 'savedAt' | 'cardName'> {
+  return currentSnapshot(buildEnvReport());
+}
+
 export function rememberProfile(): void {
   const r = buildEnvReport();
   if (!r.avatar) return;
   const now = new Date().toISOString();
-  settings().profiles[r.avatar] = { savedAt: now, updatedAt: now, cardName: r.cardName, ...currentSnapshot(r) };
+  // 在角色档案里设的推荐模型不在快照里，要留着（以前整个覆盖掉，推荐模型就丢了）
+  const old = settings().profiles[r.avatar];
+  settings().profiles[r.avatar] = { ...old, savedAt: now, updatedAt: now, cardName: r.cardName, ...currentSnapshot(r) };
   saveSettings();
   refreshEnv();
   toast('success', `已记住「${r.cardName}」现在的环境`);

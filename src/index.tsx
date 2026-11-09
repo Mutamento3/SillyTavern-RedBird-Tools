@@ -17,7 +17,9 @@ import { installCharactersWatch } from './shell/characters';
 import { closeDrawer, installDrawers, openDrawers } from './shell/drawers';
 import { installWorldNote } from './shell/worldNote';
 import { installWorldEntries } from './shell/worldEntries';
-import { installMesActions } from './shell/mesActions';
+import { installMesActions, mesLayoutOn, setMesLayout } from './shell/mesActions';
+import { installThWatch } from './tools/scripts/th';
+import { installScriptNotice } from './tools/scripts/notice';
 import { installChatSaves } from './shell/chatSaves';
 import { installRecentWatch } from './shell/recent';
 import { SheetHost } from './shell/Sheet';
@@ -86,6 +88,7 @@ function addSettingsDrawer(): void {
           <div class="rbt-set-title">界面</div>
           ${row('rbt_shell_switch', '三栏界面', '左栏入口、中间聊天、右边工具箱；左栏底部可以切回原版')}
           <small class="rbt-set-tip" id="rbt_thumb_tip" hidden>手机或远程打开时，首页用的是缩略图。觉得模糊，见<a href="https://github.com/RebBirdTD/SillyTavern-RedBird-Tools#调整缩略图清晰度" target="_blank" rel="noopener">怎么调清楚 ↗</a></small>
+          ${row('rbt_mes_layout', '手机消息用工具箱排版', '头像放在名字左边，正文占满屏幕宽。用别人的美化时消息排乱了，关掉就恢复酒馆原来的排版。')}
           ${row('rbt_look_switch', '自带美化', '深色、浅色、护眼，在全局工具箱 › 美化里选')}
         </div>
         <div class="rbt-set-group">
@@ -121,6 +124,10 @@ function addSettingsDrawer(): void {
   lookOn.subscribe((v) => { lookCb.checked = v; });
   const shellCb = bind('rbt_shell_switch', () => shellOn.value, (v) => setShellEnabled(v));
   shellOn.subscribe((v) => { shellCb.checked = v; });
+  // 只在三栏界面里有用：三栏界面关着时不显示这一项
+  const mesCb = bind('rbt_mes_layout', () => mesLayoutOn.value, (v) => setMesLayout(v));
+  mesLayoutOn.subscribe((v) => { mesCb.checked = v; });
+  shellOn.subscribe((v) => { mesCb.closest('label')?.toggleAttribute('hidden', !v); });
   bind('rbt_auto_switch', () => settings().autoApplyEnv, (v) => { settings().autoApplyEnv = v; saveSettings(); });
   bind('rbt_auto_world', () => settings().autoImportWorld, (v) => { settings().autoImportWorld = v; saveSettings(); });
   const ver = wrap.querySelector<HTMLElement>('#rbt_version');
@@ -213,6 +220,8 @@ async function init(): Promise<void> {
   installWorldEntries();
   // 手机上每条消息的「‹ 2/5 › ✎ ⋯」挪到消息最下面一行
   installMesActions();
+  installThWatch();
+  installScriptNotice();
   // 存档页每一条：存档名 + ⋯、两行预览、时间和大小
   installChatSaves();
   // 所有通知（包括酒馆和别的插件发的）右上角都有 ✕，可以直接关掉

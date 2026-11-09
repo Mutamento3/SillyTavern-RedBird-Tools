@@ -6,9 +6,12 @@ import { useEffect, useState } from 'preact/hooks';
 import { currentCharacter, saveSettings, settings } from '../../st/st';
 import { archiveTarget, archiveVersion, cardInfo, ensureFullCharacter, findChar } from '../../tools/cards/cards';
 import { lastApplied, undoLastApply } from '../../tools/env/autoapply';
-import { applyProfile, buildEnvReport, forgetProfile, rememberProfile } from '../../tools/env/env';
+import { applyProfile, buildEnvReport, forgetProfile, rememberProfile, snapshotNow } from '../../tools/env/env';
+import { modelLabel } from '../../tools/model';
+import type { EnvProfile } from '../../st/st';
 import { cardIssues, LEVEL_ICON, statusTick } from '../../shell/EnvStatus';
 import { Empty, CheckRow } from '../common';
+import { CardScriptsSection } from './ScriptsPage';
 import { CardHeader, ExtSection, PresetSection, RegexSection, Section, SourceSection, WorldSection } from './parts';
 
 function AttentionBox({ char }: { char: unknown }) {
@@ -32,6 +35,18 @@ function AttentionBox({ char }: { char: unknown }) {
         </div>
       ))}
     </div>
+  );
+}
+
+/** 记住的（或将要记住的）一套：预设、模型、全局世界书、全局正则，每样一行。 */
+function ProfileLines({ p }: { p: Partial<EnvProfile> }) {
+  return (
+    <ul class="rbt-drift">
+      <li>预设：{p.preset?.name ?? '没指定'}</li>
+      <li>模型：{p.model ? modelLabel(p.model) : '没指定，用预设里的'}</li>
+      <li>全局世界书：{p.globalWorlds?.length ? p.globalWorlds.join('、') : '全部关掉'}</li>
+      <li>全局正则：{p.globalRegexEnabled?.length ? `打开 ${p.globalRegexEnabled.length} 条` : '全部关掉'}</li>
+    </ul>
   );
 }
 
@@ -75,19 +90,17 @@ function SwitchSection({ avatar, isCurrent }: { avatar: string; isCurrent: boole
               <button class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => run(forgetProfile)}>不再记住</button>
             </span>}
           </div>
-          <ul class="rbt-drift">
-            <li>全局世界书：{profile!.globalWorlds?.length ? profile!.globalWorlds.join('、') : '全部关掉'}</li>
-            <li>全局正则：{profile!.globalRegexEnabled?.length ? `打开 ${profile!.globalRegexEnabled.length} 条` : '全部关掉'}</li>
-            {profile!.preset && <li>预设：{profile!.preset.name}</li>}
-          </ul>
+          <ProfileLines p={profile!} />
           {isCurrent && !!drift?.count && (
             <div class="rbt-differ"><span class="rbt-differ-text">有 {drift.count} 处和现在不一样</span><button class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={busy} onClick={() => run(applyProfile)}>恢复</button></div>
           )}
         </div>
       ) : isCurrent && (
         <div class="rbt-card-sub">
+          {/* 点之前先列出会记住什么（推荐模型是角色档案里设的，记住时会留着） */}
+          <small class="rbt-muted">记住后，每次换到这张卡都恢复成这一套：</small>
+          <ProfileLines p={{ ...snapshotNow(), model: profile?.model }} />
           <button class="rbt-btn rbt-btn-small rbt-self-start" disabled={busy} onClick={() => run(rememberProfile)}>记住现在的设置</button>
-          <small class="rbt-muted">记住后，每次换到这张卡都恢复成这一套。</small>
         </div>
       )}
     </Section>
@@ -121,6 +134,7 @@ export function CardPage({ avatar: forced, embedded }: { avatar?: string; embedd
           <WorldSection info={info} />
           <PresetSection info={info} />
           <RegexSection info={info} />
+          <CardScriptsSection avatar={info.avatar} />
           <ExtSection info={info} />
       </div>
       <SwitchSection avatar={info.avatar} isCurrent={info.isCurrent} />

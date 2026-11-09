@@ -1560,44 +1560,64 @@ body.rbt-shell .rbt-nav-progress::before {
    - 头像、名字、时间一行，在正文上面；正文用满整个宽度。
    - 最后一条：正文下面一行「‹ 2/5 › ✎ ⋯」；其他消息：右上角只有「⋯」，编辑收在里面。
    - 所有按钮一样大（36×36），图标一样大。 */
-html body.rbt-shell.rbt-compact #chat .mes { padding: 10px 10px 8px; }
-body.rbt-shell.rbt-compact #chat .mes .mes_block { padding-left: 0; width: 100%; min-width: 0; }
-body.rbt-shell.rbt-compact #chat .mes .mes_text { padding-right: 0; }
+html body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes { padding: 10px 10px 8px; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .mes_block { padding-left: 0; width: 100%; min-width: 0; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .mes_text { padding-right: 0; }
 /* 名字这一行：头像 → 名字和时间 → 右边的「⋯」；点开「⋯」的按钮另起一行 */
-body.rbt-shell.rbt-compact #chat .mes .ch_name { align-items: center; flex-wrap: wrap; gap: 0 8px; min-height: 36px; margin-bottom: 4px; }
-body.rbt-shell.rbt-compact #chat .mes .ch_name > .flex-container { min-width: 0; }
-body.rbt-shell.rbt-compact #chat .mes .ch_name > .mesAvatarWrapper { display: flex; flex-flow: row nowrap; align-items: center; gap: 6px; padding: 0; margin: 0; }
-/* 打开了「显示消息编号 / 计时 / token 数」时，它们排在头像右边，不往下叠 */
-body.rbt-shell.rbt-compact #chat .mes .ch_name > .mesAvatarWrapper > :not(.avatar) { margin: 0; padding: 0; font-size: 11px; white-space: nowrap; }
-body.rbt-shell.rbt-compact #chat .mes .ch_name > .mesAvatarWrapper .avatar { width: 32px; height: 32px; flex: none; }
-body.rbt-shell.rbt-compact #chat .mes .ch_name > .mesAvatarWrapper .avatar img { width: 32px; height: 32px; }
-body.rbt-shell.rbt-compact #chat .mes .mes_buttons { display: contents; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .ch_name { align-items: center; flex-wrap: wrap; gap: 0 8px; min-height: 36px; margin-bottom: 4px; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .ch_name > .flex-container { min-width: 0; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .ch_name > .mesAvatarWrapper { display: flex; padding: 0; margin: 0; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .ch_name > .mesAvatarWrapper .avatar { width: 32px; height: 32px; flex: none; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .ch_name > .mesAvatarWrapper .avatar img { width: 32px; height: 32px; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .mes_buttons { display: contents; }
 /* 点开「⋯」的按钮接在同一行后面，手机宽度不够时才换到下一行。
    酒馆展开时给它加 .visible、收起时去掉；只在展开时把这一组「拆开」排进行里（拆开的盒子自己不占位置）。
    设置里开了「总是展开」时没有 .visible，就作为一整组接在后面，组内自己换行。 */
-body.rbt-shell.rbt-compact #chat .mes .extraMesButtons { order: 4; flex: 1 1 0; min-width: 0; flex-wrap: wrap; justify-content: flex-start; gap: 0; overflow: visible; padding: 0; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .extraMesButtons { order: 4; flex: 1 1 0; min-width: 0; flex-wrap: wrap; justify-content: flex-start; gap: 0; overflow: visible; padding: 0; }
 /* 其他消息：展开的按钮在名字那一行下面另起一行 */
-body.rbt-shell.rbt-compact #chat .mes .ch_name > .extraMesButtons,
-body.rbt-shell.rbt-compact #chat .mes .ch_name > .mes_buttons > .extraMesButtons { flex: 1 1 100%; order: 99; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .ch_name > .extraMesButtons,
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .ch_name > .mes_buttons > .extraMesButtons { flex: 1 1 100%; order: 99; }
+/* 编辑中：酒馆那排图标藏起来，换成工具箱的「取消 ……… ⋯ 保存」（mesActions.ts 加的），
+   贴在这条消息顶上：编辑长消息往下滚时也一直在。 */
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .mes_edit_buttons { display: none !important; }
+/* 酒馆的消息块 overflow:hidden 会让「贴住」失效；只在编辑这一条时放开 */
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .mes_block:has(> .rbt-edit-bar) { overflow: visible; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .rbt-edit-bar {
+  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px;
+  margin: 0 -10px 4px; padding: 6px 10px; background: var(--rbd-bg1, var(--SmartThemeBlurTintColor, #1c1c1e));
+  border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.08));
+}
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .rbt-edit-bar .rbt-btn { min-height: 40px; min-width: 64px; margin: 0; padding: 0 14px; border: 0; border-radius: var(--rbd-r-s, 8px); font-size: 15px; box-shadow: none; }
+/* 取消：普通文字；保存：主色实心（一眼看出哪个是保存） */
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .rbt-edit-bar .rbt-edit-cancel { background: none; color: var(--rbd-text1, inherit); padding-left: 4px; justify-content: flex-start; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .rbt-edit-bar .rbt-edit-save { background: var(--rbd-accent, #0a84ff); color: #fff; font-weight: 600; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .rbt-edit-bar .rbt-edit-spacer { flex: 1; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .rbt-edit-bar .rbt-edit-more {
+  display: grid; place-items: center; width: 40px; height: 40px; padding: 0; margin: 0; border: 0; border-radius: var(--rbd-r-s, 8px);
+  background: none; color: var(--rbd-text2, inherit); font-size: 16px; cursor: pointer;
+}
+/* 编辑框：酒馆限高 75% 屏幕、框里自己滚，光标还放在最后。手机上框里滚和聊天滚叠在一起，很难滚回开头。
+   改成框跟着内容一样高，只有聊天在滚。 */
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes :is(.edit_textarea, .reasoning_edit_textarea) { max-height: none; overflow-y: hidden; }
 /* 按钮一样大 */
-body.rbt-shell.rbt-compact #chat .mes :is(.mes_button, .extraMesButtons > div),
-body.rbt-shell.rbt-compact #chat .mes .rbt-mes-swipes :is(.swipe_left, .swipe_right) {
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes :is(.mes_button, .extraMesButtons > div),
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .rbt-mes-swipes :is(.swipe_left, .swipe_right) {
   box-sizing: border-box; width: 36px; height: 36px; padding: 0; margin: 0;
   font-size: 15px; line-height: 36px; text-align: center; opacity: 0.55; filter: none;
 }
 /* 最后一条：正文下面一行 */
-body.rbt-shell.rbt-compact .rbt-mes-actions { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 0 2px; margin: 2px 0 0; }
-body.rbt-shell.rbt-compact .rbt-mes-actions .mes_edit { order: 1; }
-body.rbt-shell.rbt-compact .rbt-mes-actions .extraMesButtonsHint { order: 2; }
-body.rbt-shell.rbt-compact .rbt-mes-actions .mes_bookmark { order: 3; }
-body.rbt-shell.rbt-compact .rbt-mes-swipes { display: flex; align-items: center; }
-body.rbt-shell.rbt-compact .mes:not(.last_mes):not(.swipes_visible) .rbt-mes-swipes { display: none; }
-body.rbt-shell.rbt-compact .rbt-mes-swipes :is(.swipe_left, .swipe_right) { position: static; display: flex; align-items: center; justify-content: center; font-size: 17px; }
-body.rbt-shell.rbt-compact .rbt-mes-swipes .swipeRightBlock { position: static; flex-direction: row-reverse; align-items: center; pointer-events: auto; }
-body.rbt-shell.rbt-compact .rbt-mes-swipes .swipes-counter { margin: 0; height: auto; min-width: 30px; padding: 0 2px; font-size: 13px; opacity: 0.7; }
+body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-actions { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 0 2px; margin: 2px 0 0; }
+body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-actions .mes_edit { order: 1; }
+body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-actions .extraMesButtonsHint { order: 2; }
+body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-actions .mes_bookmark { order: 3; }
+body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-swipes { display: flex; align-items: center; }
+body.rbt-shell.rbt-compact.rbt-mes-layout .mes:not(.last_mes):not(.swipes_visible) .rbt-mes-swipes { display: none; }
+body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-swipes :is(.swipe_left, .swipe_right) { position: static; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-swipes .swipeRightBlock { position: static; flex-direction: row-reverse; align-items: center; pointer-events: auto; }
+body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-swipes .swipes-counter { margin: 0; height: auto; min-width: 30px; padding: 0 2px; font-size: 13px; opacity: 0.7; }
 /* 1/1 或第一条回复时，左箭头也留着，只是变灰、点不了（位置不跳） */
-body.rbt-shell.rbt-compact .mes:not(.swipes_visible) .rbt-mes-swipes .swipe_left,
-body.rbt-shell.rbt-compact .rbt-mes-swipes .swipe_left[hidden] { visibility: visible; opacity: 0.2 !important; pointer-events: none; }
+body.rbt-shell.rbt-compact.rbt-mes-layout .mes:not(.swipes_visible) .rbt-mes-swipes .swipe_left,
+body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-swipes .swipe_left[hidden] { visibility: visible; opacity: 0.2 !important; pointer-events: none; }
 
 /* ============================================================ 输入框两边的按钮 ===
    酒馆的 ☰、魔法棒、发送（停止、继续、代写）图标有 28px，在输入框旁边显得笨重。
@@ -1610,9 +1630,14 @@ body.rbt-shell #send_form :is(#leftSendForm, #rightSendForm) > div {
 }
 body.rbt-shell #send_form :is(#leftSendForm, #rightSendForm) > div::before { font-size: 18px; }
 /* 名字下面一行写时间（手机上一行放不下名字加完整日期） */
-body.rbt-shell.rbt-compact #chat .mes .ch_name .alignItemsBaseline { flex-direction: column; align-items: flex-start; gap: 0; min-width: 0; }
-body.rbt-shell.rbt-compact #chat .mes .ch_name .timestamp { margin: 0; font-size: 11px; line-height: 1.3; }
-body.rbt-shell.rbt-compact #chat .mes .ch_name .name_text { line-height: 1.25; }
+/* 名字（隐藏消息时后面有个小幽灵）一行；时间、楼层、计时、token 数是一类，在名字下面一行，灰色小字 */
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .ch_name .alignItemsBaseline { flex-wrap: wrap; align-items: baseline; gap: 0 6px; min-width: 0; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .rbt-mes-meta { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; min-width: 0; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .rbt-mes-meta > * {
+  margin: 0; padding: 0; font-size: 11px; line-height: 1.3; font-weight: 400; white-space: nowrap; color: var(--rbd-text3, inherit);
+}
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .rbt-mes-meta > :empty { display: none; }
+body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .ch_name .name_text { line-height: 1.25; }
 
 /* 首页第一行：「角色 36」在左；搜索和新建在右（都是对整个角色库的操作） */
 .rbt-home-head .rbt-home-search { margin-left: auto; }
@@ -1628,6 +1653,8 @@ body.rbt-shell.rbt-compact #chat .mes .ch_name .name_text { line-height: 1.25; }
   display: flex; align-items: center; gap: 8px; min-width: 0; padding: 4px 8px 4px 4px; margin: 0;
   border: 0; border-radius: var(--rbd-r-s); background: transparent; color: var(--SmartThemeBodyColor); font: inherit; cursor: pointer;
 }
+/* 名字在按钮里：按百分比限宽会和按钮宽度互相等，结果名字被截得很短；改成固定上限 */
+.rbt-nav .rbt-nav-who > .rbt-nav-name { flex-shrink: 1; min-width: 0; max-width: 240px; }
 .rbt-nav .rbt-nav-who:hover { background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 5%, transparent)); }
 
 /* ============================================================ 存档页：每一条 ===

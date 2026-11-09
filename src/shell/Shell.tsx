@@ -502,14 +502,13 @@ function NavBar() {
             </button>
           )}
         </div>
-        {/* 和电脑上同样的入口、同样的顺序和图标：存档、编辑角色、新聊天、聊天工具箱 */}
+        {/* 和电脑上同样的入口、同样的顺序和图标：存档、新聊天、聊天工具箱（编辑角色 = 点头像和名字） */}
         <div class="rbt-nav-actions">
           {chatId && (
             <button type="button" class="rbt-icon-btn" title={`「${name}」的所有存档：换一个、改名、删除`} aria-label="存档" onClick={() => trigger('#option_select_chat')}>
               <i class="fa-solid fa-clock-rotate-left" />
             </button>
           )}
-          {char && <DrawerButton k="characters" compact label="编辑角色" title={`编辑角色「${name}」`} />}
           {!home && (
             <button type="button" class="rbt-icon-btn" title={`给「${name}」开一个新存档`} aria-label="新聊天" onClick={newChat}>
               <i class="fa-solid fa-pen-to-square" />
@@ -539,7 +538,7 @@ function NavBar() {
               {char && <img class="rbt-nav-avatar" src={c.getThumbnailUrl('avatar', char.avatar)} alt="" />}
               <span class="rbt-nav-name">{name}</span>
             </button>
-            {/* 顺序（电脑、手机一样）：名字 → 存档 → 编辑角色 → 新聊天 */}
+            {/* 顺序（电脑、手机一样）：名字（点了编辑角色）→ 存档 → 新聊天 */}
             {chatId && (
               <button type="button" class="rbt-gbtn compact rbt-nav-save" title={`「${name}」的所有存档：换一个、改名、删除`} onClick={() => trigger('#option_select_chat')}>
                 <i class="fa-solid fa-clock-rotate-left fa-fw" />
@@ -547,7 +546,6 @@ function NavBar() {
                 <i class="fa-solid fa-chevron-down rbt-nav-save-chev" />
               </button>
             )}
-            <DrawerButton k="characters" compact label="编辑角色" title={`编辑角色「${name}」`} />
             <button type="button" class="rbt-gbtn compact rbt-nav-new" title={`给「${name}」开一个新存档`} onClick={newChat}>
               <i class="fa-solid fa-pen-to-square fa-fw" />
               <span>新聊天</span>

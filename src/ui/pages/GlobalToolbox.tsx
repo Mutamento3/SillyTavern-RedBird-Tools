@@ -45,6 +45,7 @@ import { CardPage } from './CardPage';
 import { AddGlobalWorld, GlobalRegexList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
 import { trash, TRASH_LABEL, type TrashKind } from '../../tools/trash';
 import { Section } from './parts';
+import { PresetScriptsSection, ScriptsPage } from './ScriptsPage';
 import {
   ACCENTS, accentId, currentStTheme, loadThemes, LOOKS, lookId, lookOn, setAccent, setLook, stThemes, themeHasCss, themesLoading,
   useBuiltInLook, useStTheme, type StTheme,
@@ -419,6 +420,7 @@ function PresetDetail({ name }: { name: string }) {
         </div>
         <div class="rbt-page-group">
           <PresetModelSection name={name} isCurrent={name === cur} />
+          <PresetScriptsSection name={name} />
           <Section title="推荐它的卡" hint="切到这些卡时会自动换上这个预设">
             <CardRows cards={ov.byPreset.get(name) ?? []} back={name} empty="还没有卡推荐它。在角色档案的「推荐预设」里设置。" />
           </Section>
@@ -537,7 +539,6 @@ function RegexPage() {
   useEffect(() => { refreshEnv(); }, []);
   const items = report?.items ?? [];
   const regex = items.filter((i: EnvItem) => i.scope === 'global' && i.kind === 'regex');
-  const scripts = items.filter((i: EnvItem) => i.scope === 'global' && i.kind === 'script');
   const cardRx = useMemo(() => allCharacters().map(cardInfo).filter((c) => c.regex.total > 0).sort((a, b) => b.regex.total - a.regex.total), [archiveVersion.value]);
   const presetRx = presetNames().map((p) => ({ p, n: presetRegexCount(p) })).filter((x) => x.n > 0);
   const cur = currentPresetName();
@@ -550,7 +551,6 @@ function RegexPage() {
             <GlobalRegexList items={regex} />
             <div class="rbt-row"><button type="button" class="rbt-btn" onClick={() => openRegexManager()}>新建、编辑或导入正则 <i class="fa-solid fa-arrow-up-right-from-square" /></button></div>
           </Section>
-          {scripts.length > 0 && <Section title="酒馆助手全局脚本" hint="对所有卡生效">{scripts.map((i) => <ItemRow key={i.id} item={i} />)}</Section>}
         </div>
         <div class="rbt-page-group">
           <Section title="带正则的卡" hint="只对那张卡生效">
@@ -706,7 +706,7 @@ function LooksPage() {
           </Section>
         </div>
         <div class="rbt-page-group">
-          <small class="rbt-muted rbt-looks-note">下面是装在酒馆里的美化，是别人按酒馆原版界面做的。在三栏界面里布局以工具箱为准，个别地方可能不协调。</small>
+          <small class="rbt-muted rbt-looks-note">这些美化是别人按酒馆原版界面做的。工具箱改了部分布局，有的美化可能会错位。工具箱不会为单个美化做适配，有问题请找美化作者。手机上消息排乱了，可以到「扩展 › RedBird 工具箱」关掉「手机消息用工具箱排版」。</small>
           {themesLoading.value && !list.length ? <small class="rbt-muted">读取中…</small> : (
             <SeriesList
               kind="theme"
@@ -804,6 +804,7 @@ export function GlobalToolbox() {
   if (t === 'presets') return <PresetsPage />;
   if (t === 'worlds') return <WorldsPage />;
   if (t === 'regex') return <RegexPage />;
+  if (t === 'scripts') return <ScriptsPage />;
   if (t === 'plugins') return <PluginsPage />;
   if (t === 'looks') return <LooksPage />;
   if (t === 'backup') return <BackupPage />;

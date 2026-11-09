@@ -8,7 +8,7 @@
 import { signal } from '@preact/signals';
 
 export type ViewId = 'flow' | 'vars' | 'card' | 'global';
-export type GlobalTab = 'presets' | 'worlds' | 'regex' | 'plugins' | 'looks' | 'backup';
+export type GlobalTab = 'presets' | 'worlds' | 'regex' | 'scripts' | 'plugins' | 'looks' | 'backup';
 
 export const VIEW_LABELS: Record<ViewId, string> = {
   card: '角色档案',
@@ -17,11 +17,12 @@ export const VIEW_LABELS: Record<ViewId, string> = {
   global: '全局工具箱',
 };
 
-export const GLOBAL_TABS: GlobalTab[] = ['presets', 'worlds', 'regex', 'plugins', 'looks', 'backup'];
+export const GLOBAL_TABS: GlobalTab[] = ['presets', 'worlds', 'regex', 'scripts', 'plugins', 'looks', 'backup'];
 export const GLOBAL_TAB_LABELS: Record<GlobalTab, string> = {
   presets: '预设',
   worlds: '世界书',
   regex: '正则',
+  scripts: '脚本',
   plugins: '插件',
   looks: '美化',
   backup: '备份',
@@ -48,7 +49,7 @@ const LEGACY: Record<string, { view: ViewId; tab?: GlobalTab }> = {
   env: { view: 'card' }, cards: { view: 'card' },
   maintain: { view: 'global', tab: 'backup' },
   presets: { view: 'global', tab: 'presets' }, worlds: { view: 'global', tab: 'worlds' },
-  regex: { view: 'global', tab: 'regex' }, plugins: { view: 'global', tab: 'plugins' }, backup: { view: 'global', tab: 'backup' },
+  regex: { view: 'global', tab: 'regex' }, scripts: { view: 'global', tab: 'scripts' }, plugins: { view: 'global', tab: 'plugins' }, backup: { view: 'global', tab: 'backup' },
   looks: { view: 'global', tab: 'looks' }, themes: { view: 'global', tab: 'looks' },
 };
 

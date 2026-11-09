@@ -9,6 +9,7 @@
  *    - 在「正则归属」里标成属于别的卡 / 别的预设的全局正则 → 关掉，属于这张卡 / 当前预设的 → 打开。
  */
 import { signal } from '@preact/signals';
+import { presetScriptLine } from '../scripts/notice';
 import { charaFileName, ctx, loaded, runSlash, saveSettings, settings, slashQuote, toast, type Any } from '../../st/st';
 import { cardInfo, currentPresetName, extStatus, importCardWorld, installedExtensions, presetApi, presetNames, requiredExtensions, switchPreset } from '../cards/cards';
 import { refreshEnv } from './env';
@@ -184,7 +185,11 @@ export async function applyPlan(plan: ApplyPlan, opts: { deferModel?: boolean; o
   if (plan.preset) {
     // 这张卡有推荐模型：预设带过来的模型马上会被换成推荐的，不用提示；没有的话，模型被预设换掉会单独提示（能换回去）
     const ok = plan.model ? await withoutModelGuard(() => switchPreset(plan.preset!)) : await switchPreset(plan.preset);
-    if (ok) changes.push(`预设换成「${plan.preset}」`);
+    if (ok) {
+      changes.push(`预设换成「${plan.preset}」`);
+      const sl = presetScriptLine(plan.preset);
+      if (sl) changes.push(sl);
+    }
   }
   const doModel = async (): Promise<string[]> => {
     const m = plan.model;

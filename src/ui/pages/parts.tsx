@@ -2,6 +2,7 @@
  * 「这张卡」页面用到的各个分区（原「角色档案 · 这张卡」）。
  */
 import { EditButton, editRegex, openRegexManager, openScriptManager } from './GlobalPage';
+import { thInstalled } from '../../tools/scripts/th';
 import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
@@ -49,7 +50,7 @@ import { ModelPicker } from '../ModelPicker';
 import { openDrawer } from '../../shell/drawers';
 import { closeSheet } from '../views';
 import { openBookInEditor } from '../../shell/worldNote';
-import { currentModel, modelLabel, sameModel, setModel } from '../../tools/model';
+import { currentModel, modelLabel, sameModel, setModel, withoutModelGuard } from '../../tools/model';
 
 export const OK = '#2fbf8f';
 export const WARN = '#f0a43a';
@@ -335,7 +336,19 @@ export function PresetSection({ info }: { info: CardInfo }) {
     </>}>
       <div class="rbt-frow">
         <span class="rbt-frow-k">预设</span>
-        <select class="text_pole rbt-select" value={rec?.name ?? ''} onChange={(e) => setRecommendedPreset(info.avatar, info.name, (e.currentTarget as HTMLSelectElement).value || null)}>
+        {/* 正在和这张卡聊天时，选了就马上换过去（不用再去预设面板里换一次） */}
+        <select class="text_pole rbt-select" value={rec?.name ?? ''} onChange={async (e) => {
+          const v = (e.currentTarget as HTMLSelectElement).value || null;
+          setRecommendedPreset(info.avatar, info.name, v);
+          if (live && v && v !== currentPresetName()) {
+            // 和换卡时一样：这是你要换的，不弹「模型被预设换掉了」；换完再换回这张卡（或这个预设）推荐的模型
+            const want = recModel ?? settings().presetInfo[v]?.model;
+            await withoutModelGuard(async () => {
+              await switchPreset(v);
+              if (want && !sameModel(want, currentModel())) await setModel(want);
+            });
+          }
+        }}>
           <option value="">不指定</option>
           {rec && !names.includes(rec.name) && <option value={rec.name}>{rec.name}（已经删掉了）</option>}
           {names.map((n) => <option key={n} value={n}>{n}</option>)}
@@ -485,26 +498,29 @@ export function WorldSection({ info }: { info: CardInfo }) {
 // ------------------------------------------------------------- regex ---
 
 export function RegexSection({ info }: { info: CardInfo }) {
+  // 装了酒馆助手时，脚本在下面单独一块（能开关）；这里只管正则
+  const th = thInstalled();
+  const showScripts = !th && info.scripts.total > 0;
   const owned = globalRegexScripts().filter((r) => {
     const o = settings().regexOwners[r.id];
     return o?.kind === 'card' && o.key === info.avatar;
   });
   return (
-    <Section title="正则与脚本" actions={info.regex.total > 0 || info.scripts.total > 0 ? <>
-      {info.regex.total > 0 && <OpenBtn label={info.scripts.total > 0 ? '编辑正则' : '编辑'} title="在酒馆的正则面板里编辑这张卡的正则" onClick={() => { void withCardOpen(info, () => openRegexManager('scoped')); }} />}
-      {info.scripts.total > 0 && <OpenBtn label={info.regex.total > 0 ? '编辑脚本' : '编辑'} title="在酒馆助手里编辑这张卡的脚本" onClick={() => { void withCardOpen(info, openScriptManager); }} />}
+    <Section title={th ? '正则' : '正则与脚本'} actions={info.regex.total > 0 || showScripts ? <>
+      {info.regex.total > 0 && <OpenBtn label={showScripts ? '编辑正则' : '编辑'} title="在酒馆的正则面板里编辑这张卡的正则" onClick={() => { void withCardOpen(info, () => openRegexManager('scoped')); }} />}
+      {showScripts && <OpenBtn label={info.regex.total > 0 ? '编辑脚本' : '编辑'} title="在酒馆助手里编辑这张卡的脚本" onClick={() => { void withCardOpen(info, openScriptManager); }} />}
     </> : undefined}>
       <div class="rbt-link-row">
         <span class="rbt-frow-k">卡里的正则</span>
         <span>{info.regex.total ? `${info.regex.enabled} / ${info.regex.total} 条开着` : '没有'}</span>
         {info.regex.total > 0 && (info.regex.allowed ? <InUse title="已允许运行" /> : <Chip color={BAD}>没有允许运行</Chip>)}
       </div>
-      <div class="rbt-link-row">
+      {!th && <div class="rbt-link-row">
         <span class="rbt-frow-k">角色脚本</span>
         <span>{info.scripts.total ? `${info.scripts.total} 个` : '没有'}</span>
         {info.scripts.total > 0 && (info.scripts.enabled ? <InUse title="已启用" /> : <Chip color={BAD}>没有启用</Chip>)}
-      </div>
-      {info.scripts.names.length > 0 && <div class="rbt-chips">{info.scripts.names.map((n, i) => <Chip key={i}>{n}</Chip>)}</div>}
+      </div>}
+      {showScripts && info.scripts.names.length > 0 && <div class="rbt-chips">{info.scripts.names.map((n, i) => <Chip key={i}>{n}</Chip>)}</div>}
       {owned.length > 0 && (
         <div class="rbt-card-sub">
           <small class="rbt-muted">标为属于这张卡的全局正则：</small>
