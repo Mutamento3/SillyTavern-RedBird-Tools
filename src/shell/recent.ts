@@ -3,7 +3,7 @@
  * 置顶状态读酒馆首页的 pinnedChats（只读，置顶仍在酒馆首页操作，避免两边缓存打架）。
  */
 import { signal } from '@preact/signals';
-import { ctx, currentCharacter, toast, type Any } from '../st/st';
+import { confirmText, ctx, currentCharacter, stModule, toast, type Any } from '../st/st';
 
 export interface RecentChat {
   key: string;
@@ -147,6 +147,36 @@ export async function openRecentChat(r: RecentChat): Promise<void> {
   } catch (e) {
     console.error('[RedBird] open chat failed', e);
     toast('error', `打开聊天失败：${String(e)}`);
+  }
+}
+
+/**
+ * 从「最近聊过」里删掉一个存档（聊天记录文件）。用酒馆自己的删除方法；删的是正在聊的这个时，
+ * 酒馆会换到这张卡最近的另一个存档。先确认，删了不能恢复（和酒馆存档页里删除一样）。
+ */
+export async function deleteRecentChat(r: RecentChat): Promise<void> {
+  const save = prettyChatName(r.chatId, r.name);
+  const ok = await confirmText(`删除「${r.name}」的存档「${save}」？`, '这个存档里的聊天记录会被删掉，不能恢复。');
+  if (!ok) return;
+  const c = ctx();
+  const wasCurrent = isCurrentChat(r);
+  try {
+    if (r.group) {
+      const gc = await stModule('/scripts/group-chats.js');
+      await gc?.deleteGroupChatByName?.(r.group, r.chatId);
+    } else {
+      const idx = (c.characters ?? []).findIndex((x: Any) => x.avatar === r.avatar);
+      const script = await stModule('/script.js');
+      if (idx < 0 || !script?.deleteCharacterChatByName) throw new Error('找不到这张卡');
+      await script.deleteCharacterChatByName(idx, r.chatId);
+    }
+    // 删的是正在聊的这个：载入酒馆换好的那个存档（不然屏幕上还是旧内容，下次自动保存会写进别的存档）
+    if (wasCurrent) await ctx().reloadCurrentChat?.();
+    recentChats.value = recentChats.value.filter((x) => x.key !== r.key);
+    refreshRecentSoon(600);
+    toast('success', `已删除存档「${save}」。`);
+  } catch (e) {
+    toast('error', `没能删除：${String((e as Error)?.message ?? e)}`);
   }
 }
 

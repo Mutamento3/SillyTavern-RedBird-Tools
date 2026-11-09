@@ -88,7 +88,8 @@ function BudgetPanel({ cap }: { cap: Capture }) {
       <div class="rbt-budget-legend">
         <span><i class="used" />这一轮发出去 约 {fmtTokens(used)}</span>
         <span><i class="reply" />留给回复 {fmtTokens(reply)}</span>
-        <span><i class="free" />空着 {fmtTokens(free)}</span>
+        {/* 聊天记录被挤掉时不写「空着」：剩下那点放不下更早的一楼，写出来和下面的提醒对不上 */}
+        {!dropped && <span><i class="free" />空着 {fmtTokens(free)}</span>}
       </div>
       {cutOff && (
         <div class="rbt-budget-alert">

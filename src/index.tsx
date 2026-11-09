@@ -17,6 +17,8 @@ import { installCharactersWatch } from './shell/characters';
 import { closeDrawer, installDrawers, openDrawers } from './shell/drawers';
 import { installWorldNote } from './shell/worldNote';
 import { installWorldEntries } from './shell/worldEntries';
+import { installMesActions } from './shell/mesActions';
+import { installChatSaves } from './shell/chatSaves';
 import { installRecentWatch } from './shell/recent';
 import { SheetHost } from './shell/Sheet';
 import { ImportDialog } from './ui/ImportDialog';
@@ -209,6 +211,10 @@ async function init(): Promise<void> {
   // 世界书面板：标题栏列出实际加载的书（可点），换卡后第一次打开时自动打开这张卡的书
   installWorldNote();
   installWorldEntries();
+  // 手机上每条消息的「‹ 2/5 › ✎ ⋯」挪到消息最下面一行
+  installMesActions();
+  // 存档页每一条：存档名 + ⋯、两行预览、时间和大小
+  installChatSaves();
   // 所有通知（包括酒馆和别的插件发的）右上角都有 ✕，可以直接关掉
   if (window.toastr?.options) window.toastr.options.closeButton = true;
 

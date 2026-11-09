@@ -236,6 +236,46 @@ export async function duplicateCharacter(it: CharItem): Promise<void> {
   toast('success', `已复制一份「${ch.name}」`);
 }
 
+// ------------------------------------------------------------- 批量标签 ---
+// 用酒馆自己的标签数据（tags / tag_map），和原版角色列表里的标签互通。
+
+/** 一个标签在选中的这些卡上：全都有 / 有的有 / 都没有。 */
+export function tagState(items: CharItem[], tagId: string): 'all' | 'some' | 'none' {
+  const map = (ctx().tagMap ?? {}) as Record<string, string[]>;
+  const has = items.filter((it) => (map[charOf(it)?.avatar ?? ''] ?? []).includes(tagId)).length;
+  return has === 0 ? 'none' : has === items.length ? 'all' : 'some';
+}
+
+/** 给这些卡都加上（或都去掉）一个标签。 */
+export async function setTagOn(items: CharItem[], tagId: string, add: boolean): Promise<void> {
+  const m = await stModule('/scripts/tags.js');
+  const tag = (ctx().tags ?? []).find((t: Any) => t.id === tagId);
+  const keys = items.map((it) => charOf(it)?.avatar).filter(Boolean) as string[];
+  if (!m || !tag || !keys.length) return;
+  if (add) m.addTagsToEntity?.(tag, keys);
+  else m.removeTagFromEntity?.(tag, keys);
+  charsTick.value++;
+}
+
+/** 新建一个标签（同名的已经有了就用现有的），返回它的 id。 */
+export async function createTag(name: string): Promise<string | null> {
+  const n = name.trim();
+  if (!n) return null;
+  const m = await stModule('/scripts/tags.js');
+  const list: Any[] = m?.tags ?? ctx().tags;
+  if (!list) return null;
+  const same = list.find((t) => String(t.name).toLowerCase() === n.toLowerCase());
+  if (same) return same.id;
+  const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  list.push({
+    id, name: n, folder_type: m?.TAG_FOLDER_DEFAULT_TYPE ?? 'NONE', filter_state: 'UNDEFINED',
+    sort_order: Math.max(0, ...list.map((t) => Number(t.sort_order) || 0)) + 1,
+    is_hidden_on_character_card: false, color: '', color2: '', create_date: Date.now(),
+  });
+  ctx().saveSettingsDebounced?.();
+  return id;
+}
+
 /** Set favourite on several characters at once. */
 export async function setFavorite(items: CharItem[], fav: boolean): Promise<void> {
   for (const it of items) {

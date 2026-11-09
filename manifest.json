@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.5.12",
+  "version": "0.5.13",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "存档入口更清楚，角色卡菜单和角色档案在各处保持一致。"
+  "rbt_whats_new": "手机消息正文更宽，角色卡可批量改标签，存档页更清楚。"
 }

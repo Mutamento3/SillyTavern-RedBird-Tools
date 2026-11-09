@@ -9,15 +9,17 @@ import { Menu } from '../ui/Menu';
 import { ctx, currentCharacter, saveSettings, settings, confirmText } from '../st/st';
 import { panelOpen } from '../ui/Panel';
 import { openGlobal, sheetOpen, shellActive } from '../ui/views';
-import { DRAWERS, drawerButtonHandlers, openDrawers, type DrawerKey } from './drawers';
+import { DRAWERS, drawerButtonHandlers, extButtonHandlers, extDrawers, openDrawers, openExt, type DrawerKey, type ExtDrawer } from './drawers';
 import { ToolboxButton } from './EnvStatus';
 import { applyingPreset } from '../tools/env/autoapply';
 import { StatusBar, worldStatus } from './StatusBar';
 import { DropHint, ImportButton, installWindowDrop, windowDrag } from '../ui/pages/GlobalToolbox';
 import { HomeGallery } from './Home';
 import { charsTick, isCurrent as isCurrentChar, listCharacters, openCharacter, sortCharacters, type CharItem } from './characters';
+import { openFloatMenu } from '../ui/floatMenu';
 import {
   currentChatKey,
+  deleteRecentChat,
   isCurrentChat,
   openRecentChat,
   refreshRecentSoon,
@@ -127,15 +129,67 @@ function newChat(): void {
 
 // ---------------------------------------------------------------- left ---
 
-function DrawerButton({ k, compact, label, title, dot }: { k: DrawerKey; compact?: boolean; label?: string; title?: string; dot?: string }) {
+function DrawerButton({ k, compact, label, title, dot, count }: { k: DrawerKey; compact?: boolean; label?: string; title?: string; dot?: string; count?: number }) {
   const d = DRAWERS.find((x) => x.key === k)!;
   const active = openDrawers.value.includes(k);
   return (
     <button type="button" class={`rbt-gbtn ${active ? 'active' : ''} ${compact ? 'compact' : ''}`} title={title ?? d.label} {...drawerButtonHandlers(k)}>
       <i class={`fa-solid ${d.icon} fa-fw`} />
       <span>{label ?? d.label}</span>
+      {/* 图标格里放不下「世界书（2）」，数字放成图标右上角的小数字 */}
+      {count !== undefined && count > 0 && <span class="rbt-gbtn-count">{count}</span>}
       {dot && <span class="rbt-dot" title={dot} />}
     </button>
+  );
+}
+
+/** 别的插件加在顶栏的按钮：图标和名字取插件自己的。 */
+function ExtButton({ x }: { x: ExtDrawer }) {
+  const active = openExt.value.includes(x.id);
+  return (
+    <button type="button" class={`rbt-gbtn ${active ? 'active' : ''}`} title={x.label} {...extButtonHandlers(x)}>
+      {x.img ? <img class="rbt-gbtn-img" src={x.img} alt="" /> : <i class={`fa-solid ${x.icon} fa-fw`} />}
+      <span>{x.label}</span>
+    </button>
+  );
+}
+
+/**
+ * 左栏图标格：酒馆的面板（世界书排第 5，常用）+ 别的插件加的按钮。
+ * 一共 8 格；超过 8 个时只显示前 7 个，第 8 格是「更多」，点开显示全部，最后一格变「收起」。
+ */
+const GRID_SLOTS = 8;
+const GRID_KEY = 'rbt-left-grid-open';
+const gridOpen = signal<boolean>((() => { try { return localStorage.getItem(GRID_KEY) === '1'; } catch { return false; } })());
+function setGridOpen(v: boolean): void {
+  gridOpen.value = v;
+  try { localStorage.setItem(GRID_KEY, v ? '1' : '0'); } catch { /* ignore */ }
+}
+
+function GlobalsGrid() {
+  const st = (k: DrawerKey) => <DrawerButton key={k} k={k} title={k === 'api' && !apiOnline.value ? 'API（没连上）' : undefined} dot={k === 'api' && !apiOnline.value ? '没连上 API' : undefined} />;
+  const items = [
+    ...ST_KEYS.slice(0, 4).map(st),
+    // 世界书也放进这一格（手机上没有状态栏，原来只能从「当前角色」那块进）
+    <WorldButton key="worldinfo" grid />,
+    ...ST_KEYS.slice(4).map(st),
+    ...extDrawers.value.map((x) => <ExtButton key={x.id} x={x} />),
+  ];
+  const overflow = items.length > GRID_SLOTS;
+  const open = gridOpen.value;
+  // 收起时，开着的插件面板对应的按钮被藏在「更多」里也没关系：面板自己有标题栏和 ✕
+  const shown = overflow && !open ? items.slice(0, GRID_SLOTS - 1) : items;
+  const hidden = items.length - shown.length;
+  return (
+    <nav class="rbt-globals" aria-label="酒馆设定">
+      {shown}
+      {overflow && (
+        <button type="button" class="rbt-gbtn rbt-grid-more" aria-expanded={open} title={open ? '收起' : `还有 ${hidden} 个`} onClick={() => setGridOpen(!open)}>
+          <i class={`fa-solid ${open ? 'fa-chevron-up' : 'fa-ellipsis'} fa-fw`} />
+          <span>{open ? '收起' : '更多'}</span>
+        </button>
+      )}
+    </nav>
   );
 }
 
@@ -149,8 +203,23 @@ function GlobalButton() {
   );
 }
 
+/** 每一行右下角一个「⋯」：这张卡的所有存档、删除这个存档。 */
+function recentMenu(r: RecentChat, anchor: HTMLElement): void {
+  openFloatMenu(anchor, `${r.name} · ${prettyChatName(r.chatId, r.name)}`, [
+    { label: '所有存档', icon: 'fa-clock-rotate-left', run: async () => {
+      await openRecentChat(r);
+      // 等真的换到这个聊天再打开存档页（大聊天载入慢，不等的话会列出上一张卡的存档）
+      for (let i = 0; i < 50 && String(ctx().getCurrentChatId?.() ?? '') !== r.chatId; i++) await new Promise((ok) => setTimeout(ok, 100));
+      await new Promise((ok) => setTimeout(ok, 300));
+      trigger('#option_select_chat');
+    } },
+    { label: '删除…', icon: 'fa-trash-can', danger: true, run: () => deleteRecentChat(r) },
+  ]);
+}
+
 function RecentRow({ r, current }: { r: RecentChat; current: boolean }) {
   return (
+    <div class="rbt-recent-item">
     <button type="button" class={`rbt-recent-row ${current ? 'current' : ''}`} onClick={() => { void openRecentChat(r); }} title={`${r.name} · ${r.chatId}`}>
       <img class="rbt-recent-avatar" src={r.thumb} alt="" loading="lazy" />
       <span class="rbt-recent-main">
@@ -161,6 +230,10 @@ function RecentRow({ r, current }: { r: RecentChat; current: boolean }) {
         <span class="rbt-recent-preview">{r.preview || prettyChatName(r.chatId, r.name)}</span>
       </span>
     </button>
+    <button type="button" class="rbt-recent-more" title="所有存档、删除" aria-label="更多" aria-haspopup="menu" onClick={(e) => { e.stopPropagation(); recentMenu(r, e.currentTarget as HTMLElement); }}>
+      <i class="fa-solid fa-ellipsis" />
+    </button>
+    </div>
   );
 }
 
@@ -330,7 +403,8 @@ function LeftColumn() {
   const autoClose = (e: MouseEvent) => {
     if (!phone) return;
     const el = (e.target as HTMLElement).closest('button, a');
-    if (!el || el.closest('.rbt-left-head, .rbt-segctl')) return;
+    // 「更多 / 收起」只是展开图标格，不算选了东西
+    if (!el || el.closest('.rbt-left-head, .rbt-segctl, .rbt-grid-more, .rbt-recent-more')) return;
     setTimeout(() => setNavOpen(false), 0);
   };
 
@@ -353,13 +427,7 @@ function LeftColumn() {
       </div>
 
       <div class="rbt-gtool-row"><ImportButton big /><GlobalButton /></div>
-      <nav class="rbt-globals" aria-label="酒馆设定">
-        {ST_KEYS.map((k) => (
-          <DrawerButton key={k} k={k} title={k === 'api' && !apiOnline.value ? 'API（没连上）' : undefined} dot={k === 'api' && !apiOnline.value ? '没连上 API' : undefined} />
-        ))}
-        {/* 世界书也放进这一格（手机上没有状态栏，原来只能从「当前角色」那块进） */}
-        <WorldButton grid />
-      </nav>
+      <GlobalsGrid />
 
       <div class="rbt-left-actions">
         <div class="rbt-segctl" role="tablist" aria-label="左栏列表">
@@ -393,7 +461,7 @@ function LeftColumn() {
 /** 「世界书（N）」: N = how many books are loaded in this chat (card, extra, chat, persona, global); a dot when another card's book is on globally. */
 function WorldButton({ grid }: { grid?: boolean }) {
   const w = worldStatus();
-  return <DrawerButton k="worldinfo" compact={!grid} label={`世界书（${w.count}）`} title={w.warn ? `${w.title}
+  return <DrawerButton k="worldinfo" compact={!grid} label={grid ? '世界书' : `世界书（${w.count}）`} count={grid ? w.count : undefined} title={w.warn ? `${w.title}
 ${w.warn}` : w.title} dot={w.warn} />;
 }
 
@@ -424,14 +492,14 @@ function NavBar() {
           {home ? (
             <span class="rbt-nav-name">{inTempChat ? '临时聊天' : '首页'}</span>
           ) : (
-            <div class="rbt-nav-who">
+            /* 点头像和名字：和多数聊天软件一样，打开这个角色（编辑角色）。名字下面一行灰字是现在的存档 */
+            <button type="button" class="rbt-nav-who" title={`编辑角色「${name}」`} {...drawerButtonHandlers('characters')}>
               {char && <img class="rbt-nav-avatar" src={c.getThumbnailUrl('avatar', char.avatar)} alt="" />}
-              {/* 名字下面一行灰字：现在是哪个存档。能点的都在右边，用一样的图标按钮 */}
               <span class="rbt-nav-who-text">
                 <span class="rbt-nav-name">{name}</span>
                 {chatId && <small class="rbt-nav-sub">{shortSaveName(chatId, name)}</small>}
               </span>
-            </div>
+            </button>
           )}
         </div>
         {/* 和电脑上同样的入口、同样的顺序和图标：存档、编辑角色、新聊天、聊天工具箱 */}
@@ -466,8 +534,11 @@ function NavBar() {
           <span class="rbt-nav-name">{inTempChat ? '临时聊天' : '首页'}</span>
         ) : (
           <>
-            {char && <img class="rbt-nav-avatar" src={c.getThumbnailUrl('avatar', char.avatar)} alt="" />}
-            <span class="rbt-nav-name">{name}</span>
+            {/* 点头像和名字：打开编辑角色（和手机一样） */}
+            <button type="button" class="rbt-nav-who" title={`编辑角色「${name}」`} {...drawerButtonHandlers('characters')}>
+              {char && <img class="rbt-nav-avatar" src={c.getThumbnailUrl('avatar', char.avatar)} alt="" />}
+              <span class="rbt-nav-name">{name}</span>
+            </button>
             {/* 顺序（电脑、手机一样）：名字 → 存档 → 编辑角色 → 新聊天 */}
             {chatId && (
               <button type="button" class="rbt-gbtn compact rbt-nav-save" title={`「${name}」的所有存档：换一个、改名、删除`} onClick={() => trigger('#option_select_chat')}>
@@ -529,8 +600,12 @@ export function initShellState(): void {
     leftCollapsed.value = localStorage.getItem(COLLAPSE_KEY) === '1';
   } catch { /* ignore */ }
   applyBodyClasses();
-  if (compactQuery) compactQuery.addEventListener('change', applyBodyClasses);
-  else window.addEventListener('resize', applyBodyClasses);
+  // 媒体查询的 change 事件有的环境不触发（老的 WebView、开发者工具缩放），再用 resize 兜底：
+  // 只在「手机 / 电脑」真的变了时才重排，平时 resize 只读一个布尔值
+  if (compactQuery) {
+    compactQuery.addEventListener?.('change', applyBodyClasses);
+    window.addEventListener('resize', () => { if (compactQuery.matches !== compact.value) applyBodyClasses(); });
+  } else window.addEventListener('resize', applyBodyClasses);
   // Enable layout transitions only after the first layout, so the page doesn't slide around on load.
   setTimeout(() => document.body.classList.add('rbt-shell-ready'), 800);
   const c = ctx();

@@ -104,7 +104,8 @@ body.rbt-shell #top-settings-holder #WorldInfo,
 body.rbt-shell #top-settings-holder #rm_api_block,
 body.rbt-shell #top-settings-holder #user-settings-block,
 body.rbt-shell #top-settings-holder #Backgrounds,
-body.rbt-shell #top-settings-holder #AdvancedFormatting {
+body.rbt-shell #top-settings-holder #AdvancedFormatting,
+body.rbt-shell #top-settings-holder .drawer-content.rbt-ext-drawer {
   --rbt-sheet-w: min(1320px, calc(100dvw - 96px));
   /* 酒馆按 --sheldWidth 算面板里的分栏，要减掉左右内边距 */
   --sheldWidth: calc(var(--rbt-sheet-w) - 2 * var(--rbd-inset));
@@ -1140,7 +1141,8 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
   body.rbt-shell #top-settings-holder #rm_api_block,
   body.rbt-shell #top-settings-holder #user-settings-block,
   body.rbt-shell #top-settings-holder #Backgrounds,
-  body.rbt-shell #top-settings-holder #AdvancedFormatting {
+  body.rbt-shell #top-settings-holder #AdvancedFormatting,
+  body.rbt-shell #top-settings-holder .drawer-content.rbt-ext-drawer {
     --rbt-sheet-w: 100dvw;
     top: 0 !important;
     left: 0 !important;
@@ -1511,6 +1513,231 @@ body.rbt-shell .rbt-nav-progress::before {
 .rbt-nav .rbt-nav-save > .rbt-nav-save-chev { font-size: 9px; opacity: 0.7; }
 .rbt-nav-who-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; line-height: 1.2; }
 .rbt-nav-sub { display: flex; align-items: center; gap: 4px; max-width: 100%; font-size: 11px; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 50%, transparent)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-@media (max-width: 1000px) {
-  .rbt-nav-phone .rbt-nav-who { cursor: default; padding-right: 0; }
+
+/* 左栏图标格里插件的按钮：插件给的是图片图标时，和字体图标一样大 */
+.rbt-gbtn-img { width: 18px; height: 18px; object-fit: contain; }
+.rbt-gbtn-count {
+  position: absolute; top: 4px; left: calc(50% + 6px);
+  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
+  background: color-mix(in srgb, var(--rbd-text1, #fff) 14%, transparent); color: var(--rbd-text1, inherit);
+  font-size: 10px; font-weight: 600; line-height: 16px; text-align: center;
 }
+
+/* ============================================================ 管理：批量标签 ===
+   电脑上从「标签」按钮往上弹出；手机上是底部菜单（Menu 组件）。每行整行可点，勾选框大一点。 */
+.rbt-tag-anchor { position: relative; display: inline-flex; }
+.rbt-tag-menu {
+  position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 10;
+  display: flex; flex-direction: column; gap: var(--rbd-s-2); width: 260px; max-height: 360px; padding: var(--rbd-s-2);
+  border-radius: var(--rbd-r-m); background: var(--rbd-bg1, #1e1e21);
+  box-shadow: 0 0 0 1px var(--rbd-hairline, rgba(255, 255, 255, 0.08)), 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+.rbt-tag-new { display: flex; gap: var(--rbd-s-2); }
+.rbt-tag-new .rbt-input { flex: 1; min-width: 0; margin: 0; }
+.rbt-tag-list { display: flex; flex-direction: column; overflow-y: auto; min-height: 0; }
+.rbt-tag-row {
+  display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 var(--rbd-s-2);
+  border: 0; border-radius: var(--rbd-r-s); background: none; color: inherit; font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+.rbt-tag-row:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.06)); }
+.rbt-tag-box { font-size: 18px; color: var(--rbd-text3, rgba(255, 255, 255, 0.45)); }
+.rbt-tag-row.all .rbt-tag-box, .rbt-tag-row.some .rbt-tag-box { color: var(--rbd-accent, #0a84ff); }
+@media (max-width: 1000px) {
+  .rbt-tag-row { min-height: 44px; font-size: 15px; }
+  .rbt-asheet .rbt-tag-new, .rbt-asheet .rbt-tag-list { padding: 0 var(--rbd-s-3); }
+  .rbt-asheet .rbt-tag-list { max-height: 50dvh; }
+}
+/* 手机底部菜单里的标签列表：和别的底部菜单项（居中、蓝字）不一样，是左对齐的勾选列表 */
+.rbt-asheet-items .rbt-tag-new { display: flex; align-items: center; gap: var(--rbd-s-2); padding: var(--rbd-s-3); border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.07)); }
+.rbt-asheet-items .rbt-tag-new .rbt-input { flex: 1; min-width: 0; height: 40px; margin: 0; font-size: 16px; }
+.rbt-asheet-items .rbt-tag-new button { flex: none; width: auto; min-height: 40px; padding: 0 var(--rbd-s-4); border: 0; border-radius: var(--rbd-r-s); justify-content: center; font-size: 15px; }
+.rbt-asheet-items .rbt-tag-list { padding: 0; overflow-y: auto; }
+.rbt-asheet-items .rbt-tag-list .rbt-tag-row { justify-content: flex-start; gap: 12px; padding: 0 var(--rbd-s-4); color: var(--rbd-text1, inherit); text-align: left; }
+.rbt-asheet-items .rbt-tag-list .rbt-tag-row .rbt-tag-box { font-size: 20px; opacity: 1; }
+
+/* ============================================================ 手机：消息的排法 ===
+   挪位置是 mesActions.ts 做的，这里只排版。不改这些按钮的 display（酒馆用它显示 / 隐藏）。
+   - 头像、名字、时间一行，在正文上面；正文用满整个宽度。
+   - 最后一条：正文下面一行「‹ 2/5 › ✎ ⋯」；其他消息：右上角只有「⋯」，编辑收在里面。
+   - 所有按钮一样大（36×36），图标一样大。 */
+html body.rbt-shell.rbt-compact #chat .mes { padding: 10px 10px 8px; }
+body.rbt-shell.rbt-compact #chat .mes .mes_block { padding-left: 0; width: 100%; min-width: 0; }
+body.rbt-shell.rbt-compact #chat .mes .mes_text { padding-right: 0; }
+/* 名字这一行：头像 → 名字和时间 → 右边的「⋯」；点开「⋯」的按钮另起一行 */
+body.rbt-shell.rbt-compact #chat .mes .ch_name { align-items: center; flex-wrap: wrap; gap: 0 8px; min-height: 36px; margin-bottom: 4px; }
+body.rbt-shell.rbt-compact #chat .mes .ch_name > .flex-container { min-width: 0; }
+body.rbt-shell.rbt-compact #chat .mes .ch_name > .mesAvatarWrapper { display: flex; flex-flow: row nowrap; align-items: center; gap: 6px; padding: 0; margin: 0; }
+/* 打开了「显示消息编号 / 计时 / token 数」时，它们排在头像右边，不往下叠 */
+body.rbt-shell.rbt-compact #chat .mes .ch_name > .mesAvatarWrapper > :not(.avatar) { margin: 0; padding: 0; font-size: 11px; white-space: nowrap; }
+body.rbt-shell.rbt-compact #chat .mes .ch_name > .mesAvatarWrapper .avatar { width: 32px; height: 32px; flex: none; }
+body.rbt-shell.rbt-compact #chat .mes .ch_name > .mesAvatarWrapper .avatar img { width: 32px; height: 32px; }
+body.rbt-shell.rbt-compact #chat .mes .mes_buttons { display: contents; }
+/* 点开「⋯」的按钮接在同一行后面，手机宽度不够时才换到下一行。
+   酒馆展开时给它加 .visible、收起时去掉；只在展开时把这一组「拆开」排进行里（拆开的盒子自己不占位置）。
+   设置里开了「总是展开」时没有 .visible，就作为一整组接在后面，组内自己换行。 */
+body.rbt-shell.rbt-compact #chat .mes .extraMesButtons { order: 4; flex: 1 1 0; min-width: 0; flex-wrap: wrap; justify-content: flex-start; gap: 0; overflow: visible; padding: 0; }
+/* 其他消息：展开的按钮在名字那一行下面另起一行 */
+body.rbt-shell.rbt-compact #chat .mes .ch_name > .extraMesButtons,
+body.rbt-shell.rbt-compact #chat .mes .ch_name > .mes_buttons > .extraMesButtons { flex: 1 1 100%; order: 99; }
+/* 按钮一样大 */
+body.rbt-shell.rbt-compact #chat .mes :is(.mes_button, .extraMesButtons > div),
+body.rbt-shell.rbt-compact #chat .mes .rbt-mes-swipes :is(.swipe_left, .swipe_right) {
+  box-sizing: border-box; width: 36px; height: 36px; padding: 0; margin: 0;
+  font-size: 15px; line-height: 36px; text-align: center; opacity: 0.55; filter: none;
+}
+/* 最后一条：正文下面一行 */
+body.rbt-shell.rbt-compact .rbt-mes-actions { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 0 2px; margin: 2px 0 0; }
+body.rbt-shell.rbt-compact .rbt-mes-actions .mes_edit { order: 1; }
+body.rbt-shell.rbt-compact .rbt-mes-actions .extraMesButtonsHint { order: 2; }
+body.rbt-shell.rbt-compact .rbt-mes-actions .mes_bookmark { order: 3; }
+body.rbt-shell.rbt-compact .rbt-mes-swipes { display: flex; align-items: center; }
+body.rbt-shell.rbt-compact .mes:not(.last_mes):not(.swipes_visible) .rbt-mes-swipes { display: none; }
+body.rbt-shell.rbt-compact .rbt-mes-swipes :is(.swipe_left, .swipe_right) { position: static; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+body.rbt-shell.rbt-compact .rbt-mes-swipes .swipeRightBlock { position: static; flex-direction: row-reverse; align-items: center; pointer-events: auto; }
+body.rbt-shell.rbt-compact .rbt-mes-swipes .swipes-counter { margin: 0; height: auto; min-width: 30px; padding: 0 2px; font-size: 13px; opacity: 0.7; }
+/* 1/1 或第一条回复时，左箭头也留着，只是变灰、点不了（位置不跳） */
+body.rbt-shell.rbt-compact .mes:not(.swipes_visible) .rbt-mes-swipes .swipe_left,
+body.rbt-shell.rbt-compact .rbt-mes-swipes .swipe_left[hidden] { visibility: visible; opacity: 0.2 !important; pointer-events: none; }
+
+/* ============================================================ 输入框两边的按钮 ===
+   酒馆的 ☰、魔法棒、发送（停止、继续、代写）图标有 28px，在输入框旁边显得笨重。
+   图标缩到 18px，可以点的范围保持 40×40（不改 display：酒馆用它切换发送 / 停止）。 */
+/* 两个图标挨得近一点：每个按钮 34 宽（够手指点），按钮之间不再留空 */
+body.rbt-shell #send_form :is(#leftSendForm, #rightSendForm) { gap: 0; }
+body.rbt-shell #send_form :is(#leftSendForm, #rightSendForm) > div {
+  box-sizing: border-box; width: 34px; height: 40px; min-width: 34px; margin: 0;
+  font-size: 18px; justify-content: center; align-items: center;
+}
+body.rbt-shell #send_form :is(#leftSendForm, #rightSendForm) > div::before { font-size: 18px; }
+/* 名字下面一行写时间（手机上一行放不下名字加完整日期） */
+body.rbt-shell.rbt-compact #chat .mes .ch_name .alignItemsBaseline { flex-direction: column; align-items: flex-start; gap: 0; min-width: 0; }
+body.rbt-shell.rbt-compact #chat .mes .ch_name .timestamp { margin: 0; font-size: 11px; line-height: 1.3; }
+body.rbt-shell.rbt-compact #chat .mes .ch_name .name_text { line-height: 1.25; }
+
+/* 首页第一行：「角色 36」在左；搜索和新建在右（都是对整个角色库的操作） */
+.rbt-home-head .rbt-home-search { margin-left: auto; }
+.rbt-home-head .rbt-home-actions { margin-left: 0; }
+@media (max-width: 1000px) {
+  .rbt-home-head .rbt-home-search { margin-left: 0; }
+  .rbt-home-head .rbt-home-actions { margin-left: auto; }
+  .rbt-home-tools { flex: 1 1 100%; justify-content: flex-start; flex-wrap: wrap; }
+}
+
+/* 顶栏的头像 + 名字可以点（打开编辑角色）：电脑上也是按钮，样子不变，悬停时有底色 */
+.rbt-nav .rbt-nav-who {
+  display: flex; align-items: center; gap: 8px; min-width: 0; padding: 4px 8px 4px 4px; margin: 0;
+  border: 0; border-radius: var(--rbd-r-s); background: transparent; color: var(--SmartThemeBodyColor); font: inherit; cursor: pointer;
+}
+.rbt-nav .rbt-nav-who:hover { background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 5%, transparent)); }
+
+/* ============================================================ 存档页：每一条 ===
+   存档名 ………… ⋯
+   最后一条消息（两行）
+   11/7 15:37 · 3.6 KB · 7 条消息
+   chatSaves.ts 给每条加了「⋯」和最后一行；酒馆原来的小图标和那行英文日期藏起来。 */
+body.rbt-shell #select_chat_div .select_chat_block {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name more" "mes mes" "meta meta";
+  align-items: center; column-gap: var(--rbd-s-2); row-gap: 4px; padding: 12px 8px 12px 16px; margin: 0;
+}
+body.rbt-shell #select_chat_div .select_chat_block > .flex-container,
+body.rbt-shell #select_chat_div .select_chat_block > .flex-container > .flex-container { display: contents; }
+body.rbt-shell #select_chat_div .select_chat_block .select_chat_block_filename {
+  grid-area: name; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 15px; font-weight: 600; color: var(--rbd-text1, var(--SmartThemeBodyColor)); opacity: 1;
+}
+body.rbt-shell #select_chat_div .select_chat_block :is(.renameChatButton, .select_chat_info, .select_chat_actions) { display: none; }
+body.rbt-shell #select_chat_div .select_chat_block .select_chat_block_mes {
+  grid-area: mes; margin: 0; padding: 0; font-size: 13.5px; line-height: 1.5; color: var(--rbd-text2, color-mix(in srgb, var(--rbd-text1) 70%, transparent));
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; word-break: break-word;
+}
+body.rbt-shell #select_chat_div .rbt-chat-meta { grid-area: meta; font-size: 12px; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 45%, transparent)); }
+body.rbt-shell #select_chat_div .rbt-chat-more {
+  grid-area: more; align-self: start; display: grid; place-items: center; width: 36px; height: 32px; margin: -6px 0 -6px 0; padding: 0;
+  border: 0; border-radius: var(--rbd-r-s); background: none; color: var(--rbd-text2, inherit); font-size: 14px; cursor: pointer; opacity: 0.7;
+}
+body.rbt-shell #select_chat_div .rbt-chat-more:hover { opacity: 1; background: var(--rbd-bg2, rgba(255, 255, 255, 0.06)); }
+/* 电脑上的小菜单 */
+.rbt-float-menu {
+  position: fixed; z-index: 10050; display: flex; flex-direction: column; min-width: 180px; padding: var(--rbd-s-1);
+  border-radius: var(--rbd-r-m); background: var(--rbd-bg1, #1e1e21);
+  box-shadow: 0 0 0 1px var(--rbd-hairline, rgba(255, 255, 255, 0.08)), 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+.rbt-float-menu > div { display: flex; flex-direction: column; }
+.rbt-float-menu button {
+  display: flex; align-items: center; gap: var(--rbd-s-2); height: 34px; padding: 0 var(--rbd-s-2);
+  border: 0; border-radius: var(--rbd-r-s); background: none; color: var(--rbd-text1, inherit); font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+.rbt-float-menu button:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.08)); }
+.rbt-float-menu button.danger { color: #ff453a; }
+.rbt-float-asheet { z-index: 10050; }
+@media (max-width: 1000px) {
+  body.rbt-shell #select_chat_div .select_chat_block { padding: 14px 8px 14px 16px; }
+  body.rbt-shell #select_chat_div .rbt-chat-more { width: 40px; height: 36px; }
+}
+body:not(.rbt-shell) :is(.rbt-chat-more, .rbt-chat-meta) { display: none; }
+
+/* 左栏「最近聊过」每行右下角的「⋯」（所有存档、删除）。一直显示，手机上也点得到 */
+.rbt-recent-item { position: relative; }
+.rbt-recent-item .rbt-recent-preview { padding-right: 26px; }
+.rbt-recent-more {
+  position: absolute; right: 2px; bottom: 4px; display: grid; place-items: center; width: 30px; height: 26px; padding: 0;
+  border: 0; border-radius: var(--rbd-r-s); background: none; color: var(--rbd-text3, inherit); font-size: 12px; cursor: pointer; opacity: 0.8;
+}
+.rbt-recent-more:hover { opacity: 1; background: var(--rbd-bg2, rgba(255, 255, 255, 0.08)); color: var(--rbd-text1, inherit); }
+@media (max-width: 1000px) {
+  .rbt-recent-more { width: 36px; height: 32px; bottom: 2px; font-size: 14px; }
+  .rbt-recent-item .rbt-recent-preview { padding-right: 32px; }
+}
+
+/* ============================================================ 首页：筛选 / 排序 / 管理 ===
+   电脑：图标 + 文字；手机：只有图标，和「全部 / 置顶」放在同一行右边。看不见的系统下拉框盖在按钮上。 */
+.rbt-home-picker { position: relative; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.rbt-home-picker > select { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: pointer; font-size: 16px; }
+.rbt-home-picker-chev { font-size: 9px; opacity: 0.7; }
+.rbt-home-manage { display: inline-flex; align-items: center; gap: 6px; }
+/* 搜索框这一行：电脑上和「新建」一起靠右；手机上占满一行，右边接筛选 / 排序 / 管理三个图标 */
+.rbt-home-searchrow { display: flex; align-items: center; gap: 4px; margin-left: auto; min-width: 0; }
+.rbt-home-head .rbt-home-searchrow .rbt-home-search { margin-left: 0; }
+@media (max-width: 1000px) {
+  .rbt-home-searchrow { order: 3; width: 100%; margin-left: 0; }
+  .rbt-home-searchrow .rbt-home-search { order: 0; flex: 1 1 auto; width: auto; min-width: 0; }
+  .rbt-home-tools { flex: none; justify-content: flex-end; flex-wrap: nowrap; gap: 0; }
+  .rbt-home-tools :is(.rbt-home-picker-text, .rbt-home-picker-chev) { display: none; }
+  .rbt-home-tools :is(.rbt-home-picker, .rbt-home-manage) { justify-content: center; width: 36px; min-width: 36px; flex: none; min-height: 40px !important; padding: 0 !important; font-size: 16px; }
+  .rbt-home-tools .rbt-home-manage.active { width: auto; padding: 0 12px !important; }
+  .rbt-home-tools .rbt-home-manage.active .rbt-home-picker-text { display: inline; }
+}
+
+/* 编辑角色：酒馆顶上那行 token 数 + 奖杯 + 眼睛藏起来，token 数挪到标题栏（drawers.ts） */
+body.rbt-shell #right-nav-panel #result_info { display: none !important; }
+body.rbt-shell .rbt-sheet-head .rbt-char-tokens { font-size: 12px; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 50%, transparent)); white-space: nowrap; }
+body.rbt-shell .rbt-sheet-head .rbt-char-stats {
+  display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; margin-left: 2px;
+  border: 0; border-radius: var(--rbd-r-s); background: none; color: var(--rbd-text3, inherit); font-size: 13px; cursor: pointer;
+}
+body.rbt-shell .rbt-sheet-head .rbt-char-stats:hover { background: var(--rbd-bg2, rgba(255, 255, 255, 0.08)); color: var(--rbd-text1, inherit); }
+/* 编辑角色标题栏里的 token 数：电脑上靠右，挨着 ✕ */
+@media (min-width: 1001px) {
+  body.rbt-shell .rbt-sheet-head .rbt-sheet-note:has(.rbt-char-tokens) { display: flex; justify-content: flex-end; }
+}
+/* 首页第一行（电脑）：「＋ 新建」挨着「角色 N」（新建的就是这一类东西），搜索框放右边，和下面的筛选、排序对齐 */
+@media (min-width: 1001px) {
+  .rbt-home-head .rbt-home-actions { order: 1; }
+  .rbt-home-head .rbt-home-searchrow { order: 2; margin-left: auto; }
+}
+
+/* ============================================================ 新建角色 ===
+   和编辑角色是同一个面板。标题写「新建角色」（drawers.ts）；
+   酒馆那个只有图标的「创建」（一个带勾的人像）改成写着「创建角色」的主按钮；
+   「←」是回到酒馆原来的角色列表，三栏界面里没有那个列表，藏掉。 */
+body.rbt-shell.rbt-creating-char #rm_button_back { display: none !important; }
+body.rbt-shell #create_button_label {
+  width: auto; min-width: 0; padding: 0 14px; gap: 6px;
+  background: var(--rbd-accent, #0a84ff) !important; color: #fff !important; opacity: 1;
+}
+body.rbt-shell #create_button_label::after { content: '创建角色'; font-family: var(--rbd-font, var(--mainFontFamily, sans-serif)); font-weight: 600; font-size: 14px; }
+
+/* 设置里开了「每条消息都能切换回复」时，手机上其他消息的箭头（酒馆放在两边、盖在正文上）藏掉；只有最后一条在下面那一行切换 */
+body.rbt-shell.rbt-compact .mes:not(.last_mes) > :is(.swipe_left, .swipeRightBlock) { display: none; }
+/* 编辑角色标题栏的 token 数：卡太大时和酒馆一样标黄 */
+body.rbt-shell .rbt-sheet-head .rbt-char-tokens.warn { color: #f0a43a; }

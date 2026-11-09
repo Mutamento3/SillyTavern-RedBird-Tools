@@ -7,6 +7,7 @@ import { openGlobal } from '../ui/views';
 import { openImport } from '../ui/ImportDialog';
 import { Menu } from '../ui/Menu';
 import { ctx } from '../st/st';
+import { compact } from './Shell';
 import {
   allTags,
   charsTick,
@@ -20,6 +21,9 @@ import {
   listCharacters,
   openCharacter,
   openSaves,
+  createTag,
+  setTagOn,
+  tagState,
   sortCharacters,
   toggleFavorite,
   type CharItem,
@@ -213,11 +217,51 @@ function Card({ it, managing, selected, onSelect }: { it: CharItem; managing?: b
   );
 }
 
+/** 「标签」：给选中的卡一起加、减标签。每个标签前的勾选框：全都有 / 有的有 / 都没有，点一下全加或全去掉。 */
+function TagMenu({ picked, onClose }: { picked: CharItem[]; onClose: () => void }) {
+  void charsTick.value;
+  const ref = useRef<HTMLDivElement>(null);
+  const [name, setName] = useState('');
+  useEffect(() => {
+    const away = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node) && !(e.target as HTMLElement).closest?.('.rbt-tag-btn')) onClose(); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('pointerdown', away, true);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc); };
+  }, []);
+  const all = [...(ctx().tags ?? [])].sort((a, b) => String(a.name).localeCompare(String(b.name), 'zh-Hans-CN'));
+  const add = async () => {
+    const id = await createTag(name);
+    if (id) { await setTagOn(picked, id, true); setName(''); }
+  };
+  return (
+    <Menu title={`给 ${picked.length} 张卡加减标签`} cls="rbt-tag-menu" menuRef={ref} onClose={onClose} closeLabel="完成">
+      <div class="rbt-tag-new">
+        <input class="text_pole rbt-input" placeholder="新标签" value={name} onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') void add(); }} />
+        <button type="button" class="rbt-btn rbt-btn-small" disabled={!name.trim()} onClick={() => { void add(); }}>添加</button>
+      </div>
+      <div class="rbt-tag-list">
+        {all.map((t) => {
+          const st = tagState(picked, t.id);
+          return (
+            <button key={t.id} type="button" role="menuitemcheckbox" aria-checked={st === 'all' ? 'true' : st === 'some' ? 'mixed' : 'false'} class={`rbt-tag-row ${st}`} onClick={() => { void setTagOn(picked, t.id, st !== 'all'); }}>
+              <i class={`fa-solid ${st === 'all' ? 'fa-square-check' : st === 'some' ? 'fa-square-minus' : 'fa-square'} fa-fw rbt-tag-box`} />
+              <span>{t.name}</span>
+            </button>
+          );
+        })}
+        {!all.length && <small class="rbt-muted">还没有标签，在上面输入一个。</small>}
+      </div>
+    </Menu>
+  );
+}
+
 /** 管理模式底部的操作条 */
 function ManageBar({ picked, total, onAll, onDone }: { picked: CharItem[]; total: number; onAll: () => void; onDone: () => void }) {
   const n = picked.length;
   const allFav = n > 0 && picked.every((x) => x.fav);
   const exportAll = async () => { for (const it of picked) await exportCharacter(it, 'png'); };
+  const [tagsOpen, setTagsOpen] = useState(false);
   return (
     <div class="rbt-manage-bar" role="toolbar" aria-label="批量管理">
       <span class="rbt-manage-count">{n ? `已选 ${n} 张` : '点卡片来选择'}</span>
@@ -226,6 +270,10 @@ function ManageBar({ picked, total, onAll, onDone }: { picked: CharItem[]; total
       <button type="button" class="rbt-home-btn" disabled={!n} onClick={() => { void setFavorite(picked, !allFav); }}>
         <i class="fa-solid fa-thumbtack" /> {allFav ? '取消置顶' : '置顶'}
       </button>
+      <span class="rbt-tag-anchor">
+        <button type="button" class="rbt-home-btn rbt-tag-btn" disabled={!n} aria-expanded={tagsOpen} onClick={() => setTagsOpen(!tagsOpen)}><i class="fa-solid fa-tags" /> 标签</button>
+        {tagsOpen && n > 0 && <TagMenu picked={picked} onClose={() => setTagsOpen(false)} />}
+      </span>
       <button type="button" class="rbt-home-btn" disabled={!n} onClick={() => { void exportAll(); }}><i class="fa-solid fa-download" /> 导出</button>
       <button type="button" class="rbt-home-btn danger" disabled={!n} onClick={() => { void deleteCharacters(picked).then((ok) => { if (ok) onDone(); }); }}><i class="fa-solid fa-trash-can" /> 删除…</button>
       <button type="button" class="rbt-home-btn primary" onClick={onDone}>完成</button>
@@ -234,6 +282,25 @@ function ManageBar({ picked, total, onAll, onDone }: { picked: CharItem[]; total
 }
 
 type Filter = 'all' | 'fav' | 'problem' | 'group' | `tag:${string}`;
+
+const SORT_TEXT: Record<CharSort, string> = { recent: '最近聊过', name: '名称', added: '最近添加' };
+
+/**
+ * 筛选 / 排序：一个图标 + 文字的按钮，上面盖一个看不见的系统下拉框（点了弹系统自带的选择器，手机上也好用）。
+ * 电脑上显示图标和文字；手机上只显示图标（和「管理」一样），选了标签时图标高亮。
+ */
+function IconPicker({ icon, label, title, value, options, onChange, active }: { icon: string; label: string; title: string; value: string; options: { value: string; text: string }[]; onChange: (v: string) => void; active?: boolean }) {
+  return (
+    <label class={'rbt-home-select rbt-home-picker' + (active ? ' active' : '')} title={title}>
+      <i class={`fa-solid ${icon} fa-fw`} aria-hidden="true" />
+      <span class="rbt-home-picker-text">{label}</span>
+      <i class="fa-solid fa-chevron-down rbt-home-picker-chev" aria-hidden="true" />
+      <select value={value} aria-label={title} onChange={(e) => onChange((e.currentTarget as HTMLSelectElement).value)}>
+        {options.map((o) => <option key={o.value} value={o.value}>{o.text}</option>)}
+      </select>
+    </label>
+  );
+}
 
 export function HomeGallery() {
   void charsTick.value;
@@ -277,14 +344,34 @@ export function HomeGallery() {
     <button type="button" class={filter === v ? 'active' : ''} onClick={() => setFilter(v)}>{dot && <span class="rbt-home-pill-dot" />}{label}</button>
   );
 
+  // 筛选 / 排序 / 管理：电脑上在第二行右边；手机上放到搜索框右边（第二行留给「全部 / 置顶…」，小屏不挤）
+  const phone = compact.value;
+  const tools = (
+          <div class="rbt-home-tools">
+            {tags.length > 0 && (
+              <IconPicker icon="fa-filter" label={tagValue ? (tags.find((t) => 'tag:' + t.tag.id === tagValue)?.tag.name ?? '标签') : '按标签筛选'} title="只看带某个标签的角色" active={!!tagValue}
+                value={tagValue} onChange={(v) => setFilter((v || 'all') as Filter)}
+                options={[{ value: '', text: '全部标签' }, ...tags.map(({ tag, count }) => ({ value: 'tag:' + tag.id, text: `${tag.name}（${count}）` }))]} />
+            )}
+            <IconPicker icon="fa-arrow-down-wide-short" label={`排序：${SORT_TEXT[sort]}`} title="排序方式" value={sort} onChange={(v) => setSort(v as CharSort)}
+              options={(Object.keys(SORT_TEXT) as CharSort[]).map((k) => ({ value: k, text: SORT_TEXT[k] }))} />
+            <button type="button" class={'rbt-home-select rbt-home-manage' + (managing ? ' active' : '')} title="多选：批量置顶、加减标签、导出、删除" onClick={() => (managing ? stopManaging() : setManaging(true))}>
+              <i class="fa-solid fa-list-check fa-fw" /> <span class="rbt-home-picker-text">{managing ? '完成' : '管理'}</span>
+            </button>
+          </div>
+  );
+
   return (
     <main class="rbt-home-gallery" aria-label="角色" data-lint-spacing="ok">
       <header class="rbt-home-head">
         <h1>角色 <small>{all.length}</small></h1>
-        <label class="rbt-search rbt-home-search">
-          <i class="fa-solid fa-magnifying-glass" />
-          <input type="search" placeholder="搜索角色、备注、标签" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
-        </label>
+        <div class="rbt-home-searchrow">
+          <label class="rbt-search rbt-home-search">
+            <i class="fa-solid fa-magnifying-glass" />
+            <input type="search" placeholder="搜索角色、备注、标签" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
+          </label>
+          {phone && tools}
+        </div>
         <div class="rbt-home-actions">
           {/* 手机上左栏收在 ☰ 里，导入放到这里（电脑上隐藏，用左栏那个） */}
           <button type="button" class="rbt-home-btn accent rbt-home-import" onClick={() => { void openImport(); }}><i class="fa-solid fa-file-import" /> 导入文件</button>
@@ -297,23 +384,9 @@ export function HomeGallery() {
           {nFav > 0 && <Pill v="fav" label={`置顶 ${nFav}`} />}
           {nProblem > 0 && <Pill v="problem" label={`待处理 ${nProblem}`} dot />}
           {nGroup > 0 && <Pill v="group" label={`群组 ${nGroup}`} />}
-          {tags.length > 0 && (
-            <select class={'rbt-home-select' + (tagValue ? ' active' : '')} value={tagValue} onChange={(e) => { const v = (e.currentTarget as HTMLSelectElement).value; setFilter((v || 'all') as Filter); }}>
-              <option value="">按标签…</option>
-              {tags.map(({ tag, count }) => <option key={tag.id} value={'tag:' + tag.id}>{tag.name}（{count}）</option>)}
-            </select>
-          )}
         </div>
-        <div class="rbt-home-tools">
-          <select class="rbt-home-select" value={sort} title="排序" onChange={(e) => setSort((e.currentTarget as HTMLSelectElement).value as CharSort)}>
-            <option value="recent">最近聊过</option>
-            <option value="name">按名称</option>
-            <option value="added">最近添加</option>
-          </select>
-          <button type="button" class={'rbt-home-select rbt-home-manage' + (managing ? ' active' : '')} title="多选：批量置顶、导出、删除" onClick={() => (managing ? stopManaging() : setManaging(true))}>
-            <i class="fa-solid fa-list-check" /> {managing ? '完成' : '管理'}
-          </button>
-        </div>
+        {/* 第二行：左边是常用的几种范围（全部 / 置顶…），右边是细调：按标签筛选、排序、管理 */}
+        {!phone && tools}
       </div>
       {filter === 'problem' && (
         <div class="rbt-home-note">

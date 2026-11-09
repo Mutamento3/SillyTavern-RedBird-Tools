@@ -159,6 +159,12 @@ export function setSeries(kind: SourceKind, names: string[], series: string): vo
   sourcesTick.value++;
 }
 
+/** 把一个系列改名（新名字为空 = 解散这个系列，里面的都回到「其他」）。 */
+export function renameSeries(kind: SourceKind, from: string, to: string): void {
+  const names = Object.entries(store(kind)).filter(([, r]) => (r.series ?? '').trim() === from).map(([n]) => n);
+  if (names.length) setSeries(kind, names, to.trim());
+}
+
 /** Every series name in use for this kind, for the input suggestions. */
 export function allSeries(kind: SourceKind): string[] {
   return [...new Set(Object.values(store(kind)).map((r) => r.series?.trim()).filter((x): x is string => !!x))].sort();

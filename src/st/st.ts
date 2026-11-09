@@ -153,6 +153,8 @@ export interface RbtSettings {
   lookId?: string;
   /** Don't warn again before switching to someone else's look. */
   themeWarnOff?: boolean;
+  /** 「可能是同一系列」的提示里点了「不是」的：按种类（preset / world / theme）记下那个词，以后不再提。 */
+  seriesNoSuggest?: Record<string, string[]>;
   /** Lorebook backups written to data/<user>/user/files before overwriting. */
   worldBackups: { file: string; world: string; at: string }[];
 }

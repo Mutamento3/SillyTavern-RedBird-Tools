@@ -31,7 +31,7 @@ import {
 } from '../../tools/cards/cards';
 import { envReport, refreshEnv, type EnvItem } from '../../tools/env/env';
 import { currentBookScopes } from '../../tools/flow/capture';
-import { allSeries, compareVersions, setSeries, sourceFor, sourcesTick, suggestSeries, updateSource, type SourceKind } from '../../tools/sources';
+import { allSeries, compareVersions, renameSeries, setSeries, sourceFor, sourcesTick, suggestSeries, updateSource, type SourceKind } from '../../tools/sources';
 import { openDrawer } from '../../shell/drawers';
 import { openBookInEditor } from '../../shell/worldNote';
 import { Empty, NavRow, CheckRow, Tag, Toggle } from '../common';
@@ -91,23 +91,92 @@ function groupBySeries(kind: SourceKind, names: string[]): { series: string; nam
   return groups;
 }
 
+/**
+ * 「可能是同一系列」的提示：平时只占一行小字，点「看看」才展开。
+ * 点「不是」记下来（存在设置里），以后打开也不再提这一组。
+ */
 function SeriesSuggestions({ kind, names }: { kind: SourceKind; names: string[] }) {
   void sourcesTick.value;
-  const [hidden, setHidden] = useState<string[]>([]);
-  const list = suggestSeries(kind, names).filter((g) => !hidden.includes(g.series));
+  const [open, setOpen] = useState(false);
+  const [, bump] = useState(0);
+  const no = settings().seriesNoSuggest?.[kind] ?? [];
+  const list = suggestSeries(kind, names).filter((g) => !no.includes(g.series));
   if (!list.length) return null;
+  const dismiss = (series: string) => {
+    const s = settings();
+    s.seriesNoSuggest ??= {};
+    s.seriesNoSuggest[kind] = [...new Set([...(s.seriesNoSuggest[kind] ?? []), series])];
+    saveSettings();
+    bump((n) => n + 1);
+  };
+  if (!open) {
+    return (
+      <button type="button" class="rbt-series-tip" onClick={() => setOpen(true)}>
+        <i class="fa-solid fa-lightbulb" /> 有 {list.length} 组名字相近，可能是同一系列 <span class="rbt-series-tip-go">看看 <i class="fa-solid fa-chevron-down" /></span>
+      </button>
+    );
+  }
   return (
-    <>
+    <div class="rbt-series-suggest">
       {list.map((g) => (
         <div key={g.series} class="rbt-hint rbt-row-between">
           <span>{g.names.length} 个名字里都有「{g.series}」，可能是同一系列的不同版本。</span>
           <span class="rbt-row">
-            <button type="button" class="rbt-btn rbt-btn-small" onClick={() => setHidden([...hidden, g.series])}>不是</button>
+            <button type="button" class="rbt-btn rbt-btn-small" onClick={() => dismiss(g.series)}>不是</button>
             <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" onClick={() => setSeries(kind, g.names, g.series)}>归为「{g.series}」系列</button>
           </span>
         </div>
       ))}
-    </>
+      <button type="button" class="rbt-linkbtn rbt-self-start" onClick={() => setOpen(false)}>收起</button>
+    </div>
+  );
+}
+
+/** 哪些系列收起来了：按种类记在浏览器里（只是看的方式，不用同步）。 */
+const COLLAPSE_KEY = 'rbt-series-collapsed';
+function readCollapsed(): Record<string, string[]> {
+  try { return JSON.parse(localStorage.getItem(COLLAPSE_KEY) ?? '{}'); } catch { return {}; }
+}
+
+/**
+ * 一个系列：标题行点一下收起 / 展开；有名字的系列右边有「编辑」，可以改名或解散
+ * （往系列里加、从系列里拿出来，用列表上方的「选择」）。
+ */
+function SeriesGroup({ kind, series, title, count, children }: { kind: SourceKind; series: string; title: string; count: number; children: preact.ComponentChildren }) {
+  const key = series || '_';
+  const [collapsed, setCollapsed] = useState(() => (readCollapsed()[kind] ?? []).includes(key));
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(series);
+  const toggle = () => {
+    const all = readCollapsed();
+    const set = new Set(all[kind] ?? []);
+    if (collapsed) set.delete(key); else set.add(key);
+    all[kind] = [...set];
+    try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(all)); } catch { /* ignore */ }
+    setCollapsed(!collapsed);
+  };
+  const save = () => { if (name.trim() && name.trim() !== series) renameSeries(kind, series, name.trim()); setEditing(false); };
+  return (
+    <section class={`rbt-card-section rbt-series ${collapsed ? 'collapsed' : ''}`}>
+      {editing ? (
+        <div class="rbt-series-edit">
+          <input class="text_pole rbt-input" value={name} autoFocus aria-label="系列名" onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }} />
+          <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={!name.trim()} onClick={save}>保存</button>
+          <button type="button" class="rbt-btn rbt-btn-small" onClick={() => setEditing(false)}>取消</button>
+          <button type="button" class="rbt-btn rbt-btn-small rbt-btn-danger rbt-push" title="里面的都回到「其他」，不会删除任何东西" onClick={() => { renameSeries(kind, series, ''); setEditing(false); }}>解散系列</button>
+        </div>
+      ) : (
+        <div class="rbt-series-head">
+          <button type="button" class="rbt-series-toggle" aria-expanded={!collapsed} onClick={toggle}>
+            <i class={`fa-solid ${collapsed ? 'fa-chevron-right' : 'fa-chevron-down'} fa-fw`} />
+            <span class="rbt-series-title">{title}</span>
+            <span class="rbt-series-count">{count}</span>
+          </button>
+          {series && <button type="button" class="rbt-btn rbt-btn-small" onClick={() => { setName(series); setEditing(true); }}>编辑</button>}
+        </div>
+      )}
+      {!collapsed && children}
+    </section>
   );
 }
 
@@ -177,7 +246,7 @@ function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filter
         )}
       </div>
       {groups.map((g) => (
-        <Section key={g.series || '_'} title={g.series ? `${g.series} 系列` : (groups.length > 1 ? `其他${restTitle}` : `全部${restTitle}`)} hint={`${g.names.length} 个`}>
+        <SeriesGroup key={g.series || '_'} kind={kind} series={g.series} title={g.series ? `${g.series} 系列` : (groups.length > 1 ? `其他${restTitle}` : `全部${restTitle}`)} count={g.names.length}>
           {g.names.map((n) => {
             if (!selecting) return <NavRow key={n} title={n} sub={sub(n) || undefined} trailing={trail?.(n)} onClick={() => openItem(kind, n, back)} />;
             const why = locked?.(n);
@@ -188,7 +257,7 @@ function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filter
               </label>
             );
           })}
-        </Section>
+        </SeriesGroup>
       ))}
       {selecting && (
         <div class="rbt-selbar" role="toolbar" aria-label="对选中的项目">

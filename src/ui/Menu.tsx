@@ -13,14 +13,14 @@ export const isPhone = (): boolean => !!window.matchMedia?.('(max-width: 1000px)
  * 小菜单。电脑上贴着按钮弹出；手机上是底部弹出的面板：顶上写这是什么的菜单，最下面一个「取消」。
  * 点菜单外面、按 Esc 都会关掉（由调用方处理）。
  */
-export function Menu({ title, cls, menuRef, onClose, children }: { title: string; cls: string; menuRef: Ref<HTMLDivElement>; onClose: () => void; children: ComponentChildren }) {
+export function Menu({ title, cls, menuRef, onClose, children, closeLabel = '取消' }: { title: string; cls: string; menuRef: Ref<HTMLDivElement>; onClose: () => void; children: ComponentChildren; /** 改了马上生效的菜单写「完成」 */ closeLabel?: string }) {
   if (!isPhone()) return <div class={cls} ref={menuRef} role="menu">{children}</div>;
   return createPortal(
     <div class="rbt-asheet-wrap">
-      <div class="rbt-asheet" ref={menuRef} role="menu" aria-label={title}>
+      <div class="rbt-asheet" ref={menuRef} role="menu" aria-label={title} data-lint-spacing="ok">
         <div class="rbt-asheet-title">{title}</div>
         <div class="rbt-asheet-items">{children}</div>
-        <button type="button" class="rbt-asheet-cancel" onClick={onClose}>取消</button>
+        <button type="button" class="rbt-asheet-cancel" onClick={onClose}>{closeLabel}</button>
       </div>
     </div>,
     document.body,
