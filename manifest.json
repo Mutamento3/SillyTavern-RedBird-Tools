@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.5.18",
+  "version": "0.5.19",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "一张表看全角色配套，直接解绑；首页图片更清晰，换带脚本的预设后会提醒刷新。"
+  "rbt_whats_new": "正则和脚本分段查看，文件夹能收起；附加世界书不再被误跳过，酒馆面板更清楚。"
 }

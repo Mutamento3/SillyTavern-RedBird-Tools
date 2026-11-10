@@ -46,6 +46,7 @@ import { AddGlobalWorld, GlobalRegexList, ItemRow, openRegexManager, PluginList,
 import { trash, TRASH_LABEL, type TrashKind } from '../../tools/trash';
 import { ReloadNotice, Section } from './parts';
 import { BindingsDetail, CardsTablePage } from './CardsTable';
+import { ScopePage } from './scope';
 import { LOOK_COPY, LOOK_NAME } from '../copy';
 import { mesLayoutOn, setMesLayout } from '../../shell/mesActions';
 import { shellOn } from '../../shell/Shell';
@@ -550,28 +551,28 @@ function RegexPage() {
   const cur = currentPresetName();
   const back = GLOBAL_TAB_LABELS.regex;
   return (
-    <div class="rbt-page">
-      <div class="rbt-page-cols">
-        <div class="rbt-page-group">
-          <Section title="全局正则" hint="对所有卡生效">
-            <GlobalRegexList items={regex} />
-            <div class="rbt-row"><button type="button" class="rbt-btn" onClick={() => openRegexManager()}>新建、编辑或导入正则 <i class="fa-solid fa-arrow-up-right-from-square" /></button></div>
-          </Section>
-        </div>
-        <div class="rbt-page-group">
-          <Section title="带正则的卡" hint="只对那张卡生效">
-            {cardRx.map((c) => (
-              <NavRow key={c.avatar} img={thumbnailUrl(c.avatar)} title={c.name} sub={`${c.regex.total} 条正则`} trailing={!c.regex.allowed ? <Tag tone="bad">未允许运行</Tag> : undefined} onClick={() => openDetail({ kind: 'card', avatar: c.avatar }, back)} />
-            ))}
-            {!cardRx.length && <small class="rbt-muted">没有。</small>}
-          </Section>
-          <Section title="带正则的预设" hint="只在用这个预设时生效">
-            {presetRx.map(({ p, n }) => <NavRow key={p} title={p} sub={`${n} 条正则`} trailing={p === cur ? <Tag tone="accent">正在用</Tag> : undefined} onClick={() => openDetail({ kind: 'preset', name: p }, back)} />)}
-            {!presetRx.length && <small class="rbt-muted">没有。</small>}
-          </Section>
-        </div>
-      </div>
-    </div>
+    <ScopePage id="regex" nowLabel={`全局 ${regex.length}`} presetCount={presetRx.length} cardCount={cardRx.length}
+      now={
+        <Section title="全局正则" hint="对所有卡生效">
+          <GlobalRegexList items={regex} />
+          <div class="rbt-row"><button type="button" class="rbt-btn" onClick={() => openRegexManager()}>新建、编辑或导入正则 <i class="fa-solid fa-arrow-up-right-from-square" /></button></div>
+        </Section>
+      }
+      presets={
+        <Section title="带正则的预设" hint="只在用这个预设时生效">
+          {presetRx.map(({ p, n }) => <NavRow key={p} title={p} sub={`${n} 条正则`} trailing={p === cur ? <Tag tone="accent">正在用</Tag> : undefined} onClick={() => openDetail({ kind: 'preset', name: p }, back)} />)}
+          {!presetRx.length && <small class="rbt-muted">没有。</small>}
+        </Section>
+      }
+      cards={
+        <Section title="带正则的卡" hint="只对那张卡生效">
+          {cardRx.map((c) => (
+            <NavRow key={c.avatar} img={thumbnailUrl(c.avatar)} title={c.name} sub={`${c.regex.total} 条正则`} trailing={!c.regex.allowed ? <Tag tone="bad">未允许运行</Tag> : undefined} onClick={() => openDetail({ kind: 'card', avatar: c.avatar }, back)} />
+          ))}
+          {!cardRx.length && <small class="rbt-muted">没有。</small>}
+        </Section>
+      }
+    />
   );
 }
 

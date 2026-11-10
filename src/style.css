@@ -1476,3 +1476,22 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-ct-actions { display: flex; flex-direction: column; gap: var(--rbd-s-2); margin-top: var(--rbd-s-5, 20px); }
 .rbt-ct-actions .rbt-btn { min-height: 44px; justify-content: center; }
 .rbt-ct-actions .rbt-btn-danger { color: #ff6961; }
+
+/* ============================================================ 正则 / 脚本：分段（见 ui/pages/scope.tsx） === */
+.rbt-scope-seg { margin-bottom: var(--rbd-s-3); }
+.rbt-scope-seg button { flex: 1 0 auto; }
+.rbt-scope-narrow { display: flex; width: 100%; }
+.rbt-scope-wide { display: none; }
+@container (max-width: 819.98px) {
+  .rbt-segpage[data-seg='now'] .rbt-scope-side,
+  .rbt-segpage:not([data-seg='now']) .rbt-scope-now,
+  .rbt-segpage[data-seg='presets'] .rbt-scope-cards,
+  .rbt-segpage[data-seg='cards'] .rbt-scope-presets { display: none; }
+}
+@container (min-width: 820px) {
+  .rbt-scope-narrow { display: none; }
+  .rbt-scope-wide { display: inline-flex; }
+  .rbt-segpage[data-side='presets'] .rbt-scope-cards,
+  .rbt-segpage[data-side='cards'] .rbt-scope-presets { display: none; }
+}
+@media (max-width: 1000px) { .rbt-scope-seg button { min-height: 36px; font-size: 13px; } }

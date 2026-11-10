@@ -401,3 +401,69 @@ html.rbt-look #toast-container .toast-close-button {
   font-size: 18px; font-weight: 400; line-height: 22px; text-align: center;
 }
 html.rbt-look #toast-container .toast-close-button:hover { background: var(--rbd-bg2-hover); color: var(--rbd-text1); }
+
+/* ---------- 8. 酒馆自带面板：间距、悬停、能点的地方 ----------
+   只改样子，不改顺序、内容和控件。
+   - 分组标题条（「对话补全预设」）和它下面那一行控件分开，不再贴在一起。
+   - 能展开的一行（「快速提示词编辑」「实用提示词」「角色名称行为」…）整行都能点：
+     悬停时整行变亮、箭头变亮，光标是手指；行和行之间留出一点空。
+   - 勾选框和标题左边对齐，说明文字和上下拉开一点。
+   - 滑块右边的数字框和别的输入框同一个样子。
+   - 提示词列表每一行悬停时变亮，边框变淡。
+   世界书条目和扩展设置有自己的排法，不在这里改。 */
+html.rbt-look .drawer-content .standoutHeader:not(.inline-drawer-header) { margin-bottom: var(--rbd-s-2); }
+
+html.rbt-look .drawer-content :not(#WorldInfo *, #extensions_settings *, #extensions_settings2 *) > .inline-drawer > .inline-drawer-toggle.inline-drawer-header:not(.standoutHeader) {
+  margin: 2px calc(-1 * var(--rbd-s-2));
+  padding: var(--rbd-s-2);
+  border-radius: var(--rbd-r-s);
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+html.rbt-look .drawer-content :not(#WorldInfo *, #extensions_settings *, #extensions_settings2 *) > .inline-drawer > .inline-drawer-toggle.inline-drawer-header:not(.standoutHeader):hover {
+  background-color: var(--rbd-bg2);
+}
+html.rbt-look .drawer-content .inline-drawer-header:hover .inline-drawer-icon { color: var(--rbd-text1); }
+html.rbt-look .drawer-content .inline-drawer-icon { transition: color 0.12s; }
+/* 能展开的几行连在一起；后面跟着别的东西时（比如「实用提示词」下面的「种子」）拉开一点 */
+html.rbt-look .drawer-content :not(#WorldInfo *) > .inline-drawer + :not(.inline-drawer) { margin-top: var(--rbd-s-3); }
+/* 展开后，内容和标题之间留一点空 */
+html.rbt-look .drawer-content :not(#WorldInfo *) > .inline-drawer > .inline-drawer-content { padding-top: var(--rbd-s-1); }
+
+/* 勾选框：和标题左边对齐，框和字之间 8px，框和第一行字居中 */
+html.rbt-look .drawer-content label.checkbox_label { column-gap: var(--rbd-s-2); align-items: center; }
+html.rbt-look .drawer-content label.checkbox_label > input[type='checkbox'] { margin: 0; flex: none; }
+html.rbt-look .drawer-content .toggle-description { margin: 2px 0 var(--rbd-s-1); color: var(--rbd-text3); line-height: 1.45; }
+html.rbt-look .drawer-content .checkbox_label + .toggle-description,
+html.rbt-look .drawer-content .checkbox_label + small { margin-top: 2px; }
+
+/* 滑块右边的数字框 */
+html.rbt-look .range-block-counter input {
+  background-color: var(--rbd-bg3);
+  border-color: transparent;
+  border-radius: var(--rbd-r-s);
+  color: var(--rbd-text1);
+}
+html.rbt-look .range-block-counter input:focus { outline: none; border-color: var(--rbd-accent); box-shadow: 0 0 0 3px var(--rbd-accent-soft); }
+
+/* 提示词列表（预设里的「提示词」） */
+html.rbt-look #completion_prompt_manager_list li.completion_prompt_manager_prompt {
+  border-color: var(--rbd-hairline);
+  border-radius: var(--rbd-r-s);
+  transition: background-color 0.12s;
+}
+html.rbt-look #completion_prompt_manager #completion_prompt_manager_list li.completion_prompt_manager_prompt:hover { background-color: var(--rbd-bg2-hover); }
+/* 行里的小图标（编辑、开关、断开）：悬停时变亮，看得出能点 */
+html.rbt-look #completion_prompt_manager_list :is(.prompt-manager-edit-action, .prompt-manager-toggle-action, .prompt-manager-detach-action, .prompt-manager-inspect-action) { transition: color 0.12s, opacity 0.12s; }
+html.rbt-look #completion_prompt_manager_list :is(.prompt-manager-edit-action, .prompt-manager-toggle-action, .prompt-manager-detach-action, .prompt-manager-inspect-action):hover { color: var(--rbd-text1); opacity: 1; }
+
+/* 面板里没有底色的图标按钮（.interactable）：悬停时有底色，键盘选中时有圈 */
+html.rbt-look .drawer-content .interactable:not(.menu_button, input, select, textarea, label, .inline-drawer-toggle) { border-radius: var(--rbd-r-xs); transition: background-color 0.12s, color 0.12s; }
+html.rbt-look .drawer-content .interactable:not(.menu_button, input, select, textarea, label, .inline-drawer-toggle):hover { background-color: var(--rbd-bg2-hover); color: var(--rbd-text1); }
+html.rbt-look .drawer-content .interactable:focus-visible { outline: 2px solid var(--rbd-accent); outline-offset: 1px; }
+/* 标题和问号图标排成一行的（「API 连接配置 ?」）：这一行和下面的控件分开 */
+html.rbt-look .drawer-content .flex-container:not(.flexFlowColumn):has(> :is(h3, h4):first-child) { margin-bottom: var(--rbd-s-2); }
+/* 手机：一长串勾选框（用户设置）每行够高，手指好点 */
+@media (max-width: 1000px) {
+  html.rbt-look .drawer-content label.checkbox_label { min-height: 36px; }
+}

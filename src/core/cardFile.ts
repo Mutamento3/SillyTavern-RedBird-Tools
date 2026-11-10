@@ -52,6 +52,8 @@ export interface CardSummary {
   /** Name of the lorebook built into the card ('' if none). */
   bookName: string;
   bookEntries: number;
+  /** 卡里自带世界书每条的「指纹」（备注 + 关键词），用来和单独的世界书文件比内容。 */
+  bookPrints?: string[];
   regexCount: number;
 }
 
@@ -67,7 +69,25 @@ export function summarizeCard(j: unknown): CardSummary | null {
   const entries = book.entries;
   const bookEntries = Array.isArray(entries) ? entries.length : entries && typeof entries === 'object' ? Object.keys(entries).length : 0;
   const rx = obj(d.extensions ?? o.extensions).regex_scripts;
-  return { name, bookName: String(book.name ?? '').trim(), bookEntries, regexCount: Array.isArray(rx) ? rx.length : 0 };
+  return { name, bookName: String(book.name ?? '').trim(), bookEntries, bookPrints: entryPrints(entries), regexCount: Array.isArray(rx) ? rx.length : 0 };
+}
+
+/**
+ * 每条的指纹：备注 + 关键词，去掉空白和标点后小写。卡里的书（keys / comment）和世界书文件（key / comment）字段名不一样，都认。
+ */
+export function entryPrints(entries: unknown): string[] {
+  const list = Array.isArray(entries) ? entries : entries && typeof entries === 'object' ? Object.values(entries as Obj) : [];
+  return list.map((e) => {
+    const x = obj(e);
+    const keys = x.keys ?? x.key;
+    const k = Array.isArray(keys) ? keys.map(String).join('|') : String(keys ?? '');
+    return norm(`${String(x.comment ?? x.name ?? '')}#${k}`);
+  }).filter((f) => f !== '#');
+}
+
+/** Fingerprints of a standalone worldbook file. */
+export function worldEntryPrints(j: unknown): string[] {
+  return entryPrints(obj(j).entries);
 }
 
 /** Entry count of a standalone worldbook file. */
@@ -79,12 +99,20 @@ export function worldEntryCount(j: unknown): number {
 const norm = (s: string) => s.toLowerCase().replace(/[\s_\-—·.，,。()（）[\]【】《》]+/g, '');
 
 /**
- * Is this worldbook file probably the same book the card already carries? Same name, or the
- * card carries a book with about the same number of entries.
+ * Is this worldbook file probably the same book the card already carries?
+ * - Same name: yes.
+ * - Different name: about the same number of entries AND most entries the same (by comment + keys).
+ *   Only comparing counts treated a small extra book（卡里 3 条、附加的 2 条）as the card's own.
+ *   Without fingerprints on either side, the counts must match exactly.
  */
-export function looksLikeCardBook(card: CardSummary, worldName: string, worldEntries: number): boolean {
+export function looksLikeCardBook(card: CardSummary, worldName: string, worldEntries: number, worldPrints?: string[]): boolean {
   if (!card.bookEntries) return false;
   if (card.bookName && norm(card.bookName) === norm(worldName)) return true;
   const diff = Math.abs(card.bookEntries - worldEntries);
-  return diff <= Math.max(1, Math.round(card.bookEntries * 0.05));
+  if (diff > Math.max(1, Math.round(card.bookEntries * 0.05))) return false;
+  const a = card.bookPrints;
+  if (!a?.length || !worldPrints?.length) return diff === 0 && card.bookEntries >= 3;
+  const mine = new Set(a);
+  const same = worldPrints.filter((f) => mine.has(f)).length;
+  return same / Math.max(a.length, worldPrints.length) >= 0.6;
 }

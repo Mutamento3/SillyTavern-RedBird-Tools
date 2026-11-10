@@ -5,11 +5,13 @@
  * 右边：所有带脚本的预设、带脚本的卡，点进去是那个预设 / 那张卡的详情（详情里也有同一块）。
  * 编辑脚本内容、新建、导入还是去酒馆助手（「编辑 ↗」）。
  */
+import { signal } from '@preact/signals';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { cardGroup, presetGroup, countRunning, countScripts, currentGroups, presetsWithScripts, cardsWithScripts, setGroupAllowed, setNodeEnabled, thInstalled, thTick, type ThGroup, type ThScript } from '../../tools/scripts/th';
 import { CheckRow, Empty, NavRow, Tag } from '../common';
 import { openScriptManager } from './GlobalPage';
 import { Section } from './parts';
+import { ScopePage } from './scope';
 import { GLOBAL_TAB_LABELS, openDetail } from '../views';
 
 const KIND_TITLE = (g: ThGroup) => (g.kind === 'global' ? '全局脚本' : g.kind === 'preset' ? `预设「${g.label}」的脚本` : `「${g.label}」的脚本`);
@@ -19,8 +21,10 @@ const KIND_HINT = (g: ThGroup) => (g.kind === 'global' ? '所有聊天都会运�
  * 一行：图标、名字（下面一行灰字），左边一个勾选框；整行都能点。不能改的（别的卡）勾选框是灰的。
  * 脚本作者常把整段说明写进简介，手机上一条能占满一屏：灰字最多两行，写不下时右边一个箭头，点了展开 / 收起。
  */
-function CheckLine({ icon, name, sub, checked, dim, disabled, nested, onChange }: {
+function CheckLine({ icon, name, sub, checked, dim, disabled, nested, onChange, fold }: {
   icon: string; name: string; sub?: string; checked: boolean; dim?: boolean; disabled?: boolean; nested?: boolean; onChange: (v: boolean) => void;
+  /** 文件夹：右边一个箭头，收起 / 展开里面的脚本 */
+  fold?: { open: boolean; onToggle: () => void };
 }) {
   const [open, setOpen] = useState(false);
   const [long, setLong] = useState(false);
@@ -34,7 +38,13 @@ function CheckLine({ icon, name, sub, checked, dim, disabled, nested, onChange }
       <input type="checkbox" class="rbt-cb" checked={checked} disabled={disabled} onChange={(e) => onChange((e.currentTarget as HTMLInputElement).checked)} />
       <i class={`fa-solid ${icon} fa-fw rbt-script-icon`} aria-hidden="true" />
       <span class="rbt-check-text"><span>{name}</span>{sub && <small ref={subRef} class={open ? '' : 'rbt-clamp2'}>{sub}</small>}</span>
-      {(long || open) && (
+      {fold && (
+        <button type="button" class="rbt-script-more" aria-expanded={fold.open} aria-label={fold.open ? `收起「${name}」` : `展开「${name}」`} title={fold.open ? '收起文件夹' : '展开文件夹'}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); fold.onToggle(); }}>
+          <i class={`fa-solid ${fold.open ? 'fa-chevron-up' : 'fa-chevron-down'}`} />
+        </button>
+      )}
+      {!fold && (long || open) && (
         <button type="button" class="rbt-script-more" aria-expanded={open} aria-label={open ? '收起说明' : '展开说明'} title={open ? '收起说明' : '展开说明'}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open); }}>
           <i class={`fa-solid ${open ? 'fa-chevron-up' : 'fa-chevron-down'}`} />
@@ -48,13 +58,20 @@ function scriptSub(s: ThScript): string {
   return [s.buttons > 0 ? `${s.buttons} 个按钮` : '', s.info].filter(Boolean).join(' · ');
 }
 
+/** 文件夹展开 / 收起，按「组 + 文件夹」记住。没点过的：里面超过 5 个脚本就先收起来。 */
+const folderOpen = signal<Record<string, boolean>>({});
+const FOLD_OVER = 5;
+
 function NodeRows({ g }: { g: ThGroup }) {
   const set = (id: string) => (v: boolean) => { void setNodeEnabled(g, id, v); };
   const rows: preact.JSX.Element[] = [];
   for (const n of g.nodes) {
     if (n.type === 'folder') {
-      rows.push(<CheckLine key={n.id} icon="fa-folder" name={n.name} sub={`文件夹 · ${n.scripts.length} 个脚本`} checked={n.enabled} dim={!g.allowed || !n.enabled} disabled={!g.editable} onChange={set(n.id)} />);
-      for (const sc of n.scripts) rows.push(<CheckLine key={sc.id} nested icon="fa-code" name={sc.name} sub={scriptSub(sc)} checked={sc.enabled} dim={!g.allowed || !n.enabled || !sc.enabled} disabled={!g.editable} onChange={set(sc.id)} />);
+      const k = `${g.kind}:${g.key}:${n.id}`;
+      const open = folderOpen.value[k] ?? n.scripts.length <= FOLD_OVER;
+      const fold = n.scripts.length ? { open, onToggle: () => { folderOpen.value = { ...folderOpen.value, [k]: !open }; } } : undefined;
+      rows.push(<CheckLine key={n.id} icon={open ? 'fa-folder-open' : 'fa-folder'} name={n.name} sub={`文件夹 · ${n.scripts.length} 个脚本`} checked={n.enabled} dim={!g.allowed || !n.enabled} disabled={!g.editable} onChange={set(n.id)} fold={fold} />);
+      if (open) for (const sc of n.scripts) rows.push(<CheckLine key={sc.id} nested icon="fa-code" name={sc.name} sub={scriptSub(sc)} checked={sc.enabled} dim={!g.allowed || !n.enabled || !sc.enabled} disabled={!g.editable} onChange={set(sc.id)} />);
     } else {
       rows.push(<CheckLine key={n.id} icon="fa-code" name={n.name} sub={scriptSub(n)} checked={n.enabled} dim={!g.allowed || !n.enabled} disabled={!g.editable} onChange={set(n.id)} />);
     }
@@ -96,31 +113,30 @@ export function ScriptsPage() {
   const cards = cardsWithScripts();
   const back = GLOBAL_TAB_LABELS.scripts;
   return (
-    <div class="rbt-page">
-      <div class="rbt-page-cols">
-        <div class="rbt-page-group">
-          <h2 class="rbt-page-group-title">正在用的</h2>
-          {/* 全局一直显示；当前预设、当前卡没有脚本就不占一块 */}
-          {groups.filter((g) => g.kind === 'global' || countScripts(g.nodes) > 0).map((g) => <ScriptGroupSection key={g.kind} g={g} />)}
-        </div>
-        <div class="rbt-page-group">
-          <Section title="带脚本的预设" hint="点进去可以开关，不用先换过去">
-            {presets.map((p) => (
-              <NavRow key={p.name} title={p.name} sub={`${p.count} 个脚本`} trailing={!p.allowed ? <Tag tone="bad">未允许运行</Tag> : groups.some((g) => g.kind === 'preset' && g.key === p.name) ? <Tag tone="accent">正在用</Tag> : undefined}
-                onClick={() => openDetail({ kind: 'preset', name: p.name }, back)} />
-            ))}
-            {!presets.length && <small class="rbt-muted">没有。</small>}
-          </Section>
-          <Section title="带脚本的卡" hint="和那张卡聊天时运行">
-            {cards.map((c) => (
-              <NavRow key={c.avatar} title={c.name} sub={`${c.count} 个脚本`} trailing={!c.allowed ? <Tag tone="bad">未允许运行</Tag> : undefined}
-                onClick={() => openDetail({ kind: 'card', avatar: c.avatar }, back)} />
-            ))}
-            {!cards.length && <small class="rbt-muted">没有。</small>}
-          </Section>
-        </div>
-      </div>
-    </div>
+    <ScopePage id="scripts" nowLabel="正在用" presetCount={presets.length} cardCount={cards.length}
+      now={<>
+        {/* 全局一直显示；当前预设、当前卡没有脚本就不占一块 */}
+        {groups.filter((g) => g.kind === 'global' || countScripts(g.nodes) > 0).map((g) => <ScriptGroupSection key={g.kind} g={g} />)}
+      </>}
+      presets={
+        <Section title="带脚本的预设" hint="点进去可以开关，不用先换过去">
+          {presets.map((p) => (
+            <NavRow key={p.name} title={p.name} sub={`${p.count} 个脚本`} trailing={!p.allowed ? <Tag tone="bad">未允许运行</Tag> : groups.some((g) => g.kind === 'preset' && g.key === p.name) ? <Tag tone="accent">正在用</Tag> : undefined}
+              onClick={() => openDetail({ kind: 'preset', name: p.name }, back)} />
+          ))}
+          {!presets.length && <small class="rbt-muted">没有。</small>}
+        </Section>
+      }
+      cards={
+        <Section title="带脚本的卡" hint="和那张卡聊天时运行">
+          {cards.map((c) => (
+            <NavRow key={c.avatar} title={c.name} sub={`${c.count} 个脚本`} trailing={!c.allowed ? <Tag tone="bad">未允许运行</Tag> : undefined}
+              onClick={() => openDetail({ kind: 'card', avatar: c.avatar }, back)} />
+          ))}
+          {!cards.length && <small class="rbt-muted">没有。</small>}
+        </Section>
+      }
+    />
   );
 }
 

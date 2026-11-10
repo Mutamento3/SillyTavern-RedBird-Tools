@@ -8,7 +8,7 @@ import { refreshEnv } from './env/env';
 import type { GlobalTab } from '../ui/views';
 
 import { detectJson, type ImportKind } from '../core/importKind';
-import { cardFromPng, looksLikeCardBook, summarizeCard, worldEntryCount, type CardSummary } from '../core/cardFile';
+import { cardFromPng, looksLikeCardBook, summarizeCard, worldEntryCount, worldEntryPrints, type CardSummary } from '../core/cardFile';
 export type { ImportKind };
 
 export const KIND_LABEL: Record<ImportKind, string> = {
@@ -66,6 +66,8 @@ export interface ImportItem {
   card?: CardSummary;
   /** Worldbooks: how many entries. */
   entries?: number;
+  /** Worldbooks: fingerprints of the entries (to tell the card's own book from an extra one). */
+  prints?: string[];
   /** Left out unless the user ticks it back on (e.g. the JSON copy of a PNG card). */
   skip?: boolean;
   /** Why it was left out (when skipped), or a detail for binding it to the card. */
@@ -86,7 +88,7 @@ export async function prepareImport(files: File[]): Promise<ImportItem[]> {
         it.card = summarizeCard(data) ?? undefined;
         if (it.card) it.title = it.card.name;
       }
-      if (it.kind === 'world') it.entries = worldEntryCount(JSON.parse(await file.text()));
+      if (it.kind === 'world') { const j = JSON.parse(await file.text()); it.entries = worldEntryCount(j); it.prints = worldEntryPrints(j); }
       if (it.kind === 'theme') it.title = String(JSON.parse(await file.text()).name ?? it.title);
       if (it.kind === 'regex') {
         const j = JSON.parse(await file.text());
@@ -118,7 +120,7 @@ export function relate(items: ImportItem[]): ImportItem[] {
   const card = cards[0].card;
   for (const it of items) {
     if (it.kind === 'world') {
-      if (looksLikeCardBook(card, baseName(it.file), it.entries ?? 0)) {
+      if (looksLikeCardBook(card, baseName(it.file), it.entries ?? 0, it.prints)) {
         it.skip = true;
         it.dupOf = card.name;
         it.note = `就是「${card.name}」卡里自带的那本（卡里 ${card.bookEntries} 条，这个文件 ${it.entries ?? '?'} 条），导入这张卡时会自动一起导入。`;
