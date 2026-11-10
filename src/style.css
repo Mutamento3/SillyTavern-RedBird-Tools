@@ -735,6 +735,8 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-source-link { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); text-decoration: none; }
 .rbt-source-link:hover { text-decoration: underline; }
 .rbt-source-link i { font-size: 9px; opacity: 0.8; }
+/* 手机上点得到：高度够 36px，不改字的位置和左右间距（上下负外边距抵掉内边距） */
+@media (max-width: 1000px) { .rbt-source-link { min-height: 36px; margin-block: -9px; } }
 .rbt-source-edit { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding: 10px 12px; border-radius: var(--rbd-r-s); background: var(--g3); }
 .rbt-source-k { flex: none; width: 32px; }
 .rbt-plugin-name { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; min-width: 0; }

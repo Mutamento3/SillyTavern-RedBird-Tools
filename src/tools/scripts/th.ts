@@ -22,8 +22,10 @@ export interface ThScript {
   name: string;
   enabled: boolean;
   info: string;
-  /** 这个脚本在输入框上方放了几个按钮 */
-  buttons: number;
+  /** 这个脚本在输入框上方放的按钮上的字 */
+  buttons: string[];
+  /** 脚本代码（用来猜有没有前端） */
+  content: string;
 }
 export interface ThFolder {
   type: 'folder';
@@ -65,7 +67,10 @@ function toScript(s: Any): ThScript {
     name: String(s?.name ?? '（没有名字）'),
     enabled: !!s?.enabled,
     info: String(s?.info ?? ''),
-    buttons: Array.isArray(s?.button?.buttons) && s?.button?.enabled !== false ? s.button.buttons.filter((b: Any) => b?.visible !== false).length : 0,
+    buttons: Array.isArray(s?.button?.buttons) && s?.button?.enabled !== false
+      ? s.button.buttons.filter((b: Any) => b?.visible !== false && String(b?.name ?? '').trim()).map((b: Any) => String(b.name).trim())
+      : [],
+    content: typeof s?.content === 'string' ? s.content : '',
   };
 }
 

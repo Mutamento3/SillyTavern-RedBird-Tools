@@ -467,3 +467,54 @@ html.rbt-look .drawer-content .flex-container:not(.flexFlowColumn):has(> :is(h3,
 @media (max-width: 1000px) {
   html.rbt-look .drawer-content label.checkbox_label { min-height: 36px; }
 }
+
+/* ---------- 9. 酒馆的预设面板（对话补全）：信息层级 ----------
+   酒馆原来整块排下来，只有一条横线分开「长度」和「采样」，看不出哪个设置属于哪块；
+   能展开的行（快速提示词编辑、实用提示词）展开后，内容和下面的「种子」连在一起。
+   这里不挪顺序、不改控件，只做三件事：
+   1. 每块一张卡片：预设、长度和采样、高级、Logit 偏置、提示词。
+   2. 加三个灰色小标题：「上下文和回复长度」「生成参数」（替掉那条横线）「高级」。
+      小标题用 ::before 画（不往酒馆的面板里插东西），绝对定位，不受那一行是横排还是竖排影响。
+   3. 能展开的行自成一张小卡片：标题和展开后的内容在同一张卡片里。
+   只改「对话补全」的预设面板（#openai_*、#range_block_openai），其他 API 的面板不动。 */
+html.rbt-look :is(#openai_api-presets, #range_block_openai, #openai_settings > div:first-child, #openai_settings > .range-block.m-t-1, #openai_settings > .range-block.m-b-1) {
+  background-color: var(--rbd-bg2);
+  border-radius: var(--rbd-r-m);
+  padding: var(--rbd-s-3) var(--rbd-s-4);
+  margin-bottom: var(--rbd-s-3);
+}
+/* 卡片里：标题条不再自己是一块（卡片就是它的底） */
+html.rbt-look #openai_api-presets .standoutHeader { background-color: transparent; padding-left: 0; padding-right: 0; }
+/* 卡片里的输入框比卡片亮一档 */
+html.rbt-look :is(#openai_api-presets, #range_block_openai, #openai_settings) :is(.text_pole, select, textarea, .range-block-counter input) { background-color: var(--rbd-bg3, color-mix(in srgb, var(--rbd-text1) 10%, transparent)); }
+
+/* 小标题 */
+/* 上面卡片那条规则里有更具体的选择器，这里把 id 写两遍，才能盖过它的上内边距 */
+html.rbt-look #range_block_openai#range_block_openai,
+html.rbt-look #openai_settings#openai_settings > div:first-child { position: relative; padding-top: calc(var(--rbd-s-3) + 26px); }
+html.rbt-look #range_block_openai::before,
+html.rbt-look #openai_settings > div:first-child::before,
+html.rbt-look #range_block_openai > hr + .range-block::before {
+  position: absolute;
+  left: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rbd-text3);
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+html.rbt-look #range_block_openai::before { content: '上下文和回复长度'; top: var(--rbd-s-3); left: var(--rbd-s-4); }
+html.rbt-look #openai_settings > div:first-child::before { content: '高级'; top: var(--rbd-s-3); left: var(--rbd-s-4); }
+html.rbt-look #range_block_openai > hr { visibility: hidden; height: 0; margin: var(--rbd-s-3) 0 0; }
+html.rbt-look #range_block_openai > hr + .range-block { position: relative; margin-top: calc(var(--rbd-s-4) + 14px); }
+html.rbt-look #range_block_openai > hr + .range-block::before { content: '生成参数'; top: -22px; }
+
+/* 能展开的行：自成一张小卡片，标题和展开的内容在一起 */
+html.rbt-look :is(#range_block_openai, #openai_settings) .inline-drawer {
+  border: 1px solid var(--rbd-hairline);
+  border-radius: var(--rbd-r-s);
+  padding: 0 var(--rbd-s-3);
+  margin: var(--rbd-s-2) 0;
+}
+html.rbt-look :is(#range_block_openai, #openai_settings) .inline-drawer > .inline-drawer-toggle.inline-drawer-header:not(.standoutHeader) { margin: 0 calc(-1 * var(--rbd-s-3)); padding: var(--rbd-s-2) var(--rbd-s-3); }
+html.rbt-look :is(#range_block_openai, #openai_settings) .inline-drawer > .inline-drawer-content { padding-bottom: var(--rbd-s-3); }

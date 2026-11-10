@@ -8,6 +8,7 @@
 import { signal } from '@preact/signals';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { cardGroup, presetGroup, countRunning, countScripts, currentGroups, presetsWithScripts, cardsWithScripts, setGroupAllowed, setNodeEnabled, thInstalled, thTick, type ThGroup, type ThScript } from '../../tools/scripts/th';
+import { guessFrontend } from '../../tools/scripts/frontend';
 import { CheckRow, Empty, NavRow, Tag } from '../common';
 import { openScriptManager } from './GlobalPage';
 import { Section } from './parts';
@@ -54,8 +55,11 @@ function CheckLine({ icon, name, sub, checked, dim, disabled, nested, onChange, 
   );
 }
 
+/** 灰字：可能有前端 · 按钮「…」 · 脚本简介。前两样放最前面，简介再长也能看到。 */
 function scriptSub(s: ThScript): string {
-  return [s.buttons > 0 ? `${s.buttons} 个按钮` : '', s.info].filter(Boolean).join(' · ');
+  const b = s.buttons;
+  const btn = b.length ? `按钮${b.slice(0, 3).map((x) => `「${x}」`).join('')}${b.length > 3 ? ` 等 ${b.length} 个` : ''}` : '';
+  return [guessFrontend(s.id, s.content) ? '可能有前端' : '', btn, s.info].filter(Boolean).join(' · ');
 }
 
 /** 文件夹展开 / 收起，按「组 + 文件夹」记住。没点过的：里面超过 5 个脚本就先收起来。 */

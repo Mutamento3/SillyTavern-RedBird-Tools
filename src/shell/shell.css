@@ -1338,7 +1338,12 @@ body.rbt-shell #WorldInfo > .flex-container.gap10px:has(> #WI_panel_pin_div) { d
   /* 世界书底部的翻页 */
   body.rbt-shell #WorldInfo .paginationjs-pages li a { min-width: 32px; min-height: 32px; display: inline-grid; place-items: center; }
   body.rbt-shell #WorldInfo .J-paginationjs-size-select { min-height: 32px; }
-  body.rbt-shell #WorldInfo .select2-selection__clear, body.rbt-shell #WorldInfo .select2-selection__choice__remove { min-width: 32px; min-height: 32px; }
+  /* 「已启用的世界书」的标签：删除 × 放大到 32px 后不能再浮在名字上，改成排在名字左边；右边留出「全部清除 ×」的位置 */
+  body.rbt-shell #WorldInfo .select2-selection__clear { min-width: 32px; min-height: 32px; display: grid; place-items: center; top: 5px !important; }
+  body.rbt-shell #WorldInfo .select2-selection--multiple.select2-selection--clearable { padding-right: 44px !important; }
+  body.rbt-shell #WorldInfo .select2-selection__choice { display: inline-flex !important; align-items: center; min-height: 32px; padding: 0 6px 0 0 !important; vertical-align: middle; }
+  body.rbt-shell #WorldInfo .select2-selection__choice__remove { position: static !important; flex: none; min-width: 32px; min-height: 32px; display: grid; place-items: center; padding: 0 !important; }
+  body.rbt-shell #WorldInfo .select2-selection__choice__display { padding: 0 4px !important; margin: 0 !important; }
 }
 
 /* 世界书面板（电脑和手机都适用）：条目标题和状态垂直居中；顶上几行统一间距 */

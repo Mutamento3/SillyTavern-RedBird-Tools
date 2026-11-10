@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.5.19",
+  "version": "0.5.20",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "正则和脚本分段查看，文件夹能收起；附加世界书不再被误跳过，酒馆面板更清楚。"
+  "rbt_whats_new": "脚本列表标出可能有前端的脚本和它放的按钮；预设面板分块加了小标题，手机世界书标签不再压字。"
 }
