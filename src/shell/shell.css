@@ -1168,8 +1168,13 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
   }
   .rbt-sheet-bar { flex-wrap: wrap; row-gap: var(--rbd-s-2); padding: var(--rbd-s-2) var(--rbd-s-2) var(--rbd-s-3) var(--rbd-inset); }
   .rbt-sheet-bar .rbt-sheet-title { flex: 1; }
-  .rbt-sheet-tabs { order: 3; display: flex; width: calc(100% - 8px); margin: 0; overflow-x: auto; }
-  .rbt-sheet-tabs button { flex: 1 0 auto; padding: 7px 10px; font-size: 13px !important; }
+  .rbt-sheet-tabs { order: 3; display: flex; width: calc(100% - 8px); margin: 0; overflow-x: auto; scrollbar-width: none; }
+  .rbt-sheet-tabs::-webkit-scrollbar { display: none; }
+  /* 放不下时：还有标签的那一边淡出，提示可以滑 */
+  .rbt-sheet-tabs.more-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+  .rbt-sheet-tabs.more-left { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent); }
+  .rbt-sheet-tabs.more-left.more-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); }
+  .rbt-sheet-tabs button { flex: 1 0 auto; padding: 7px 6px; font-size: 13px !important; }
   .rbt-sheet-body { padding: var(--rbd-s-3) var(--rbd-inset) var(--rbd-s-6); }
 
   /* ---- 标题栏里的说明（比如世界书面板列出的已加载世界书）：手机上换到第二行、自动折行，不撑出横向滚动 ---- */

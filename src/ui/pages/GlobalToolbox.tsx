@@ -44,7 +44,8 @@ import { importOpen, openImport } from '../ImportDialog';
 import { CardPage } from './CardPage';
 import { AddGlobalWorld, GlobalRegexList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
 import { trash, TRASH_LABEL, type TrashKind } from '../../tools/trash';
-import { Section } from './parts';
+import { ReloadNotice, Section } from './parts';
+import { BindingsDetail, CardsTablePage } from './CardsTable';
 import { LOOK_COPY, LOOK_NAME } from '../copy';
 import { mesLayoutOn, setMesLayout } from '../../shell/mesActions';
 import { shellOn } from '../../shell/Shell';
@@ -373,6 +374,7 @@ function PresetsPage() {
         <div class="rbt-page-group">
           <Section title="正在用" hint="切到有推荐预设的卡时会自动换">
             <PresetPicker />
+            <ReloadNotice name={cur} />
             {presetRx.map((i) => <ItemRow key={i.id} item={i} />)}
             {!presetRx.length && <small class="rbt-muted">这个预设没有自带正则或脚本。</small>}
           </Section>
@@ -414,6 +416,7 @@ function PresetDetail({ name }: { name: string }) {
         {name === cur ? <Tag tone="accent">正在用</Tag> : exists && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={async () => { setBusy(true); try { await switchPreset(name); } finally { setBusy(false); } }}>换成这个</button>}
         {name === cur && <button type="button" class="rbt-btn rbt-btn-small" onClick={() => openDrawer('preset')}>编辑预设 <i class="fa-solid fa-arrow-up-right-from-square" /></button>}
       </div>
+      {name === cur && <ReloadNotice name={name} />}
       {!exists && <div class="rbt-warn">找不到这个预设，可能被删除或改名了。</div>}
       {rx > 0 && <small class="rbt-muted">自带 {rx} 条正则，用这个预设时生效。</small>}
       <div class="rbt-page-cols">
@@ -710,11 +713,14 @@ function LooksPage() {
           )}
         </div>
         <div class="rbt-page-group">
-          {/* 别人的美化：先说可能的问题和推荐，再给手机排版的开关（和扩展设置里是同一个开关、同一段文字） */}
-          <div class="rbt-looks-info">
-            <p class="rbt-looks-info-text"><i class="fa-solid fa-circle-info" aria-hidden="true" />{LOOK_COPY.othersRisk}{LOOK_COPY.recommend}{LOOK_COPY.noAdapt}</p>
-            {shellOn.value && <CheckRow label={LOOK_COPY.mesLayoutLabel} detail={LOOK_COPY.mesLayoutDesc} checked={mesLayoutOn.value} onChange={setMesLayout} />}
-          </div>
+          {/* 用着别人的美化时：先说可能的问题和推荐，再给手机排版的开关（和扩展设置里是同一个开关、同一段文字）。
+              用着红鸟适配美化时不显示：这段说的是别人的美化，沉浸阅读默认开着，想关去扩展设置的「界面」。 */}
+          {!builtIn && (
+            <div class="rbt-looks-info">
+              <p class="rbt-looks-info-text"><i class="fa-solid fa-circle-info" aria-hidden="true" />{LOOK_COPY.othersRisk}{LOOK_COPY.recommend}{LOOK_COPY.noAdapt}</p>
+              {shellOn.value && <CheckRow label={LOOK_COPY.mesLayoutLabel} detail={LOOK_COPY.mesLayoutDesc} checked={mesLayoutOn.value} onChange={setMesLayout} />}
+            </div>
+          )}
           {themesLoading.value && !list.length ? <small class="rbt-muted">读取中…</small> : (
             <SeriesList
               kind="theme"
@@ -790,13 +796,36 @@ function DetailBody() {
       {e.d.kind === 'preset' && <PresetDetail name={e.d.name} />}
       {e.d.kind === 'world' && <WorldDetail name={e.d.name} />}
       {e.d.kind === 'theme' && <ThemeDetail name={e.d.name} />}
+      {e.d.kind === 'bindings' && <BindingsDetail avatar={e.d.avatar} />}
     </>
   );
 }
 
+/**
+ * 标签一行放不下时（窄手机）可以左右滑：哪边还有没露出来的标签，那边就淡出一截，提示能滑；
+ * 选中的标签自动滚到看得见的地方。
+ */
 export function GlobalTabs() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState('');
+  const measure = () => {
+    const el = ref.current;
+    if (!el) return;
+    const left = el.scrollLeft > 2;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+    setEdge(`${left ? ' more-left' : ''}${right ? ' more-right' : ''}`);
+  };
+  useEffect(() => {
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+  useEffect(() => {
+    ref.current?.querySelector<HTMLElement>('.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    measure();
+  }, [globalTab.value]);
   return (
-    <div class="rbt-sheet-tabs" role="tablist">
+    <div ref={ref} class={`rbt-sheet-tabs${edge}`} role="tablist" onScroll={measure}>
       {GLOBAL_TABS.map((t) => (
         <button key={t} type="button" role="tab" class={globalTab.value === t ? 'active' : ''} onClick={() => setGlobalTab(t)}>{GLOBAL_TAB_LABELS[t]}</button>
       ))}
@@ -809,6 +838,7 @@ export function GlobalToolbox() {
   void detailStack.value;
   const t: GlobalTab = globalTab.value;
   if (currentDetail()) return <DetailBody />;
+  if (t === 'cards') return <CardsTablePage />;
   if (t === 'presets') return <PresetsPage />;
   if (t === 'worlds') return <WorldsPage />;
   if (t === 'regex') return <RegexPage />;

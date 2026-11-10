@@ -8,7 +8,7 @@
 import { signal } from '@preact/signals';
 
 export type ViewId = 'flow' | 'vars' | 'card' | 'global';
-export type GlobalTab = 'presets' | 'worlds' | 'regex' | 'scripts' | 'plugins' | 'looks' | 'backup';
+export type GlobalTab = 'cards' | 'presets' | 'worlds' | 'regex' | 'scripts' | 'plugins' | 'looks' | 'backup';
 
 export const VIEW_LABELS: Record<ViewId, string> = {
   card: '角色档案',
@@ -17,8 +17,9 @@ export const VIEW_LABELS: Record<ViewId, string> = {
   global: '全局工具箱',
 };
 
-export const GLOBAL_TABS: GlobalTab[] = ['presets', 'worlds', 'regex', 'scripts', 'plugins', 'looks', 'backup'];
+export const GLOBAL_TABS: GlobalTab[] = ['cards', 'presets', 'worlds', 'regex', 'scripts', 'plugins', 'looks', 'backup'];
 export const GLOBAL_TAB_LABELS: Record<GlobalTab, string> = {
+  cards: '角色',
   presets: '预设',
   worlds: '世界书',
   regex: '正则',
@@ -30,7 +31,7 @@ export const GLOBAL_TAB_LABELS: Record<GlobalTab, string> = {
 
 /** Whether the 全局工具箱 overlay is shown (shell mode only). */
 export const sheetOpen = signal(false);
-export const globalTab = signal<GlobalTab>('presets');
+export const globalTab = signal<GlobalTab>('cards');
 /** True when the three-column shell is active (desktop and switched on). Kept in sync by Shell. */
 export const shellActive = signal(false);
 
@@ -48,6 +49,7 @@ export function configureViews(opts: { openInDock: Opener; beforeSheet: () => vo
 const LEGACY: Record<string, { view: ViewId; tab?: GlobalTab }> = {
   env: { view: 'card' }, cards: { view: 'card' },
   maintain: { view: 'global', tab: 'backup' },
+  bindings: { view: 'global', tab: 'cards' }, table: { view: 'global', tab: 'cards' },
   presets: { view: 'global', tab: 'presets' }, worlds: { view: 'global', tab: 'worlds' },
   regex: { view: 'global', tab: 'regex' }, scripts: { view: 'global', tab: 'scripts' }, plugins: { view: 'global', tab: 'plugins' }, backup: { view: 'global', tab: 'backup' },
   looks: { view: 'global', tab: 'looks' }, themes: { view: 'global', tab: 'looks' },
@@ -89,7 +91,7 @@ export function setGlobalTab(tab: GlobalTab): void {
 
 // ------------------------------------------------------------ detail ---
 
-export type Detail = { kind: 'card'; avatar: string } | { kind: 'preset'; name: string } | { kind: 'world'; name: string } | { kind: 'theme'; name: string };
+export type Detail = { kind: 'card'; avatar: string } | { kind: 'preset'; name: string } | { kind: 'world'; name: string } | { kind: 'theme'; name: string } | { kind: 'bindings'; avatar: string };
 interface DetailEntry { d: Detail; back: string }
 
 /** A stack, so card → preset → card can go back step by step. Cleared when switching tabs. */

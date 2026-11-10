@@ -22,6 +22,7 @@ import { installWorldEntries } from './shell/worldEntries';
 import { installMesActions, mesLayoutOn, setMesLayout } from './shell/mesActions';
 import { installThWatch } from './tools/scripts/th';
 import { installScriptNotice } from './tools/scripts/notice';
+import { installReloadAdvice } from './tools/scripts/reload';
 import { installChatSaves } from './shell/chatSaves';
 import { installRecentWatch } from './shell/recent';
 import { SheetHost } from './shell/Sheet';
@@ -91,7 +92,6 @@ function addSettingsDrawer(): void {
         <div class="rbt-set-group">
           <div class="rbt-set-title">界面</div>
           ${row('rbt_shell_switch', '三栏界面', '左栏入口、中间聊天、右边工具箱；左栏底部可以切回原版')}
-          <small class="rbt-set-tip" id="rbt_thumb_tip" hidden>手机或远程打开时，首页用的是缩略图。觉得模糊，见<a href="https://github.com/RebBirdTD/SillyTavern-RedBird-Tools#调整缩略图清晰度" target="_blank" rel="noopener">怎么调清楚 ↗</a></small>
           ${row('rbt_look_switch', LOOK_COPY.lookLabel, LOOK_COPY.lookDesc)}
           ${row('rbt_mes_layout', LOOK_COPY.mesLayoutLabel, LOOK_COPY.mesLayoutDesc)}
         </div>
@@ -108,8 +108,6 @@ function addSettingsDrawer(): void {
       </div>
     </div>`;
   host.appendChild(wrap);
-  // 不是在本机电脑上打开时，说明首页卡片为什么用缩略图、怎么变清楚
-  if (!['localhost', '127.0.0.1', '[::1]', '::1'].includes(location.hostname)) wrap.querySelector<HTMLElement>('#rbt_thumb_tip')?.removeAttribute('hidden');
   // 「工具箱」两行：整行都能点，也能用键盘（Enter / 空格）
   const navRow = (id: string, go: () => void) => {
     const el = wrap.querySelector<HTMLElement>(`#${id}`);
@@ -162,7 +160,7 @@ function addSlashCommand(): void {
         else panelOpen.value = !panelOpen.value;
         return '';
       },
-      helpString: '打开/关闭 RedBird 工具箱。参数：card（角色档案）/ flow（信息流）/ vars（变量）/ presets、worlds、regex、scripts、plugins、backup（全局工具箱的各标签）；/rbt shell 开关三栏界面。',
+      helpString: '打开/关闭 RedBird 工具箱。参数：card（角色档案）/ flow（信息流）/ vars（变量）/ table（角色配套总表）/ presets、worlds、regex、scripts、plugins、backup（全局工具箱的各标签）；/rbt shell 开关三栏界面。',
     }));
   } catch (e) {
     console.warn('[RedBird] slash command registration failed', e);
@@ -236,6 +234,7 @@ async function init(): Promise<void> {
   installMesActions();
   installThWatch();
   installScriptNotice();
+  installReloadAdvice();
   // 存档页每一条：存档名 + ⋯、两行预览、时间和大小
   installChatSaves();
   // 所有通知（包括酒馆和别的插件发的）右上角都有 ✕，可以直接关掉

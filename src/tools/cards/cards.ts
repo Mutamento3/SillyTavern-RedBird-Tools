@@ -256,6 +256,31 @@ export function setCardModel(avatar: string, cardName: string, model: ModelChoic
   bump();
 }
 
+/** 改「换到这张卡时」记下的全局世界书或全局正则（总表里解绑一项、撤销时用）。null = 不再记这一项。 */
+export function setProfileList(avatar: string, cardName: string, key: 'globalWorlds' | 'globalRegexEnabled', list: string[] | null): void {
+  const s = settings();
+  const p: EnvProfile = s.profiles[avatar] ?? { savedAt: new Date().toISOString(), cardName };
+  if (list) p[key] = list;
+  else delete p[key];
+  p.cardName = cardName;
+  p.updatedAt = new Date().toISOString();
+  if (!p.preset && !p.model && !p.globalWorlds && !p.globalRegexEnabled) { delete s.profiles[avatar]; markDeleted('profiles', avatar); }
+  else s.profiles[avatar] = p;
+  saveSettings();
+  refreshEnv();
+  bump();
+}
+
+/** 整个换成另一份（「全部解绑」和它的撤销）。null = 删掉。 */
+export function setProfile(avatar: string, p: EnvProfile | null): void {
+  const s = settings();
+  if (p) s.profiles[avatar] = { ...p, updatedAt: new Date().toISOString() };
+  else { delete s.profiles[avatar]; markDeleted('profiles', avatar); }
+  saveSettings();
+  refreshEnv();
+  bump();
+}
+
 export function setRecommendedPreset(avatar: string, cardName: string, name: string | null): void {
   const s = settings();
   const p: EnvProfile = s.profiles[avatar] ?? { savedAt: new Date().toISOString(), cardName };

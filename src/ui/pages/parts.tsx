@@ -1,6 +1,7 @@
 /**
  * 「这张卡」页面用到的各个分区（原「角色档案 · 这张卡」）。
  */
+import { RELOAD_COPY, reloadAdvised, reloadPage } from '../../tools/scripts/reload';
 import { EditButton, editRegex, openRegexManager, openScriptManager } from './GlobalPage';
 import { thInstalled } from '../../tools/scripts/th';
 import { signal } from '@preact/signals';
@@ -307,6 +308,17 @@ function InUse({ title }: { title: string }) {
   return <i class="fa-solid fa-circle-check rbt-inuse" title={title} aria-label={title} />;
 }
 
+/** 换了带脚本的预设、还没刷新：琥珀色一行 + 「刷新页面」。只在 name 就是那个预设时出现。 */
+export function ReloadNotice({ name }: { name: string }) {
+  if (reloadAdvised.value !== name) return null;
+  return (
+    <div class="rbt-differ" role="status">
+      <span class="rbt-differ-text"><span class="rbt-differ-k">{RELOAD_COPY.title}</span>{RELOAD_COPY.detail}</span>
+      <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" onClick={() => void reloadPage()}>{RELOAD_COPY.button}</button>
+    </div>
+  );
+}
+
 /** 正在用的和推荐的不一样：琥珀色一行，写出正在用的是什么，右边一个按钮换过去。 */
 function Differs({ now, children }: { now: string; children?: ComponentChildren }) {
   return (
@@ -353,8 +365,11 @@ export function PresetSection({ info }: { info: CardInfo }) {
           {rec && !names.includes(rec.name) && <option value={rec.name}>{rec.name}（已经删掉了）</option>}
           {names.map((n) => <option key={n} value={n}>{n}</option>)}
         </select>
-        {live && rec && !otherApi && rec.name === current ? <InUse title="正在用这个预设" /> : <span />}
+        {live && rec && !otherApi && rec.name === current
+          ? (reloadAdvised.value === current ? <i class="fa-solid fa-circle-exclamation rbt-inuse rbt-inuse-warn" title={RELOAD_COPY.title} aria-label={RELOAD_COPY.title} /> : <InUse title="正在用这个预设" />)
+          : <span />}
       </div>
+      {live && current && <ReloadNotice name={current} />}
       {/* 「换成推荐的」按钮在页面顶上的「需要注意」里，这里只标出正在用的是什么，不重复放按钮 */}
       {presetDiffers && <Differs now={current} />}
       {live && !rec && current && <button type="button" class="rbt-linkbtn rbt-self-start" onClick={() => setRecommendedPreset(info.avatar, info.name, current)}>推荐正在用的「{current}」</button>}
@@ -374,9 +389,9 @@ export function PresetSection({ info }: { info: CardInfo }) {
 // ------------------------------------------------------------ 人设 ---
 // 绑定用的是酒馆自己的「连接」（人设 › 连接到角色）：换到这张卡时，酒馆自己会换成绑定的人设，工具箱不再另外换。
 
-const personaTick = signal(0);
+export const personaTick = signal(0);
 let personaWatch = false;
-function watchPersonas(): void {
+export function watchPersonas(): void {
   if (personaWatch) return;
   personaWatch = true;
   const c = ctx();
@@ -390,13 +405,13 @@ function watchPersonas(): void {
 type Conn = { type: string; id: string };
 const isCardConn = (avatar: string) => (x: Conn) => x.type === 'character' && x.id === avatar;
 
-function boundPersonas(avatar: string): string[] {
+export function boundPersonas(avatar: string): string[] {
   const d = ctx().powerUserSettings?.persona_descriptions ?? {};
   return Object.keys(d).filter((id) => (d[id]?.connections as Conn[] | undefined)?.some(isCardConn(avatar)));
 }
 
 /** 把人设绑到这张卡。酒馆没开「允许一张卡连多个人设」时，先解开别的人设和这张卡的绑定（和酒馆自己一样）。 */
-function bindPersona(id: string, avatar: string): void {
+export function bindPersona(id: string, avatar: string): void {
   const pu = ctx().powerUserSettings;
   // 只填了名字和头像、没写过描述的人设还没有这一条：和酒馆一样先建一条空的
   if (id === String(loaded.personas?.user_avatar ?? '')) loaded.personas?.getOrCreatePersonaDescriptor?.();
@@ -410,7 +425,7 @@ function bindPersona(id: string, avatar: string): void {
   personaTick.value++;
 }
 
-function unbindPersona(id: string, avatar: string): void {
+export function unbindPersona(id: string, avatar: string): void {
   const d = ctx().powerUserSettings?.persona_descriptions?.[id];
   if (!d?.connections) return;
   d.connections = d.connections.filter((x: Conn) => !isCardConn(avatar)(x));

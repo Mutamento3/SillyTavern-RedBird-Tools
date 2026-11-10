@@ -13,6 +13,7 @@ import { panelOpen } from '../ui/Panel';
 import { chatTick } from './Shell';
 import { openDrawers } from './drawers';
 import { sourcesTick } from '../tools/sources';
+import { RELOAD_COPY, reloadAdvised, reloadPage } from '../tools/scripts/reload';
 
 /** Bumped after actions so the panel re-reads ST state. */
 export const statusTick = signal(0);
@@ -35,7 +36,7 @@ function hasMvu(char: Any): boolean {
  * 角色档案都要用「这张卡的检查结果」，同一次变化里只算一遍，按这个数和卡来缓存。
  */
 let genN = 0;
-const envGen = computed(() => { void chatTick.value; void statusTick.value; void sourcesTick.value; void openDrawers.value; return ++genN; });
+const envGen = computed(() => { void chatTick.value; void statusTick.value; void sourcesTick.value; void openDrawers.value; void reloadAdvised.value; return ++genN; });
 
 function cached<T>(fn: (char: Any) => T): (char: Any) => T {
   let last: { gen: number; avatar: string; val: T } | null = null;
@@ -85,8 +86,10 @@ function buildSectionsNow(char: Any): { sections: Section[]; issues: number } {
   const pr: Line[] = [];
   const cur = currentPresetName();
   const rec = info.preset;
+  if (cur && reloadAdvised.value === cur) pr.push({ level: 'warn', text: RELOAD_COPY.title, detail: RELOAD_COPY.detail, action: { label: RELOAD_COPY.button, run: reloadPage } });
   if (rec && rec.api === presetApi()) {
-    if (rec.name === cur) pr.push({ level: 'ok', text: `「${cur}」`, detail: '就是这张卡的推荐预设' });
+    if (rec.name === cur && reloadAdvised.value === cur) { /* 上面那条琥珀色的已经说了，不再放绿勾 */ }
+    else if (rec.name === cur) pr.push({ level: 'ok', text: `「${cur}」`, detail: '就是这张卡的推荐预设' });
     else pr.push({ level: 'warn', text: `现在用的是「${cur}」`, detail: `这张卡推荐「${rec.name}」`, action: { label: '换成推荐的', run: async () => { await switchPreset(rec.name); bump(); } } });
   } else {
     pr.push({ level: 'info', text: `「${cur}」`, detail: '这张卡还没设推荐预设',

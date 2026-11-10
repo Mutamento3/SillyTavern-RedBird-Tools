@@ -2,6 +2,7 @@
  * 首页：角色画廊。图片是视觉中心——竖版大卡片，立绘铺满，底部用图片自己的颜色渐变 + 模糊托住名字。
  * 左栏只放最近的聊天；挑角色、新建 / 导入都在这里。
  */
+import { sharpImage, sharpNow } from './sharpImg';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { openGlobal } from '../ui/views';
 import { openImport } from '../ui/ImportDialog';
@@ -88,14 +89,32 @@ function sampleTint(img: HTMLImageElement): string | null {
 // -------------------------------------------------------------- bits ---
 
 /**
- * 卡片用哪张图。角色卡 PNG 里嵌着整张卡的数据，一张常有 1–9MB；手机或远程打开时，首屏几张就要下载几十 MB，
- * 点卡片进聊天的请求还得排在后面。所以只有在本机电脑上打开（localhost）才用原图，其余都用酒馆的缩略图（jpg，十几 KB）。
- * 缩略图默认只有 96×144，放大会糊，可以在酒馆的 config.yaml 里把 thumbnails.dimensions.avatar 调大（README 有写）。
+ * 卡片用哪张图：先用酒馆的缩略图（很小，马上出来），卡片出现在屏幕上后，换成存在浏览器里的清晰图（见 sharpImg.ts）。
+ * 群组没有原图，一直用缩略图。
  */
-const LOCAL = ['localhost', '127.0.0.1', '[::1]', '::1'].includes(location.hostname);
-function cardImage(it: CharItem): string {
-  if (it.kind !== 'character' || !LOCAL || window.matchMedia?.('(max-width: 1000px)').matches) return it.thumb;
-  return `/characters/${encodeURIComponent(it.key.slice(2))}`;
+function useCardImage(it: CharItem): { src: string; ref: (el: HTMLElement | null) => void } {
+  const avatar = it.kind === 'character' ? it.key.slice(2) : '';
+  const [src, setSrc] = useState(() => (avatar && sharpNow(avatar)) || it.thumb);
+  const [el, setEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setSrc((avatar && sharpNow(avatar)) || it.thumb);
+    if (!avatar || !el || sharpNow(avatar)) return;
+    let alive = true;
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      io.disconnect();
+      void sharpImage(avatar, it.thumb).then((url) => {
+        if (!url || !alive) return;
+        // 先在后台解码好再换，换的时候不闪
+        const img = new Image();
+        img.src = url;
+        img.decode().catch(() => undefined).then(() => { if (alive) setSrc(url); });
+      });
+    }, { rootMargin: '200px' });
+    io.observe(el);
+    return () => { alive = false; io.disconnect(); };
+  }, [avatar, it.thumb, el]);
+  return { src, ref: setEl };
 }
 
 function lastChatText(t: number, now = Date.now()): string {
@@ -164,7 +183,7 @@ function CardMenu({ it, onClose }: { it: CharItem; onClose: () => void }) {
 }
 
 function Card({ it, managing, selected, onSelect }: { it: CharItem; managing?: boolean; selected?: boolean; onSelect?: (it: CharItem) => void }) {
-  const src = cardImage(it);
+  const { src, ref: imgRef } = useCardImage(it);
   const [tint, setTint] = useState(tints.get(it.key) ?? '');
   const [broken, setBroken] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -184,7 +203,7 @@ function Card({ it, managing, selected, onSelect }: { it: CharItem; managing?: b
         onClick={() => { if (managing) { if (selectable) onSelect?.(it); } else void openCharacter(it); }}
       >
         {!broken
-          ? <img class="rbt-hcard-img" src={src} alt="" loading="lazy" decoding="async" onLoad={onLoad} onError={() => setBroken(true)} />
+          ? <img ref={imgRef} class="rbt-hcard-img" src={src} alt="" loading="lazy" decoding="async" onLoad={onLoad} onError={() => setBroken(true)} />
           : <img class="rbt-hcard-img" src={it.thumb} alt="" />}
         <span class="rbt-hcard-shade" />
         {it.problems.length > 0

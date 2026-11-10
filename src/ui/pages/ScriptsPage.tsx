@@ -5,6 +5,7 @@
  * 右边：所有带脚本的预设、带脚本的卡，点进去是那个预设 / 那张卡的详情（详情里也有同一块）。
  * 编辑脚本内容、新建、导入还是去酒馆助手（「编辑 ↗」）。
  */
+import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { cardGroup, presetGroup, countRunning, countScripts, currentGroups, presetsWithScripts, cardsWithScripts, setGroupAllowed, setNodeEnabled, thInstalled, thTick, type ThGroup, type ThScript } from '../../tools/scripts/th';
 import { CheckRow, Empty, NavRow, Tag } from '../common';
 import { openScriptManager } from './GlobalPage';
@@ -14,15 +15,31 @@ import { GLOBAL_TAB_LABELS, openDetail } from '../views';
 const KIND_TITLE = (g: ThGroup) => (g.kind === 'global' ? '全局脚本' : g.kind === 'preset' ? `预设「${g.label}」的脚本` : `「${g.label}」的脚本`);
 const KIND_HINT = (g: ThGroup) => (g.kind === 'global' ? '所有聊天都会运行' : g.kind === 'preset' ? '用这个预设时运行' : '和这张卡聊天时运行');
 
-/** 一行：图标、名字（下面一行灰字），左边一个勾选框；整行都能点。不能改的（别的卡）勾选框是灰的。 */
+/**
+ * 一行：图标、名字（下面一行灰字），左边一个勾选框；整行都能点。不能改的（别的卡）勾选框是灰的。
+ * 脚本作者常把整段说明写进简介，手机上一条能占满一屏：灰字最多两行，写不下时右边一个箭头，点了展开 / 收起。
+ */
 function CheckLine({ icon, name, sub, checked, dim, disabled, nested, onChange }: {
   icon: string; name: string; sub?: string; checked: boolean; dim?: boolean; disabled?: boolean; nested?: boolean; onChange: (v: boolean) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [long, setLong] = useState(false);
+  const subRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const el = subRef.current;
+    if (el && !open) setLong(el.scrollHeight > el.clientHeight + 1);
+  }, [sub, open]);
   return (
     <label class={`rbt-check-row rbt-script-row ${dim ? 'off' : ''} ${nested ? 'nested' : ''} ${disabled ? 'disabled' : ''}`}>
       <input type="checkbox" class="rbt-cb" checked={checked} disabled={disabled} onChange={(e) => onChange((e.currentTarget as HTMLInputElement).checked)} />
       <i class={`fa-solid ${icon} fa-fw rbt-script-icon`} aria-hidden="true" />
-      <span class="rbt-check-text"><span>{name}</span>{sub && <small>{sub}</small>}</span>
+      <span class="rbt-check-text"><span>{name}</span>{sub && <small ref={subRef} class={open ? '' : 'rbt-clamp2'}>{sub}</small>}</span>
+      {(long || open) && (
+        <button type="button" class="rbt-script-more" aria-expanded={open} aria-label={open ? '收起说明' : '展开说明'} title={open ? '收起说明' : '展开说明'}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open); }}>
+          <i class={`fa-solid ${open ? 'fa-chevron-up' : 'fa-chevron-down'}`} />
+        </button>
+      )}
     </label>
   );
 }
