@@ -1774,3 +1774,6 @@ body.rbt-shell #create_button_label::after { content: '创建角色'; font-famil
 body.rbt-shell.rbt-compact .mes:not(.last_mes) > :is(.swipe_left, .swipeRightBlock) { display: none; }
 /* 编辑角色标题栏的 token 数：卡太大时和酒馆一样标黄 */
 body.rbt-shell .rbt-sheet-head .rbt-char-tokens.warn { color: #f0a43a; }
+
+/* 点自己消息的头像打开人设面板 */
+body.rbt-shell #chat .mes[is_user="true"] .avatar { cursor: pointer; }

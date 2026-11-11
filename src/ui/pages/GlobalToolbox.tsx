@@ -44,6 +44,7 @@ import { importOpen, openImport } from '../ImportDialog';
 import { CardPage } from './CardPage';
 import { AddGlobalWorld, GlobalRegexList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
 import { trash, TRASH_LABEL, type TrashKind } from '../../tools/trash';
+import { charsTick } from '../../shell/characters';
 import { ReloadNotice, Section } from './parts';
 import { BindingsDetail, CardsTablePage } from './CardsTable';
 import { ScopePage } from './scope';
@@ -52,13 +53,22 @@ import { mesLayoutOn, setMesLayout } from '../../shell/mesActions';
 import { shellOn } from '../../shell/Shell';
 import { PresetScriptsSection, ScriptsPage } from './ScriptsPage';
 import {
-  ACCENTS, accentId, currentStTheme, loadThemes, LOOKS, lookId, lookOn, setAccent, setLook, stThemes, themeHasCss, themesLoading,
+  ACCENTS, accentId, currentStTheme, loadThemes, LOOKS, lookId, lookOn, setAccent, stThemes, themeHasCss, themesLoading,
   useBuiltInLook, useStTheme, type StTheme,
 } from '../../look/look';
 
 // ------------------------------------------------------------ shared ---
 
 /** Names of every preset / worldbook / theme, for series and version lists. */
+
+/** 全部卡的总览：几百张卡时一次要几十毫秒。卡、档案、来源都没变时，各页面重画直接用上次的 */
+let ovCache: { key: string; val: ReturnType<typeof buildOverview> } | null = null;
+function overview(): ReturnType<typeof buildOverview> {
+  const key = `${archiveVersion.value}|${charsTick.value}|${sourcesTick.value}|${ctx().characters?.length ?? 0}`;
+  if (ovCache?.key !== key) ovCache = { key, val: buildOverview() };
+  return ovCache.val;
+}
+
 function namesOf(kind: SourceKind): string[] {
   if (kind === 'preset') return presetNames();
   if (kind === 'theme') return stThemes.value.map((t) => t.name);
@@ -148,7 +158,7 @@ function readCollapsed(): Record<string, string[]> {
  * 一个系列：标题行点一下收起 / 展开；有名字的系列右边有「编辑」，可以改名或解散
  * （往系列里加、从系列里拿出来，用列表上方的「选择」）。
  */
-function SeriesGroup({ kind, series, title, count, children }: { kind: SourceKind; series: string; title: string; count: number; children: preact.ComponentChildren }) {
+function SeriesGroup({ kind, series, title, count, bare, children }: { kind: SourceKind; series: string; title: string; count: number; /** 只有这一组、又不是系列：栏的小标题已经写了「全部…」，不再要组标题 */ bare?: boolean; children: preact.ComponentChildren }) {
   const key = series || '_';
   const [collapsed, setCollapsed] = useState(() => (readCollapsed()[kind] ?? []).includes(key));
   const [editing, setEditing] = useState(false);
@@ -163,8 +173,8 @@ function SeriesGroup({ kind, series, title, count, children }: { kind: SourceKin
   };
   const save = () => { if (name.trim() && name.trim() !== series) renameSeries(kind, series, name.trim()); setEditing(false); };
   return (
-    <section class={`rbt-card-section rbt-series ${collapsed ? 'collapsed' : ''}`}>
-      {editing ? (
+    <section class={`rbt-card-section rbt-series ${collapsed && !bare ? "collapsed" : ""}`}>
+      {bare ? null : editing ? (
         <div class="rbt-series-edit">
           <input class="text_pole rbt-input" value={name} autoFocus aria-label="系列名" onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }} />
           <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={!name.trim()} onClick={save}>保存</button>
@@ -181,7 +191,7 @@ function SeriesGroup({ kind, series, title, count, children }: { kind: SourceKin
           {series && <button type="button" class="rbt-btn rbt-btn-small" onClick={() => { setName(series); setEditing(true); }}>编辑</button>}
         </div>
       )}
-      {!collapsed && children}
+      {(bare || !collapsed) && children}
     </section>
   );
 }
@@ -252,7 +262,7 @@ function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filter
         )}
       </div>
       {groups.map((g) => (
-        <SeriesGroup key={g.series || '_'} kind={kind} series={g.series} title={g.series ? `${g.series} 系列` : (groups.length > 1 ? `其他${restTitle}` : `全部${restTitle}`)} count={g.names.length}>
+        <SeriesGroup key={g.series || '_'} kind={kind} series={g.series} bare={groups.length === 1 && !g.series} title={g.series ? `${g.series} 系列` : (groups.length > 1 ? `其他${restTitle}` : `全部${restTitle}`)} count={g.names.length}>
           {g.names.map((n) => {
             if (!selecting) return <NavRow key={n} title={n} sub={sub(n) || undefined} trailing={trail?.(n)} onClick={() => openItem(kind, n, back)} />;
             const why = locked?.(n);
@@ -366,14 +376,14 @@ function PresetsPage() {
   useEffect(() => { refreshEnv(); }, []);
   const names = presetNames();
   const cur = currentPresetName();
-  const ov = buildOverview();
+  const ov = overview();
   const presetRx = (report?.items ?? []).filter((i) => i.scope === 'preset' && i.kind !== 'preset');
   const back = GLOBAL_TAB_LABELS.presets;
   return (
     <div class="rbt-page">
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
-          <Section title="正在用" hint="切到有推荐预设的卡时会自动换">
+          <Section title="正在用" hint="换到有推荐预设的卡时会自动换">
             <PresetPicker />
             <ReloadNotice name={cur} />
             {presetRx.map((i) => <ItemRow key={i.id} item={i} />)}
@@ -381,6 +391,7 @@ function PresetsPage() {
           </Section>
         </div>
         <div class="rbt-page-group">
+          <h2 class="rbt-page-group-title">全部预设</h2>
           <SeriesList
             kind="preset"
             names={names}
@@ -406,7 +417,7 @@ function PresetsPage() {
 function PresetDetail({ name }: { name: string }) {
   void archiveVersion.value;
   const cur = currentPresetName();
-  const ov = buildOverview();
+  const ov = overview();
   const exists = presetNames().includes(name);
   const rx = presetRegexCount(name);
   const [busy, setBusy] = useState(false);
@@ -428,8 +439,8 @@ function PresetDetail({ name }: { name: string }) {
         <div class="rbt-page-group">
           <PresetModelSection name={name} isCurrent={name === cur} />
           <PresetScriptsSection name={name} />
-          <Section title="推荐它的卡" hint="切到这些卡时会自动换上这个预设">
-            <CardRows cards={ov.byPreset.get(name) ?? []} back={name} empty="还没有卡推荐它。在角色档案的「推荐预设」里设置。" />
+          <Section title="推荐它的卡" hint="换到这些卡时会自动换上这个预设">
+            <CardRows cards={ov.byPreset.get(name) ?? []} back={name} empty="还没有卡推荐它。在角色档案的「推荐预设和模型」里设置。" />
           </Section>
         </div>
       </div>
@@ -447,7 +458,7 @@ function WorldsPage() {
   useEffect(() => { refreshEnv(); }, []);
   const [busy, setBusy] = useState(false);
   const [auto, setAuto] = useState(settings().autoImportWorld);
-  const ov = buildOverview();
+  const ov = overview();
   const missing = cardsMissingWorld();
   const globalOn = (report?.items ?? []).filter((i) => i.kind === 'worldbook' && (i.scope === 'global' || i.scope === 'persona'));
   const names = worldNames();
@@ -464,7 +475,7 @@ function WorldsPage() {
       )}
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
-          <Section title="正在用" hint="全局世界书对所有卡生效；只给某张卡用的，最好绑到那张卡上">
+          <Section title="全局世界书" hint="对所有卡生效。只给某张卡用的，最好绑到那张卡上">
             {globalOn.map((i) => <ItemRow key={i.id} item={i} />)}
             {!globalOn.length && <small class="rbt-muted">没有开着的全局世界书。</small>}
             <AddGlobalWorld />
@@ -475,6 +486,7 @@ function WorldsPage() {
           </Section>
         </div>
         <div class="rbt-page-group">
+          <h2 class="rbt-page-group-title">全部世界书</h2>
           <SeriesList
             kind="world"
             names={names}
@@ -490,7 +502,7 @@ function WorldsPage() {
             deleteNote={(list) => { const used = list.filter((n) => ov.byWorld.has(n)); return used.length ? `这些世界书还绑在角色卡上：${used.map((n) => `「${n}」（${cardsOf(ov.byWorld.get(n))}）`).join('、')}。删除后那些卡会找不到它。` : ''; }}
             trail={(n) => (
               <>
-                {scopes.global.has(n) && <Tag tone="warn">全局开着</Tag>}
+                {scopes.global.has(n) && <Tag>全局开着</Tag>}
                 <AvatarStack cards={ov.byWorld.get(n) ?? []} />
               </>
             )}
@@ -503,7 +515,7 @@ function WorldsPage() {
 
 function WorldDetail({ name }: { name: string }) {
   void archiveVersion.value;
-  const ov = buildOverview();
+  const ov = overview();
   const on = currentBookScopes().global.has(name);
   const [busy, setBusy] = useState(false);
   const toggle = async (v: boolean) => {
@@ -595,7 +607,7 @@ function PluginsPage() {
 
 function BackupPage() {
   void archiveVersion.value;
-  const ov = buildOverview();
+  const ov = overview();
   const s = settings();
   const fileRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<'merge' | 'overwrite'>('merge');
@@ -613,7 +625,7 @@ function BackupPage() {
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
           <Section title="导出和导入">
-            <small class="rbt-muted">你在工具箱里填的东西——卡的来源和说明、推荐预设、记住的配置、正则归属，以及预设、世界书和插件的来源——都和酒馆设置存在一起。换电脑或想留个底时，可以导出成一个文件。</small>
+            <small class="rbt-muted">你在工具箱里填的东西——卡的来源和说明、推荐预设、记住的配套、正则归属，以及预设、世界书和插件的来源——都和酒馆设置存在一起。换电脑或想留个底时，可以导出成一个文件。</small>
             <div class="rbt-row">
               <button type="button" class="rbt-btn rbt-btn-primary" onClick={() => exportArchive()}>导出</button>
               <button type="button" class="rbt-btn" onClick={() => pickFile('merge')}>导入并合并</button>
@@ -646,7 +658,7 @@ function BackupPage() {
 }
 
 // ------------------------------------------------------------- looks ---
-// 美化：工具箱自带的一套，加上装在酒馆里的界面主题（别人做的美化）。和预设一样：左边正在用，右边全部。
+// 美化：工具箱自带的一套，加上装在酒馆里的界面主题（别人做的美化）。左边全局美化，右边全部。
 
 /** 几个关键颜色的小色块：面板底色、正文、斜体、引号。 */
 function Swatches({ t, big }: { t: StTheme; big?: boolean }) {
@@ -680,6 +692,8 @@ function LookCard({ l, on }: { l: (typeof LOOKS)[number]; on: boolean }) {
 function LooksPage() {
   useThemes();
   void sourcesTick.value;
+  void archiveVersion.value;
+  const ov = overview();
   const list = stThemes.value;
   const cur = currentStTheme();
   const curTheme = list.find((t) => t.name === cur);
@@ -689,39 +703,41 @@ function LooksPage() {
     <div class="rbt-page">
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
-          <Section title={LOOK_NAME} hint={LOOK_COPY.builtInHint}>
+          {/* 全局美化只有一个：红鸟适配美化的三套之一，或者别的美化。四个选项里正好一个打勾 */}
+          <Section title="全局美化" hint="没设美化的卡都用它">
+            <div class="rbt-look-sub">{LOOK_NAME}<small>{LOOK_COPY.builtInHint}</small></div>
             <div class="rbt-lookcards">
               {LOOKS.map((l) => <LookCard key={l.id} l={l} on={builtIn && lookId.value === l.id} />)}
             </div>
             {builtIn && (
-              <>
-                <div class="rbt-look-accents">
-                  <small>强调色</small>
-                  {ACCENTS.map((a) => (
-                    <button key={a.id} type="button" class={`rbt-accent-dot ${accentId.value === a.id ? 'on' : ''}`} title={a.label} aria-label={a.label} style={{ '--c': a.color }} onClick={() => setAccent(a.id)} />
-                  ))}
-                </div>
-                <button type="button" class="rbt-btn rbt-btn-small rbt-self-start" onClick={() => setLook(false)}>关掉，用酒馆主题「{cur || '默认'}」</button>
-              </>
+              <div class="rbt-look-accents">
+                <small>强调色</small>
+                {ACCENTS.map((a) => (
+                  <button key={a.id} type="button" class={`rbt-accent-dot ${accentId.value === a.id ? 'on' : ''}`} title={a.label} aria-label={a.label} style={{ '--c': a.color }} onClick={() => setAccent(a.id)} />
+                ))}
+              </div>
             )}
-            {!builtIn && <small class="rbt-muted">点一套就换上。换美化时，酒馆面板、三栏界面和工具箱会一起换。</small>}
+            <div class="rbt-look-sub">别的美化</div>
+            <button
+              type="button"
+              class={`rbt-lookrow ${builtIn ? '' : 'on'}`}
+              aria-pressed={!builtIn}
+              title={builtIn ? `换成「${cur || '酒馆默认'}」` : '查看这套美化'}
+              onClick={() => (builtIn ? void useStTheme(cur || 'Default') : cur && openDetail({ kind: 'theme', name: cur }, back))}
+            >
+              <span class="rbt-lookrow-main">
+                <span class="rbt-lookcard-name">{cur || '酒馆默认'}{!builtIn && <i class="fa-solid fa-circle-check" />}</span>
+                <span class="rbt-lookcard-desc">{themeHasCss(curTheme) ? '带自定义样式' : '只换颜色'}</span>
+              </span>
+              {curTheme && <Swatches t={curTheme} />}
+              {builtIn ? <span class="rbt-lookrow-go">换上</span> : <i class="fa-solid fa-chevron-right rbt-lookrow-go" aria-hidden="true" />}
+            </button>
+            {!builtIn && <p class="rbt-looks-info-text"><i class="fa-solid fa-circle-info" aria-hidden="true" />{LOOK_COPY.othersRisk}{LOOK_COPY.recommend}{LOOK_COPY.noAdapt}</p>}
+            {shellOn.value && <CheckRow label={LOOK_COPY.mesLayoutLabel} detail={LOOK_COPY.mesLayoutDesc} checked={mesLayoutOn.value} onChange={setMesLayout} />}
           </Section>
-          {/* 推荐的放最前面；正在用别人的美化时，再列出是哪一套 */}
-          {!builtIn && (
-            <Section title="正在用" hint="酒馆里装的美化">
-              <NavRow title={cur || '酒馆默认'} sub={themeHasCss(curTheme) ? '带自定义样式' : '只换颜色'} trailing={curTheme ? <Swatches t={curTheme} /> : undefined} onClick={() => cur && openDetail({ kind: 'theme', name: cur }, back)} />
-            </Section>
-          )}
         </div>
         <div class="rbt-page-group">
-          {/* 用着别人的美化时：先说可能的问题和推荐，再给手机排版的开关（和扩展设置里是同一个开关、同一段文字）。
-              用着红鸟适配美化时不显示：这段说的是别人的美化，沉浸阅读默认开着，想关去扩展设置的「界面」。 */}
-          {!builtIn && (
-            <div class="rbt-looks-info">
-              <p class="rbt-looks-info-text"><i class="fa-solid fa-circle-info" aria-hidden="true" />{LOOK_COPY.othersRisk}{LOOK_COPY.recommend}{LOOK_COPY.noAdapt}</p>
-              {shellOn.value && <CheckRow label={LOOK_COPY.mesLayoutLabel} detail={LOOK_COPY.mesLayoutDesc} checked={mesLayoutOn.value} onChange={setMesLayout} />}
-            </div>
-          )}
+          <h2 class="rbt-page-group-title">全部美化</h2>
           {themesLoading.value && !list.length ? <small class="rbt-muted">读取中…</small> : (
             <SeriesList
               kind="theme"
@@ -731,13 +747,14 @@ function LooksPage() {
               sub={(n) => {
                 const t = list.find((x) => x.name === n);
                 const v = sourceFor('theme', n);
-                return [themeHasCss(t) ? '带自定义样式' : '只换颜色', v.version && `版本 ${v.version}`, v.author && `作者 ${v.author}`].filter(Boolean).join(' · ');
+                const used = ov.byTheme.get(n)?.length;
+                return [themeHasCss(t) ? '带自定义样式' : '只换颜色', v.version && `版本 ${v.version}`, v.author && `作者 ${v.author}`, used && `${used} 张卡在用`].filter(Boolean).join(' · ');
               }}
               trail={(n) => {
                 const t = list.find((x) => x.name === n);
                 return <>{!builtIn && n === cur && <Tag tone="accent">正在用</Tag>}{t && <Swatches t={t} />}</>;
               }}
-              locked={(n) => (n === cur ? '酒馆正在用这个主题' : null)}
+              locked={(n) => (n === cur ? '正在用这套美化' : null)}
             />
           )}
         </div>
@@ -748,6 +765,8 @@ function LooksPage() {
 
 function ThemeDetail({ name }: { name: string }) {
   useThemes();
+  void archiveVersion.value;
+  const users = overview().byTheme.get(name) ?? [];
   const t = stThemes.value.find((x) => x.name === name);
   const cur = currentStTheme();
   const inUse = !lookOn.value && name === cur;
@@ -778,10 +797,13 @@ function ThemeDetail({ name }: { name: string }) {
           <SourceSection kind="theme" id={name} />
         </div>
         <div class="rbt-page-group">
+          <Section title="用这个美化的卡" hint="和这些卡聊天时，整个界面换成这个美化">
+            <CardRows cards={users} back={name} empty="还没有卡用它。在角色档案的「美化」里设置。" />
+          </Section>
           <VersionSection kind="theme" id={name} />
         </div>
       </div>
-      {t && <DeleteOne kind="theme" name={name} locked={name === cur ? '酒馆正在用这个主题' : null} />}
+      {t && <DeleteOne kind="theme" name={name} locked={name === cur ? '正在用这套美化' : null} note={users.length ? `有 ${users.length} 张卡用这个美化，删除后和它们聊天时会用全局美化。` : undefined} />}
     </div>
   );
 }
@@ -855,7 +877,7 @@ export function GlobalToolbox() {
 /** 「导入文件」: opens the import window on its first step (drop area + file picker). */
 export function ImportButton({ big }: { big?: boolean } = {}) {
   return (
-    <button type="button" class={big ? 'rbt-gtool rbt-gtool-import' : 'rbt-btn rbt-btn-small rbt-import-btn'} title="导入角色卡、预设、世界书、正则或美化。可以多选，也可以把文件拖进窗口。" onClick={() => { void openImport(); }}>
+    <button type="button" class={big ? 'rbt-gtool rbt-gtool-import' : 'rbt-btn rbt-btn-small rbt-import-btn'} title="导入角色卡、预设、世界书、正则、美化或酒馆助手脚本。可以多选，也可以把文件拖进窗口。" onClick={() => { void openImport(); }}>
       <i class="fa-solid fa-file-import fa-fw" /> <span>导入文件</span>
     </button>
   );
@@ -935,7 +957,7 @@ export function DropHint({ count = 0, full }: { count?: number; full?: boolean }
     <div class={`rbt-drop-hint ${full ? 'full' : ''}`}>
       <i class="fa-solid fa-arrow-up-from-bracket" />
       <b>{count > 0 ? `松开鼠标，导入 ${count} 个文件` : '松开鼠标，开始导入'}</b>
-      <span>工具箱会识别每个文件是角色卡、预设、世界书、正则还是美化。</span>
+      <span>工具箱会识别每个文件是角色卡、预设、世界书、正则、美化还是酒馆助手脚本。</span>
     </div>
   );
 }

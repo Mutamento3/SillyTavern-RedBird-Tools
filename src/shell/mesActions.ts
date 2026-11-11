@@ -15,6 +15,7 @@
 import { signal } from '@preact/signals';
 import { ctx, saveSettings, settings, toast } from '../st/st';
 import { compact, shellOn } from './Shell';
+import { openDrawer } from './drawers';
 import { openFloatMenu, type FloatMenuItem } from '../ui/floatMenu';
 import { lookOn, useBuiltInLook } from '../look/look';
 import { LOOK_COPY } from '../ui/copy';
@@ -270,7 +271,16 @@ export function installMesActions(): void {
       if ([...m.addedNodes].some(isEditBox) || [...m.removedNodes].some(isEditBox)) { syncSoon(); return; }
     }
   }).observe(chat, { childList: true, subtree: true });
-  // 只看点在聊天里的（编辑、保存、取消都在消息上）；点别处不用每次都把所有消息检查一遍
+  // 点自己消息的头像：打开人设面板改人设（酒馆原本是放大头像）
+  document.addEventListener('click', (e) => {
+    if (!shellOn.value) return;
+    const av = (e.target as Element | null)?.closest?.('#chat .mes[is_user="true"] .avatar');
+    if (!av) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    openDrawer('persona');
+  }, true);
+    // 只看点在聊天里的（编辑、保存、取消都在消息上）；点别处不用每次都把所有消息检查一遍
   document.addEventListener('click', (e) => { if ((e.target as Element | null)?.closest?.('#chat')) syncSoon(); }, true);
   // 编辑框跟着内容长高（不支持 field-sizing 的浏览器，比如旧的 iOS Safari；酒馆只在打开时量一次）
   if (!CSS.supports('field-sizing', 'content')) {

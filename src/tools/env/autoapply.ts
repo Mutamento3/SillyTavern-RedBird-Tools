@@ -10,7 +10,7 @@
  */
 import { signal } from '@preact/signals';
 import { presetScriptLine } from '../scripts/notice';
-import { charaFileName, ctx, loaded, runSlash, saveSettings, settings, slashQuote, toast, type Any } from '../../st/st';
+import { charaFileName, ctx, currentCharacter, loaded, reloadChatSafe, runSlash, saveSettings, settings, slashQuote, toast, type Any } from '../../st/st';
 import { cardInfo, currentPresetName, extStatus, importCardWorld, installedExtensions, presetApi, presetNames, requiredExtensions, switchPreset } from '../cards/cards';
 import { refreshEnv } from './env';
 import { currentModel, modelLabel, modelsApply, sameModel, setModel, withoutModelGuard, type ModelChoice } from '../model';
@@ -163,7 +163,7 @@ async function setRegexStates(changes: Record<string, boolean>, { duringChatLoad
   // Only display-only regex needs the messages re-rendered; the others act on new text / the prompt.
   const chatId = ctx().getCurrentChatId?.();
   if (!chatId || !next.some((r: Any) => r.id in changes && r.markdownOnly)) return;
-  if (!duringChatLoad) { await ctx().reloadCurrentChat(); return; }
+  if (!duringChatLoad) { await reloadChatSafe(); return; }
   // We're inside ST's CHAT_CHANGED: reloading now would load the chat again in the middle of its own
   // load (every CHAT_CHANGED / first-message listener would run twice). Reload once it has finished.
   setTimeout(() => { if (ctx().getCurrentChatId?.() === chatId) void ctx().reloadCurrentChat(); }, 1000);
@@ -187,6 +187,8 @@ export async function applyPlan(plan: ApplyPlan, opts: { deferModel?: boolean; o
     regexDisabled: Object.fromEntries(globalRegex().map((r: Any) => [r.id, !!r.disabled])),
   };
   const changes: string[] = [];
+  // 换卡要好几秒：中途玩家又点了别的卡，剩下的步骤就不做了，免得这张卡的预设、世界书落到那张卡上
+  const moved = () => String(currentCharacter()?.avatar ?? '') !== plan.avatar;
   if (plan.preset) {
     // 这张卡有推荐模型：预设带过来的模型马上会被换成推荐的，不用提示；没有的话，模型被预设换掉会单独提示（能换回去）
     const ok = plan.model ? await withoutModelGuard(() => switchPreset(plan.preset!)) : await switchPreset(plan.preset);
@@ -203,7 +205,9 @@ export async function applyPlan(plan: ApplyPlan, opts: { deferModel?: boolean; o
       ? [`模型换成 ${modelLabel(m)}`]
       : [`没能换成推荐的模型 ${modelLabel(m)}（这个 API 可能还没填密钥）`];
   };
+  if (moved()) return changes;
   if (!opts.deferModel) changes.push(...(await doModel()));
+  if (moved()) return changes;
   if (plan.worldsOn.length || plan.worldsOff.length) {
     await setWorlds(plan.worldsOn, plan.worldsOff);
     for (const w of plan.worldsOff) changes.push(`关掉全局世界书「${w}」`);
@@ -212,7 +216,9 @@ export async function applyPlan(plan: ApplyPlan, opts: { deferModel?: boolean; o
   const rx: Record<string, boolean> = {};
   for (const r of plan.regexOff) { rx[r.id] = true; changes.push(`关掉全局正则「${r.name}」`); }
   for (const r of plan.regexOn) { rx[r.id] = false; changes.push(`打开全局正则「${r.name}」`); }
+  if (moved()) return changes;
   await setRegexStates(rx, { duringChatLoad: true });
+  if (moved()) return changes;
   const record = () => { if (changes.length) lastApplied.value = { avatar: plan.avatar, cardName: plan.cardName, at: Date.now(), changes: [...changes], snapshot }; };
   record();
   refreshEnv();
@@ -220,8 +226,8 @@ export async function applyPlan(plan: ApplyPlan, opts: { deferModel?: boolean; o
     // 不等它：让酒馆先把聊天显示出来
     void (async () => {
       let more: string[] = [];
-      try { more = await doModel(); } catch (e) { console.error('[RedBird] model switch failed', e); }
-      if (more.length) { changes.push(...more); record(); refreshEnv(); }
+      try { if (!moved()) more = await doModel(); } catch (e) { console.error('[RedBird] model switch failed', e); }
+      if (more.length && !moved()) { changes.push(...more); record(); refreshEnv(); }
       opts.onModel?.(more);
     })();
   }
@@ -258,6 +264,7 @@ export async function enablePluginsAndReload(ids: string[]): Promise<void> {
 }
 
 let lastAvatar: string | null = null;
+let switchSeq = 0;
 
 /** Called on chat change; applies the card's environment once per card switch. */
 export async function autoApplyOnSwitch(openStatus: () => void): Promise<void> {
@@ -267,8 +274,10 @@ export async function autoApplyOnSwitch(openStatus: () => void): Promise<void> {
   if (!char?.avatar || char.avatar === lastAvatar) return;
   lastAvatar = char.avatar;
   if (!settings().autoApplyEnv) return;
+  const my = ++switchSeq;
   applyingCard.value = char.name;
-  try { await applyForCard(char, openStatus); } finally { applyingCard.value = null; }
+  // 先结束的那次不能把后来那张卡的进度条清掉
+  try { await applyForCard(char, openStatus); } finally { if (my === switchSeq) applyingCard.value = null; }
 }
 
 async function applyForCard(char: Any, openStatus: () => void): Promise<void> {
@@ -278,10 +287,12 @@ async function applyForCard(char: Any, openStatus: () => void): Promise<void> {
   if (settings().autoImportWorld && w.embedded && (w.state === 'missing' || w.state === 'unbound')) {
     if ((await importCardWorld(char.avatar, { quiet: true })) === 'imported') imported.push(`从卡里导入并绑定了世界书「${w.importName}」`);
   }
+  if (String(currentCharacter()?.avatar ?? '') !== char.avatar) return;
   const plan = planFor(char);
   if (planHasChanges(plan) || imported.length) {
     const tell = (changes: string[]) => {
-      if (changes.length) toast('success', `已换成「${char.name}」的配置：${changes.join('；')}。点这里查看或撤销。`, '自动切换', { onclick: openStatus, timeOut: 9000 });
+      if (String(currentCharacter()?.avatar ?? '') !== char.avatar) return;
+      if (changes.length) toast('success', `已换成「${char.name}」的配套：${changes.join('；')}。点这里查看或撤销。`, '自动切换', { onclick: openStatus, timeOut: 9000 });
     };
     if (!planHasChanges(plan)) tell(imported);
     else {

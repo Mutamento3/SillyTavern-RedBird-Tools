@@ -31,7 +31,7 @@ import {
   type RequiredExt,
 } from '../../core/cards';
 import { charaFileName, ctx, currentCharacter, loaded, runSlash, saveSettings, settings, slashQuote, thCharacterScriptsEnabled, toast, type Any, type EnvProfile, confirmText } from '../../st/st';
-import { refreshEnv, thScripts } from '../env/env';
+import { profileEmpty, refreshEnv, thScripts } from '../env/env';
 import { markDeleted, syncStore } from '../../st/store';
 
 /** Avatar of the card shown in 档案; null = follow the current card. */
@@ -249,7 +249,7 @@ export function setCardModel(avatar: string, cardName: string, model: ModelChoic
   else delete p.model;
   p.cardName = cardName;
   p.updatedAt = new Date().toISOString();
-  if (!p.preset && !p.model && !p.globalWorlds && !p.globalRegexEnabled) { delete s.profiles[avatar]; markDeleted('profiles', avatar); }
+  if (profileEmpty(p)) { delete s.profiles[avatar]; markDeleted('profiles', avatar); }
   else s.profiles[avatar] = p;
   saveSettings();
   refreshEnv();
@@ -264,7 +264,7 @@ export function setProfileList(avatar: string, cardName: string, key: 'globalWor
   else delete p[key];
   p.cardName = cardName;
   p.updatedAt = new Date().toISOString();
-  if (!p.preset && !p.model && !p.globalWorlds && !p.globalRegexEnabled) { delete s.profiles[avatar]; markDeleted('profiles', avatar); }
+  if (profileEmpty(p)) { delete s.profiles[avatar]; markDeleted('profiles', avatar); }
   else s.profiles[avatar] = p;
   saveSettings();
   refreshEnv();
@@ -272,6 +272,23 @@ export function setProfileList(avatar: string, cardName: string, key: 'globalWor
 }
 
 /** 整个换成另一份（「全部解绑」和它的撤销）。null = 删掉。 */
+/** 这张卡什么都没设了（推荐预设、模型、世界书、正则、美化都没有）：整条删掉。 */
+export { profileEmpty } from '../env/env';
+
+/** 卡的美化：和这张卡聊天时整个界面换成这套美化。null = 不指定。 */
+export function setCardTheme(avatar: string, cardName: string, name: string | null): void {
+  const s = settings();
+  const p: EnvProfile = s.profiles[avatar] ?? { savedAt: new Date().toISOString(), cardName };
+  if (name) p.theme = name;
+  else delete p.theme;
+  p.cardName = cardName;
+  p.updatedAt = new Date().toISOString();
+  if (profileEmpty(p)) { delete s.profiles[avatar]; markDeleted('profiles', avatar); }
+  else s.profiles[avatar] = p;
+  saveSettings();
+  bump();
+}
+
 export function setProfile(avatar: string, p: EnvProfile | null): void {
   const s = settings();
   if (p) s.profiles[avatar] = { ...p, updatedAt: new Date().toISOString() };
@@ -288,7 +305,7 @@ export function setRecommendedPreset(avatar: string, cardName: string, name: str
   else delete p.preset;
   p.cardName = cardName;
   p.updatedAt = new Date().toISOString();
-  if (!p.preset && !p.model && !p.globalWorlds && !p.globalRegexEnabled) { delete s.profiles[avatar]; markDeleted('profiles', avatar); }
+  if (profileEmpty(p)) { delete s.profiles[avatar]; markDeleted('profiles', avatar); }
   else s.profiles[avatar] = p;
   saveSettings();
   refreshEnv();
@@ -419,6 +436,8 @@ export interface Overview {
   cards: CardInfo[];
   byPreset: Map<string, CardInfo[]>;
   byWorld: Map<string, CardInfo[]>;
+  /** 卡的美化：美化名 → 用它的卡 */
+  byTheme: Map<string, CardInfo[]>;
   unusedWorlds: { name: string; global: boolean }[];
   orphans: OrphanRecord[];
 }
@@ -428,7 +447,11 @@ export function buildOverview(): Overview {
   const cards = chars.map(cardInfo).sort((a, b) => a.name.localeCompare(b.name, 'zh'));
   const byPreset = new Map<string, CardInfo[]>();
   const byWorld = new Map<string, CardInfo[]>();
+  const byTheme = new Map<string, CardInfo[]>();
+  const profiles = settings().profiles;
   for (const c of cards) {
+    const t = profiles[c.avatar]?.theme;
+    if (t) byTheme.set(t, [...(byTheme.get(t) ?? []), c]);
     if (c.preset) byPreset.set(c.preset.name, [...(byPreset.get(c.preset.name) ?? []), c]);
     for (const w of [c.world.name, ...c.world.extra].filter(Boolean)) byWorld.set(w, [...(byWorld.get(w) ?? []), c]);
   }
@@ -439,7 +462,7 @@ export function buildOverview(): Overview {
   for (const [k, v] of Object.entries(s.cards)) recordKeys[k] = v;
   for (const [k, v] of Object.entries(s.profiles)) recordKeys[k] ??= v;
   const orphans = findOrphans(recordKeys, chars.map((c) => ({ avatar: c.avatar, name: c.name })));
-  return { cards, byPreset, byWorld, unusedWorlds, orphans };
+  return { cards, byPreset, byWorld, byTheme, unusedWorlds, orphans };
 }
 
 /** Move a record (and profile, and card-owned regex tags) from an old avatar to a new one. */
@@ -488,7 +511,7 @@ export async function importArchive(text: string, mode: 'merge' | 'overwrite'): 
   const inc = parseArchive(text);
   const s = settings();
   if (mode === 'overwrite') {
-    const ok = await confirmText('覆盖导入', '现在所有的角色档案、记住的配置、正则归属，以及预设、世界书、插件和美化的来源，都会换成文件里的。');
+    const ok = await confirmText('覆盖导入', '现在所有的角色档案、记住的配套、正则归属，以及预设、世界书、插件和美化的来源，都会换成文件里的。');
     if (!ok) return;
   }
   s.cards = mergeRecords(s.cards, inc.cards, mode, (v) => v.updatedAt ?? '');
@@ -535,5 +558,13 @@ export function installCardsWatch(openPanel: (tab: string) => void): void {
   });
   for (const ev of [c.eventTypes.SETTINGS_UPDATED, c.eventTypes.WORLDINFO_SETTINGS_UPDATED, c.eventTypes.OAI_PRESET_CHANGED_AFTER, c.eventTypes.CHARACTER_EDITED]) {
     if (ev) c.eventSource.on(ev, bump);
+  }
+  // 在酒馆里改卡名，卡的文件名（avatar）也会跟着改：把档案、绑定、正则归属搬到新名字上，不然全部悄悄脱钩
+  if (c.eventTypes.CHARACTER_RENAMED) {
+    c.eventSource.on(c.eventTypes.CHARACTER_RENAMED, (oldAvatar: unknown, newAvatar: unknown) => {
+      if (typeof oldAvatar !== 'string' || typeof newAvatar !== 'string' || !oldAvatar || oldAvatar === newAvatar) return;
+      if (lastAvatar === oldAvatar) lastAvatar = newAvatar;
+      relink(oldAvatar, newAvatar);
+    });
   }
 }

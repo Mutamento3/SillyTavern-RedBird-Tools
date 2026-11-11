@@ -25,6 +25,12 @@ export const LOOKS: { id: string; label: string; desc: string; preview: { canvas
 export const lookId = signal('dark');
 
 export const lookOn = signal(false);
+/** 卡的美化盖在上面时，自带美化先让开（设置不变，离开那张卡就回来）。见 cardLook.ts */
+export const lookSuspended = signal(false);
+/** 现在页面上真的在用自带美化吗（开着、而且没被卡的美化暂时盖住） */
+export function lookShown(): boolean {
+  return lookOn.value && !lookSuspended.value;
+}
 /** Set while the toolbox itself switches ST's theme dropdown, so the watcher below ignores it. */
 let switching = false;
 /** Bumped when the ST theme in use changes, so views re-read it. */
@@ -41,16 +47,19 @@ export function applyLook(): void {
   accentId.value = s.accent ?? 'blue';
   lookId.value = LOOKS.some((l) => l.id === s.lookId) ? s.lookId! : 'dark';
   const root = document.documentElement;
-  root.classList.toggle('rbt-look', lookOn.value);
-  for (const l of LOOKS) root.classList.toggle(`rbt-look-${l.id}`, lookOn.value && lookId.value === l.id && l.id !== 'dark');
+  const shown = lookShown();
+  root.classList.toggle('rbt-look', shown);
+  for (const l of LOOKS) root.classList.toggle(`rbt-look-${l.id}`, shown && lookId.value === l.id && l.id !== 'dark');
   root.style.setProperty('--rbd-accent', accentColor());
   solidSurface();
 }
 
 /** "rgb(1, 2, 3)" / "rgba(1, 2, 3, 0.5)" / "color(srgb …)" → [r, g, b, a] (0–255, a 0–1). */
-function rgba(css: string): [number, number, number, number] | null {
-  const probe = document.createElement('i');
-  probe.style.color = css;
+export function rgba(css: string): [number, number, number, number] | null {
+  // 不用 <i>：有的美化给所有 <i>（图标）强制上色（!important），量出来就成了图标的颜色。
+  // 用一个没人会写样式的元素，颜色也写成行内 !important，美化的规则压不过它
+  const probe = document.createElement('rbt-color-probe');
+  probe.style.setProperty('color', css, 'important');
   if (!probe.style.color) return null;
   document.body.appendChild(probe);
   const c = getComputedStyle(probe).color;
@@ -81,7 +90,7 @@ function solidSurface(): void {
     }
   };
   // 开着自带美化时，底色是自带美化的实色（写在 CSS 里；行内样式会压过它，所以要拿掉）
-  if (lookOn.value || !document.body) { set('', ''); return; }
+  if (lookShown() || !document.body) { set('', ''); ink('', ''); return; }
   const cs = getComputedStyle(root);
   const text = rgba(cs.getPropertyValue('--SmartThemeBodyColor').trim());
   const lightText = !text || (0.299 * text[0] + 0.587 * text[1] + 0.114 * text[2]) > 128;
@@ -93,7 +102,46 @@ function solidSurface(): void {
     return `rgb(${mix(c[0])}, ${mix(c[1])}, ${mix(c[2])})`;
   };
   // 左栏、面板用「模糊色调」；顶栏用「聊天色调」（和聊天区同色），都垫成实色。聊天区本身不动，背景图照样看得见
-  set(solid(cs.getPropertyValue('--SmartThemeBlurTintColor').trim()), solid(cs.getPropertyValue('--SmartThemeChatTintColor').trim()));
+  const panel = solid(cs.getPropertyValue('--SmartThemeBlurTintColor').trim());
+  const nav = solid(cs.getPropertyValue('--SmartThemeChatTintColor').trim());
+  set(panel, nav);
+  // 保底：有的美化只给酒馆自己的面板改了字色（比如全局白字、面板白底，再点名酒馆面板改成深色字）。
+  // 工具箱的面板不在它的名单里，就成了白字白底。字和底色对比太低时，面板里的字换成黑或白；看得清的美化不动
+  const fix = (bgCss: string): '' | 'dark' | 'light' => {
+    const bg = rgba(bgCss);
+    if (!bg || !text || bg[3] < 0.95) return '';
+    if (contrast(text, bg) >= 3) return '';
+    return luminance(bg) > 0.4 ? 'dark' : 'light';
+  };
+  ink(fix(panel || cs.getPropertyValue('--SmartThemeBlurTintColor').trim()), fix(nav || cs.getPropertyValue('--SmartThemeChatTintColor').trim()));
+}
+
+/** 相对亮度（WCAG）。 */
+function luminance(c: number[]): number {
+  const f = (v: number) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+}
+
+/** 对比度（WCAG，1–21）。 */
+function contrast(a: number[], b: number[]): number {
+  const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m);
+  return (x + 0.05) / (y + 0.05);
+}
+
+/** 面板 / 顶栏的字要不要换成深色或浅色（CSS 见 look.css 的 rbt-ink-*）。 */
+function ink(panel: '' | 'dark' | 'light', nav: '' | 'dark' | 'light'): void {
+  const b = document.body;
+  if (!b) return;
+  b.classList.toggle('rbt-ink-dark', panel === 'dark');
+  b.classList.toggle('rbt-ink-light', panel === 'light');
+  b.classList.toggle('rbt-nav-ink-dark', nav === 'dark');
+  b.classList.toggle('rbt-nav-ink-light', nav === 'light');
+}
+
+/** 卡的美化换上 / 拿掉以后重新算一次底色。 */
+export function refreshSurface(): void {
+  lastSolid = '';
+  solidSurface();
 }
 
 /** 酒馆换主题、改颜色时把颜色写在 <html style> 上：跟着重新算。 */

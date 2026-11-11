@@ -124,7 +124,7 @@ export function worldStatus(): { count: number; title: string; warn?: string } {
   const stray = char ? planForView(char).worldsOff : [];
   const worldWarn = stray.length ? `全局开着别的卡的世界书：${stray.join('、')}` : undefined;
   const worldTitle = books.length
-    ? ['这张卡', '这个聊天', '用户设定', '全局'].map((label, i) => {
+    ? ['这张卡', '这个聊天', 'user 人设', '全局'].map((label, i) => {
       const list = [...[scopes.character, scopes.chat, scopes.persona, scopes.global][i]];
       return list.length ? `${label}：${list.join('、')}` : '';
     }).filter(Boolean).join('\n')

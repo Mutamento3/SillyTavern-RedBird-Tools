@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectJson } from './importKind';
+import { detectJson, scriptWaitsForTheme } from './importKind';
 
 describe('detectJson', () => {
   it('recognises a Chat Completion preset', () => {
@@ -23,8 +23,27 @@ describe('detectJson', () => {
     expect(detectJson({ name: 'X', main_text_color: 'rgb(1,1,1)', custom_css: '' })).toBe('theme');
     expect(detectJson({ name: 'X', custom_css: 'body{}' })).toBe('theme');
   });
+  it('recognises a 酒馆助手 script, a folder of them and the old format', () => {
+    expect(detectJson({ type: 'script', name: 'A', content: 'x', enabled: true })).toBe('script');
+    expect(detectJson({ type: 'folder', name: 'F', scripts: [] })).toBe('script');
+    expect(detectJson({ name: 'A', content: 'x', buttons: [] })).toBe('script');
+  });
   it('returns unknown otherwise', () => {
     expect(detectJson({ foo: 1 })).toBe('unknown');
     expect(detectJson(null)).toBe('unknown');
+  });
+});
+
+describe('scriptWaitsForTheme', () => {
+  const script = "const on = getComputedStyle(document.body).getPropertyValue('--cld-ui').trim() === '1';";
+  it('pairs a script with the 美化 that sets the variable it waits for', () => {
+    expect(scriptWaitsForTheme(script, 'body { --cld-ui:1; --cld-accent:#c56543; }')).toBe(true);
+  });
+  it('does not pair with a 美化 that does not set it', () => {
+    expect(scriptWaitsForTheme(script, 'body { --other:1; }')).toBe(false);
+    expect(scriptWaitsForTheme('console.log(1)', 'body { --cld-ui:1; }')).toBe(false);
+  });
+  it("ignores SillyTavern's own --SmartTheme variables", () => {
+    expect(scriptWaitsForTheme("x.getPropertyValue('--SmartThemeBodyColor')", ':root{--SmartThemeBodyColor:red}')).toBe(false);
   });
 });

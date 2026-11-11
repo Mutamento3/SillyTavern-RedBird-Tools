@@ -270,6 +270,41 @@ export async function setNodeEnabled(g: ThGroup, id: string, on: boolean): Promi
   bump();
 }
 
+function newId(): string {
+  try { return crypto.randomUUID(); } catch { /* 不是 https 时没有 */ }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16); });
+}
+
+/** 文件里的一个脚本 → 酒馆助手的脚本（旧格式 name + content + buttons 也认）。 */
+function fileScript(x: Any, run: boolean): Any {
+  if (x?.type === 'script') return { ...x, id: newId(), enabled: run };
+  return {
+    type: 'script', id: newId(), enabled: run, name: String(x?.name ?? '脚本'), content: String(x?.content ?? ''), info: String(x?.info ?? ''),
+    button: { enabled: true, buttons: Array.isArray(x?.buttons) ? x.buttons : [] }, data: x?.data ?? {}, export_with: { data: true, button: true },
+  };
+}
+
+/**
+ * 「导入文件」里的酒馆助手脚本：放进全局脚本，和酒馆助手自己导入一样换新的 id。
+ * `run` 为 false 时先关着（酒馆助手自己导入也是先关着）。返回脚本名，没导进去返回 null。
+ */
+export async function importThScripts(raw: unknown, run: boolean): Promise<string | null> {
+  const th = TH();
+  if (!th?.updateScriptTreesWith) {
+    toast('error', '要先装上酒馆助手，才能导入它的脚本。', '导入');
+    return null;
+  }
+  const list: Any[] = Array.isArray(raw) ? raw : [raw];
+  const nodes = list.map((x) => (x?.type === 'folder'
+    ? { ...x, id: newId(), enabled: run, scripts: (Array.isArray(x.scripts) ? x.scripts : []).map((y: Any) => fileScript(y, run)) }
+    : fileScript(x, run)));
+  if (!nodes.length) return null;
+  await th.updateScriptTreesWith((trees: Any[]) => [...trees, ...nodes], { type: 'global' });
+  if (run && store('global_scripts')?.enabled === false) toast('warning', '脚本已导入，但酒馆助手的全局脚本没有允许运行，所以还不会运行。到「全局工具箱 › 脚本」里打开。', '导入', { timeOut: 10000 });
+  bump();
+  return nodes.map((n) => n.name).join('、');
+}
+
 let watching = false;
 
 /** 跟着酒馆助手自己的改动（在它的面板里拨开关、换预设、换卡）刷新。 */

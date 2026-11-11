@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.5.20",
+  "version": "0.6.0",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "脚本列表标出可能有前端的脚本和它放的按钮；预设面板分块加了小标题，手机世界书标签不再压字。"
+  "rbt_whats_new": "美化可以绑到角色卡上，和它聊天时整个界面换过去；能导入酒馆助手脚本；修了几处可能改错变量或绑定失效的问题。"
 }

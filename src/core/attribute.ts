@@ -24,7 +24,7 @@ export type Category =
 export const CATEGORY_META: Record<Category, { label: string; color: string }> = {
   preset: { label: '预设', color: '#8b7cf6' },
   character: { label: '角色卡', color: '#f0a43a' },
-  persona: { label: '用户设定', color: '#38b6e8' },
+  persona: { label: 'user 人设', color: '#38b6e8' },
   wi_character: { label: '世界书·角色', color: '#2fbf8f' },
   wi_chat: { label: '世界书·聊天', color: '#7fd16b' },
   wi_persona: { label: '世界书·用户', color: '#5fc9c0' },
@@ -129,7 +129,7 @@ const ID_INFO: Record<string, { category: Category; label: string; kind: Message
   charDescription: { category: 'character', label: '角色描述', kind: 'marker' },
   charPersonality: { category: 'character', label: '角色性格', kind: 'marker' },
   scenario: { category: 'character', label: '场景', kind: 'marker' },
-  personaDescription: { category: 'persona', label: '用户设定', kind: 'marker' },
+  personaDescription: { category: 'persona', label: 'user 人设', kind: 'marker' },
   newMainChat: { category: 'preset', label: '新聊天提示', kind: 'utility' },
   newChat: { category: 'preset', label: '新示例对话提示', kind: 'utility' },
   groupNudge: { category: 'preset', label: '群聊提示', kind: 'utility' },
@@ -150,7 +150,7 @@ export function extensionPromptLabel(key: string): { category: Category; label: 
   if (key === '2_floating_prompt') return { category: 'extension', label: '作者注释' };
   if (key === '1_memory') return { category: 'extension', label: '总结（Summarize）' };
   if (key === 'DEPTH_PROMPT') return { category: 'character', label: '角色卡深度提示词' };
-  if (key === 'PERSONA_DESCRIPTION') return { category: 'persona', label: '用户设定（按深度）' };
+  if (key === 'PERSONA_DESCRIPTION') return { category: 'persona', label: 'user 人设（按深度）' };
   if (key.startsWith('customDepthWI')) return { category: 'wi_other', label: '世界书 @深度' };
   if (/vector/i.test(key)) return { category: 'extension', label: `向量 · ${key}` };
   return { category: 'extension', label: `扩展 · ${key}` };
@@ -287,7 +287,7 @@ export function attribute(input: AttributionInput): AttributionResult {
         knowns.push({ text: p.content, category: 'preset', label: p.name, refKey: p.identifier, priority: 1, injection: false });
       }
     }
-    if (input.persona.trim()) knowns.push({ text: input.persona, category: 'persona', label: '用户设定', priority: 1, injection: false });
+    if (input.persona.trim()) knowns.push({ text: input.persona, category: 'persona', label: 'user 人设', priority: 1, injection: false });
   }
 
   const draft = input.chat.map((m, index) => {

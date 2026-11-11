@@ -71,7 +71,8 @@ export async function syncStore(authoritative = false): Promise<boolean> {
         ctx().saveSettingsDebounced();
       }
       if (!remote || !sameStore(merged, remote) || JSON.stringify(merged.deleted) !== JSON.stringify(remote.deleted)) await writeFile(merged);
-      lastSynced = JSON.stringify(merged);
+      // 和 scheduleSync 比的是本页的快照，所以这里也记本页的（merged 里的 deleted 总是七类都在，和本页的永远不相等）
+      lastSynced = JSON.stringify(localSnapshot());
     } catch (e) {
       console.warn('[RedBird] could not sync redbird-tools.json', e);
     }

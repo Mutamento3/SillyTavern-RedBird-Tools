@@ -161,6 +161,9 @@ export async function deleteRecentChat(r: RecentChat): Promise<void> {
   const c = ctx();
   const wasCurrent = isCurrentChat(r);
   try {
+    // 删正在聊的这个：先把酒馆还没到点的自动保存做掉（也就取消了它）。不然删除途中它到点了，
+    // 会把这个存档的内容写进酒馆刚换上的另一个存档，那个存档原来的内容就没了
+    if (wasCurrent) await c.saveChat?.();
     if (r.group) {
       const gc = await stModule('/scripts/group-chats.js');
       await gc?.deleteGroupChatByName?.(r.group, r.chatId);

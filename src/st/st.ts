@@ -9,6 +9,7 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { SIDE_EFFECT_MACRO } from '../core/macros';
 import type { CardRecord, ModelChoice, RegexOwner, SourceRecord } from '../core/cards';
 
 export type Any = any;
@@ -76,7 +77,37 @@ export function charaFileName(avatar: string | undefined): string {
   return (avatar ?? '').replace(/\.[^/.]+$/, '');
 }
 
+/** 正在生成回复，或有消息正在编辑（编辑框还没保存）。 */
+export function chatBusy(): boolean {
+  if (document.querySelector('#chat .edit_textarea')) return true;
+  const stop = document.getElementById('mes_stop');
+  return !!stop && getComputedStyle(stop).display !== 'none';
+}
+
+let reloadWaiting = false;
+/**
+ * 重新载入当前聊天（让正则的显示效果马上生效）。正在生成或编辑时先不载入：
+ * 那条还没存下来的回复、没保存的编辑会丢。等结束后再载入，并告诉玩家一声。
+ */
+export async function reloadChatSafe(): Promise<void> {
+  const c = ctx();
+  const id = c.getCurrentChatId?.();
+  if (!id) return;
+  if (!chatBusy()) { await c.reloadCurrentChat(); return; }
+  if (reloadWaiting) return;
+  reloadWaiting = true;
+  toast('info', '等这条回复生成完、或编辑保存后，聊天会自动刷新。');
+  try {
+    while (chatBusy()) await new Promise((r) => setTimeout(r, 1000));
+    if (ctx().getCurrentChatId?.() === id) await ctx().reloadCurrentChat();
+  } finally {
+    reloadWaiting = false;
+  }
+}
+
+/** 带 {{setvar}}、{{random}} 这类宏的文字不替换（见 core/macros.ts）。 */
 export function substitute(text: string): string {
+  if (SIDE_EFFECT_MACRO.test(text)) return text;
   try {
     return ctx().substituteParams(text);
   } catch {
@@ -177,6 +208,8 @@ export interface EnvProfile {
   preset?: { api: string; name: string };
   /** The model this card plays best with (switched to on card change). */
   model?: ModelChoice;
+  /** 卡的美化：和这张卡聊天时整个界面换成这套酒馆主题（见 look/cardLook.ts）。 */
+  theme?: string;
   /** Last change of any part (savedAt is when the global setup was remembered). */
   updatedAt?: string;
 }

@@ -166,7 +166,7 @@ function setGridOpen(v: boolean): void {
 }
 
 function GlobalsGrid() {
-  const st = (k: DrawerKey) => <DrawerButton key={k} k={k} title={k === 'api' && !apiOnline.value ? 'API（没连上）' : undefined} dot={k === 'api' && !apiOnline.value ? '没连上 API' : undefined} />;
+  const st = (k: DrawerKey) => <DrawerButton key={k} k={k} title={k === 'api' && !apiOnline.value ? 'API 没连上' : undefined} dot={k === 'api' && !apiOnline.value ? 'API 没连上' : undefined} />;
   const items = [
     ...ST_KEYS.slice(0, 4).map(st),
     // 世界书也放进这一格（手机上没有状态栏，原来只能从「当前角色」那块进）
@@ -270,7 +270,7 @@ function ChatList({ q }: { q: string }) {
         </section>
       ))}
       {more > 0 && <button type="button" class="rbt-recent-more" onClick={() => setLimit((n) => n + RECENT_PAGE * 2)}>显示更多（还有 {more} 个）</button>}
-      {!groups.length && <div class="rbt-recent-empty">{recentLoading.value ? '读取中…' : q ? '没有匹配的聊天' : '还没有聊天'}</div>}
+      {!groups.length && <div class="rbt-recent-empty">{recentLoading.value ? '读取中…' : q ? '没有符合的聊天' : '还没有聊天'}</div>}
     </div>
   );
 }
@@ -325,7 +325,7 @@ function AddedList({ q }: { q: string }) {
           {g.items.map((it) => <AddedRow key={it.key} it={it} />)}
         </section>
       ))}
-      {!groups.length && <div class="rbt-recent-empty">{q ? '没有匹配的角色' : '还没有角色卡'}</div>}
+      {!groups.length && <div class="rbt-recent-empty">{q ? '没有符合的角色' : '还没有角色卡'}</div>}
     </div>
   );
 }
@@ -469,7 +469,7 @@ function SwitchProgress() {
   const p = applyingPreset.value;
   const card = applyingCard.value;
   if (p === null && card === null) return null;
-  const label = p !== null ? `正在换成预设「${p}」` : `正在换成「${card}」的配置`;
+  const label = p !== null ? `正在换成预设「${p}」` : `正在换成「${card}」的配套`;
   return <div class="rbt-nav-progress" role="progressbar" aria-label={label} title={label} />;
 }
 

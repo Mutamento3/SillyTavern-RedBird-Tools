@@ -3,8 +3,8 @@
  * 导航条上的「环境」按钮显示问题数；完整内容在「这张卡」页面里。
  */
 import { computed, signal } from '@preact/signals';
-import { ctx, currentCharacter, loaded, saveSettings, settings, type Any } from '../st/st';
-import { cardInfo, currentPresetName, importCardWorld, presetApi, setRecommendedPreset, switchPreset } from '../tools/cards/cards';
+import { ctx, currentCharacter, loaded, reloadChatSafe, saveSettings, settings, type Any } from '../st/st';
+import { archiveVersion, cardInfo, currentPresetName, importCardWorld, presetApi, setRecommendedPreset, switchPreset } from '../tools/cards/cards';
 import { enablePluginsAndReload, planFor } from '../tools/env/autoapply';
 import { currentBookScopes } from '../tools/flow/capture';
 import { buildEnvReport } from '../tools/env/env';
@@ -36,7 +36,8 @@ function hasMvu(char: Any): boolean {
  * 角色档案都要用「这张卡的检查结果」，同一次变化里只算一遍，按这个数和卡来缓存。
  */
 let genN = 0;
-const envGen = computed(() => { void chatTick.value; void statusTick.value; void sourcesTick.value; void openDrawers.value; void reloadAdvised.value; return ++genN; });
+// 档案、绑定改了（archiveVersion）也要重算：不然在角色表里解绑后，「需要注意」还显示旧的
+const envGen = computed(() => { void chatTick.value; void statusTick.value; void sourcesTick.value; void openDrawers.value; void reloadAdvised.value; void archiveVersion.value; return ++genN; });
 
 function cached<T>(fn: (char: Any) => T): (char: Any) => T {
   let last: { gen: number; avatar: string; val: T } | null = null;
@@ -50,6 +51,9 @@ function cached<T>(fn: (char: Any) => T): (char: Any) => T {
   };
 }
 
+/** 给界面看的「这张卡现在和记住的比」：同一次变化里只算一遍（角色档案一次显示要用三次）。真要恢复、记住时照样现算。 */
+export const envReportForView = cached(() => buildEnvReport());
+
 /** planFor for display (status bar, world button); the real switch still calls planFor fresh. */
 export const planForView = cached((char: Any) => planFor(char));
 
@@ -58,7 +62,7 @@ const buildSections = cached(buildSectionsNow);
 function buildSectionsNow(char: Any): { sections: Section[]; issues: number } {
   const info = cardInfo(char);
   const scopes = currentBookScopes();
-  const report = buildEnvReport();
+  const report = envReportForView(char);
   const plan = planForView(char);
   const sections: Section[] = [];
   const bump = () => { statusTick.value++; };
@@ -75,10 +79,10 @@ function buildSectionsNow(char: Any): { sections: Section[]; issues: number } {
   } else wb.push({ level: 'info', text: '这张卡没有绑定世界书' });
   for (const b of w.extra) wb.push({ level: 'ok', text: `「${b}」已加载`, detail: '附加世界书，也绑在这张卡上' });
   for (const b of scopes.chat) wb.push({ level: 'ok', text: `「${b}」已加载`, detail: '绑在当前这个聊天上' });
-  for (const b of scopes.persona) wb.push({ level: 'info', text: `「${b}」`, detail: '绑在你的用户设定上，所有卡都会用' });
+  for (const b of scopes.persona) wb.push({ level: 'info', text: `「${b}」`, detail: '绑在你的 user 人设上，所有卡都会用' });
   for (const b of scopes.global) {
     const off = plan.worldsOff.includes(b);
-    wb.push({ level: off ? 'warn' : 'info', text: `全局世界书「${b}」开着`, detail: off ? '它属于别的卡，或不在这张卡记住的配置里' : '对所有卡生效' });
+    wb.push({ level: off ? 'warn' : 'info', text: `全局世界书「${b}」开着`, detail: off ? '它属于别的卡，或不在这张卡记住的配套里' : '对所有卡生效' });
   }
   sections.push({ title: '世界书', lines: wb });
 
@@ -114,7 +118,7 @@ function buildSectionsNow(char: Any): { sections: Section[]; issues: number } {
         action: { label: '允许运行', run: async () => {
           loaded.regexEngine?.allowScopedScripts?.(char);
           saveSettings();
-          if (ctx().getCurrentChatId?.()) await ctx().reloadCurrentChat();
+          await reloadChatSafe();
         } } });
   } else rx.push({ level: 'info', text: '这张卡没有自带正则' });
   const globalOn = report.items.filter((i) => i.scope === 'global' && i.kind === 'regex' && i.enabled);

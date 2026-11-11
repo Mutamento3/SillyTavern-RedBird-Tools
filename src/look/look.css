@@ -518,3 +518,21 @@ html.rbt-look :is(#range_block_openai, #openai_settings) .inline-drawer {
 }
 html.rbt-look :is(#range_block_openai, #openai_settings) .inline-drawer > .inline-drawer-toggle.inline-drawer-header:not(.standoutHeader) { margin: 0 calc(-1 * var(--rbd-s-3)); padding: var(--rbd-s-2) var(--rbd-s-3); }
 html.rbt-look :is(#range_block_openai, #openai_settings) .inline-drawer > .inline-drawer-content { padding-bottom: var(--rbd-s-3); }
+
+/* 保底：别人的美化让工具箱面板的字和底色太接近（比如白字白底）时，look.ts 给 body 加 rbt-ink-* ，
+   面板里的字换成深色或浅色。只在看不清时才加，看得清的美化不受影响。 */
+body.rbt-ink-dark :is(.rbt-left, .rbt-panel, .rbt-scope),
+body.rbt-nav-ink-dark .rbt-nav { --rbt-ink: 29, 29, 31; }
+body.rbt-ink-light :is(.rbt-left, .rbt-panel, .rbt-scope),
+body.rbt-nav-ink-light .rbt-nav { --rbt-ink: 236, 236, 241; }
+:is(body.rbt-ink-dark, body.rbt-ink-light) :is(.rbt-left, .rbt-panel, .rbt-scope),
+:is(body.rbt-nav-ink-dark, body.rbt-nav-ink-light) .rbt-nav {
+  --SmartThemeBodyColor: rgb(var(--rbt-ink));
+  --rbd-text1: rgb(var(--rbt-ink));
+  --rbd-text2: rgba(var(--rbt-ink), 0.66);
+  --rbd-text3: rgba(var(--rbt-ink), 0.45);
+  --rbd-hairline: rgba(var(--rbt-ink), 0.08);
+  --rbd-bg2: rgba(var(--rbt-ink), 0.05);
+  --rbd-bg2-hover: rgba(var(--rbt-ink), 0.09);
+  color: rgb(var(--rbt-ink));
+}

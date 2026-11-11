@@ -8,7 +8,7 @@
  *
  * 正在用的预设和美化不能删（界面上也不让选）。
  */
-import { ctx, loaded, runSlash, saveSettings, slashQuote, toast, type Any } from '../st/st';
+import { ctx, loaded, reloadChatSafe, runSlash, saveSettings, slashQuote, toast, type Any } from '../st/st';
 import { loadThemes, stThemes, type StTheme } from '../look/look';
 import { archiveVersion } from './cards/cards';
 import { refreshEnv } from './env/env';
@@ -128,10 +128,11 @@ async function restore(items: Removed[]): Promise<void> {
   if (kind === 'theme') await loadThemes();
 }
 
-function after(): void {
+function after(kind: TrashKind): void {
   archiveVersion.value++;
   refreshEnv();
-  if (ctx().getCurrentChatId?.()) void ctx().reloadCurrentChat?.();
+  // 只有正则会改消息的显示；预设、世界书、美化不用重新载入聊天
+  if (kind === 'regex') void reloadChatSafe();
 }
 
 /**
@@ -149,7 +150,7 @@ export async function trash(kind: TrashKind, ids: string[]): Promise<number> {
     return 0;
   }
   const done = await remove(items);
-  after();
+  after(kind);
   if (!done.length) { toast('error', `没能删除${label}。`, '删除'); return 0; }
   const failed = items.length - done.length;
   const what = done.length === 1 ? `「${done[0].name}」` : `${done.length} 个${label}`;
@@ -161,7 +162,7 @@ export async function trash(kind: TrashKind, ids: string[]): Promise<number> {
       if (undone) return;
       undone = true;
       await restore(done);
-      after();
+      after(kind);
       toast('success', `已恢复${what}。`, '删除');
     },
   });

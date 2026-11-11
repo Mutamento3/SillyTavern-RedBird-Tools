@@ -13,7 +13,7 @@ import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { normalizeUrl } from '../core/cards';
 import { charaFileName, ctx, loaded, runSlash, settings, slashQuote, toast } from '../st/st';
-import { importCardWorld, presetNames, setRecommendedPreset, switchPreset, updateRecord, worldNames, archiveVersion } from '../tools/cards/cards';
+import { importCardWorld, presetNames, setCardTheme, setRecommendedPreset, switchPreset, updateRecord, worldNames, archiveVersion } from '../tools/cards/cards';
 import { KIND_LABEL, KIND_TAB, prepareImport, runImport, type ImportItem } from '../tools/importer';
 import { updateSource } from '../tools/sources';
 import { refreshStatus } from '../shell/EnvStatus';
@@ -22,6 +22,7 @@ import { CheckRow } from './common';
 import { TitleBar } from './TitleBar';
 import { loadThemes, useStTheme } from '../look/look';
 import { setGlobalTab, sheetOpen } from './views';
+import { importThScripts } from '../tools/scripts/th';
 
 const draft = signal<ImportItem[] | null>(null);
 /** The window is open on its first step: nothing picked yet. */
@@ -73,7 +74,7 @@ const dropHandlers = {
 
 const KINDS: { label: string; icon: string }[] = [
   { label: '角色卡', icon: 'fa-user' }, { label: '预设', icon: 'fa-sliders' }, { label: '世界书', icon: 'fa-book' },
-  { label: '正则', icon: 'fa-code' }, { label: '美化', icon: 'fa-palette' },
+  { label: '正则', icon: 'fa-code' }, { label: '美化', icon: 'fa-palette' }, { label: '酒馆助手脚本', icon: 'fa-scroll' },
 ];
 
 /** First step: one big drop area that is also the file picker. */
@@ -115,7 +116,7 @@ function PickStep() {
 }
 
 const KIND_ICON: Record<ImportItem['kind'], string> = {
-  character: 'fa-user', preset: 'fa-sliders', world: 'fa-book', regex: 'fa-code', theme: 'fa-palette', unknown: 'fa-file-circle-question',
+  character: 'fa-user', preset: 'fa-sliders', world: 'fa-book', regex: 'fa-code', theme: 'fa-palette', script: 'fa-scroll', unknown: 'fa-file-circle-question',
 };
 
 /** 「导入后」的选项。名字自己就说清楚，不靠上面的小标题。 */
@@ -123,7 +124,8 @@ const ACTIVATE: Partial<Record<ImportItem['kind'], { label: string; detail?: str
   preset: { label: '导入后换成这个预设' },
   world: { label: '导入后作为全局世界书打开', detail: '对所有卡生效' },
   character: { label: '导入后打开这张卡' },
-  theme: { label: '导入后换成这个美化', detail: LOOK_COPY.importTurnsOff },
+  theme: { label: '设为全局美化', detail: LOOK_COPY.importTurnsOff },
+  script: { label: '导入后马上运行', detail: '所有聊天都会运行。不勾就先关着，以后在「全局工具箱 › 脚本」里打开' },
 };
 
 /** 第二层：类型 + 关键事实，一行。 */
@@ -133,6 +135,7 @@ function facts(it: ImportItem): string {
   if (it.kind === 'world' && it.entries !== undefined) return `${k} · ${it.entries} 条`;
   if (it.kind === 'regex') return `${k}${it.entries ? ` · ${it.entries} 条` : ''} · 导入时酒馆会问放到哪里`;
   if (it.kind === 'theme') return `${k} · 以后也能在「用户设置 › 界面主题」里换`;
+  if (it.kind === 'script') return `${k}${it.entries ? ` · ${it.entries} 个` : ''} · 放进全局脚本`;
   return k;
 }
 
@@ -152,9 +155,12 @@ function Item({ it, onChange, cardName, nested, children }: {
 }) {
   const thumb = useThumb(it);
   const unknown = it.kind === 'unknown';
-  const act = !it.skip && !unknown ? ACTIVATE[it.kind] : undefined;
+  const act = !it.skip && !unknown
+    ? (it.forTheme ? { label: '导入后马上运行', detail: `「${it.forTheme}」要靠它才完整。用别的美化时它不起作用` } : ACTIVATE[it.kind])
+    : undefined;
   const bindWorld = !it.skip && it.kind === 'world' && it.toCard !== undefined && !!cardName;
   const bindPreset = !it.skip && it.kind === 'preset' && it.toCard !== undefined && !!cardName;
+  const bindTheme = !it.skip && it.kind === 'theme' && it.toCard !== undefined && !!cardName;
   const off = it.skip || unknown;
   // 被认成重复、默认不导入的：最不需要操作，收成一行提醒
   if (it.dupOf && it.skip) {
@@ -183,7 +189,7 @@ function Item({ it, onChange, cardName, nested, children }: {
       </div>
 
       {/* 不导入的：原因和「仍然导入」是一件事，放在同一个提醒块里 */}
-      {unknown && <div class="rbt-imp-alert"><i class="fa-solid fa-circle-exclamation" /><div><p>认不出是什么文件，会跳过。</p><small>支持预设、世界书、正则、角色卡和美化。</small></div></div>}
+      {unknown && <div class="rbt-imp-alert"><i class="fa-solid fa-circle-exclamation" /><div><p>认不出是什么文件，会跳过。</p><small>支持预设、世界书、正则、角色卡、美化和酒馆助手脚本。</small></div></div>}
       {it.dupOf && (
         <div class={`rbt-imp-alert ${it.skip ? '' : 'resolved'}`}>
           <i class="fa-solid fa-circle-exclamation" />
@@ -195,10 +201,11 @@ function Item({ it, onChange, cardName, nested, children }: {
         </div>
       )}
 
-      {(bindWorld || bindPreset || act) && (
+      {(bindWorld || bindPreset || bindTheme || act) && (
         <div class="rbt-imp-actions">
           {bindWorld && <CheckRow label={`绑到「${cardName}」上`} detail={it.note || undefined} checked={!!it.toCard} onChange={(v) => onChange({ toCard: v })} />}
-          {bindPreset && <CheckRow label={`设为「${cardName}」的推荐预设`} detail="切到这张卡时自动换成它" checked={!!it.toCard} onChange={(v) => onChange({ toCard: v })} />}
+          {bindPreset && <CheckRow label={`设为「${cardName}」的推荐预设`} detail="换到这张卡时自动换成它" checked={!!it.toCard} onChange={(v) => onChange({ toCard: v })} />}
+          {bindTheme && <CheckRow label={`设为「${cardName}」的美化`} detail="和这张卡聊天时，整个界面换成它" checked={!!it.toCard} onChange={(v) => onChange({ toCard: v })} />}
           {act && <CheckRow label={act.label} detail={act.detail} checked={it.activate} onChange={(v) => onChange({ activate: v })} />}
         </div>
       )}
@@ -287,7 +294,12 @@ export function ImportDialog() {
           ctx().saveSettingsDebounced();
         },
         useTheme: useStTheme,
+        importScript: importThScripts,
         importCardWorld: settings().autoImportWorld ? (avatar) => importCardWorld(avatar, { quiet: true }) : undefined,
+        setCardTheme: (avatar, theme) => {
+          const ch = (ctx().characters ?? []).find((c: { avatar: string }) => c.avatar === avatar);
+          setCardTheme(avatar, ch?.name ?? avatar, theme);
+        },
         setCardPreset: (avatar, preset) => {
           const ch = (ctx().characters ?? []).find((c: { avatar: string }) => c.avatar === avatar);
           setRecommendedPreset(avatar, ch?.name ?? avatar, preset);

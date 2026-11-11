@@ -11,6 +11,7 @@ import './look/look.css';
 import { LOOK_COPY } from './ui/copy';
 import { installLongTaskLog, slow, withTimeout } from './st/perf';
 import { applyLook, lookOn, retireOldTheme, setLook, useBuiltInLook, watchStThemeSwitch, watchSurface } from './look/look';
+import { cardLookEnabled, cardLookTick, installCardLook, setCardLookEnabled } from './look/cardLook';
 import { ctx, preloadModules, saveSettings, settings } from './st/st';
 import { installStore } from './st/store';
 import { checkForUpdate, newerVersion, updateNow, installedVersion, installUpdateCheck } from './tools/update';
@@ -99,6 +100,7 @@ function addSettingsDrawer(): void {
           <div class="rbt-set-title">换卡时</div>
           ${row('rbt_auto_switch', '自动换成这张卡的预设、世界书和正则', '随时可以撤销')}
           ${row('rbt_auto_world', '自动导入卡里自带的世界书', '导入后绑到这张卡上')}
+          ${row('rbt_card_look', '换成这张卡的美化', '回首页或换卡时，换回全局美化')}
         </div>
         <div class="rbt-set-foot">
           <span>版本 <span id="rbt_version"></span></span>
@@ -132,6 +134,8 @@ function addSettingsDrawer(): void {
   shellOn.subscribe((v) => { mesCb.closest('label')?.toggleAttribute('hidden', !v); });
   bind('rbt_auto_switch', () => settings().autoApplyEnv, (v) => { settings().autoApplyEnv = v; saveSettings(); });
   bind('rbt_auto_world', () => settings().autoImportWorld, (v) => { settings().autoImportWorld = v; saveSettings(); });
+  const cardLookCb = bind('rbt_card_look', () => cardLookEnabled(), (v) => setCardLookEnabled(v));
+  cardLookTick.subscribe(() => { cardLookCb.checked = cardLookEnabled(); });
   const ver = wrap.querySelector<HTMLElement>('#rbt_version');
   if (ver) ver.textContent = installedVersion() || '?';
   wrap.querySelector('#rbt_check_update')?.addEventListener('click', () => { void checkForUpdate(true); });
@@ -174,6 +178,8 @@ async function init(): Promise<void> {
   watchStThemeSwitch();
   // 别人的主题底色是半透明的时候，三栏界面的底色垫一层实色（见 look.ts）
   watchSurface();
+  // 卡的美化（试用）：和记了美化的卡聊天时，整个界面换成那套美化
+  installCardLook();
   await preloadModules();
   // 工具箱自己的存档：先把 settings.json 里旧了的部分补回来（见 st/store.ts）
   // 最多等 5 秒：网慢时别让整个工具箱出不来

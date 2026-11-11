@@ -1347,6 +1347,17 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 
 /* 角色档案：在宽窗口（全局工具箱）里也是一列，宽度和聊天工具箱里差不多，看起来是同一个页面 */
 .rbt-card-page { max-width: 640px; }
+/* 角色档案底部常驻的「记住改动」：浮在内容上，滚到哪都看得见 */
+.rbt-save-bar {
+  position: sticky; bottom: var(--rbd-s-3); z-index: 5;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--rbd-s-2);
+  padding: var(--rbd-s-2) var(--rbd-s-2) var(--rbd-s-2) var(--rbd-s-4);
+  border-radius: var(--rbd-r-l);
+  background: var(--rbd-bg1, #1e1e21);
+  box-shadow: 0 0 0 1px var(--rbd-hairline, rgba(255, 255, 255, 0.07)), 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+.rbt-save-bar-text { flex: 1 1 180px; min-width: 0; font-size: 13px; font-weight: 600; color: var(--rbd-text1); }
+.rbt-save-bar-actions { display: flex; gap: var(--rbd-s-2); margin-left: auto; }
 /* 手机上「‹ 返回」好点一些 */
 @media (max-width: 1000px) { .rbt-back { min-height: 36px; padding-right: 8px; } }
 
@@ -1497,3 +1508,16 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
   .rbt-segpage[data-side='cards'] .rbt-scope-presets { display: none; }
 }
 @media (max-width: 1000px) { .rbt-scope-seg button { min-height: 36px; font-size: 13px; } }
+
+/* 全局工具箱 › 美化：「全局美化」里的小标题（红鸟适配美化 / 别的美化）和「别的美化」那一行 */
+.rbt-look-sub { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin-top: var(--rbd-s-2); font-size: 12px; font-weight: 600; color: var(--t2); }
+.rbt-look-sub small { font-weight: 400; color: var(--t3); }
+.rbt-lookrow {
+  display: flex; align-items: center; gap: var(--rbd-s-3); width: 100%; padding: 10px 12px; text-align: left; cursor: pointer;
+  border: 0; border-radius: var(--rbd-r-m); background: transparent; color: inherit; font: inherit;
+  box-shadow: inset 0 0 0 1px var(--rbd-hairline, rgba(255, 255, 255, 0.07));
+}
+.rbt-lookrow:hover { background: var(--g2h); }
+.rbt-lookrow.on { box-shadow: inset 0 0 0 2px var(--accent); }
+.rbt-lookrow-main { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.rbt-lookrow-go { color: var(--t3); font-size: 12px; }

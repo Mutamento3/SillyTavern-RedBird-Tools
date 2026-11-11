@@ -9,6 +9,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { normalizeUrl, splitLinks, type BookDiff, type RegexOwner } from '../../core/cards';
 import { ctx, currentCharacter, loaded, saveSettings, settings, confirmText, toast } from '../../st/st';
+import { undoable } from '../undo';
 import { openFloatMenu } from '../floatMenu';
 import {
   allCharacters,
@@ -282,7 +283,7 @@ export function SourceSection({ info, bare }: { info: CardInfo; bare?: boolean }
       </div>
     </>
   );
-  return bare ? body : <Section title="来源与作者说明">{body}</Section>;
+  return bare ? body : <Section title="来源和作者说明">{body}</Section>;
 }
 
 // ---------------------------------------------------- preset & extensions ---
@@ -294,7 +295,7 @@ function openWorldInST(name: string): void {
 }
 
 /** 分区右上角打开酒馆编辑面板的按钮：短字（「编辑」「API 设置」），带 ↗ 表示会打开别的面板。 */
-function OpenBtn({ label, title, onClick }: { label: string; title: string; onClick: () => void }) {
+export function OpenBtn({ label, title, onClick }: { label: string; title: string; onClick: () => void }) {
   return <button type="button" class="rbt-btn rbt-btn-small" title={title} onClick={onClick}>{label} ↗</button>;
 }
 
@@ -309,12 +310,12 @@ function InUse({ title }: { title: string }) {
 }
 
 /** 换了带脚本的预设、还没刷新：琥珀色一行 + 「刷新页面」。只在 name 就是那个预设时出现。 */
-export function ReloadNotice({ name }: { name: string }) {
+export function ReloadNotice({ name, bare }: { name: string; /** 角色档案里正在聊的卡：「需要注意」里已经有这个按钮，这里只说状态 */ bare?: boolean }) {
   if (reloadAdvised.value !== name) return null;
   return (
     <div class="rbt-differ" role="status">
       <span class="rbt-differ-text"><span class="rbt-differ-k">{RELOAD_COPY.title}</span>{RELOAD_COPY.detail}</span>
-      <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" onClick={() => void reloadPage()}>{RELOAD_COPY.button}</button>
+      {!bare && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" onClick={() => void reloadPage()}>{RELOAD_COPY.button}</button>}
     </div>
   );
 }
@@ -352,6 +353,7 @@ export function PresetSection({ info }: { info: CardInfo }) {
         <select class="text_pole rbt-select" value={rec?.name ?? ''} onChange={async (e) => {
           const v = (e.currentTarget as HTMLSelectElement).value || null;
           setRecommendedPreset(info.avatar, info.name, v);
+          if (!v && rec) { const was = rec.name; undoable(was, () => setRecommendedPreset(info.avatar, info.name, was)); }
           if (live && v && v !== currentPresetName()) {
             // 和换卡时一样：这是你要换的，不弹「模型被预设换掉了」；换完再换回这张卡（或这个预设）推荐的模型
             const want = recModel ?? settings().presetInfo[v]?.model;
@@ -369,7 +371,7 @@ export function PresetSection({ info }: { info: CardInfo }) {
           ? (reloadAdvised.value === current ? <i class="fa-solid fa-circle-exclamation rbt-inuse rbt-inuse-warn" title={RELOAD_COPY.title} aria-label={RELOAD_COPY.title} /> : <InUse title="正在用这个预设" />)
           : <span />}
       </div>
-      {live && current && <ReloadNotice name={current} />}
+      {live && current && <ReloadNotice name={current} bare />}
       {/* 「换成推荐的」按钮在页面顶上的「需要注意」里，这里只标出正在用的是什么，不重复放按钮 */}
       {presetDiffers && <Differs now={current} />}
       {live && !rec && current && <button type="button" class="rbt-linkbtn rbt-self-start" onClick={() => setRecommendedPreset(info.avatar, info.name, current)}>推荐正在用的「{current}」</button>}
@@ -377,11 +379,14 @@ export function PresetSection({ info }: { info: CardInfo }) {
 
       <div class="rbt-frow">
         <span class="rbt-frow-k">模型</span>
-        <ModelPicker compact value={recModel} onChange={(m) => setCardModel(info.avatar, info.name, m)} fallback={fallbackModel ? { text: '推荐预设里的', model: fallbackModel } : undefined} />
+        <ModelPicker compact value={recModel} onChange={(m) => {
+          setCardModel(info.avatar, info.name, m);
+          if (!m && recModel) { const was = recModel; undoable(modelLabel(was), () => setCardModel(info.avatar, info.name, was)); }
+        }} fallback={fallbackModel ? { text: '用预设推荐的', model: fallbackModel } : undefined} />
         {live && wantModel && curModel && sameModel(wantModel, curModel) ? <InUse title="正在用这个模型" /> : <span />}
       </div>
       {modelDiffers && <Differs now={modelLabel(curModel!)} />}
-      {live && !curModel && <Differs now="没有连上 API" />}
+      {live && !curModel && <Differs now="API 没连上" />}
     </Section>
   );
 }
@@ -444,7 +449,7 @@ export function PersonaSection({ info }: { info: CardInfo }) {
   const curIsPersona = !!cur && cur in names;
   const name = (id: string) => names[id] || id;
   return (
-    <Section title="人设" hint="换到这张卡时，酒馆会自动换成绑定的人设。" actions={
+    <Section title="user 人设" hint="换到这张卡时，酒馆会自动换成绑定的人设。" actions={
       <OpenBtn label="人设设置" title="打开酒馆的人设面板" onClick={() => openDrawer('persona')} />
     }>
       {bound.map((id) => (
@@ -455,7 +460,7 @@ export function PersonaSection({ info }: { info: CardInfo }) {
           {live && id !== cur && (
             <button type="button" class="rbt-btn rbt-btn-small" onClick={async () => { await loaded.personas?.setUserAvatar?.(id); personaTick.value++; }}>换上</button>
           )}
-          <button type="button" class="rbt-btn rbt-btn-small" title={`不再把「${name(id)}」绑在这张卡上`} onClick={() => unbindPersona(id, info.avatar)}>解绑</button>
+          <button type="button" class="rbt-btn rbt-btn-small" title={`不再把「${name(id)}」绑在这张卡上`} onClick={() => { unbindPersona(id, info.avatar); undoable(name(id), () => bindPersona(id, info.avatar)); }}>解绑</button>
         </div>
       ))}
       {!bound.length && <small class="rbt-muted">没有绑定人设。</small>}
@@ -486,7 +491,7 @@ export function ExtSection({ info }: { info: CardInfo }) {
     setUrl('');
   };
   return (
-    <Section title="需要的插件">
+    <Section title="需要的插件" actions={<OpenBtn label="插件设置" title="打开酒馆的扩展面板，安装和设置插件" onClick={() => openDrawer('extensions')} />}>
       {list.map((l, i) => {
         const st = extStatus(l.req, installed);
         const chip = STATUS_CHIP[st.status];
@@ -574,7 +579,8 @@ export function WorldSection({ info }: { info: CardInfo }) {
       {(w.state === 'missing' || w.state === 'unbound') && w.embedded !== null && (
         nameTaken
           ? <div class="rbt-warn rbt-row-between"><span>已有一本同名世界书「{w.importName}」，所以没有自动导入。</span><button class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => run(true)}>用卡里的版本覆盖</button></div>
-          : <div class="rbt-row"><button class="rbt-btn rbt-btn-primary" disabled={busy} onClick={() => run(false)}>{busy ? '正在导入…' : '导入并绑定'}</button></div>
+          // 正在聊的卡：「需要注意」里已经有「导入并绑定」，同一页不放两个
+          : info.isCurrent ? null : <div class="rbt-row"><button class="rbt-btn rbt-btn-primary" disabled={busy} onClick={() => run(false)}>{busy ? '正在导入…' : '导入并绑定'}</button></div>
       )}
       {w.state === 'ok' && w.embedded !== null && (
         diff === 'loading' ? null
@@ -611,7 +617,7 @@ export function RegexSection({ info }: { info: CardInfo }) {
       <div class="rbt-link-row">
         <span class="rbt-frow-k">卡里的正则</span>
         <span>{info.regex.total ? `${info.regex.enabled} / ${info.regex.total} 条开着` : '没有'}</span>
-        {info.regex.total > 0 && (info.regex.allowed ? <InUse title="已允许运行" /> : <Chip color={BAD}>没有允许运行</Chip>)}
+        {info.regex.total > 0 && (info.regex.allowed ? <InUse title="已允许运行" /> : <Chip color={BAD}>未允许运行</Chip>)}
       </div>
       {!th && <div class="rbt-link-row">
         <span class="rbt-frow-k">角色脚本</span>

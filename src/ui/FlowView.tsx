@@ -219,7 +219,7 @@ function ChatGroup({ msgs }: { msgs: AttributedMessage[] }) {
 }
 
 const SCOPE_OF: Partial<Record<Category, string>> = {
-  wi_character: '角色', wi_chat: '聊天', wi_persona: '用户设定', wi_global: '全局', wi_other: '其他',
+  wi_character: '角色', wi_chat: '聊天', wi_persona: 'user 人设', wi_global: '全局', wi_other: '其他',
 };
 
 function WIList({ wi }: { wi: ActivatedWI[] }) {

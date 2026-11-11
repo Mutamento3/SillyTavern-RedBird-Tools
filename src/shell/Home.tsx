@@ -172,7 +172,7 @@ function CardMenu({ it, onClose }: { it: CharItem; onClose: () => void }) {
   return (
     <Menu title={it.name} cls="rbt-hcard-menu" menuRef={ref} onClose={onClose}>
       <button type="button" role="menuitem" onClick={run(() => toggleFavorite(it))}><i class="fa-solid fa-thumbtack fa-fw" /> {it.fav ? '取消置顶' : '置顶'}</button>
-      <button type="button" role="menuitem" onClick={run(() => editCharacter(it))}><i class="fa-solid fa-pen fa-fw" /> 编辑角色</button>
+      <button type="button" role="menuitem" onClick={run(() => editCharacter(it))}><i class="fa-solid fa-address-card fa-fw" /> 编辑角色</button>
       <button type="button" role="menuitem" onClick={run(() => openSaves(it))}><i class="fa-solid fa-clock-rotate-left fa-fw" /> 所有存档</button>
       <button type="button" role="menuitem" onClick={run(() => exportCharacter(it, 'png'))}><i class="fa-solid fa-file-image fa-fw" /> 导出 PNG</button>
       <button type="button" role="menuitem" onClick={run(() => exportCharacter(it, 'json'))}><i class="fa-solid fa-file-code fa-fw" /> 导出 JSON</button>
@@ -417,7 +417,7 @@ export function HomeGallery() {
       <div class="rbt-home-grid">
         {shown.map((it) => <Card key={it.key} it={it} managing={managing} selected={picked.has(it.key)} onSelect={toggle} />)}
       </div>
-      {!shown.length && <div class="rbt-home-empty">{query || filter !== 'all' ? '没有符合条件的角色。' : '还没有角色。点左上角「导入文件」，或者右上角「新建」。'}</div>}
+      {!shown.length && <div class="rbt-home-empty">{query || filter !== 'all' ? '没有符合的角色。' : '还没有角色。点左上角「导入文件」，或者右上角「新建」。'}</div>}
       {managing && <ManageBar picked={pickedItems} total={selectable.length} onAll={toggleAll} onDone={stopManaging} />}
     </main>
   );

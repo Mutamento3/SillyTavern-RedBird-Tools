@@ -7,15 +7,15 @@ import { loaded, toast } from '../st/st';
 import { refreshEnv } from './env/env';
 import type { GlobalTab } from '../ui/views';
 
-import { detectJson, type ImportKind } from '../core/importKind';
+import { detectJson, scriptWaitsForTheme, type ImportKind } from '../core/importKind';
 import { cardFromPng, looksLikeCardBook, summarizeCard, worldEntryCount, worldEntryPrints, type CardSummary } from '../core/cardFile';
 export type { ImportKind };
 
 export const KIND_LABEL: Record<ImportKind, string> = {
-  preset: '预设', world: '世界书', regex: '正则', character: '角色卡', theme: '美化', unknown: '认不出的文件',
+  preset: '预设', world: '世界书', regex: '正则', character: '角色卡', theme: '美化', script: '酒馆助手脚本', unknown: '认不出的文件',
 };
 
-export const KIND_TAB: Partial<Record<ImportKind, GlobalTab>> = { preset: 'presets', world: 'worlds', regex: 'regex', theme: 'looks' };
+export const KIND_TAB: Partial<Record<ImportKind, GlobalTab>> = { preset: 'presets', world: 'worlds', regex: 'regex', theme: 'looks', script: 'scripts' };
 
 /** What a file is, from its extension and (for JSON) its shape. */
 export async function detectKind(file: File): Promise<ImportKind> {
@@ -74,7 +74,11 @@ export interface ImportItem {
   note?: string;
   /** Left out because it repeats this (a file name or the card name). */
   dupOf?: string;
-  /** Worldbook: bind to the card imported in the same batch. Preset: make it that card's recommended preset. */
+  /** 美化: its custom CSS. Script: all its code. Used to pair a script with the 美化 it was made for. */
+  code?: string;
+  /** Script: made for this 美化 in the same batch (it only works while that 美化 is on), so it is on by default. */
+  forTheme?: string;
+  /** Worldbook: bind to the card imported in the same batch. Preset: make it that card's recommended preset. Theme: that card's 美化. */
   toCard?: boolean;
 }
 
@@ -89,7 +93,16 @@ export async function prepareImport(files: File[]): Promise<ImportItem[]> {
         if (it.card) it.title = it.card.name;
       }
       if (it.kind === 'world') { const j = JSON.parse(await file.text()); it.entries = worldEntryCount(j); it.prints = worldEntryPrints(j); }
-      if (it.kind === 'theme') it.title = String(JSON.parse(await file.text()).name ?? it.title);
+      if (it.kind === 'theme') { const j = JSON.parse(await file.text()); it.title = String(j.name ?? it.title); it.code = String(j.custom_css ?? ''); }
+      if (it.kind === 'script') {
+        const j = JSON.parse(await file.text());
+        const list = Array.isArray(j) ? j : [j];
+        if (list.length === 1 && typeof list[0]?.name === 'string') it.title = list[0].name.trim() || it.title;
+        const n = list.reduce((k: number, x: { scripts?: unknown[] }) => k + (Array.isArray(x?.scripts) ? x.scripts.length : 1), 0);
+        if (n > 1) it.entries = n;
+        const code = (x: { content?: unknown; scripts?: unknown[] }): string => [typeof x?.content === 'string' ? x.content : '', ...(Array.isArray(x?.scripts) ? x.scripts.map((y) => code(y as never)) : [])].join('\n');
+        it.code = list.map(code).join('\n');
+      }
       if (it.kind === 'regex') {
         const j = JSON.parse(await file.text());
         const list = Array.isArray(j) ? j : [j];
@@ -99,7 +112,18 @@ export async function prepareImport(files: File[]): Promise<ImportItem[]> {
     } catch { /* unreadable: import as-is */ }
     out.push(it);
   }
+  pairScripts(out);
   return relate(out);
+}
+
+/** 和美化一起来、只在那套美化下起作用的脚本：默认导入后就运行，不然美化只有一半。 */
+function pairScripts(items: ImportItem[]): void {
+  const themes = items.filter((i) => i.kind === 'theme' && i.code);
+  for (const it of items) {
+    if (it.kind !== 'script' || !it.code) continue;
+    const t = themes.find((x) => scriptWaitsForTheme(it.code!, x.code!));
+    if (t) { it.forTheme = t.title; it.activate = true; }
+  }
 }
 
 /**
@@ -130,6 +154,7 @@ export function relate(items: ImportItem[]): ImportItem[] {
       }
     }
     if (it.kind === 'preset') it.toCard = true;
+    if (it.kind === 'theme') it.toCard = true;
   }
   return items;
 }
@@ -166,6 +191,8 @@ export async function runImport(items: ImportItem[], hooks: {
   /** `extra`: the card already carries a book, so add this one as an extra book. */
   bindWorld: (avatar: string, world: string, extra: boolean) => Promise<void>;
   setCardPreset: (avatar: string, preset: string) => void;
+  /** 卡的美化：和这张卡聊天时整个界面换成它 */
+  setCardTheme: (avatar: string, theme: string) => void;
   /**
    * 卡里自带世界书时，导入后马上把它导入并绑到卡上（设置里开着「自动导入卡里自带的世界书」时）。
    * 这样酒馆不会再弹英文的「要不要导入」，也不会接着自动打开世界书面板。
@@ -174,11 +201,14 @@ export async function runImport(items: ImportItem[], hooks: {
   normalizeUrl: (s: string) => string;
   /** Switch ST's UI theme to this one (and turn the toolbox's own look off). */
   useTheme: (name: string) => Promise<void>;
+  /** 酒馆助手脚本：放进全局脚本。`run`：导入后马上运行。返回脚本名，没导进去返回 null。 */
+  importScript: (data: unknown, run: boolean) => Promise<string | null>;
 }): Promise<ImportDone[]> {
   const done: ImportDone[] = [];
   items = items.filter((i) => !i.skip);
   const toCardWorlds: string[] = [];
   let toCardPreset = '';
+  let toCardTheme = '';
   const linksOf = (it: ImportItem) => { const u = hooks.normalizeUrl(it.url); return u ? [{ label: it.linkLabel.trim() || '链接', url: u }] : []; };
   const hasExtra = (it: ImportItem) => !!(it.author.trim() || linksOf(it).length || it.notes.trim());
 
@@ -210,7 +240,13 @@ export async function runImport(items: ImportItem[], hooks: {
     while (!has() && Date.now() - t0 < 15000) await wait(300);
     if (has() && hasExtra(it)) hooks.saveSource('theme', name, { author: it.author.trim(), links: linksOf(it), notes: it.notes.trim() });
     if (has() && it.activate) await hooks.useTheme(name);
+    if (has() && it.toCard) toCardTheme = name;
     done.push({ item: it, name: has() ? name : null });
+  }
+  for (const it of items.filter((i) => i.kind === 'script')) {
+    let name: string | null = null;
+    try { name = await hooks.importScript(JSON.parse(await it.file.text()), it.activate); } catch (e) { toast('error', `导入脚本「${it.file.name}」失败：${(e as Error).message}`, '导入'); }
+    done.push({ item: it, name });
   }
   const rx = items.filter((i) => i.kind === 'regex');
   if (rx.length) { feed('import_regex_file', rx.map((i) => i.file), 'change'); for (const it of rx) done.push({ item: it, name: baseName(it.file) }); }
@@ -227,6 +263,7 @@ export async function runImport(items: ImportItem[], hooks: {
       if (it.card?.bookEntries && hooks.importCardWorld) await hooks.importCardWorld(avatar);
       for (const w of toCardWorlds) await hooks.bindWorld(avatar, w, !!it.card?.bookEntries);
       if (toCardPreset) hooks.setCardPreset(avatar, toCardPreset);
+      if (toCardTheme) hooks.setCardTheme(avatar, toCardTheme);
     }
     done.push({ item: it, name: avatar });
   }

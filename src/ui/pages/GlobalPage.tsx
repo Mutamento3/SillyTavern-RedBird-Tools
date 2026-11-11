@@ -99,7 +99,7 @@ function SubItemList({ items, groupOff }: { items: EnvSubItem[]; groupOff: boole
         </div>
       )}
       {shown.map((s) => <SubItemRow key={s.id} sub={s} />)}
-      {!shown.length && <small class="rbt-muted">没有匹配的正则</small>}
+      {!shown.length && <small class="rbt-muted">没有符合的正则</small>}
     </div>
   );
 }
