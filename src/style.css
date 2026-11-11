@@ -1521,3 +1521,7 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-lookrow.on { box-shadow: inset 0 0 0 2px var(--accent); }
 .rbt-lookrow-main { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .rbt-lookrow-go { color: var(--t3); font-size: 12px; }
+
+/* 空状态：一句话 + 按钮（不写「点左上角…」这种位置，手机和电脑位置不一样） */
+.rbt-empty p, .rbt-home-empty p { margin: 0; }
+.rbt-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--rbd-s-2); margin-top: var(--rbd-s-3); }

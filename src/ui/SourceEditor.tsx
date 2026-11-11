@@ -57,7 +57,7 @@ export function SourceEditor({ kind, id }: { kind: SourceKind; id: string }) {
         {v.author && <span class="rbt-source-author">作者 <b>{v.author}</b></span>}
         {[...v.autoLinks, ...v.links].map((l, i) => <LinkChip key={i} l={l} />)}
         <button type="button" class="rbt-btn rbt-btn-small" onClick={startEdit}>
-          {hasSource(v) ? '编辑' : '添加作者和链接'}
+          {hasSource(v) ? '编辑' : '＋ 添加作者和链接'}
         </button>
       </div>
     );

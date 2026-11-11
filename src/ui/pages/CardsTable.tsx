@@ -276,7 +276,12 @@ export function CardsTablePage() {
   return (
     <div class="rbt-page rbt-ct">
       <Toolbar q={q} setQ={setQ} all={all} setAll={setAll} count={shown.length} />
-      {!shown.length && <Empty>{rows.some((r) => r.has) || q ? '没有符合的角色。' : '还没有卡设了配套。在角色档案里设推荐预设、人设、美化，或记住换卡时的设置。'}</Empty>}
+      {!shown.length && (rows.some((r) => r.has) || q || all
+        ? <Empty>没有符合的角色。</Empty>
+        : <Empty>
+            <p>还没有卡设配套。</p>
+            <div class="rbt-empty-actions"><button type="button" class="rbt-btn" onClick={() => setAll(true)}>查看全部角色</button></div>
+          </Empty>)}
       {shown.length > 0 && (phone ? <PhoneList rows={shown} /> : <DeskTable rows={shown} />)}
     </div>
   );

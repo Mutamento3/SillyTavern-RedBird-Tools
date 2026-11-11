@@ -306,7 +306,7 @@ const SORT_TEXT: Record<CharSort, string> = { recent: '最近聊过', name: '名
 
 /**
  * 筛选 / 排序：一个图标 + 文字的按钮，上面盖一个看不见的系统下拉框（点了弹系统自带的选择器，手机上也好用）。
- * 电脑上显示图标和文字；手机上只显示图标（和「管理」一样），选了标签时图标高亮。
+ * 电脑上显示图标和文字；手机上平时只显示图标，选了标签、换了排序时，图标后面写出现在的值（一眼看出筛了什么、怎么排）。
  */
 function IconPicker({ icon, label, title, value, options, onChange, active }: { icon: string; label: string; title: string; value: string; options: { value: string; text: string }[]; onChange: (v: string) => void; active?: boolean }) {
   return (
@@ -372,7 +372,7 @@ export function HomeGallery() {
                 value={tagValue} onChange={(v) => setFilter((v || 'all') as Filter)}
                 options={[{ value: '', text: '全部标签' }, ...tags.map(({ tag, count }) => ({ value: 'tag:' + tag.id, text: `${tag.name}（${count}）` }))]} />
             )}
-            <IconPicker icon="fa-arrow-down-wide-short" label={`排序：${SORT_TEXT[sort]}`} title="排序方式" value={sort} onChange={(v) => setSort(v as CharSort)}
+            <IconPicker icon="fa-arrow-down-wide-short" label={phone ? SORT_TEXT[sort] : `排序：${SORT_TEXT[sort]}`} title="排序方式" active={phone && sort !== 'recent'} value={sort} onChange={(v) => setSort(v as CharSort)}
               options={(Object.keys(SORT_TEXT) as CharSort[]).map((k) => ({ value: k, text: SORT_TEXT[k] }))} />
             <button type="button" class={'rbt-home-select rbt-home-manage' + (managing ? ' active' : '')} title="多选：批量置顶、加减标签、导出、删除" onClick={() => (managing ? stopManaging() : setManaging(true))}>
               <i class="fa-solid fa-list-check fa-fw" /> <span class="rbt-home-picker-text">{managing ? '完成' : '管理'}</span>
@@ -417,7 +417,16 @@ export function HomeGallery() {
       <div class="rbt-home-grid">
         {shown.map((it) => <Card key={it.key} it={it} managing={managing} selected={picked.has(it.key)} onSelect={toggle} />)}
       </div>
-      {!shown.length && <div class="rbt-home-empty">{query || filter !== 'all' ? '没有符合的角色。' : '还没有角色。点左上角「导入文件」，或者右上角「新建」。'}</div>}
+      {!shown.length && (query || filter !== 'all'
+        ? <div class="rbt-home-empty">没有符合的角色。</div>
+        // 不写按钮在哪（手机和电脑位置不一样），直接把按钮放在这里
+        : <div class="rbt-home-empty">
+            <p>还没有角色。</p>
+            <div class="rbt-empty-actions">
+              <button type="button" class="rbt-btn rbt-btn-primary" onClick={() => { void openImport(); }}><i class="fa-solid fa-file-import" /> 导入文件</button>
+              <button type="button" class="rbt-btn" onClick={() => createCharacter()}><i class="fa-solid fa-user-plus" /> 新建角色</button>
+            </div>
+          </div>)}
       {managing && <ManageBar picked={pickedItems} total={selectable.length} onAll={toggleAll} onDone={stopManaging} />}
     </main>
   );

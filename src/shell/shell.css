@@ -1739,6 +1739,9 @@ body:not(.rbt-shell) :is(.rbt-chat-more, .rbt-chat-meta) { display: none; }
   .rbt-home-tools :is(.rbt-home-picker, .rbt-home-manage) { justify-content: center; width: 36px; min-width: 36px; flex: none; min-height: 40px !important; padding: 0 !important; font-size: 16px; }
   .rbt-home-tools .rbt-home-manage.active { width: auto; padding: 0 12px !important; }
   .rbt-home-tools .rbt-home-manage.active .rbt-home-picker-text { display: inline; }
+  /* 选了标签、换了排序：图标后面写出现在的值 */
+  .rbt-home-tools .rbt-home-picker.active { width: auto; max-width: 128px; padding: 0 10px !important; gap: 4px; }
+  .rbt-home-tools .rbt-home-picker.active .rbt-home-picker-text { display: inline; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 }
 
 /* 编辑角色：酒馆顶上那行 token 数 + 奖杯 + 眼睛藏起来，token 数挪到标题栏（drawers.ts） */
@@ -1777,3 +1780,10 @@ body.rbt-shell .rbt-sheet-head .rbt-char-tokens.warn { color: #f0a43a; }
 
 /* 点自己消息的头像打开人设面板 */
 body.rbt-shell #chat .mes[is_user="true"] .avatar { cursor: pointer; }
+
+/* 工具箱按钮上「需要注意」的项数（琥珀色小圆，和状态点同色） */
+.rbt-tb-count {
+  display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; margin-left: 2px;
+  border-radius: 9px; background: #e0a040; color: #1d1d1f; font-size: 11px; font-weight: 700; line-height: 1;
+}
+.rbt-nav-phone .rbt-nav-actions .rbt-gbtn > span.rbt-tb-count { display: inline-grid; }

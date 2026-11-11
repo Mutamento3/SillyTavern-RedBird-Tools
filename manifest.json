@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "美化可以绑到角色卡上，和它聊天时整个界面换过去；能导入酒馆助手脚本；修了几处可能改错变量或绑定失效的问题。"
+  "rbt_whats_new": "工具箱入口写出有几项需要注意；角色档案最下面列全换卡时会换的六项；空状态直接给按钮。"
 }

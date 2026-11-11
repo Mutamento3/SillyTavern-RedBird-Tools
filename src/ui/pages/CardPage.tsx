@@ -3,7 +3,8 @@
  * 以及换卡时的自动切换。合并了原来的「环境」弹窗、「角色档案 · 这张卡」和「换卡体检」里跟卡有关的部分。
  */
 import { useEffect, useState } from 'preact/hooks';
-import { currentCharacter, saveSettings, settings, toast } from '../../st/st';
+import { ctx, currentCharacter, saveSettings, settings, toast } from '../../st/st';
+import { panelOpen } from '../Panel';
 import { undoable } from '../undo';
 import { archiveTarget, archiveVersion, cardInfo, ensureFullCharacter, findChar } from '../../tools/cards/cards';
 import { lastApplied, undoLastApply } from '../../tools/env/autoapply';
@@ -13,7 +14,7 @@ import type { EnvProfile } from '../../st/st';
 import { cardIssues, envReportForView, LEVEL_ICON, statusTick } from '../../shell/EnvStatus';
 import { Empty, CheckRow } from '../common';
 import { CardScriptsSection } from './ScriptsPage';
-import { CardHeader, ExtSection, PersonaSection, PresetSection, RegexSection, Section, SourceSection, WorldSection } from './parts';
+import { boundPersonas, CardHeader, ExtSection, PersonaSection, PresetSection, RegexSection, Section, SourceSection, WorldSection } from './parts';
 import { loadThemes, stThemes, themesLoading } from '../../look/look';
 import { appliedCardTheme, cardLookEnabled, cardLookTick, cardThemeOf, setCardLookEnabled } from '../../look/cardLook';
 import { setCardTheme, setProfile } from '../../tools/cards/cards';
@@ -80,11 +81,17 @@ function AttentionBox({ char }: { char: unknown }) {
 }
 
 /** 记住的（或将要记住的）一套：预设、模型、全局世界书、全局正则，每样一行。 */
-function ProfileLines({ p }: { p: Partial<EnvProfile> }) {
+function ProfileLines({ p, avatar }: { p: Partial<EnvProfile>; avatar: string }) {
+  // 和「全局工具箱 › 角色」同样的六项、同样的顺序：换到这张卡时会换成什么，一眼看全
+  const names: Record<string, string> = ctx().powerUserSettings?.personas ?? {};
+  const personas = boundPersonas(avatar).map((id) => names[id] || id);
+  const theme = settings().profiles[avatar]?.theme;
   return (
     <ul class="rbt-drift">
       <li>预设：{p.preset?.name ?? '没指定'}</li>
-      <li>模型：{p.model ? modelLabel(p.model) : '没指定，用预设里的'}</li>
+      <li>模型：{p.model ? modelLabel(p.model) : '没指定，用预设推荐的'}</li>
+      <li>user 人设：{personas.length ? personas.join('、') : '没绑定'}</li>
+      <li>美化：{theme ? `${theme}${cardLookEnabled() ? '' : '（「换成这张卡的美化」关着，现在不会换）'}` : '用全局美化'}</li>
       <li>全局世界书：{p.globalWorlds?.length ? p.globalWorlds.map((w) => (worldExists(w) ? w : `${w}（已经删掉了）`)).join('、') : '全部关掉'}</li>
       <li>全局正则：{p.globalRegexEnabled?.length ? `打开 ${p.globalRegexEnabled.length} 条` : '全部关掉'}</li>
     </ul>
@@ -135,13 +142,13 @@ function SwitchSection({ avatar, isCurrent }: { avatar: string; isCurrent: boole
               if (before) toast('success', `已不再记住「${before.cardName}」的世界书和正则。点这里撤销。`, 'RedBird 工具箱', { onclick: () => setProfile(avatar, before), timeOut: 8000 });
             })}>不再记住</button>}
           </div>
-          <ProfileLines p={profile!} />
+          <ProfileLines p={profile!} avatar={avatar} />
         </div>
       ) : isCurrent && (
         <div class="rbt-card-sub">
           {/* 点之前先列出会记住什么（推荐模型是角色档案里设的，记住时会留着） */}
           <small class="rbt-muted">记住后，每次换到这张卡都恢复成这一套：</small>
-          <ProfileLines p={{ ...snapshotNow(), model: profile?.model }} />
+          <ProfileLines p={{ ...snapshotNow(), model: profile?.model }} avatar={avatar} />
           <button class="rbt-btn rbt-btn-small rbt-self-start" disabled={busy} onClick={() => run(() => rememberProfile())}>记住现在的配套</button>
         </div>
       )}
@@ -188,7 +195,21 @@ export function CardPage({ avatar: forced, embedded }: { avatar?: string; embedd
   const avatar = forced ?? archiveTarget.value ?? cur?.avatar;
   useEffect(() => { if (avatar) void ensureFullCharacter(avatar); }, [avatar]);
   const f = avatar ? findChar(avatar) : null;
-  if (!f) return <Empty>没有打开单人角色卡。在左栏「角色」里点一张卡，就能看到它的档案。</Empty>;
+  if (!f) {
+    if (ctx().groupId) return <Empty>群聊没有角色档案，打开一张单人卡再来看。</Empty>;
+    return (
+      <Empty>
+        <p>先打开一张角色卡，这里会显示它的档案。</p>
+        <div class="rbt-empty-actions">
+          <button type="button" class="rbt-btn" onClick={() => {
+            // 回到首页（关掉现在的聊天），收起工具箱，首页就是角色库
+            (document.querySelector('#option_close_chat') as HTMLElement | null)?.click();
+            panelOpen.value = false;
+          }}>去首页选卡</button>
+        </div>
+      </Empty>
+    );
+  }
   const info = cardInfo(f.char);
   return (
     <div class="rbt-page rbt-card-page">

@@ -178,7 +178,8 @@ export function ToolboxButton() {
       <i class="fa-solid fa-toolbox fa-fw" />
       <span class="rbt-tb-long">聊天工具箱</span>
       <span class="rbt-tb-short">工具箱</span>
-      {issues > 0 && <span class="rbt-dot" />}
+      {/* 写出几项，不只是一个点：手机上没有状态栏，这里是唯一能看到的地方 */}
+      {issues > 0 && <span class="rbt-tb-count" aria-label={`${issues} 项需要注意`}>{issues}</span>}
     </button>
   );
 }
