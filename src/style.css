@@ -1525,3 +1525,8 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 /* 空状态：一句话 + 按钮（不写「点左上角…」这种位置，手机和电脑位置不一样） */
 .rbt-empty p, .rbt-home-empty p { margin: 0; }
 .rbt-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--rbd-s-2); margin-top: var(--rbd-s-3); }
+
+/* 角色档案「美化」里的背景一行：下拉框选这个存档的背景，右边缩略图；下面一行灰字说明只对这个存档 */
+.rbt-chatbg { display: flex; flex-direction: column; gap: var(--rbd-s-1); }
+.rbt-chatbg-thumb { width: 48px; height: 30px; flex: none; object-fit: cover; border-radius: var(--rbd-r-xs); }
+.rbt-chatbg-hint { font-size: 12px; }

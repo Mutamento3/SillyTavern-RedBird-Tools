@@ -85,21 +85,39 @@ export function chatBusy(): boolean {
 }
 
 let reloadWaiting = false;
+
 /**
- * 重新载入当前聊天（让正则的显示效果马上生效）。正在生成或编辑时先不载入：
- * 那条还没存下来的回复、没保存的编辑会丢。等结束后再载入，并告诉玩家一声。
+ * 用内存里的聊天把消息重画一遍（让正则的显示效果马上生效）。不从磁盘重新读：
+ * 酒馆重新读聊天时如果网络断一下，会把存档覆盖成只剩开场白（见 chatGuard.ts），也会取消还没到点的自动保存。
+ */
+async function redrawChat(): Promise<void> {
+  const c = ctx();
+  if (typeof c.printMessages === 'function') {
+    // 先把现在的消息和「显示更多消息」都拿掉再画：点过「显示更多」时，前面多出来的消息不会被重画，按钮还会跑到中间
+    document.querySelectorAll('#chat > .mes, #show_more_messages').forEach((el) => el.remove());
+    await c.printMessages();
+    // 告诉插件消息重新画过了：酒馆助手收到这个会把前端（状态栏、小手机这类）重新画出来。
+    // 用的是酒馆点「显示更多消息」时发的事件；不发「这条消息画好了」，免得自动朗读这类插件当成新消息
+    if (c.eventTypes?.MORE_MESSAGES_LOADED) await c.eventSource?.emit(c.eventTypes.MORE_MESSAGES_LOADED);
+  }
+  else await c.reloadCurrentChat();
+}
+
+/**
+ * 重画当前聊天的消息。正在生成或编辑时先不画：重画会把还没存下的回复、没保存的编辑冲掉。
+ * 等结束后再画，并告诉玩家一声。
  */
 export async function reloadChatSafe(): Promise<void> {
   const c = ctx();
   const id = c.getCurrentChatId?.();
   if (!id) return;
-  if (!chatBusy()) { await c.reloadCurrentChat(); return; }
+  if (!chatBusy()) { await redrawChat(); return; }
   if (reloadWaiting) return;
   reloadWaiting = true;
   toast('info', '等这条回复生成完、或编辑保存后，聊天会自动刷新。');
   try {
     while (chatBusy()) await new Promise((r) => setTimeout(r, 1000));
-    if (ctx().getCurrentChatId?.() === id) await ctx().reloadCurrentChat();
+    if (ctx().getCurrentChatId?.() === id) await redrawChat();
   } finally {
     reloadWaiting = false;
   }

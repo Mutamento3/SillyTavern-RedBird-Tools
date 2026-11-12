@@ -56,6 +56,18 @@ export function applyLook(): void {
 
 /** "rgb(1, 2, 3)" / "rgba(1, 2, 3, 0.5)" / "color(srgb …)" → [r, g, b, a] (0–255, a 0–1). */
 export function rgba(css: string): [number, number, number, number] | null {
+  // 主题里的颜色几乎都写成 rgb() / rgba() / #hex：直接读文字，不用往页面里放东西再量
+  //（量一次浏览器就要把整页样式重算一遍，配上几百 KB 的美化 CSS，换卡时会明显卡一下）
+  const m = css.trim().match(/^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:[\s,/]+([\d.]+%?))?\s*\)$/i);
+  if (m) {
+    const a = m[4] === undefined ? 1 : m[4].endsWith('%') ? parseFloat(m[4]) / 100 : parseFloat(m[4]);
+    return [+m[1], +m[2], +m[3], a];
+  }
+  const h = css.trim().match(/^#([\da-f]{3,8})$/i)?.[1];
+  if (h && (h.length === 3 || h.length === 6 || h.length === 8)) {
+    const f = h.length === 3 ? h.split('').map((x) => x + x).join('') : h;
+    return [parseInt(f.slice(0, 2), 16), parseInt(f.slice(2, 4), 16), parseInt(f.slice(4, 6), 16), f.length === 8 ? parseInt(f.slice(6, 8), 16) / 255 : 1];
+  }
   // 不用 <i>：有的美化给所有 <i>（图标）强制上色（!important），量出来就成了图标的颜色。
   // 用一个没人会写样式的元素，颜色也写成行内 !important，美化的规则压不过它
   const probe = document.createElement('rbt-color-probe');
@@ -78,6 +90,24 @@ export function rgba(css: string): [number, number, number, number] | null {
  * 聊天区背后的背景图不受影响（那是 --rbd-canvas）。
  */
 let lastSolid = '';
+/** 主题的三个颜色：正文、模糊色调（左栏和面板）、聊天色调（顶栏）。 */
+export interface SurfaceVars { body?: string; tint?: string; chat?: string }
+/** 卡的美化盖着时，用它的颜色，不用酒馆全局主题的（见 cardLook.ts）。 */
+let override: SurfaceVars | null = null;
+/**
+ * 读主题颜色：卡的美化盖着时直接用它的颜色（不问浏览器，换卡时不用按新 CSS 当场重算整页）；
+ * 平时问浏览器算好的值——全局美化可能在自定义 CSS 里用 !important 改这几个颜色，只看行内样式会读错。
+ */
+function surfaceVars(): Required<SurfaceVars> {
+  const root = document.documentElement;
+  let cs: CSSStyleDeclaration | null = null;
+  const read = (k: string, o?: string) => o?.trim() || (cs ??= getComputedStyle(root)).getPropertyValue(k).trim();
+  return {
+    body: read('--SmartThemeBodyColor', override?.body),
+    tint: read('--SmartThemeBlurTintColor', override?.tint),
+    chat: read('--SmartThemeChatTintColor', override?.chat),
+  };
+}
 function solidSurface(): void {
   const root = document.documentElement;
   const set = (bg1: string, nav: string) => {
@@ -91,8 +121,8 @@ function solidSurface(): void {
   };
   // 开着自带美化时，底色是自带美化的实色（写在 CSS 里；行内样式会压过它，所以要拿掉）
   if (lookShown() || !document.body) { set('', ''); ink('', ''); return; }
-  const cs = getComputedStyle(root);
-  const text = rgba(cs.getPropertyValue('--SmartThemeBodyColor').trim());
+  const v = surfaceVars();
+  const text = rgba(v.body);
   const lightText = !text || (0.299 * text[0] + 0.587 * text[1] + 0.114 * text[2]) > 128;
   const base = lightText ? 0 : 255;
   const solid = (css: string): string => {
@@ -102,8 +132,8 @@ function solidSurface(): void {
     return `rgb(${mix(c[0])}, ${mix(c[1])}, ${mix(c[2])})`;
   };
   // 左栏、面板用「模糊色调」；顶栏用「聊天色调」（和聊天区同色），都垫成实色。聊天区本身不动，背景图照样看得见
-  const panel = solid(cs.getPropertyValue('--SmartThemeBlurTintColor').trim());
-  const nav = solid(cs.getPropertyValue('--SmartThemeChatTintColor').trim());
+  const panel = solid(v.tint);
+  const nav = solid(v.chat);
   set(panel, nav);
   // 保底：有的美化只给酒馆自己的面板改了字色（比如全局白字、面板白底，再点名酒馆面板改成深色字）。
   // 工具箱的面板不在它的名单里，就成了白字白底。字和底色对比太低时，面板里的字换成黑或白；看得清的美化不动
@@ -113,7 +143,7 @@ function solidSurface(): void {
     if (contrast(text, bg) >= 3) return '';
     return luminance(bg) > 0.4 ? 'dark' : 'light';
   };
-  ink(fix(panel || cs.getPropertyValue('--SmartThemeBlurTintColor').trim()), fix(nav || cs.getPropertyValue('--SmartThemeChatTintColor').trim()));
+  ink(fix(panel || v.tint), fix(nav || v.chat));
 }
 
 /** 相对亮度（WCAG）。 */
@@ -138,8 +168,9 @@ function ink(panel: '' | 'dark' | 'light', nav: '' | 'dark' | 'light'): void {
   b.classList.toggle('rbt-nav-ink-light', nav === 'light');
 }
 
-/** 卡的美化换上 / 拿掉以后重新算一次底色。 */
-export function refreshSurface(): void {
+/** 卡的美化换上 / 拿掉以后重新算一次底色。`vars`：卡的美化的颜色（拿掉时传 null，回到酒馆全局主题的）。 */
+export function refreshSurface(vars?: SurfaceVars | null): void {
+  if (vars !== undefined) override = vars;
   lastSolid = '';
   solidSurface();
 }

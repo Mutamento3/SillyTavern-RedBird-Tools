@@ -166,7 +166,7 @@ async function setRegexStates(changes: Record<string, boolean>, { duringChatLoad
   if (!duringChatLoad) { await reloadChatSafe(); return; }
   // We're inside ST's CHAT_CHANGED: reloading now would load the chat again in the middle of its own
   // load (every CHAT_CHANGED / first-message listener would run twice). Reload once it has finished.
-  setTimeout(() => { if (ctx().getCurrentChatId?.() === chatId) void ctx().reloadCurrentChat(); }, 1000);
+  setTimeout(() => { if (ctx().getCurrentChatId?.() === chatId) void reloadChatSafe(); }, 1000);
 }
 
 async function setWorlds(on: string[], off: string[]): Promise<void> {

@@ -12,6 +12,7 @@ import { openGlobal, sheetOpen, shellActive } from '../ui/views';
 import { DRAWERS, drawerButtonHandlers, extButtonHandlers, extDrawers, openDrawers, openExt, type DrawerKey, type ExtDrawer } from './drawers';
 import { ToolboxButton } from './EnvStatus';
 import { applyingCard, applyingPreset } from '../tools/env/autoapply';
+import { lookApplying } from '../look/cardLook';
 import { StatusBar, worldStatus } from './StatusBar';
 import { DropHint, ImportButton, installWindowDrop, windowDrag } from '../ui/pages/GlobalToolbox';
 import { HomeGallery } from './Home';
@@ -464,12 +465,16 @@ function WorldButton({ grid }: { grid?: boolean }) {
 ${w.warn}` : w.title} dot={w.warn} />;
 }
 
-/** 换卡时正在换预设：导航条下沿一条细进度条（0.5 秒内就换完的不显示，见 CSS）。 */
+/**
+ * 换卡时正在换预设、配套或美化：导航条下沿一条细进度条（0.5 秒内就换完的不显示，见 CSS）。
+ * 换美化时聊天先显示出来，美化下一帧才换上，中间页面可能卡零点几秒：进度条的动画不靠页面脚本，卡着也会走。
+ */
 function SwitchProgress() {
   const p = applyingPreset.value;
   const card = applyingCard.value;
-  if (p === null && card === null) return null;
-  const label = p !== null ? `正在换成预设「${p}」` : `正在换成「${card}」的配套`;
+  const look = lookApplying.value;
+  if (p === null && card === null && look === null) return null;
+  const label = p !== null ? `正在换成预设「${p}」` : card !== null ? `正在换成「${card}」的配套` : look ? `正在换上美化「${look}」` : '正在换回全局美化';
   return <div class="rbt-nav-progress" role="progressbar" aria-label={label} title={label} />;
 }
 

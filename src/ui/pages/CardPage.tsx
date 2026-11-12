@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { ctx, currentCharacter, saveSettings, settings, toast } from '../../st/st';
 import { panelOpen } from '../Panel';
+import { bgFiles, currentChatBg, CUSTOM_BG, loadBgFiles, lockedFile, setChatBg } from '../../look/chatBg';
 import { undoable } from '../undo';
 import { archiveTarget, archiveVersion, cardInfo, ensureFullCharacter, findChar } from '../../tools/cards/cards';
 import { lastApplied, undoLastApply } from '../../tools/env/autoapply';
@@ -52,7 +53,39 @@ function CardLookSection({ avatar, name, isCurrent }: { avatar: string; name: st
       {rec && !on && (
         <div class="rbt-differ"><span class="rbt-differ-text">「换成这张卡的美化」关着，现在不会换</span><button class="rbt-btn rbt-btn-small" onClick={() => setCardLookEnabled(true)}>打开</button></div>
       )}
+      {isCurrent && ctx().getCurrentChatId?.() && <ChatBgRow />}
     </Section>
+  );
+}
+
+/**
+ * 这个存档的背景：酒馆自己能把背景「锁定到这个聊天」，但藏在背景面板里，而且要先锁定再点图，很多人不知道。
+ * 这里一个下拉框：选一张就只给这个存档用（不改全局背景），选「跟着全局背景」就解开。和背景面板上的锁是同一个设置。
+ */
+function ChatBgRow() {
+  const bg = currentChatBg();
+  const locked = lockedFile();
+  const files = bgFiles.value;
+  useEffect(() => { void loadBgFiles(); }, []);
+  const [busy, setBusy] = useState(false);
+  return (
+    <div class="rbt-chatbg">
+      <div class="rbt-frow">
+        <span class="rbt-frow-k">背景</span>
+        <select class="text_pole rbt-select" value={locked} disabled={busy} onChange={async (e) => {
+          const v = (e.currentTarget as HTMLSelectElement).value || null;
+          setBusy(true);
+          try { await setChatBg(v); } finally { setBusy(false); }
+        }}>
+          <option value="">跟着全局背景</option>
+          {locked === CUSTOM_BG && <option value={CUSTOM_BG}>这个存档自己上传的背景</option>}
+          {locked && locked !== CUSTOM_BG && !files.includes(locked) && <option value={locked}>{locked.replace(/\.[^.]+$/, '')}</option>}
+          {files.map((f) => <option key={f} value={f}>{f.replace(/\.[^.]+$/, '')}</option>)}
+        </select>
+        {bg.thumb ? <img class="rbt-chatbg-thumb" src={bg.thumb} alt={bg.name} title={bg.name} /> : <span />}
+      </div>
+      <small class="rbt-muted rbt-chatbg-hint">只对这个存档。换到别的存档或别的卡，用全局背景。</small>
+    </div>
   );
 }
 

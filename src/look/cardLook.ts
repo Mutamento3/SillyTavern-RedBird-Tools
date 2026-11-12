@@ -96,15 +96,70 @@ function ownCss(on: boolean): void {
   else if (el.getAttribute('media') !== 'not all') el.setAttribute('media', 'not all');
 }
 
-function clear(): void {
+/**
+ * 换美化时的进度：顶栏显示「正在换上美化「X」」（拿掉时是「正在换回全局美化」）。
+ * 美化的 CSS 动辄几百 KB，浏览器要按它把整页样式重算一遍，卡多、页面大时要零点几秒。
+ * 所以先让聊天显示出来，下一帧再换美化，中间给一个进度提示，而不是整个界面卡住不动。
+ */
+export const lookApplying = signal<string | null>(null);
+
+/** 等聊天先画出来：下一帧之后再动美化。 */
+const afterPaint = () => new Promise<void>((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+
+/**
+ * 用过的美化留在页面里（停用状态，最多 3 套），切回来时只要启用，不用重新解析几百 KB 的 CSS。
+ * 正在用的那一个带 id="rbt-card-look"。
+ */
+const MAX_CACHED = 3;
+const cache = new Map<string, HTMLStyleElement>();
+function styleFor(name: string, css: string): HTMLStyleElement {
+  let el = cache.get(name);
+  if (el && el.textContent !== css) { el.remove(); cache.delete(name); el = undefined; }
+  if (!el) {
+    el = document.createElement('style');
+    el.dataset.rbtTheme = name;
+    el.setAttribute('media', 'not all');
+    el.textContent = css;
+    document.head.appendChild(el);
+    cache.set(name, el);
+    while (cache.size > MAX_CACHED) {
+      const [oldName, oldEl] = cache.entries().next().value as [string, HTMLStyleElement];
+      if (oldEl.id === STYLE_ID) break;
+      oldEl.remove();
+      cache.delete(oldName);
+    }
+  } else {
+    // 最近用过的放到最后，最久没用的先被清掉
+    cache.delete(name);
+    cache.set(name, el);
+  }
+  return el;
+}
+
+/** 只启用这一个（null = 全部停用）。 */
+function activate(el: HTMLStyleElement | null): void {
+  const cur = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
+  if (cur && cur !== el) { cur.removeAttribute('id'); cur.setAttribute('media', 'not all'); }
+  if (el) { el.id = STYLE_ID; el.removeAttribute('media'); }
+}
+
+async function clear(): Promise<void> {
   if (!appliedCardTheme.value && !document.getElementById(STYLE_ID)) return;
-  document.getElementById(STYLE_ID)?.remove();
-  ownCss(true);
-  appliedCardTheme.value = null;
-  lastTheme = null;
-  lookSuspended.value = false;
-  applyLook();
-  refreshSurface();
+  const my = seq;
+  lookApplying.value = '';
+  try {
+    await afterPaint();
+    if (my !== seq) return;
+    activate(null);
+    ownCss(true);
+    appliedCardTheme.value = null;
+    lastTheme = null;
+    lookSuspended.value = false;
+    refreshSurface(null);
+    applyLook();
+  } finally {
+    if (my === seq) lookApplying.value = null;
+  }
 }
 
 let seq = 0;
@@ -113,29 +168,34 @@ let loadedOnce = false;
 let lastTheme: StTheme | null = null;
 async function apply(): Promise<void> {
   const my = ++seq;
+  // 新的一次接手：上一次（被打断的）留下的进度条先拿掉，需要时下面再显示
+  lookApplying.value = null;
   const ch = currentCharacter();
   const name = ch && cardLookEnabled() ? cardThemeOf(String(ch.avatar)) : undefined;
-  if (!name) { clear(); return; }
+  if (!name) { await clear(); return; }
   // 只读一次：读完会改 stThemes，又会触发这里（主题列表是空的时候会一直读下去）
   if (!stThemes.value.length && !loadedOnce) { loadedOnce = true; await loadThemes(); }
   if (my !== seq) return;
   const t = stThemes.value.find((x) => x.name === name);
-  if (!t) { clear(); return; }
+  if (!t) { await clear(); return; }
   if (t === lastTheme && appliedCardTheme.value === name && document.getElementById(STYLE_ID)) { ownCss(false); return; }
-  const css = cssFor(t);
-  let el = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
-  if (!el) {
-    el = document.createElement('style');
-    el.id = STYLE_ID;
-    document.head.appendChild(el);
+  lookApplying.value = name;
+  try {
+    await afterPaint();
+    if (my !== seq) return;
+    activate(styleFor(name, cssFor(t)));
+    ownCss(false);
+    appliedCardTheme.value = name;
+    lastTheme = t;
+    // 底色直接用这套美化的颜色算，不去问浏览器（问一次它就要按几百 KB 的新 CSS 把整页重算一遍）
+    refreshSurface({ body: str(t.main_text_color), tint: str(t.blur_tint_color), chat: str(t.chat_tint_color) });
+    if (!lookSuspended.value) { lookSuspended.value = true; applyLook(); }
+  } finally {
+    if (my === seq) lookApplying.value = null;
   }
-  if (el.textContent !== css) el.textContent = css;
-  ownCss(false);
-  appliedCardTheme.value = name;
-  lastTheme = t;
-  if (!lookSuspended.value) { lookSuspended.value = true; applyLook(); }
-  refreshSurface();
 }
+
+const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 
 export function installCardLook(): void {
   migrate();

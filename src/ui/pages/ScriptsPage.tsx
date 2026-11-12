@@ -6,7 +6,7 @@
  * 编辑脚本内容、新建、导入还是去酒馆助手（「编辑 ↗」）。
  */
 import { signal } from '@preact/signals';
-import { useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { cardGroup, presetGroup, countRunning, countScripts, currentGroups, presetsWithScripts, cardsWithScripts, setGroupAllowed, setNodeEnabled, thInstalled, thTick, type ThGroup, type ThScript } from '../../tools/scripts/th';
 import { guessFrontend } from '../../tools/scripts/frontend';
 import { CheckRow, Empty, NavRow, Tag } from '../common';
@@ -30,7 +30,8 @@ function CheckLine({ icon, name, sub, checked, dim, disabled, nested, onChange, 
   const [open, setOpen] = useState(false);
   const [long, setLong] = useState(false);
   const subRef = useRef<HTMLElement>(null);
-  useLayoutEffect(() => {
+  // 画完再量（useEffect）：画之前量，每一行都会让浏览器把整页样式重算一遍，换到带大美化的卡时会卡一下
+  useEffect(() => {
     const el = subRef.current;
     if (el && !open) setLong(el.scrollHeight > el.clientHeight + 1);
   }, [sub, open]);

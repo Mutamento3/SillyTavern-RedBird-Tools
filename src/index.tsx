@@ -4,6 +4,7 @@
  * Views (see ui/views.ts): 信息流 / 变量 live in the right-side dock; 这张卡 / 全局 / 维护 open as
  * large overlays when the three-column shell is active, and as dock tabs otherwise.
  */
+import { installChatGuard } from './st/chatGuard';
 import { render } from 'preact';
 import './style.css';
 import './shell/shell.css';
@@ -12,7 +13,7 @@ import { LOOK_COPY } from './ui/copy';
 import { installLongTaskLog, slow, withTimeout } from './st/perf';
 import { applyLook, lookOn, retireOldTheme, setLook, useBuiltInLook, watchStThemeSwitch, watchSurface } from './look/look';
 import { cardLookEnabled, cardLookTick, installCardLook, setCardLookEnabled } from './look/cardLook';
-import { ctx, preloadModules, saveSettings, settings } from './st/st';
+import { ctx, preloadModules, reloadChatSafe, saveSettings, settings } from './st/st';
 import { installStore } from './st/store';
 import { checkForUpdate, newerVersion, updateNow, installedVersion, installUpdateCheck } from './tools/update';
 import { installModelGuard } from './tools/model';
@@ -258,10 +259,12 @@ async function init(): Promise<void> {
   // 有新版本时提醒（每天最多一次）
   installUpdateCheck();
   // Debug handle for the browser console.
-  (window as unknown as { RedBirdTools: unknown }).RedBirdTools = { captures, openPanel, openView, openGlobal, setShellEnabled };
+  (window as unknown as { RedBirdTools: unknown }).RedBirdTools = { captures, openPanel, openView, openGlobal, setShellEnabled, reloadChatSafe };
   console.log('[RedBird] 工具箱已加载');
 }
 
+// 最先装上：酒馆一启动就可能读上次的聊天，读失败时会把存档覆盖成只剩开场白（见 st/chatGuard.ts）
+installChatGuard();
 const start = () => { init().catch((e) => console.error('[RedBird] init failed', e)); };
 if (window.jQuery) window.jQuery(start);
 else if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
