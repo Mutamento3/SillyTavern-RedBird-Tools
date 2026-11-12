@@ -421,6 +421,10 @@ export function bindPersona(id: string, avatar: string): void {
   // 只填了名字和头像、没写过描述的人设还没有这一条：和酒馆一样先建一条空的
   if (id === String(loaded.personas?.user_avatar ?? '')) loaded.personas?.getOrCreatePersonaDescriptor?.();
   const all = pu?.persona_descriptions ?? {};
+  // 不是现在用的人设、又从没写过描述：酒馆里还没有它这一条，建一条空的（和酒馆建的一样，只是描述留空，不抄现在人设的）
+  if (!all[id] && pu?.personas?.[id] !== undefined) {
+    all[id] = { description: '', position: pu.persona_description_position ?? 0, depth: pu.persona_description_depth ?? 2, role: pu.persona_description_role ?? 0, lorebook: '', connections: [], title: '' };
+  }
   if (!all[id]) return;
   if (!pu.persona_allow_multi_connections) {
     for (const k of Object.keys(all)) if (k !== id && all[k].connections) all[k].connections = all[k].connections.filter((x: Conn) => !isCardConn(avatar)(x));
@@ -446,8 +450,13 @@ export function PersonaSection({ info }: { info: CardInfo }) {
   const cur = String(loaded.personas?.user_avatar ?? '');
   const bound = boundPersonas(info.avatar);
   const live = info.isCurrent;
-  const curIsPersona = !!cur && cur in names;
   const name = (id: string) => names[id] || id;
+  const multi = !!c.powerUserSettings?.persona_allow_multi_connections;
+  // 没开「允许一张卡连多个人设」时，选一个就是换掉原来绑的
+  const replaces = !multi;
+  // 可选的：还没绑的人设，现在用的排第一
+  const choices = Object.keys(names).filter((id) => !bound.includes(id)).sort((a, b) => (a === cur ? -1 : b === cur ? 1 : name(a).localeCompare(name(b), 'zh')));
+  const locked: string = live ? String(c.chatMetadata?.persona ?? '') : '';
   return (
     <Section title="user 人设" hint="换到这张卡时，酒馆会自动换成绑定的人设。" actions={
       <OpenBtn label="人设设置" title="打开酒馆的人设面板" onClick={() => openDrawer('persona')} />
@@ -464,11 +473,34 @@ export function PersonaSection({ info }: { info: CardInfo }) {
         </div>
       ))}
       {!bound.length && <small class="rbt-muted">没有绑定人设。</small>}
-      {live && bound.length > 0 && !bound.includes(cur) && cur && <Differs now={name(cur)} />}
-      {curIsPersona && !bound.includes(cur) && (
-        <button type="button" class="rbt-linkbtn rbt-self-start" onClick={() => bindPersona(cur, info.avatar)}>
-          {bound.length && !c.powerUserSettings?.persona_allow_multi_connections ? `改成绑定现在的人设「${name(cur)}」` : `绑定现在的人设「${name(cur)}」`}
-        </button>
+      {live && bound.length > 0 && !bound.includes(cur) && cur && !locked && <Differs now={name(cur)} />}
+      {/* 存档锁定的人设会盖过卡上绑的：只在真的锁了、又不是卡上绑的那个时说 */}
+      {live && locked && !bound.includes(locked) && (
+        <small class="rbt-muted rbt-persona-lock"><i class="fa-solid fa-lock fa-fw" aria-hidden="true" /> 这个存档锁定了人设「{name(locked)}」，会盖过卡上绑的。只对这个存档。</small>
+      )}
+      {/* 直接选一个人设绑到这张卡，不用先去人设面板切过去；正在聊的卡顺便换上 */}
+      {choices.length > 0 && (
+        <div class="rbt-frow">
+          <span class="rbt-frow-k">绑定</span>
+          <select class="text_pole rbt-select" value="" onChange={async (e) => {
+            const id = (e.currentTarget as HTMLSelectElement).value;
+            if (!id) return;
+            const before = bound.slice();
+            bindPersona(id, info.avatar);
+            if (live && id !== cur) await loaded.personas?.setUserAvatar?.(id);
+            personaTick.value++;
+            if (replaces && before.length) {
+              toast('success', `已把「${info.name}」的人设换成「${name(id)}」。点这里撤销。`, 'RedBird 工具箱', {
+                onclick: () => { unbindPersona(id, info.avatar); for (const b of before) bindPersona(b, info.avatar); },
+                timeOut: 8000,
+              });
+            }
+          }}>
+            <option value="">{replaces && bound.length ? '换成别的人设…' : bound.length ? '再绑一个人设…' : '选一个人设…'}</option>
+            {choices.map((id) => <option key={id} value={id}>{name(id)}{id === cur ? '（现在用的）' : ''}</option>)}
+          </select>
+          <span />
+        </div>
       )}
     </Section>
   );

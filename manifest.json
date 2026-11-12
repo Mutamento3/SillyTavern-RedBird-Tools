@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "修复聊天存档可能被覆盖成只剩开场白的问题；能给存档单独选背景；换到绑了美化的卡更快。"
+  "rbt_whats_new": "角色档案里能直接选人设绑到卡上；存档锁定了别的人设时会提示。"
 }

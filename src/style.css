@@ -1530,3 +1530,6 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-chatbg { display: flex; flex-direction: column; gap: var(--rbd-s-1); }
 .rbt-chatbg-thumb { width: 48px; height: 30px; flex: none; object-fit: cover; border-radius: var(--rbd-r-xs); }
 .rbt-chatbg-hint { font-size: 12px; }
+
+/* 角色档案「user 人设」：存档锁定了别的人设时的一行说明 */
+.rbt-persona-lock { display: flex; align-items: baseline; gap: 4px; font-size: 12px; line-height: 1.5; }
