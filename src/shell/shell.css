@@ -21,6 +21,13 @@ body.rbt-shell.rbt-shell-lcollapsed { --rbt-L: 0px; }
 /* 右侧只给工具箱侧边栏留位置（面板都是 overlay，不占位置） */
 body.rbt-shell.rbt-docked { --rbt-R: var(--rbt-dock-w, 440px); }
 
+/* ---- 页面永远不能横着拖 ----
+   三栏界面里所有东西都在屏幕宽度之内。美化常把背景图层放大一点（模糊边缘用），或者给某块写死宽度，
+   页面就比屏幕宽；手机上手指一拖就横着走，固定在屏幕上的工具箱、顶栏也跟着错位，按钮点不准。
+   在最外层把横向超出的部分裁掉（clip 不会变成可以滚动的区域）。 */
+html:has(> body.rbt-shell),
+body.rbt-shell { overflow-x: clip !important; overscroll-behavior-x: none; }
+
 /* ---- 原顶栏：图标不显示，面板本身保留（它们都在 #top-settings-holder 里） ---- */
 body.rbt-shell #top-bar {
   height: 0 !important;
@@ -36,6 +43,20 @@ body.rbt-shell #top-settings-holder {
   padding: 0 !important;
 }
 body.rbt-shell #top-settings-holder > .drawer > .drawer-toggle { display: none !important; }
+/* 原顶栏的外壳永远不接收点击，只有打开着的面板能点。
+   这些外壳层级比聊天工具箱、顶栏都高（酒馆给的 3005），三栏界面只是把高度设成 0 来藏它们；
+   但美化可以给里面的抽屉外壳写高度和位置，它们就会透明地盖在工具箱、顶栏上，点 ✕、点插件按钮都点到它们身上。
+   不管美化怎么挪，外壳都不挡点击；面板打开时，面板本身照常能点（插件加进面板里的按钮也在面板里面）。 */
+body.rbt-shell #top-bar,
+body.rbt-shell #top-settings-holder,
+body.rbt-shell #top-settings-holder > .drawer,
+body.rbt-shell #top-settings-holder > .drawer > .drawer-toggle {
+  pointer-events: none !important;
+}
+body.rbt-shell #top-settings-holder .drawer-content.openDrawer { pointer-events: auto !important; }
+/* 外壳也不画任何东西（美化常给顶栏、抽屉外壳加底色和阴影，会变成一条挡在页面上的色块） */
+body.rbt-shell #top-settings-holder,
+body.rbt-shell #top-settings-holder > .drawer { background: none !important; box-shadow: none !important; border: 0 !important; }
 
 /* ---- 聊天栏：占左栏和工具箱之外的全部宽度 ---- */
 body.rbt-shell #sheld {
@@ -1522,7 +1543,13 @@ body.rbt-shell .rbt-nav-progress::before {
 .rbt-nav .rbt-nav-save { gap: 6px; max-width: 260px; }
 .rbt-nav .rbt-nav-save > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rbt-nav .rbt-nav-save > .rbt-nav-save-chev { font-size: 9px; opacity: 0.7; }
-.rbt-nav-who-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; line-height: 1.2; }
+.rbt-nav-who-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; max-width: 100%; overflow: hidden; line-height: 1.2; }
+/* 名字和下面的存档名都不能比这一列宽：竖排的 flex 里，靠左对齐的子元素会按完整长度排开，
+   长卡名就冲出按钮、盖住后面的存档和新聊天图标。限宽后放不下的显示省略号 */
+.rbt-nav-who-text > .rbt-nav-name,
+.rbt-nav-who-text > .rbt-nav-sub { max-width: 100%; min-width: 0; }
+/* 存档名一行：要显示省略号得是普通的块（flex 里的文字不会出省略号） */
+.rbt-nav-who-text > .rbt-nav-sub { display: block; }
 .rbt-nav-sub { display: flex; align-items: center; gap: 4px; max-width: 100%; font-size: 11px; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 50%, transparent)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* 左栏图标格里插件的按钮：插件给的是图片图标时，和字体图标一样大 */
@@ -1629,7 +1656,10 @@ body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-swipes .swipe_left[hidden] { 
    酒馆的 ☰、魔法棒、发送（停止、继续、代写）图标有 28px，在输入框旁边显得笨重。
    图标缩到 18px，可以点的范围保持 40×40（不改 display：酒馆用它切换发送 / 停止）。 */
 /* 两个图标挨得近一点：每个按钮 34 宽（够手指点），按钮之间不再留空 */
-body.rbt-shell #send_form :is(#leftSendForm, #rightSendForm) { gap: 0; }
+/* 两边的图标保持一行：酒馆默认把 ☰ 和魔法棒上下叠放，输入栏会被撑成两行（加上快捷回复就是三行）。
+   以前只在红鸟适配美化里改，换成别人的美化又叠回去了；现在开着三栏界面就一直是一行。
+   美化常给这两块写宽度，所以宽度和换行用 !important（不碰 display） */
+body.rbt-shell #send_form :is(#leftSendForm, #rightSendForm) { gap: 0; flex-wrap: nowrap !important; flex-shrink: 0; width: auto !important; }
 body.rbt-shell #send_form :is(#leftSendForm, #rightSendForm) > div {
   box-sizing: border-box; width: 34px; height: 40px; min-width: 34px; margin: 0;
   font-size: 18px; justify-content: center; align-items: center;
@@ -1661,6 +1691,8 @@ body.rbt-shell.rbt-compact.rbt-mes-layout #chat .mes .ch_name .name_text { line-
 }
 /* 名字在按钮里：按百分比限宽会和按钮宽度互相等，结果名字被截得很短；改成固定上限 */
 .rbt-nav .rbt-nav-who > .rbt-nav-name { flex-shrink: 1; min-width: 0; max-width: 240px; }
+/* 电脑上名字在 .rbt-nav-who-text 里面，上面那条管不到：整块限一个上限 */
+.rbt-nav:not(.rbt-nav-phone) .rbt-nav-who-text { max-width: 240px; }
 .rbt-nav .rbt-nav-who:hover { background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 5%, transparent)); }
 
 /* ============================================================ 存档页：每一条 ===
@@ -1787,3 +1819,11 @@ body.rbt-shell #chat .mes[is_user="true"] .avatar { cursor: pointer; }
   border-radius: 9px; background: #e0a040; color: #1d1d1f; font-size: 11px; font-weight: 700; line-height: 1;
 }
 .rbt-nav-phone .rbt-nav-actions .rbt-gbtn > span.rbt-tb-count { display: inline-grid; }
+
+/* 背景面板：手机上每行 3 张（酒馆给手机的默认也是 3）。
+   面板里的「−」「+」会把列数存成电脑、手机共用的一个设置，在电脑上调成 5 张，手机上每张就小得没法选。
+   手机上固定 3 张，那两个按钮在手机上按了也不会变，就不显示；电脑上照常可以调 */
+body.rbt-shell.rbt-compact #Backgrounds :is(#bg_menu_content, #bg_custom_content, .bg_folder_grid) {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+body.rbt-shell.rbt-compact #Backgrounds :is(#bg_thumb_zoom_in, #bg_thumb_zoom_out) { display: none !important; }

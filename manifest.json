@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "角色档案里能直接选人设绑到卡上；存档锁定了别的人设时会提示。"
+  "rbt_whats_new": "修复用某些美化时按钮点不了、手机上页面能横着拖；长卡名显示省略号；手机背景面板每行 3 张。"
 }
