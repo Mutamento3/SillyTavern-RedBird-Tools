@@ -72,6 +72,13 @@ body.rbt-shell #sheld {
   transition: none;
 }
 body.rbt-shell.rbt-resizing #sheld { transition: none !important; }
+/* ---- 正文宽度（电脑上）：跟酒馆「用户设置 › 聊天宽度」走，和关掉三栏界面时一样 ----
+   聊天栏要填满中间一栏，所以 body 上的 --sheldWidth 被上面占用了；酒馆把滑块的值写在 html 上，在那里先记下来。
+   :where() 让这两条的优先级为 0：美化自己给消息、输入栏写了宽度的，用美化的。红鸟适配美化有自己的「阅读宽度」，不用这个。 */
+html { --rbt-st-chat-w: var(--sheldWidth, 50vw); }
+:where(html:not(.rbt-look) body.rbt-shell:not(.rbt-compact) #chat > .mes) { max-width: var(--rbt-st-chat-w); margin-inline: auto; }
+/* 美化自己定了正文宽度时（rbt-theme-width，见 look.ts checkThemeWidthSoon），输入栏也交给美化，免得一宽一窄 */
+:where(html:not(.rbt-look):not(.rbt-theme-width) body.rbt-shell:not(.rbt-compact) #send_form) { max-width: var(--rbt-st-chat-w); }
 /* 首页不显示输入框 */
 body.rbt-shell.rbt-home #form_sheld { display: none !important; }
 

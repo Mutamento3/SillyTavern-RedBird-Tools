@@ -9,6 +9,7 @@
  */
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { appliedCardTheme } from '../../look/cardLook';
 import { ctx, runSlash, saveSettings, settings, slashQuote, confirmText } from '../../st/st';
 import {
   allCharacters,
@@ -53,7 +54,7 @@ import { mesLayoutOn, setMesLayout } from '../../shell/mesActions';
 import { compact, shellOn } from '../../shell/Shell';
 import { PresetScriptsSection, ScriptsPage } from './ScriptsPage';
 import {
-  ACCENTS, accentId, currentStTheme, loadThemes, LOOKS, lookId, lookOn, READ_WIDTHS, readWidth, setAccent, setReadWidth, stThemes, themeHasCss, themesLoading,
+  ACCENTS, accentId, currentStTheme, loadThemes, LOOKS, lookId, lookOn, READ_WIDTHS, readWidth, setAccent, setReadWidth, setStChatWidth, stChatWidth, stThemes, themeHasCss, themeOwnsWidth, themesLoading,
   useBuiltInLook, useStTheme, type StTheme,
 } from '../../look/look';
 
@@ -689,6 +690,25 @@ function LookCard({ l, on }: { l: (typeof LOOKS)[number]; on: boolean }) {
   );
 }
 
+/** 别的美化的阅读宽度：就是酒馆「用户设置 › 聊天宽度」，两边改哪个都一样。美化自己定了正文宽度时调不了，说一声。 */
+function ChatWidthRow() {
+  const [v, setV] = useState(stChatWidth());
+  const owned = themeOwnsWidth.value;
+  return (
+    <>
+      <div class="rbt-frow">
+        <span class="rbt-frow-k">阅读宽度</span>
+        <input type="range" min={25} max={100} step={1} value={v} disabled={owned} aria-label="阅读宽度（屏幕宽度的百分比）"
+          onInput={(e) => setV(Number((e.currentTarget as HTMLInputElement).value))}
+          onChange={(e) => setStChatWidth(Number((e.currentTarget as HTMLInputElement).value))} />
+        <span class="rbt-frow-k">{v}%</span>
+        <span />
+      </div>
+      <small class="rbt-width-note">{!owned ? '和酒馆「用户设置」里的「聊天宽度」是同一个设置。' : appliedCardTheme.value ? `这张卡的美化「${appliedCardTheme.value}」自己定了正文宽度，在这里调不了。` : '这套美化自己定了正文宽度，在这里调不了。'}</small>
+    </>
+  );
+}
+
 function LooksPage() {
   useThemes();
   void sourcesTick.value;
@@ -742,6 +762,7 @@ function LooksPage() {
               {curTheme && <Swatches t={curTheme} />}
               {builtIn ? <span class="rbt-lookrow-go">换上</span> : <i class="fa-solid fa-chevron-right rbt-lookrow-go" aria-hidden="true" />}
             </button>
+            {!builtIn && shellOn.value && !compact.value && <ChatWidthRow />}
             {!builtIn && <p class="rbt-looks-info-text"><i class="fa-solid fa-circle-info" aria-hidden="true" />{LOOK_COPY.othersRisk}{LOOK_COPY.recommend}{LOOK_COPY.noAdapt}</p>}
             {shellOn.value && <CheckRow label={LOOK_COPY.mesLayoutLabel} detail={LOOK_COPY.mesLayoutDesc} checked={mesLayoutOn.value} onChange={setMesLayout} />}
           </Section>

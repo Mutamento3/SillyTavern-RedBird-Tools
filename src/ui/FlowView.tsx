@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { CATEGORY_META, type AttributedMessage, type Category } from '../core/attribute';
 import { truncate } from '../core/text';
+import { floorsText, unsentFloors } from '../core/budget';
 import { captures, previewBusy, previewNextPrompt, type ActivatedWI, type Capture } from '../tools/flow/capture';
 import { ctx, toast } from '../st/st';
 import { openDrawer } from '../shell/drawers';
@@ -35,7 +36,7 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 // ------------------------------------------------------------ 额度 ---
-// 把 API 设置里的两个上限和这一轮的实际用量放在一起看：回复被截断、聊天记录被挤掉，一眼就能看出来。
+// 把 API 设置里的两个上限和这一轮的实际用量放在一起看。只写看得到的事实：哪几楼没发、是不是因为长度，算得出来才说。
 
 /** The last AI reply in the open chat: its token count (ST's own count if it kept one, else estimated). */
 function useLastReply(): { tokens: number; floor: number } | null {
@@ -57,22 +58,40 @@ function useLastReply(): { tokens: number; floor: number } | null {
   return v;
 }
 
+/** 某一楼正文的 token 数（只算正在打开的聊天；别的聊天的那一轮返回 null）。 */
+function useFloorTokens(chatId: string, floor: number | null): number | null {
+  const [v, setV] = useState<number | null>(null);
+  useEffect(() => {
+    setV(null);
+    const c = ctx();
+    if (floor === null || String(c.getCurrentChatId?.() ?? '') !== chatId) return;
+    const m = c.chat?.[floor];
+    if (!m) return;
+    let alive = true;
+    Promise.resolve(c.getTokenCountAsync?.(String(m.mes ?? ''), 0)).then((n) => { if (alive && typeof n === 'number') setV(n); }).catch(() => {});
+    return () => { alive = false; };
+  }, [chatId, floor]);
+  return v;
+}
+
 function BudgetPanel({ cap }: { cap: Capture }) {
   const b = cap.budget;
   const last = useLastReply();
+  const sent = cap.result.messages.map((m) => m.chatIndex).filter((n): n is number => typeof n === 'number');
+  // 一楼都没发时看到正在生成的那一楼为止；后台生成（总结之类）本来就可能不带聊天记录，不看
+  const unsent = b && !(cap.genType === 'quiet' && !sent.length) ? unsentFloors(sent, b.hidden, cap.targetFloor ?? b.chatLength) : { hidden: [], other: [] };
+  // 酒馆从最新的楼往前放，放不下就停：最先没放进去的是没发的楼里最新的那一楼
+  const firstLeftOut = unsent.other.length ? unsent.other[unsent.other.length - 1] : null;
+  const leftOutTokens = useFloorTokens(cap.chatId, firstLeftOut);
   if (!b || !b.context) return null;
   const used = cap.result.totalTokens;
   const reply = Math.min(b.reply, b.context);
   const free = Math.max(0, b.context - used - reply);
   const pct = (n: number) => `${Math.max(0, Math.min(100, (n / b.context) * 100))}%`;
-  // 酒馆能拿来放提示词的 = 上下文上限 − 回复上限；超过了就会把最早的聊天记录挤掉
+  // 发出去的内容最多 = 上下文上限 − 回复上限
   const promptRoom = b.context - reply;
+  const tooLong = leftOutTokens !== null && used + leftOutTokens > promptRoom;
   const nearFull = used > promptRoom * 0.95;
-  const chatFloors = cap.result.messages.map((m) => m.chatIndex).filter((n): n is number => typeof n === 'number');
-  const earliest = chatFloors.length ? Math.min(...chatFloors) : 0;
-  // 第 0 楼是开场白，有的预设本来就不发；一楼都没放进去也算（世界书、预设太长时会这样）
-  const noneSent = b.chatLength > 1 && !chatFloors.length && cap.genType !== 'quiet';
-  const dropped = noneSent || (earliest > 1 && b.chatLength > earliest);
   const cutOff = !!last && b.reply > 0 && last.tokens >= b.reply * 0.9;
   return (
     <div class="rbt-budget">
@@ -88,29 +107,36 @@ function BudgetPanel({ cap }: { cap: Capture }) {
       <div class="rbt-budget-legend">
         <span><i class="used" />这一轮发出去 约 {fmtTokens(used)}</span>
         <span><i class="reply" />留给回复 {fmtTokens(reply)}</span>
-        {/* 聊天记录被挤掉时不写「空着」：剩下那点放不下更早的一楼，写出来和下面的提醒对不上 */}
-        {!dropped && <span><i class="free" />空着 {fmtTokens(free)}</span>}
+        <span><i class="free" />空着 {fmtTokens(free)}</span>
       </div>
       {cutOff && (
         <div class="rbt-budget-alert">
           <i class="fa-solid fa-circle-exclamation" />
           <div>
-            <p>上一条回复很可能被截断了</p>
-            <small>它写了约 {fmtTokens(last!.tokens)} tokens，回复上限是 {fmtTokens(b.reply)}。AI 写到上限就会停在半句话上。把预设里的「最大回复长度」调大一些（比如 8000），再重新生成。带思考过程的模型，思考的部分也算在里面。</small>
+            <p>上一条回复接近回复上限</p>
+            <small>它约 {fmtTokens(last!.tokens)} tokens，回复上限是 {fmtTokens(b.reply)}。AI 写到上限就会停下，哪怕话没说完。如果它没写完，把预设里的「最大回复长度」调大（比如 8000），再重新生成。多数带思考过程的模型，思考的部分也算在回复上限里。</small>
           </div>
         </div>
       )}
-      {dropped && (
+      {unsent.other.length > 0 && (
         <div class="rbt-budget-alert">
           <i class="fa-solid fa-circle-exclamation" />
           <div>
-            <p>前面的聊天记录没发出去</p>
-            <small>{noneSent ? '这一轮聊天记录一楼都没放进去' : `这一轮最早只放进了第 ${earliest} 楼，前面的被挤掉了`}：发出去的内容不能超过「上下文上限 − 回复上限」= {fmtTokens(promptRoom)}，预设和世界书先占位置，剩下的才给聊天记录。把预设里的「上下文长度」调大（要看模型支持多少），或者少开几本世界书。</small>
+            <p>有聊天记录没发出去</p>
+            <small>
+              {floorsText(unsent.other)}没有隐藏，这一轮也没发出去。
+              {tooLong
+                ? `发出去的内容最多 ${fmtTokens(promptRoom)}（上下文上限 − 回复上限）。这一轮约 ${fmtTokens(used)}，再加第 ${firstLeftOut} 楼（约 ${fmtTokens(leftOutTokens!)}）就超了，所以酒馆没放进去。要发更多聊天记录，把预设里的「上下文长度」调大（要看模型支持多少），或者少开几本世界书。`
+                : leftOutTokens !== null
+                  ? `这一轮约 ${fmtTokens(used)}，加上第 ${firstLeftOut} 楼也没超过上限 ${fmtTokens(promptRoom)}，所以不是因为长度。`
+                  : ''}
+            </small>
           </div>
         </div>
       )}
-      {!dropped && nearFull && (
-        <small class="rbt-budget-note">快满了：再多几轮，最早的聊天记录就会被挤掉。</small>
+      {unsent.hidden.length > 0 && <small class="rbt-budget-note">{floorsText(unsent.hidden)}已隐藏，不会发出去。</small>}
+      {!unsent.other.length && nearFull && (
+        <small class="rbt-budget-note">已用到上限的 {Math.round((used / promptRoom) * 100)}%。超过上限时，酒馆从最早的聊天记录开始不发。</small>
       )}
       {!cutOff && last && b.reply > 0 && (
         <small class="rbt-budget-note">上一条回复约 {fmtTokens(last.tokens)} tokens，没到回复上限。</small>

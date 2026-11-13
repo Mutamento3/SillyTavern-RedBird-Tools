@@ -1435,6 +1435,8 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 
 /* 全局工具箱 › 美化：别人的美化可能有什么问题 + 手机消息排版的开关 */
 .rbt-looks-info { display: flex; flex-direction: column; gap: var(--rbd-s-2); margin: 0 0 var(--rbd-s-3); padding: var(--rbd-s-3); border-radius: var(--rbd-r-m); background: var(--rbd-bg2); }
+.rbt-width-note { display: block; margin-top: -4px; font-size: 12px; color: var(--rbd-text3, #6b707a); }
+.rbt-frow input[type='range'] { width: 100%; min-width: 0; margin: 0; }
 .rbt-looks-info-text { margin: 0; font-size: 13px; line-height: 1.55; color: var(--rbd-text2); }
 .rbt-looks-info-text > i { margin-right: 6px; color: var(--rbd-accent); }
 .rbt-looks-info > .rbt-check-row { margin: 0; padding: var(--rbd-s-2) 0 0; border-radius: 0; border-top: 1px solid var(--rbd-hairline); }

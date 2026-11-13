@@ -55,6 +55,7 @@ export function applyLook(): void {
   root.classList.toggle('rbt-read-wide', readWidth.value === 'wide');
   root.classList.toggle('rbt-read-full', readWidth.value === 'full');
   solidSurface();
+  checkThemeWidthSoon();
 }
 
 /** 正文宽度的三档。只给三档、不给滑块：随手拖到很宽或很窄都不好读。 */
@@ -69,6 +70,43 @@ export function setReadWidth(id: 'normal' | 'wide' | 'full'): void {
   settings().readWidth = id;
   saveSettings();
   applyLook();
+}
+
+/** 酒馆「用户设置 › 聊天宽度」：屏幕宽度的百分之几（25–100）。别的美化在三栏界面里用它（见 shell.css「正文宽度」）。 */
+export function stChatWidth(): number {
+  return Number(ctx().powerUserSettings?.chat_width) || 50;
+}
+
+/** 改酒馆的聊天宽度：走酒馆自己的滑块，它会存设置、更新那边显示的数字。 */
+export function setStChatWidth(v: number): void {
+  window.jQuery?.('#chat_width_slider').val(v).trigger('input', { forced: true });
+}
+
+/**
+ * 现在的美化自己给正文定了宽度：聊天宽度管不到正文。这时输入栏也不按聊天宽度收窄（html.rbt-theme-width），
+ * 正文和输入栏都是美化原来的样子，不会一宽一窄。
+ */
+export const themeOwnsWidth = signal(false);
+
+/**
+ * 看聊天里第一条消息的 max-width 还是不是三栏界面给的那个（那条规则一直在，美化盖过它就是美化自己定了）。
+ * 等页面按现在的样式画完再看，不在换美化的同一帧里问浏览器（问一次它就要把整页样式重算一遍）。
+ * 没有消息时看不出来，当作没定。
+ */
+export function checkThemeWidthSoon(): void {
+  requestAnimationFrame(() => setTimeout(() => {
+    const mes = document.querySelector('#chat > .mes');
+    let owned = false;
+    const b = document.body.classList;
+    if (mes && !lookShown() && b.contains('rbt-shell') && !b.contains('rbt-compact')) {
+      const want = getComputedStyle(document.documentElement).getPropertyValue('--rbt-st-chat-w').trim();
+      const px = want.endsWith('vw') ? (parseFloat(want) * window.innerWidth) / 100 : parseFloat(want);
+      const max = getComputedStyle(mes).maxWidth;
+      owned = Number.isFinite(px) && (max === 'none' || Math.abs(parseFloat(max) - px) > 1);
+    }
+    themeOwnsWidth.value = owned;
+    document.documentElement.classList.toggle('rbt-theme-width', owned);
+  }, 0));
 }
 
 /** "rgb(1, 2, 3)" / "rgba(1, 2, 3, 0.5)" / "color(srgb …)" → [r, g, b, a] (0–255, a 0–1). */

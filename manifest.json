@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "电脑上可以调阅读宽度（适中、宽、铺满）；修复有时面板打开时卡在屏幕顶上。"
+  "rbt_whats_new": "用别的美化时，电脑上也能调阅读宽度；「额度」说明更准确；手机用 http 地址打开时，首页图片不再模糊。"
 }

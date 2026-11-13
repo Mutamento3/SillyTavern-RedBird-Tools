@@ -13,7 +13,7 @@ import { effect, signal } from '@preact/signals';
 import { ctx, currentCharacter, saveSettings, settings, toast } from '../st/st';
 import { openDrawers } from '../shell/drawers';
 import { archiveVersion, setCardTheme } from '../tools/cards/cards';
-import { applyLook, loadThemes, lookSuspended, refreshSurface, stThemes, type StTheme } from './look';
+import { applyLook, checkThemeWidthSoon, loadThemes, lookSuspended, refreshSurface, stThemes, themeTick, type StTheme } from './look';
 
 /** 换卡、改绑定、改开关时加一，重新套一次。 */
 export const cardLookTick = signal(0);
@@ -190,6 +190,7 @@ async function apply(): Promise<void> {
     // 底色直接用这套美化的颜色算，不去问浏览器（问一次它就要按几百 KB 的新 CSS 把整页重算一遍）
     refreshSurface({ body: str(t.main_text_color), tint: str(t.blur_tint_color), chat: str(t.chat_tint_color) });
     if (!lookSuspended.value) { lookSuspended.value = true; applyLook(); }
+    else checkThemeWidthSoon();
   } finally {
     if (my === seq) lookApplying.value = null;
   }
@@ -207,7 +208,7 @@ export function installCardLook(): void {
     void apply().catch((e) => console.warn('[RedBird] 卡的美化没套上', e));
   });
   const c = ctx();
-  c.eventSource?.on(c.eventTypes.CHAT_CHANGED, () => { cardLookTick.value++; });
+  c.eventSource?.on(c.eventTypes.CHAT_CHANGED, () => { cardLookTick.value++; checkThemeWidthSoon(); });
   // 卡的美化盖着时，酒馆「用户设置」里换主题、改自定义 CSS 都看不到效果：打开那里时说一声（每套只说一次）
   const told = new Set<string>();
   effect(() => {
@@ -216,6 +217,8 @@ export function installCardLook(): void {
     told.add(name);
     toast('info', `现在用着这张卡的美化「${name}」，在这里改的全局美化暂时看不到。回首页就能看到。`, '美化');
   });
+  // 在酒馆里换了全局美化：重新看一次美化有没有自己定正文宽度
+  effect(() => { void themeTick.value; checkThemeWidthSoon(); });
   // 在酒馆里保存了美化：重新读一遍，卡的美化用的也是新的
   window.jQuery?.(document).on('click', '#ui-preset-save-button, #ui-preset-update-button', () => { setTimeout(() => { void loadThemes(); }, 1500); });
 }

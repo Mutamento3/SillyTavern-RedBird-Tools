@@ -46,6 +46,8 @@ export interface Budget {
   context: number;
   reply: number;
   chatLength: number;
+  /** 发这一轮时隐藏着的楼层（楼层上有幽灵图标）。酒馆不发隐藏的楼层。 */
+  hidden: number[];
 }
 
 function readBudget(): Budget | undefined {
@@ -54,7 +56,10 @@ function readBudget(): Budget | undefined {
   const context = Number(s.openai_max_context) || 0;
   const reply = Number(s.openai_max_tokens) || 0;
   if (!context && !reply) return undefined;
-  return { context, reply, chatLength: (ctx().chat ?? []).length };
+  const chat: Any[] = ctx().chat ?? [];
+  const hidden: number[] = [];
+  chat.forEach((m, i) => { if (m.is_system) hidden.push(i); });
+  return { context, reply, chatLength: chat.length, hidden };
 }
 
 export const captures = signal<Capture[]>([]);
