@@ -889,9 +889,10 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-warn-text { color: var(--warnc, #e0a040); font-size: 11.5px; }
 
 /* ===== 导入窗口（电脑和手机都用，自己定位，不依赖三栏外壳） ===== */
-.rbt-imp-backdrop { position: fixed; inset: 0; z-index: 9998; background: rgba(0, 0, 0, 0.45); }
+.rbt-imp-backdrop { position: fixed; top: 0; left: 0; width: 100dvw; height: 100dvh; z-index: 9998; background: rgba(0, 0, 0, 0.45); }
 .rbt-sheet.rbt-imp {
-  position: fixed; z-index: 9999; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  /* 屏幕正中用 dvw / dvh，不用 50%（酒馆有时把页面根元素变成 0×0，50% 就成了 0） */
+  position: fixed; z-index: 9999; left: 50dvw; top: 50dvh; transform: translate(-50%, -50%);
   width: min(620px, calc(100vw - 24px)); max-height: min(86dvh, 820px); height: auto;
   display: flex; flex-direction: column; border-radius: var(--rbd-r-m); overflow: hidden;
   background: var(--rbd-bg1, #17181b); color: var(--t1, #e8e8e8);
@@ -913,7 +914,7 @@ body.rbt-resizing #sheld { transition: none !important; }
 
 /* 文件拖进三栏界面任何地方时：整个窗口的提示（不挡鼠标，松手由窗口接） */
 .rbt-drop-hint.full {
-  position: fixed; inset: 12px; z-index: 9000; border-radius: var(--rbd-r-l, 16px);
+  position: fixed; top: 12px; left: 12px; width: calc(100dvw - 24px); height: calc(100dvh - 24px); z-index: 9000; border-radius: var(--rbd-r-l, 16px);
   outline-width: 3px; outline-offset: 0;
   background: color-mix(in srgb, var(--rbd-canvas, #0f1012) 94%, transparent);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);

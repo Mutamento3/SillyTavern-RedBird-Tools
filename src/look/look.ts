@@ -51,7 +51,24 @@ export function applyLook(): void {
   root.classList.toggle('rbt-look', shown);
   for (const l of LOOKS) root.classList.toggle(`rbt-look-${l.id}`, shown && lookId.value === l.id && l.id !== 'dark');
   root.style.setProperty('--rbd-accent', accentColor());
+  readWidth.value = s.readWidth ?? 'normal';
+  root.classList.toggle('rbt-read-wide', readWidth.value === 'wide');
+  root.classList.toggle('rbt-read-full', readWidth.value === 'full');
   solidSurface();
+}
+
+/** 正文宽度的三档。只给三档、不给滑块：随手拖到很宽或很窄都不好读。 */
+export const READ_WIDTHS = [
+  { id: 'normal', label: '适中（推荐）· 一行约 44 字' },
+  { id: 'wide', label: '宽 · 一行约 60 字' },
+  { id: 'full', label: '铺满' },
+] as const;
+export const readWidth = signal<'normal' | 'wide' | 'full'>('normal');
+
+export function setReadWidth(id: 'normal' | 'wide' | 'full'): void {
+  settings().readWidth = id;
+  saveSettings();
+  applyLook();
 }
 
 /** "rgb(1, 2, 3)" / "rgba(1, 2, 3, 0.5)" / "color(srgb …)" → [r, g, b, a] (0–255, a 0–1). */

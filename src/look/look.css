@@ -53,6 +53,7 @@
   --rbd-row-y: var(--rbd-s-2);       /* 可点的一行的上下 */
   /* 阅读栏：正文一行 44 个字左右（再宽眼睛换行时容易找错行），加上头像那一列 */
   --rbd-read-w: calc(44em + 96px);
+  /* 「阅读宽度」选了宽 / 铺满时换掉（全局工具箱 › 美化） */
   --rbd-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", "Noto Sans", sans-serif;
 }
 
@@ -536,3 +537,7 @@ body.rbt-nav-ink-light .rbt-nav { --rbt-ink: 236, 236, 241; }
   --rbd-bg2-hover: rgba(var(--rbt-ink), 0.09);
   color: rgb(var(--rbt-ink));
 }
+
+/* 阅读宽度的另外两档（默认「适中」见上面的 --rbd-read-w） */
+html.rbt-read-wide { --rbd-read-w: calc(60em + 96px); }
+html.rbt-read-full { --rbd-read-w: 100%; }

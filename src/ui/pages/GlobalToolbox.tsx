@@ -50,10 +50,10 @@ import { BindingsDetail, CardsTablePage } from './CardsTable';
 import { ScopePage } from './scope';
 import { LOOK_COPY, LOOK_NAME } from '../copy';
 import { mesLayoutOn, setMesLayout } from '../../shell/mesActions';
-import { shellOn } from '../../shell/Shell';
+import { compact, shellOn } from '../../shell/Shell';
 import { PresetScriptsSection, ScriptsPage } from './ScriptsPage';
 import {
-  ACCENTS, accentId, currentStTheme, loadThemes, LOOKS, lookId, lookOn, setAccent, stThemes, themeHasCss, themesLoading,
+  ACCENTS, accentId, currentStTheme, loadThemes, LOOKS, lookId, lookOn, READ_WIDTHS, readWidth, setAccent, setReadWidth, stThemes, themeHasCss, themesLoading,
   useBuiltInLook, useStTheme, type StTheme,
 } from '../../look/look';
 
@@ -715,6 +715,16 @@ function LooksPage() {
                 {ACCENTS.map((a) => (
                   <button key={a.id} type="button" class={`rbt-accent-dot ${accentId.value === a.id ? 'on' : ''}`} title={a.label} aria-label={a.label} style={{ '--c': a.color }} onClick={() => setAccent(a.id)} />
                 ))}
+              </div>
+            )}
+            {/* 手机屏幕本来就窄，正文总是铺满，这一项只在电脑上有用 */}
+            {builtIn && !compact.value && (
+              <div class="rbt-frow">
+                <span class="rbt-frow-k">阅读宽度</span>
+                <select class="text_pole rbt-select" value={readWidth.value} onChange={(e) => setReadWidth((e.currentTarget as HTMLSelectElement).value as 'normal' | 'wide' | 'full')}>
+                  {READ_WIDTHS.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}
+                </select>
+                <span />
               </div>
             )}
             <div class="rbt-look-sub">别的美化</div>
