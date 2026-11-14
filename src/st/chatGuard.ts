@@ -3,7 +3,7 @@
  * 留意「读聊天」「读角色卡」这几个请求成没成功；正在打开的存档没读出来时，在重新读成功之前拦下它的保存，告诉玩家刷新。
  * 只看这几个地址，其他请求原样放行；检查本身出错也原样放行，不挡正常使用。
  */
-import { messagesIn, readOk, shouldBlockGroupSave, shouldBlockSave, worthChecking, describeSave } from '../core/chatGuard';
+import { messagesIn, readOk, sameChat, shouldBlockGroupSave, shouldBlockSave, worthChecking, describeSave } from '../core/chatGuard';
 import { ctx, toast } from './st';
 
 let installed = false;
@@ -63,24 +63,26 @@ async function watchRead(orig: typeof fetch, kind: Kind, input: RequestInfo | UR
   } catch { /* 读不到就不记 */ }
   const track = !!key && isCurrent(kind, key);
   const set = kind === 'chat' ? failedChats : kind === 'card' ? failedCards : failedGroups;
+  // 记一笔到控制台：以后有人反馈被拦，能看出是哪一次读取、为什么算失败
+  const fail = (why: string) => { set.add(key); console.warn(`[RedBird] 读取正在打开的${kind === 'card' ? '角色卡' : '聊天'}没成功（${why}），在重新读成功之前会核对这个存档的保存`, key); };
   let res: Response;
   try {
     res = await orig(input, init);
   } catch (e) {
-    if (track) set.add(key);
+    if (track) fail(String(e));
     throw e;
   }
   if (!track) return res;
-  if (!res.ok) { set.add(key); return res; }
+  if (!res.ok) { fail(`HTTP ${res.status}`); return res; }
   if (kind === 'card') { set.delete(key); return res; }
   // 聊天、群聊：内容要能读懂才算读成功（大存档下载到一半断线、代理返回网页时，酒馆也会当成空聊天）
   try {
     const parsed = await res.clone().json();
     // 群聊回空数组可能是文件读坏了：记成可疑，保存时再去磁盘核对（真正的新群聊磁盘上没有，会放行）
-    if (!readOk(parsed) || (kind === 'group' && Array.isArray(parsed) && !parsed.length)) set.add(key);
+    if (!readOk(parsed) || (kind === 'group' && Array.isArray(parsed) && !parsed.length)) fail('内容读不懂');
     else set.delete(key);
   } catch {
-    set.add(key);
+    fail('内容读不懂');
   }
   return res;
 }
@@ -90,11 +92,14 @@ async function checkChatSave(orig: typeof fetch, init?: RequestInit): Promise<Re
   if (!text) return null;
   const body = JSON.parse(text);
   const name = String(body?.file_name ?? '');
-  const check = { chat: body?.chat, loadFailed: failedChats.has(name) || failedCards.has(String(body?.avatar_url ?? '')) };
+  const avatar = String(body?.avatar_url ?? '');
+  const check = { chat: body?.chat, loadFailed: failedChats.has(name) || failedCards.has(avatar) };
   if (!worthChecking(check)) return null;
-  const onDisk = await countOnDisk(orig, '/api/chats/get', { ch_name: body.ch_name, file_name: body.file_name, avatar_url: body.avatar_url });
-  if (!shouldBlockSave(check, onDisk)) return null;
-  return blocked(name, onDisk, describeSave(body.chat).messages);
+  const disk = await readDisk(orig, '/api/chats/get', { ch_name: body.ch_name, file_name: body.file_name, avatar_url: body.avatar_url });
+  // 聊天好好的（读失败的是别的地方对这个存档的读取）：不用再核对了
+  if (sameChat(body.chat, disk)) { failedChats.delete(name); failedCards.delete(avatar); }
+  if (!shouldBlockSave(check, disk)) return null;
+  return blocked(name, messagesIn(disk), describeSave(body.chat).messages);
 }
 
 async function checkGroupSave(orig: typeof fetch, init?: RequestInit): Promise<Response | null> {
@@ -103,9 +108,10 @@ async function checkGroupSave(orig: typeof fetch, init?: RequestInit): Promise<R
   const body = JSON.parse(text);
   const id = String(body?.id ?? '');
   if (!failedGroups.has(id)) return null;
-  const onDisk = await countOnDisk(orig, '/api/chats/group/get', { id });
-  if (!shouldBlockGroupSave(true, onDisk)) { failedGroups.delete(id); return null; }
-  return blocked(id, onDisk, describeSave(body.chat).messages);
+  const disk = await readDisk(orig, '/api/chats/group/get', { id });
+  if (sameChat(body.chat, disk)) failedGroups.delete(id);
+  if (!shouldBlockGroupSave(true, body.chat, disk)) return null;
+  return blocked(id, messagesIn(disk), describeSave(body.chat).messages);
 }
 
 /**
@@ -132,12 +138,11 @@ async function bodyText(init?: RequestInit): Promise<string | null> {
   return new Response(stream).text();
 }
 
-/** 磁盘上那份有几条消息（读不到返回 null）。 */
-async function countOnDisk(orig: typeof fetch, url: string, payload: Record<string, unknown>): Promise<number | null> {
+/** 从磁盘读回来的那份（读不到返回 null）。 */
+async function readDisk(orig: typeof fetch, url: string, payload: Record<string, unknown>): Promise<unknown> {
   try {
     const res = await orig(url, { method: 'POST', headers: ctx().getRequestHeaders(), cache: 'no-cache', body: JSON.stringify(payload) });
-    if (!res.ok) return null;
-    return messagesIn(await res.json());
+    return res.ok ? await res.json() : null;
   } catch {
     return null;
   }

@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "用别的美化时，电脑上也能调阅读宽度；「额度」说明更准确；手机用 http 地址打开时，首页图片不再模糊。"
+  "rbt_whats_new": "修复聊天好好的却反复提示「这个聊天没有读出来」、内容没存上的问题；用别的美化时，电脑上消息和输入栏重新对齐。"
 }
