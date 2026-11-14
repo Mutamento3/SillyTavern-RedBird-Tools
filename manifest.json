@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.6.8",
+  "version": "0.6.9",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "浅色和护眼美化下，关掉的提示词和「已启用的世界书」里的名字看得清了。"
+  "rbt_whats_new": "存或删一条正则后，正则面板不会再自己关掉，可以接着改。"
 }

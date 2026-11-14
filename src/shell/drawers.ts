@@ -7,6 +7,7 @@
  */
 import { signal } from '@preact/signals';
 import { titleBarElement } from '../ui/TitleBar';
+import { currentChatKey } from './recent';
 
 export type DrawerKey =
   | 'preset' | 'api' | 'persona' | 'extensions' | 'settings' | 'backgrounds' | 'formatting'
@@ -415,10 +416,16 @@ export function installDrawers(): void {
       }, 800);
     });
   }
+  // 换了聊天才关面板。酒馆存正则、删正则时会把同一个聊天重新载入一遍，那时面板要留着，玩家还在里面改
   if (c?.eventSource && c.eventTypes?.CHAT_CHANGED) {
+    // 存档名、群聊、角色一起比：复制出来的卡和原卡存档名一样
+    const chatKey = () => JSON.stringify(currentChatKey());
+    let lastChat = chatKey();
     c.eventSource.on(c.eventTypes.CHAT_CHANGED, () => {
-      if (!document.body.classList.contains('rbt-shell')) return;
-      closeAllOpen();
+      const chat = chatKey();
+      const changed = chat !== lastChat;
+      lastChat = chat;
+      if (changed && document.body.classList.contains('rbt-shell')) closeAllOpen();
     });
   }
   // 角色面板：token 数变了（换卡、改描述）就更新标题栏那行灰字
