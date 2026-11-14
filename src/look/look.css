@@ -93,6 +93,13 @@ html.rbt-look.rbt-look-light {
   --rbd-user-tint: rgba(0, 0, 0, 0.02);
   --rbd-em: #6e6e73;
   --rbd-quote: #1d1d1f;
+  /* 酒馆把「浅一点的字、图标、边框」写死成半透明白色（关掉的提示词、提示词列表的图标……），只适合深色底。
+     浅底上换成半透明的正文色，透明度不变 */
+  --white20a: rgba(29, 29, 31, 0.2);
+  --white30a: rgba(29, 29, 31, 0.3);
+  --white50a: rgba(29, 29, 31, 0.5);
+  --white60a: rgba(29, 29, 31, 0.6);
+  --white70a: rgba(29, 29, 31, 0.7);
 }
 /* 护眼：暖黄纸色，对比度低一点，久看不累 */
 html.rbt-look.rbt-look-warm {
@@ -110,6 +117,12 @@ html.rbt-look.rbt-look-warm {
   --rbd-user-tint: rgba(91, 70, 40, 0.04);
   --rbd-em: #7a6a55;
   --rbd-quote: #3b2f22;
+  /* 同浅色：酒馆写死的半透明白色换成半透明的正文色 */
+  --white20a: rgba(59, 47, 34, 0.2);
+  --white30a: rgba(59, 47, 34, 0.3);
+  --white50a: rgba(59, 47, 34, 0.5);
+  --white60a: rgba(59, 47, 34, 0.6);
+  --white70a: rgba(59, 47, 34, 0.7);
 }
 /* 浅底上，提醒 / 正常 / 出错这几个状态色要深一点才看得清 */
 html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-scope,
@@ -213,6 +226,11 @@ html.rbt-look textarea:not(#send_textarea):focus {
   box-shadow: 0 0 0 3px var(--rbd-accent-soft);
 }
 html.rbt-look select option { background-color: var(--rbd-bg1); color: var(--rbd-text1); }
+/* 酒馆的多选框（比如「已启用的世界书」）：框和输入框一样，选中的每一项是一个小块。
+   酒馆给的是半透明黑底，只适合深色，浅色和护眼下是一片深灰、字看不清 */
+html.rbt-look span.select2.select2-container .select2-selection { background-color: var(--rbd-bg3); border-color: transparent; border-radius: var(--rbd-r-s); color: var(--rbd-text1); }
+html.rbt-look span.select2.select2-container .select2-selection__choice { background-color: var(--rbd-bg2); border-color: var(--rbd-hairline); color: var(--rbd-text1); }
+html.rbt-look span.select2.select2-container :is(.select2-selection__choice__display, .select2-selection__choice__remove) { background-color: transparent; color: inherit; }
 /* 酒馆面板里的表单：原来每个标题离上一个控件和离自己的控件一样近（5–8px），看不出哪个标题管哪个框，
    就显得挤。改成「标题贴着自己的控件（8），和上一组拉开（24）」，一眼按组看。
    只管不在横排里的标题，横排（标题 + 按钮）里加上边距会错位。 */
@@ -448,7 +466,8 @@ html.rbt-look .range-block-counter input {
 html.rbt-look .range-block-counter input:focus { outline: none; border-color: var(--rbd-accent); box-shadow: 0 0 0 3px var(--rbd-accent-soft); }
 
 /* 提示词列表（预设里的「提示词」） */
-html.rbt-look #completion_prompt_manager_list li.completion_prompt_manager_prompt {
+/* 多写一个 #completion_prompt_manager：关掉的那几行酒馆另给了边框，要盖过它，开着关着边框一样 */
+html.rbt-look #completion_prompt_manager #completion_prompt_manager_list li.completion_prompt_manager_prompt {
   border-color: var(--rbd-hairline);
   border-radius: var(--rbd-r-s);
   transition: background-color 0.12s;

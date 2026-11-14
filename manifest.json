@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.6.7",
+  "version": "0.6.8",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "修复聊天好好的却反复提示「这个聊天没有读出来」、内容没存上的问题；用别的美化时，电脑上消息和输入栏重新对齐。"
+  "rbt_whats_new": "浅色和护眼美化下，关掉的提示词和「已启用的世界书」里的名字看得清了。"
 }
