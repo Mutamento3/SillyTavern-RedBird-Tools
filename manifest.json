@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.6.10",
+  "version": "0.6.11",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "红鸟适配美化能透出背景图了；导入时可以再添加文件，卡有问题时不会一直停在「正在导入」。"
+  "rbt_whats_new": "左栏「最近聊过」的「显示更多」回到了列表最下面。"
 }

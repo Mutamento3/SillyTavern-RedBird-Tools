@@ -347,6 +347,12 @@ body.rbt-shell.rbt-shell-lcollapsed .rbt-left { display: none; }
   font-size: 12px;
   color: var(--rbd-text2, #9ca1aa);
 }
+/* 列表最下面的「显示更多（还有 N 个）」。别和每行的「⋯」（.rbt-recent-more）共用样式 */
+.rbt-recent-showmore {
+  display: block; width: 100%; min-height: 36px; margin-top: var(--rbd-s-1); padding: var(--rbd-s-2);
+  border: 0; border-radius: var(--rbd-r-s); background: none; color: var(--rbd-text3, #6b707a); font: inherit; font-size: 13px; cursor: pointer;
+}
+.rbt-recent-showmore:hover { background: color-mix(in srgb, var(--rbd-text1, #ececf1) 5%, transparent); color: var(--rbd-text1, inherit); }
 .rbt-recent-empty { padding: 24px 8px; text-align: center; color: var(--rbd-text3, #6b707a); }
 
 .rbt-left-foot {

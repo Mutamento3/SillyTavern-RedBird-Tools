@@ -270,7 +270,7 @@ function ChatList({ q }: { q: string }) {
           {g.items.map((r) => <RecentRow key={r.key} r={r} current={isCurrentChat(r, cur)} />)}
         </section>
       ))}
-      {more > 0 && <button type="button" class="rbt-recent-more" onClick={() => setLimit((n) => n + RECENT_PAGE * 2)}>显示更多（还有 {more} 个）</button>}
+      {more > 0 && <button type="button" class="rbt-recent-showmore" onClick={() => setLimit((n) => n + RECENT_PAGE * 2)}>显示更多（还有 {more} 个）</button>}
       {!groups.length && <div class="rbt-recent-empty">{recentLoading.value ? '读取中…' : q ? '没有符合的聊天' : '还没有聊天'}</div>}
     </div>
   );
