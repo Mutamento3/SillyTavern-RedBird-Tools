@@ -1016,6 +1016,14 @@ input.rbt-cb.rbt-cb[type='checkbox']:focus-visible { outline: 2px solid var(--rb
 
 /* 来源：整批一次，默认收起 */
 .rbt-imp-more { align-self: flex-start; padding: 2px 0; font-size: 12.5px; }
+/* 确认这一步再加文件：和第一步的拖放区一样的虚线框，小一号 */
+.rbt-imp-add {
+  display: flex; align-items: center; justify-content: center; gap: 6px; flex: none; min-height: 44px;
+  border: 0; border-radius: var(--rbd-r-m); background: transparent; color: var(--t2); font: inherit; font-size: 14px; cursor: pointer;
+  outline: 1.5px dashed color-mix(in srgb, var(--rbd-text1, #e8e8e8) 22%, transparent); outline-offset: -1.5px;
+}
+.rbt-imp-add:hover:not(:disabled) { background: color-mix(in srgb, var(--rbd-text1, #e8e8e8) 3%, transparent); color: var(--t1); }
+.rbt-imp-add:disabled { opacity: 0.5; cursor: default; }
 .rbt-imp-source { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: var(--rbd-r-m); background: var(--g2, color-mix(in srgb, var(--rbd-text1) 4.5%, transparent)); flex: none; }
 .rbt-imp-source-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 4px; }
 .rbt-imp-source-head b { font-size: 14px; font-weight: 600; color: var(--t1); }

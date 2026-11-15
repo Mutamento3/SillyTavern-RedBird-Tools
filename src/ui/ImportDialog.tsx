@@ -37,6 +37,28 @@ export async function openImport(files: File[] = []): Promise<void> {
   picking.value = false;
 }
 
+/**
+ * 确认这一步再加文件：和已有的合成一批重新认一遍（一起发布的关系要整批看），已经选好的不丢。
+ * 同一个文件选两次只算一次。关系变了的文件（比如新加了一张卡）用新的建议。
+ */
+async function addFiles(files: File[]): Promise<void> {
+  const old = draft.value ?? [];
+  const same = (a: File, b: File) => a.name === b.name && a.size === b.size && a.lastModified === b.lastModified;
+  const fresh = files.filter((f) => !old.some((it) => same(it.file, f)));
+  if (!fresh.length) return;
+  const prev = new Map(old.map((it) => [it.file, it]));
+  draft.value = (await prepareImport([...old.map((it) => it.file), ...fresh])).map((it) => {
+    const p = prev.get(it.file);
+    if (!p) return it;
+    return {
+      ...it,
+      ...(p.forTheme === it.forTheme ? { activate: p.activate } : {}),
+      ...(p.dupOf === it.dupOf ? { skip: p.skip } : {}),
+      ...(p.toCard !== undefined && it.toCard !== undefined ? { toCard: p.toCard } : {}),
+    };
+  });
+}
+
 /** True while the import window is open (either step). */
 export const importOpen = (): boolean => picking.value || !!draft.value;
 
@@ -52,14 +74,14 @@ const hasFiles = (e: DragEvent): boolean => [...(e.dataTransfer?.types ?? [])].i
 
 /**
  * Drops on the import window (and its backdrop) never reach ST's page-wide handler,
- * which would import everything as a character. First step: take the files. Second step: refuse.
+ * which would import everything as a character. First step: take the files. Second step: add them to the batch.
  */
 const dropHandlers = {
   onDragOver: (e: DragEvent) => {
     if (!hasFiles(e)) return;
     e.preventDefault();
     e.stopPropagation();
-    if (e.dataTransfer) e.dataTransfer.dropEffect = picking.value ? 'copy' : 'none';
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
     if (picking.value) over.value = true;
   },
   onDragLeave: (e: DragEvent) => { if (!e.relatedTarget || !(e.currentTarget as Node).contains(e.relatedTarget as Node)) over.value = false; },
@@ -68,7 +90,8 @@ const dropHandlers = {
     e.preventDefault();
     e.stopPropagation();
     over.value = false;
-    if (picking.value) void openImport([...(e.dataTransfer?.files ?? [])]);
+    const files = [...(e.dataTransfer?.files ?? [])];
+    void (picking.value ? openImport(files) : addFiles(files));
   },
 };
 
@@ -111,6 +134,24 @@ function PickStep() {
           </button>
         </footer>
       </section>
+    </>
+  );
+}
+
+/** 确认这一步的「添加文件」：选完的文件并进这一批。电脑上也可以直接拖到窗口上。 */
+function AddFiles({ disabled }: { disabled: boolean }) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <button type="button" class="rbt-imp-add" disabled={disabled} onClick={() => ref.current?.click()}>
+        <i class="fa-solid fa-plus fa-fw" /> 添加文件
+      </button>
+      <input ref={ref} type="file" multiple accept={IMPORT_ACCEPT} style={{ display: 'none' }} onChange={(e) => {
+        const input = e.currentTarget as HTMLInputElement;
+        const files = [...(input.files ?? [])];
+        input.value = '';
+        void addFiles(files);
+      }} />
     </>
   );
 }
@@ -189,7 +230,7 @@ function Item({ it, onChange, cardName, nested, children }: {
       </div>
 
       {/* 不导入的：原因和「仍然导入」是一件事，放在同一个提醒块里 */}
-      {unknown && <div class="rbt-imp-alert"><i class="fa-solid fa-circle-exclamation" /><div><p>认不出是什么文件，会跳过。</p><small>支持预设、世界书、正则、角色卡、美化和酒馆助手脚本。</small></div></div>}
+      {unknown && <div class="rbt-imp-alert"><i class="fa-solid fa-circle-exclamation" /><div><p>{it.note || '认不出是什么文件，会跳过。'}</p>{!it.note && <small>支持预设、世界书、正则、角色卡、美化和酒馆助手脚本。</small>}</div></div>}
       {it.dupOf && (
         <div class={`rbt-imp-alert ${it.skip ? '' : 'resolved'}`}>
           <i class="fa-solid fa-circle-exclamation" />
@@ -305,7 +346,7 @@ export function ImportDialog() {
           setRecommendedPreset(avatar, ch?.name ?? avatar, preset);
         },
       });
-      const missed = done.filter((d) => !d.name && d.item.kind !== 'regex');
+      const missed = done.filter((d) => !d.name && !d.failed && d.item.kind !== 'regex');
       if (missed.length) toast('warning', `这些没能确认导入成功（可能在酒馆的提示里取消了）：${missed.map((d) => d.item.file.name).join('、')}`, '导入');
       const tabs = [...new Set(usable.map((i) => KIND_TAB[i.kind]).filter(Boolean))];
       if (tabs.length === 1 && sheetOpen.value) setGlobalTab(tabs[0]!);
@@ -335,6 +376,7 @@ export function ImportDialog() {
             </Item>
           )}
           {others.map((it) => <Item key={it.file.name} it={it} cardName={cardName} onChange={(p) => set(it, p)} />)}
+          <AddFiles disabled={busy} />
           {withSource > 0 && <SourceFields src={src} set={setSrc} count={withSource} />}
         </div>
         <footer class="rbt-imp-foot">

@@ -158,6 +158,8 @@ html.rbt-look body {
   background-color: var(--rbd-canvas);
   -webkit-font-smoothing: antialiased;
 }
+/* 聊天区和输入区留一点透明，让背景图透出来（不加模糊，见上面）。没设背景图时透出来的是 body 的同一个底色，看起来不变 */
+html.rbt-look :is(#chat, #form_sheld) { background-color: color-mix(in srgb, var(--rbd-canvas) 82%, transparent); }
 html.rbt-look ::selection { background-color: color-mix(in srgb, var(--rbd-accent) 40%, transparent); }
 
 /* ---------- 3. 顶栏和面板 ---------- */
@@ -335,7 +337,6 @@ html.rbt-look .mes_reasoning_details { border-radius: var(--rbd-r-m); }
 html.rbt-look #form_sheld {
   padding: 4px max(12px, calc((100% - var(--rbd-read-w)) / 2)) 12px !important;
   box-sizing: border-box;
-  background-color: var(--rbd-canvas);
 }
 html.rbt-look #send_form {
   background-color: var(--rbd-bg1);

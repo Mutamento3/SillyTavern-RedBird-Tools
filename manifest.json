@@ -6,8 +6,8 @@
   "js": "dist/index.js",
   "css": "dist/style.css",
   "author": "RedBird",
-  "version": "0.6.9",
+  "version": "0.6.10",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "存或删一条正则后，正则面板不会再自己关掉，可以接着改。"
+  "rbt_whats_new": "红鸟适配美化能透出背景图了；导入时可以再添加文件，卡有问题时不会一直停在「正在导入」。"
 }

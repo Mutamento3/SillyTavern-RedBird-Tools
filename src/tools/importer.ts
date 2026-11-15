@@ -88,7 +88,10 @@ export async function prepareImport(files: File[]): Promise<ImportItem[]> {
     const it: ImportItem = { file, kind: await detectKind(file), title: baseName(file), activate: false, author: '', linkLabel: '', url: '', notes: '' };
     try {
       if (it.kind === 'character') {
-        const data = /.png$/i.test(file.name) ? cardFromPng(new Uint8Array(await file.arrayBuffer())) : /.json$/i.test(file.name) ? JSON.parse(await file.text()) : null;
+        const png = /.png$/i.test(file.name);
+        const data = png ? cardFromPng(new Uint8Array(await file.arrayBuffer())) : /.json$/i.test(file.name) ? JSON.parse(await file.text()) : null;
+        // 普通图片（没有角色卡数据）：酒馆一定导入失败，选文件时就说清楚
+        if (png && data === null) { it.kind = 'unknown'; it.note = '这张图片里没有角色卡，会跳过。'; }
         it.card = summarizeCard(data) ?? undefined;
         if (it.card) it.title = it.card.name;
       }
@@ -161,6 +164,11 @@ export function relate(items: ImportItem[]): ImportItem[] {
 
 const baseName = (f: File) => f.name.replace(/\.[^/.]+$/, '');
 
+async function waitFor(ok: () => boolean, ms: number): Promise<boolean> {
+  for (const t0 = Date.now(); Date.now() - t0 < ms; await wait(300)) if (ok()) return true;
+  return ok();
+}
+
 /** Wait until `get()` returns a list containing something not in `before` (or `fallback`). */
 async function waitForNew(get: () => string[], before: Set<string>, fallback: string, ms = 8000): Promise<string | null> {
   const t0 = Date.now();
@@ -173,7 +181,25 @@ async function waitForNew(get: () => string[], before: Set<string>, fallback: st
   return get().includes(fallback) ? fallback : null;
 }
 
-export interface ImportDone { item: ImportItem; name: string | null }
+/** `failed`：酒馆已经说了没导入成功（它自己弹了提示），不用再问。 */
+export interface ImportDone { item: ImportItem; name: string | null; failed?: boolean }
+
+/**
+ * 交给酒馆导入，同时拿到它发给服务器的那个导入请求的回复（读不懂算 `{ error: true }`）。
+ * 酒馆收到文件后会马上发这个请求；没抓到（以后的酒馆改了顺序）返回 undefined，调用方照旧等列表里出现新的。
+ */
+async function importReply(url: RegExp, start: () => void): Promise<unknown> {
+  const orig = window.fetch;
+  let reply: Promise<unknown> | undefined;
+  window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+    const res = orig(input, init);
+    const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (!reply && url.test(href)) reply = res.then((r) => (r.ok ? r.clone().json() : { error: true })).catch(() => ({ error: true }));
+    return res;
+  };
+  try { start(); } finally { window.fetch = orig; }
+  return reply;
+}
 
 /**
  * Import with ST's own importers, then apply the extra choices. `hooks` keeps this module free of
@@ -254,8 +280,13 @@ export async function runImport(items: ImportItem[], hooks: {
   let lastCard: string | null = null;
   for (const it of items.filter((i) => i.kind === 'character')) {
     const before = new Set(hooks.characterAvatars());
-    feed('character_import_file', [it.file], 'change');
-    const avatar = await waitForNew(hooks.characterAvatars, before, '', 15000);
+    const reply = await importReply(/\/api\/characters\/import(?:[?#]|$)/, () => feed('character_import_file', [it.file], 'change'));
+    const file = (reply as { file_name?: unknown } | undefined)?.file_name;
+    // 酒馆说没导入成功：它已经提示过了，接着导下一个
+    if (reply !== undefined && typeof file !== 'string') { done.push({ item: it, name: null, failed: true }); continue; }
+    const avatar = reply === undefined
+      ? await waitForNew(hooks.characterAvatars, before, '', 15000)
+      : await waitFor(() => hooks.characterAvatars().includes(`${file}.png`), 15000) ? `${file}.png` : null;
     if (avatar && (linksOf(it).length || it.notes.trim())) hooks.saveCardRecord(avatar, { links: linksOf(it), notes: it.notes.trim() });
     if (avatar && it.activate) lastCard = avatar;
     // 一起发布的世界书 / 预设：绑到这张卡上
