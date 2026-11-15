@@ -1344,6 +1344,39 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 #rbt_settings .rbt-set-tip[hidden],
 #rbt_settings .rbt-set-row[hidden] { display: none; }
 #rbt_settings .rbt-set-tip a { color: var(--rbd-accent, #0a84ff); text-decoration: none; }
+/* 工具箱收起的思考过程（tools/thinkFold.ts）。样式照酒馆自己的思考框：灰底小标题 + 左边一条竖线的正文。
+   酒馆会给消息里的 class 加 custom- 前缀 */
+.mes_text details.custom-rbt-think { margin: 0 0 0.6em; }
+.mes_text .custom-rbt-think > summary {
+  display: inline-flex; align-items: center; gap: 8px; margin: 0.2em 2px; padding: 7px 14px; border-radius: 5px;
+  background-color: var(--grey30, color-mix(in srgb, currentColor 12%, transparent)); font-size: calc(var(--mainFontSize, 15px) * 0.9);
+  list-style: none; cursor: pointer; user-select: none;
+}
+.mes_text .custom-rbt-think > summary::-webkit-details-marker { display: none; }
+.mes_text .custom-rbt-think > summary::after { content: '›'; display: inline-block; transition: transform 0.15s; }
+.mes_text .custom-rbt-think[open] > summary::after { transform: rotate(90deg); }
+.mes_text .custom-rbt-think-body {
+  margin: 0.4em 0 0; padding: 5px 5px 5px 14px; border-left: 2px solid var(--reasoning-body-color, var(--SmartThemeEmColor, currentColor)); border-radius: 2px;
+  white-space: pre-wrap; color: var(--reasoning-body-color, var(--SmartThemeEmColor, inherit)); max-height: 60vh; overflow-y: auto;
+}
+.mes_text .custom-rbt-think-foot { padding: 6px 0 0 16px; font-size: 12px; }
+.mes_text .custom-rbt-think-set { color: var(--rbd-accent, var(--SmartThemeQuoteColor, inherit)); cursor: pointer; }
+@media (max-width: 1000px) {
+  .mes_text .custom-rbt-think > summary { min-height: 36px; }
+  .mes_text .custom-rbt-think-set { display: inline-flex; align-items: center; min-height: 36px; }
+}
+
+/* 「聊天」分组：标签名单可以折行；点「修改」后下面出现输入框 */
+#rbt_settings .rbt-set-text > small.rbt-set-wrap { white-space: normal; overflow: visible; }
+#rbt_settings .rbt-set-text > small[hidden] { display: none; }
+#rbt_settings .rbt-set-edit { display: flex; flex-direction: column; gap: 6px; padding: 0 0 12px; }
+#rbt_settings .rbt-set-edit[hidden] { display: none; }
+#rbt_settings .rbt-set-edit > small { font-size: 12px; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 45%, transparent)); }
+#rbt_settings .rbt-set-edit .text_pole { margin: 0; }
+#rbt_settings .rbt-set-btns { display: flex; gap: 8px; }
+#rbt_settings .rbt-set-btns .menu_button { margin: 0; min-height: 34px; }
+#rbt_settings .rbt-set-item[hidden] { display: none; }
+#rbt_settings #rbt_think_tags_edit { flex: none; justify-content: center; min-width: 44px; min-height: 36px; padding: 0 8px; }
 #rbt_settings .rbt-set-foot { display: flex; align-items: center; gap: 14px; padding: 0 4px; font-size: 12px; color: var(--rbd-text3, color-mix(in srgb, var(--rbd-text1) 45%, transparent)); }
 #rbt_settings .rbt-set-link { display: inline-flex; align-items: center; border: 0; background: none; padding: 0; font: inherit; font-size: 12px; color: var(--rbd-accent, #0a84ff); text-decoration: none; cursor: pointer; }
 #rbt_settings .rbt-set-link:hover { text-decoration: underline; }

@@ -13,7 +13,9 @@ import { LOOK_COPY } from './ui/copy';
 import { installLongTaskLog, slow, withTimeout } from './st/perf';
 import { applyLook, lookOn, retireOldTheme, setLook, useBuiltInLook, watchStThemeSwitch, watchSurface } from './look/look';
 import { cardLookEnabled, cardLookTick, installCardLook, setCardLookEnabled } from './look/cardLook';
-import { ctx, preloadModules, reloadChatSafe, saveSettings, settings } from './st/st';
+import { ctx, preloadModules, reloadChatSafe, saveSettings, settings, toast } from './st/st';
+import { DEFAULT_THINK_TAGS, parseThinkTags, prefixTag } from './core/think';
+import { installThinkFold, refreshThinkFold, thinkFoldSupported, thinkTags } from './tools/thinkFold';
 import { installStore } from './st/store';
 import { checkForUpdate, newerVersion, updateNow, installedVersion, installUpdateCheck } from './tools/update';
 import { installModelGuard } from './tools/model';
@@ -97,6 +99,22 @@ function addSettingsDrawer(): void {
           ${row('rbt_look_switch', LOOK_COPY.lookLabel, LOOK_COPY.lookDesc)}
           ${row('rbt_mes_layout', LOOK_COPY.mesLayoutLabel, LOOK_COPY.mesLayoutDesc)}
         </div>
+        <div class="rbt-set-group" id="rbt_chat_group">
+          <div class="rbt-set-title">聊天</div>
+          ${row('rbt_think_fold', '收起回复开头的思考过程', '收进可以展开的框里，也不再发给 AI。消息原文不变，关掉就恢复原样')}
+          <div class="rbt-set-item" id="rbt_think_tags_row">
+            <span class="rbt-set-text"><span>当作思考的标签</span><small class="rbt-set-wrap" id="rbt_think_tags_val"></small><small class="rbt-set-wrap" id="rbt_think_prefix" hidden></small></span>
+            <button type="button" class="rbt-set-link" id="rbt_think_tags_edit">修改</button>
+          </div>
+          <div class="rbt-set-edit" id="rbt_think_tags_form" hidden>
+            <input type="text" class="text_pole" id="rbt_think_tags_input" />
+            <small>用逗号分开。只看回复最开头的那一段。</small>
+            <div class="rbt-set-btns">
+              <button type="button" class="menu_button" id="rbt_think_tags_save">保存</button>
+              <button type="button" class="menu_button" id="rbt_think_tags_reset">恢复默认</button>
+            </div>
+          </div>
+        </div>
         <div class="rbt-set-group">
           <div class="rbt-set-title">换卡时</div>
           ${row('rbt_auto_switch', '自动换成这张卡的预设、世界书和正则', '随时可以撤销')}
@@ -135,6 +153,7 @@ function addSettingsDrawer(): void {
   shellOn.subscribe((v) => { mesCb.closest('label')?.toggleAttribute('hidden', !v); });
   bind('rbt_auto_switch', () => settings().autoApplyEnv, (v) => { settings().autoApplyEnv = v; saveSettings(); });
   bind('rbt_auto_world', () => settings().autoImportWorld, (v) => { settings().autoImportWorld = v; saveSettings(); });
+  bindThinkFold(wrap, bind);
   const cardLookCb = bind('rbt_card_look', () => cardLookEnabled(), (v) => setCardLookEnabled(v));
   cardLookTick.subscribe(() => { cardLookCb.checked = cardLookEnabled(); });
   const ver = wrap.querySelector<HTMLElement>('#rbt_version');
@@ -149,6 +168,49 @@ function addSettingsDrawer(): void {
     if (title) title.textContent = `有新版本 ${v}`;
     row?.removeAttribute('hidden');
   });
+}
+
+/** 设置里的「聊天」分组：收起思考过程的开关，和当作思考的标签名单（看得见、改得了、能恢复默认）。 */
+function bindThinkFold(wrap: HTMLElement, bind: (id: string, get: () => boolean, set: (v: boolean) => void) => HTMLInputElement): void {
+  const $ = <T extends HTMLElement>(id: string) => wrap.querySelector<T>(`#${id}`)!;
+  if (!thinkFoldSupported()) { $('rbt_chat_group').hidden = true; return; }
+  const row = $('rbt_think_tags_row');
+  const form = $('rbt_think_tags_form');
+  const input = $<HTMLInputElement>('rbt_think_tags_input');
+  const show = () => {
+    const on = settings().thinkFold;
+    row.hidden = !on;
+    if (!on) form.hidden = true;
+    const list = settings().thinkTags ?? DEFAULT_THINK_TAGS;
+    $('rbt_think_tags_val').textContent = list.join('、');
+    const own = prefixTag(String(ctx().powerUserSettings?.reasoning?.prefix ?? ''));
+    const p = $('rbt_think_prefix');
+    p.hidden = !own || list.includes(own);
+    p.textContent = own ? `另外也认酒馆「推理」里填的前缀 <${own}>。` : '';
+  };
+  const saveTags = (tags: string[] | undefined) => {
+    const old = thinkTags();
+    if (!tags || tags.join() === DEFAULT_THINK_TAGS.join()) delete settings().thinkTags;
+    else settings().thinkTags = tags;
+    saveSettings();
+    refreshThinkFold(old);
+    form.hidden = true;
+    show();
+  };
+  bind('rbt_think_fold', () => settings().thinkFold, (v) => { settings().thinkFold = v; saveSettings(); refreshThinkFold(); show(); });
+  $('rbt_think_tags_edit').addEventListener('click', () => {
+    form.hidden = !form.hidden;
+    if (!form.hidden) { input.value = (settings().thinkTags ?? DEFAULT_THINK_TAGS).join(', '); input.focus(); }
+  });
+  $('rbt_think_tags_save').addEventListener('click', () => {
+    const tags = parseThinkTags(input.value);
+    if (!tags.length) { toast('warning', '至少填一个标签，比如 thinking。'); return; }
+    saveTags(tags);
+  });
+  $('rbt_think_tags_reset').addEventListener('click', () => saveTags(undefined));
+  // 酒馆「推理」里的前缀改了，名单下面那行跟着变
+  wrap.addEventListener('focusin', show);
+  show();
 }
 
 function addSlashCommand(): void {
@@ -239,6 +301,8 @@ async function init(): Promise<void> {
   installWorldEntries();
   // 手机上每条消息的「‹ 2/5 › ✎ ⋯」挪到消息最下面一行
   installMesActions();
+  // 回复开头的思考过程收进框里，也不再发给 AI（只改显示和发出去的那份）
+  installThinkFold();
   installThWatch();
   installScriptNotice();
   installReloadAdvice();

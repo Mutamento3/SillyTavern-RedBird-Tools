@@ -5,9 +5,10 @@
   "optional": [],
   "js": "dist/index.js",
   "css": "dist/style.css",
+  "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.11",
+  "version": "0.6.12",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "左栏「最近聊过」的「显示更多」回到了列表最下面。"
+  "rbt_whats_new": "不怕爆思维链了：AI 回复开头的思考过程会自动收起来，生成时也不会先刷出来。不想要可以在扩展设置的「聊天」里关掉。"
 }

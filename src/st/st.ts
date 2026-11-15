@@ -212,6 +212,10 @@ export interface RbtSettings {
   themeWarnOff?: boolean;
   /** 「可能是同一系列」的提示里点了「不是」的：按种类（preset / world / theme）记下那个词，以后不再提。 */
   seriesNoSuggest?: Record<string, string[]>;
+  /** 收起回复开头的思考过程：只改显示和发给 AI 的那份，消息原文和酒馆设置都不动（见 tools/thinkFold.ts）。 */
+  thinkFold: boolean;
+  /** 当作思考的标签名；没有就用默认名单（core/think.ts）。 */
+  thinkTags?: string[];
   /** Lorebook backups written to data/<user>/user/files before overwriting. */
   worldBackups: { file: string; world: string; at: string }[];
 }
@@ -246,6 +250,7 @@ export function settings(): RbtSettings {
   s.cards ??= {};
   s.regexOwners ??= {};
   s.autoImportWorld ??= true;
+  s.thinkFold ??= true;
   s.worldBackups ??= [];
   s.presetInfo ??= {};
   s.pluginInfo ??= {};
