@@ -383,7 +383,7 @@ function PresetsPage() {
     <div class="rbt-page">
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
-          <Section title="正在用" hint="换到有推荐预设的卡时会自动换">
+          <Section title="正在用" hint="进有专用预设的卡时会换掉">
             <PresetPicker />
             <ReloadNotice name={cur} />
             {presetRx.map((i) => <ItemRow key={i.id} item={i} />)}
@@ -440,7 +440,7 @@ function PresetDetail({ name }: { name: string }) {
           <PresetModelSection name={name} isCurrent={name === cur} />
           <PresetScriptsSection name={name} />
           <Section title="推荐它的卡" hint="换到这些卡时会自动换上这个预设">
-            <CardRows cards={ov.byPreset.get(name) ?? []} back={name} empty="还没有卡推荐它。在角色档案的「推荐预设和模型」里设置。" />
+            <CardRows cards={ov.byPreset.get(name) ?? []} back={name} empty="还没有卡专用它。在角色档案的「预设和模型」里选。" />
           </Section>
         </div>
       </div>
@@ -625,7 +625,7 @@ function BackupPage() {
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
           <Section title="导出和导入">
-            <small class="rbt-muted">你在工具箱里填的东西——卡的来源和说明、推荐预设、记住的配套、正则归属，以及预设、世界书和插件的来源——都和酒馆设置存在一起。换电脑或想留个底时，可以导出成一个文件。</small>
+            <small class="rbt-muted">你在工具箱里填的东西——卡的来源和说明、每张卡本卡专用的设置、正则归属，以及预设、世界书和插件的来源——都和酒馆设置存在一起。换电脑或想留个底时，可以导出成一个文件。</small>
             <div class="rbt-row">
               <button type="button" class="rbt-btn rbt-btn-primary" onClick={() => exportArchive()}>导出</button>
               <button type="button" class="rbt-btn" onClick={() => pickFile('merge')}>导入并合并</button>
@@ -640,14 +640,14 @@ function BackupPage() {
                 <div key={o.avatar} class="rbt-link-row">
                   <span>「{o.cardName}」</span>
                   {o.candidates.map((c) => <button key={c} type="button" class="rbt-btn rbt-btn-small" onClick={() => relink(o.avatar, c)}>转给「{c}」</button>)}
-                  <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={async () => { if (await confirmText('删除这份档案？', `「${o.cardName}」的来源、说明和记住的配置都会删除。`)) dropRecord(o.avatar); }}>删除</button>
+                  <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={async () => { if (await confirmText('删除这份档案？', `「${o.cardName}」的来源、说明和本卡专用的设置都会删除。`)) dropRecord(o.avatar); }}>删除</button>
                 </div>
               ))}
             </Section>
           )}
         </div>
         <div class="rbt-page-group">
-          <Section title="世界书备份" hint="用卡里的版本覆盖世界书之前，会自动备份旧的">
+          <Section title="世界书备份" hint="替换世界书或更新角色卡前，都会自动备份原版本">
             {backups.map((b) => <div key={b.file} class="rbt-link-row" title={`酒馆的 user/files 文件夹里：${b.file}`}><span>「{b.world}」</span><small class="rbt-muted rbt-push">{new Date(b.at).toLocaleString()}</small></div>)}
             {!backups.length && <small class="rbt-muted">还没有备份。</small>}
           </Section>

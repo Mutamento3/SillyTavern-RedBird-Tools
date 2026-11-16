@@ -67,6 +67,17 @@ export function modelLabel(m: ModelChoice): string {
   return `${SOURCE_LABEL[m.source] ?? m.source} · ${m.model}`;
 }
 
+/**
+ * 酒馆 API 面板里这个来源的模型列表（酒馆连上以后从服务商那里读来的，和面板上的下拉框是同一份）。
+ * 没连过、或者这个来源酒馆不给列表（比如自定义），就是空的。
+ */
+export function stModelList(source: string): { id: string; label: string }[] {
+  const sel = document.querySelector<HTMLSelectElement>(`#model_${source === 'makersuite' ? 'google' : source}_select`);
+  if (!sel) return [];
+  const seen = new Set<string>();
+  return [...sel.options].filter((o) => o.value && !seen.has(o.value) && (seen.add(o.value), true)).map((o) => ({ id: o.value, label: o.textContent?.trim() || o.value }));
+}
+
 /** The API + model saved inside a preset file (applied when switching to it if bound). */
 export function presetConnection(name: string): ModelChoice | null {
   try {

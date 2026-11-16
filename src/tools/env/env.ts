@@ -4,7 +4,6 @@
  */
 import { signal } from '@preact/signals';
 import {
-  charaFileName,
   ctx,
   currentCharacter,
   loaded,
@@ -16,10 +15,8 @@ import {
   thCharacterScriptsEnabled,
   toast,
   type Any,
-  type EnvProfile,
 } from '../../st/st';
 import { currentBookScopes } from '../flow/capture';
-import { markDeleted } from '../../st/store';
 
 export type Scope = 'global' | 'preset' | 'character' | 'chat' | 'persona';
 
@@ -117,17 +114,6 @@ export interface EnvReport {
   presetApi: string;
   presetName: string;
   items: EnvItem[];
-  profile?: EnvProfile;
-  drift: Drift | null;
-}
-
-export interface Drift {
-  worldsOn: string[];
-  worldsOff: string[];
-  regexOn: string[];
-  regexOff: string[];
-  preset?: string;
-  count: number;
 }
 
 export const envReport = signal<EnvReport | null>(null);
@@ -278,18 +264,7 @@ export function buildEnvReport(): EnvReport {
   for (const name of scopes.chat) items.push({ id: `wb:chat:${name}`, scope: 'chat', kind: 'worldbook', name, enabled: true, leaks: false, detail: '绑在当前聊天上' });
   for (const name of scopes.persona) items.push({ id: `wb:p:${name}`, scope: 'persona', kind: 'worldbook', name, enabled: true, leaks: true, detail: '绑在 user 人设上，换卡后仍然生效' });
 
-  const profile = avatar ? settings().profiles[avatar] : undefined;
-  const report: EnvReport = { cardName: char?.name ?? '', avatar, presetApi: preset.api, presetName: preset.name, items, profile, drift: null };
-  report.drift = profile ? computeDrift(report, profile) : null;
-  return report;
-}
-
-function currentSnapshot(report: EnvReport): Omit<EnvProfile, 'savedAt' | 'cardName'> {
-  return {
-    globalWorlds: report.items.filter((i) => i.scope === 'global' && i.kind === 'worldbook').map((i) => i.name),
-    globalRegexEnabled: report.items.filter((i) => i.scope === 'global' && i.kind === 'regex' && i.enabled).map((i) => i.name),
-    preset: report.presetName ? { api: report.presetApi, name: report.presetName } : undefined,
-  };
+  return { cardName: char?.name ?? '', avatar, presetApi: preset.api, presetName: preset.name, items };
 }
 
 /** 酒馆里还有这本世界书吗（列表还没读到时当作有，免得误判）。 */
@@ -298,147 +273,18 @@ export function worldExists(name: string): boolean {
   return !names?.length || names.includes(name);
 }
 
-export function computeDrift(report: EnvReport, profile: EnvProfile): Drift {
-  const now = currentSnapshot(report);
-  const allRegex = new Set(report.items.filter((i) => i.scope === 'global' && i.kind === 'regex').map((i) => i.name));
-  const nowWorlds = now.globalWorlds ?? [];
-  const nowRegex = now.globalRegexEnabled ?? [];
-  const pw = profile.globalWorlds;
-  const pr = profile.globalRegexEnabled;
-  const drift: Drift = {
-    // Parts the profile did not record (e.g. only a recommended preset) are not compared.
-    // 记住的世界书后来被删掉或改了名：没法再打开，不算「不一样」（不然底部提示条永远消不掉，「恢复」也永远失败）
-    worldsOn: pw ? pw.filter((w) => !nowWorlds.includes(w) && worldExists(w)) : [],
-    worldsOff: pw ? nowWorlds.filter((w) => !pw.includes(w)) : [],
-    regexOn: pr ? pr.filter((r) => allRegex.has(r) && !nowRegex.includes(r)) : [],
-    regexOff: pr ? nowRegex.filter((r) => !pr.includes(r)) : [],
-    preset: profile.preset && profile.preset.api === report.presetApi && profile.preset.name !== report.presetName ? profile.preset.name : undefined,
-    count: 0,
-  };
-  drift.count = drift.worldsOn.length + drift.worldsOff.length + drift.regexOn.length + drift.regexOff.length + (drift.preset ? 1 : 0);
-  return drift;
-}
-
 export function refreshEnv(): EnvReport {
   const r = buildEnvReport();
   envReport.value = r;
   return r;
 }
 
-/** 「记住现在的设置」会记下什么（给界面在点之前先列出来）。 */
-export function snapshotNow(): Omit<EnvProfile, 'savedAt' | 'cardName'> {
-  return currentSnapshot(buildEnvReport());
-}
-
-/**
- * 记住现在的世界书和正则（第一次记住时连现在的预设一起，作为推荐预设）。
- * `keepPreset`：底部「记住改动」用。临时换了个预设不该顺手变成推荐预设，推荐预设在「推荐预设和模型」里改。
- */
-export function rememberProfile(opts: { keepPreset?: boolean } = {}): void {
-  const r = buildEnvReport();
-  if (!r.avatar) return;
-  const now = new Date().toISOString();
-  // 在角色档案里设的推荐模型不在快照里，要留着（以前整个覆盖掉，推荐模型就丢了）
-  const old = settings().profiles[r.avatar];
-  const snap = currentSnapshot(r);
-  if (opts.keepPreset) snap.preset = old?.preset;
-  settings().profiles[r.avatar] = { ...old, savedAt: now, updatedAt: now, cardName: r.cardName, ...snap };
-  if (opts.keepPreset && !old?.preset) delete settings().profiles[r.avatar].preset;
-  saveSettings();
-  refreshEnv();
-  toast('success', `已记住「${r.cardName}」现在的配套`);
-}
-
-/** 档案里什么都没设了（没有推荐预设、模型、记住的世界书和正则、美化）：整份删掉。 */
-export function profileEmpty(p: EnvProfile): boolean {
-  return !p.preset && !p.model && !p.globalWorlds && !p.globalRegexEnabled && !p.theme;
-}
-
-/** 返回忘掉之前的那份，给「撤销」用。 */
-export function forgetProfile(): EnvProfile | undefined {
-  const r = envReport.value;
-  if (!r?.avatar) return;
-  // 只忘掉记住的世界书和正则。推荐预设、模型、人设、美化是在各自的地方设的，留着（以前连它们一起删了）
-  const old = settings().profiles[r.avatar];
-  if (!old) return;
-  const before = { ...old };
-  const next = { ...old, updatedAt: new Date().toISOString() };
-  delete next.globalWorlds;
-  delete next.globalRegexEnabled;
-  if (profileEmpty(next)) { delete settings().profiles[r.avatar]; markDeleted('profiles', r.avatar); }
-  else settings().profiles[r.avatar] = next;
-  saveSettings();
-  refreshEnv();
-  return before;
-}
-
-/** `worldsAndRegexOnly`：底部提示条用，只恢复世界书和正则（预设不是推荐的，在「需要注意」里另外处理）。 */
-export async function applyProfile(opts: { worldsAndRegexOnly?: boolean } = {}): Promise<void> {
-  const r = buildEnvReport();
-  if (!r.drift || !r.profile) return;
-  const d = r.drift;
-  if (d.preset && !opts.worldsAndRegexOnly) await runSlash(`/preset ${slashQuote(d.preset)}`);
-  for (const w of d.worldsOff) await runSlash(`/world state=off silent=true ${slashQuote(w)}`);
-  for (const w of d.worldsOn) await runSlash(`/world state=on silent=true ${slashQuote(w)}`);
-  if (d.regexOff.length || d.regexOn.length) {
-    const re = loaded.regexEngine;
-    const list: Any[] = re?.getScriptsByType(RX.GLOBAL) ?? [];
-    const next = list.map((s) => (d.regexOff.includes(regexKey(s)) ? { ...s, disabled: true }
-      : d.regexOn.includes(regexKey(s)) ? { ...s, disabled: false } : s));
-    await re?.saveScriptsByType(next, RX.GLOBAL);
-    saveSettings();
-    await reloadChatSafe();
-  }
-  const after = refreshEnv();
-  const left = after.drift;
-  const leftCount = left ? (opts.worldsAndRegexOnly ? left.count - (left.preset ? 1 : 0) : left.count) : 0;
-  if (left && leftCount) {
-    // 说出是哪几项，玩家才知道去哪里改
-    const what = [
-      !opts.worldsAndRegexOnly && left.preset && `预设「${left.preset}」`,
-      ...left.worldsOn.map((w) => `打开世界书「${w}」`),
-      ...left.worldsOff.map((w) => `关掉世界书「${w}」`),
-      ...left.regexOn.map((r) => `打开正则「${r}」`),
-      ...left.regexOff.map((r) => `关掉正则「${r}」`),
-    ].filter(Boolean);
-    toast('warning', `还有 ${leftCount} 项没能恢复：${what.join('、')}。可以在「需要注意」里逐条打开或关掉。`);
-  }
-  else toast('success', `已恢复「${r.cardName}」记住的配套`);
-}
-
-let lastAvatar: string | null = null;
-
-export function installEnvWatch(openPanel: (tab: string) => void): void {
+export function installEnvWatch(): void {
   const c = ctx();
   const es = c.eventSource;
   const et = c.eventTypes;
-  es.on(et.CHAT_CHANGED, () => {
-    // Give other extensions (and ST's own WI selection) a moment to settle.
-    setTimeout(() => {
-      const r = refreshEnv();
-      if (!r.avatar || r.avatar === lastAvatar) return;
-      lastAvatar = r.avatar;
-      // With auto-apply on, the switch itself is reported by autoapply.ts (one toast instead of several).
-      if (settings().autoApplyEnv) return; // auto-apply reports the switch itself; reminders only when it is off
-      const open = { onclick: () => openPanel('env'), timeOut: 8000 };
-      const misplaced = r.items.filter((i) => i.misplaced);
-      if (misplaced.length) {
-        toast('warning', `${misplaced.map((i) => `全局正则「${i.name}」${i.misplaced}`).join('；')}，但现在还开着。点这里查看。`, '换卡提醒', open);
-      }
-      if (r.drift?.count) {
-        toast('warning', `「${r.cardName}」的配套和上次记住的不一样（${r.drift.count} 项）。点这里查看并一键恢复。`, '换卡提醒', open);
-        return;
-      }
-      if (r.profile) return;
-      const leaks = r.items.filter((i) => i.leaks);
-      if (leaks.length) {
-        const books = leaks.filter((i) => i.kind === 'worldbook').length;
-        const rx = leaks.filter((i) => i.kind === 'regex' && i.scope === 'global').length;
-        const parts = [books && `全局世界书 ${books} 本`, rx && `全局正则 ${rx} 条`, leaks.some((i) => i.id === 'rx:p') && '预设正则', leaks.some((i) => i.kind === 'script') && '全局/预设脚本'].filter(Boolean);
-        toast('info', `这张卡还没记住配套。当前对所有卡都生效的有：${parts.join('、')}。点这里查看。`, '换卡提醒', open);
-      }
-    }, 600);
-  });
+  // Give other extensions (and ST's own WI selection) a moment to settle.
+  es.on(et.CHAT_CHANGED, () => { setTimeout(refreshEnv, 600); });
   for (const ev of [et.WORLDINFO_SETTINGS_UPDATED, et.OAI_PRESET_CHANGED_AFTER, et.PRESET_CHANGED, et.SETTINGS_UPDATED]) {
     if (ev) es.on(ev, () => { if (envReport.value) refreshEnv(); });
   }

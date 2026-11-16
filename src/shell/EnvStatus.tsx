@@ -3,18 +3,17 @@
  * 导航条上的「环境」按钮显示问题数；完整内容在「这张卡」页面里。
  */
 import { computed, signal } from '@preact/signals';
-import { ctx, currentCharacter, loaded, reloadChatSafe, runSlash, saveSettings, settings, slashQuote, type Any } from '../st/st';
-import { archiveVersion, cardInfo, currentPresetName, importCardWorld, presetApi, setRecommendedPreset, switchPreset } from '../tools/cards/cards';
+import { currentCharacter, loaded, reloadChatSafe, saveSettings, type Any } from '../st/st';
+import { archiveVersion, cardInfo, currentPresetName, importCardWorld } from '../tools/cards/cards';
 import { enablePluginsAndReload, planFor } from '../tools/env/autoapply';
 import { currentBookScopes } from '../tools/flow/capture';
 import { buildEnvReport } from '../tools/env/env';
-import { currentModel, modelLabel, modelsApply, sameModel, setModel } from '../tools/model';
 import { panelOpen } from '../ui/Panel';
 import { chatTick } from './Shell';
 import { openDrawers } from './drawers';
 import { sourcesTick } from '../tools/sources';
 import { RELOAD_COPY, reloadAdvised, reloadPage } from '../tools/scripts/reload';
-import { editRegex } from '../ui/pages/GlobalPage';
+import { cardGroup, setGroupAllowed } from '../tools/scripts/th';
 
 /** Bumped after actions so the panel re-reads ST state. */
 export const statusTick = signal(0);
@@ -81,40 +80,17 @@ function buildSectionsNow(char: Any): { sections: Section[]; issues: number } {
   for (const b of w.extra) wb.push({ level: 'ok', text: `「${b}」已加载`, detail: '附加世界书，也绑在这张卡上' });
   for (const b of scopes.chat) wb.push({ level: 'ok', text: `「${b}」已加载`, detail: '绑在当前这个聊天上' });
   for (const b of scopes.persona) wb.push({ level: 'info', text: `「${b}」`, detail: '绑在你的 user 人设上，所有卡都会用' });
-  // 和换卡时的判断一样（planFor）：记住过配套就照配套，没记住就关掉别的卡的。每一行都能当场开、关
-  const profile = settings().profiles[info.avatar];
-  const setWorld = (name: string, on: boolean) => async () => { await runSlash(`/world state=${on ? 'on' : 'off'} silent=true ${slashQuote(name)}`); bump(); };
-  for (const b of scopes.global) {
-    if (!plan.worldsOff.includes(b)) { wb.push({ level: 'info', text: `全局世界书「${b}」开着`, detail: '对所有卡生效' }); continue; }
-    wb.push({ level: 'warn', text: `全局世界书「${b}」开着`, detail: profile?.globalWorlds ? '不在这张卡记住的配套里' : '属于别的卡',
-      action: { label: '关掉', run: setWorld(b, false) } });
-  }
-  for (const b of plan.worldsOn) {
-    wb.push({ level: 'warn', text: `全局世界书「${b}」关着`, detail: '记住的配套里是开着的', action: { label: '打开', run: setWorld(b, true) } });
-  }
+  // 全局世界书开不开是设置，不是问题（本卡专用的进卡时已经换好），只列出来
+  for (const b of scopes.global) wb.push({ level: 'info', text: `全局世界书「${b}」开着` });
   sections.push({ title: '世界书', lines: wb });
 
   // ---- 预设
   const pr: Line[] = [];
   const cur = currentPresetName();
-  const rec = info.preset;
   if (cur && reloadAdvised.value === cur) pr.push({ level: 'warn', text: RELOAD_COPY.title, detail: RELOAD_COPY.detail, action: { label: RELOAD_COPY.button, run: reloadPage } });
-  if (rec && rec.api === presetApi()) {
-    if (rec.name === cur && reloadAdvised.value === cur) { /* 上面那条琥珀色的已经说了，不再放绿勾 */ }
-    else if (rec.name === cur) pr.push({ level: 'ok', text: `「${cur}」`, detail: '就是这张卡的推荐预设' });
-    else pr.push({ level: 'warn', text: `现在用的是「${cur}」`, detail: `这张卡推荐「${rec.name}」`, action: { label: '换成推荐的', run: async () => { await switchPreset(rec.name); bump(); } } });
-  } else {
-    pr.push({ level: 'info', text: `「${cur}」`, detail: '这张卡还没设推荐预设',
-      action: { label: '设为推荐', run: () => { setRecommendedPreset(info.avatar, info.name, cur); bump(); } } });
-  }
+  else pr.push({ level: 'info', text: `「${cur}」` });
   const presetRx = report.items.find((i) => i.id === 'rx:p');
   if (presetRx) pr.push({ level: 'info', text: presetRx.name, detail: '预设自带的正则，跟着预设走' });
-  // 推荐模型：这张卡的，否则它推荐的预设的
-  const wantModel = settings().profiles[info.avatar]?.model ?? (rec ? settings().presetInfo[rec.name]?.model : undefined);
-  const nowModel = currentModel();
-  if (wantModel && modelsApply() && !sameModel(wantModel, nowModel)) {
-    pr.push({ level: 'warn', text: `现在的模型是 ${nowModel ? modelLabel(nowModel) : '（没选）'}`, detail: `这张卡推荐 ${modelLabel(wantModel)}`, action: { label: '换成推荐的', run: async () => { await setModel(wantModel); bump(); } } });
-  }
   sections.push({ title: '预设', lines: pr });
 
   // ---- 正则
@@ -129,23 +105,7 @@ function buildSectionsNow(char: Any): { sections: Section[]; issues: number } {
           await reloadChatSafe();
         } } });
   } else rx.push({ level: 'info', text: '这张卡没有自带正则' });
-  // 原因的判断顺序和 planFor 一样：记住过配套就只看配套，没记住才看这条正则属于谁（只有卡和预设会走到这里）
-  const regexWhy = (id: string, on: boolean): string => {
-    const o = settings().regexOwners[id];
-    if (profile?.globalRegexEnabled || !o) return on ? '记住的配套里是开着的' : '不在这张卡记住的配套里';
-    if (o.kind === 'preset') return `属于预设「${o.label}」`;
-    return on ? '属于这张卡' : `属于角色卡「${o.label}」`;
-  };
-  for (const g of report.items.filter((i) => i.scope === 'global' && i.kind === 'regex')) {
-    const off = plan.regexOff.find((r) => g.id === `rx:g:${r.id}`);
-    const on = plan.regexOn.find((r) => g.id === `rx:g:${r.id}`);
-    const fix = off ?? on;
-    if (fix) {
-      rx.push({ level: 'warn', text: `全局正则「${g.name}」${off ? '开着' : '关着'}`, detail: regexWhy(fix.id, !!on),
-        edit: () => editRegex(fix.id),
-        action: { label: off ? '关掉' : '打开', run: async () => { await g.toggle?.(!off); bump(); } } });
-    } else if (g.enabled) rx.push({ level: 'info', text: `全局正则「${g.name}」开着`, detail: g.detail ?? '对所有卡生效' });
-  }
+  for (const g of report.items.filter((i) => i.scope === 'global' && i.kind === 'regex' && i.enabled)) rx.push({ level: 'info', text: `全局正则「${g.name}」开着`, detail: g.detail });
   sections.push({ title: '正则', lines: rx });
 
   // ---- 脚本
@@ -153,7 +113,8 @@ function buildSectionsNow(char: Any): { sections: Section[]; issues: number } {
   if (info.scripts.total) {
     sc.push(info.scripts.enabled
       ? { level: 'ok', text: `酒馆助手角色脚本 ${info.scripts.total} 个已启用`, detail: info.scripts.names.slice(0, 4).join('、') }
-      : { level: 'warn', text: `酒馆助手角色脚本未启用（${info.scripts.total} 个）`, detail: '在「扩展·正则 › 酒馆助手 › 脚本库」里打开' });
+      : { level: 'warn', text: '这张卡的脚本还没允许运行', detail: `${info.scripts.total} 个`,
+        action: { label: '允许', run: async () => { const g = cardGroup(info.avatar); if (g) await setGroupAllowed(g, true); bump(); } } });
     if (hasMvu(char)) sc.push({ level: info.scripts.enabled ? 'ok' : 'warn', text: info.scripts.enabled ? 'MVU 变量正常更新' : 'MVU 变量不会更新', detail: info.scripts.enabled ? '随角色脚本一起运行' : '因为角色脚本未启用' });
   } else sc.push({ level: 'info', text: '这张卡没有酒馆助手脚本' });
   sections.push({ title: '脚本', lines: sc });

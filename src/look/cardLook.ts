@@ -13,24 +13,26 @@ import { effect, signal } from '@preact/signals';
 import { ctx, currentCharacter, saveSettings, settings, toast } from '../st/st';
 import { openDrawers } from '../shell/drawers';
 import { archiveVersion, setCardTheme } from '../tools/cards/cards';
-import { applyLook, loadThemes, lookSuspended, refreshSurface, stThemes, type StTheme } from './look';
+import { applyLook, loadThemes, LOOKS, lookOn, lookId, lookOverride, lookSuspended, refreshSurface, stThemes, currentStTheme, type StTheme } from './look';
 
 /** 换卡、改绑定、改开关时加一，重新套一次。 */
 export const cardLookTick = signal(0);
 /** 现在盖在上面的美化名（没有就是 null）。 */
 export const appliedCardTheme = signal<string | null>(null);
 
-type Store = { cardLook?: boolean; /** 试用版先存在这里，现在挪进 profiles[卡].theme */ cardThemes?: Record<string, string> };
+type Store = { /** 试用版先存在这里，现在挪进 profiles[卡].theme */ cardThemes?: Record<string, string> };
 const store = (): Store => settings() as unknown as Store;
 
-export function cardLookEnabled(): boolean {
-  return store().cardLook !== false;
+/** 卡专用的美化是红鸟自带美化的某一套时，存成「rbt:深浅色的 id」。 */
+export const RBT_LOOK = 'rbt:';
+/** 美化给人看的名字：红鸟自带美化写成「红鸟自带美化 · 深色」。 */
+export function lookLabel(name: string): string {
+  if (!name.startsWith(RBT_LOOK)) return name;
+  return `红鸟自带美化 · ${LOOKS.find((l) => l.id === name.slice(RBT_LOOK.length))?.label ?? name.slice(RBT_LOOK.length)}`;
 }
-
-export function setCardLookEnabled(on: boolean): void {
-  store().cardLook = on;
-  saveSettings();
-  cardLookTick.value++;
+/** 全局美化现在是什么（给「全局 · 和其他卡一样：X」）。 */
+export function globalLookLabel(): string {
+  return lookOn.value ? lookLabel(`${RBT_LOOK}${lookId.value}`) : currentStTheme() || '酒馆默认';
 }
 
 /** 这张卡记的美化（存在卡的配套里，和推荐预设放在一起）。 */
@@ -153,6 +155,7 @@ async function clear(): Promise<void> {
     activate(null);
     ownCss(true);
     appliedCardTheme.value = null;
+    lookOverride.value = null;
     lastTheme = null;
     lookSuspended.value = false;
     refreshSurface(null);
@@ -171,8 +174,23 @@ async function apply(): Promise<void> {
   // 新的一次接手：上一次（被打断的）留下的进度条先拿掉，需要时下面再显示
   lookApplying.value = null;
   const ch = currentCharacter();
-  const name = ch && cardLookEnabled() ? cardThemeOf(String(ch.avatar)) : undefined;
+  const name = ch ? cardThemeOf(String(ch.avatar)) : undefined;
   if (!name) { await clear(); return; }
+  // 红鸟自带美化的某一套：不用盖酒馆主题，自带美化换成那一套；平时的自定义 CSS 先停用（和自带美化会打架）
+  if (name.startsWith(RBT_LOOK)) {
+    const id = name.slice(RBT_LOOK.length);
+    if (appliedCardTheme.value === name && lookOverride.value === id) return;
+    activate(null);
+    // 自己开着红鸟自带美化时，自定义 CSS 就是自己的小调整，留着；用的是别人的美化时先停用（和自带美化会打架）
+    ownCss(lookOn.value);
+    lastTheme = null;
+    appliedCardTheme.value = name;
+    lookOverride.value = id;
+    lookSuspended.value = false;
+    refreshSurface(null);
+    applyLook();
+    return;
+  }
   // 只读一次：读完会改 stThemes，又会触发这里（主题列表是空的时候会一直读下去）
   if (!stThemes.value.length && !loadedOnce) { loadedOnce = true; await loadThemes(); }
   if (my !== seq) return;
@@ -189,6 +207,7 @@ async function apply(): Promise<void> {
     lastTheme = t;
     // 底色直接用这套美化的颜色算，不去问浏览器（问一次它就要按几百 KB 的新 CSS 把整页重算一遍）
     refreshSurface({ body: str(t.main_text_color), tint: str(t.blur_tint_color), chat: str(t.chat_tint_color) });
+    lookOverride.value = null;
     if (!lookSuspended.value) { lookSuspended.value = true; applyLook(); }
   } finally {
     if (my === seq) lookApplying.value = null;
@@ -214,7 +233,7 @@ export function installCardLook(): void {
     const name = appliedCardTheme.value;
     if (!name || !openDrawers.value.includes('settings') || told.has(name)) return;
     told.add(name);
-    toast('info', `现在用着这张卡的美化「${name}」，在这里改的全局美化暂时看不到。回首页就能看到。`, '美化');
+    toast('info', `现在用着这张卡的美化「${lookLabel(name)}」，在这里改的全局美化暂时看不到。回首页就能看到。`, '美化');
   });
   // 在酒馆里保存了美化：重新读一遍，卡的美化用的也是新的
   window.jQuery?.(document).on('click', '#ui-preset-save-button, #ui-preset-update-button', () => { setTimeout(() => { void loadThemes(); }, 1500); });

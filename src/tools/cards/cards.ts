@@ -31,7 +31,8 @@ import {
   type RequiredExt,
 } from '../../core/cards';
 import { charaFileName, ctx, currentCharacter, loaded, runSlash, saveSettings, settings, slashQuote, thCharacterScriptsEnabled, toast, type Any, type EnvProfile, confirmText } from '../../st/st';
-import { profileEmpty, refreshEnv, thScripts } from '../env/env';
+import { refreshEnv, thScripts } from '../env/env';
+import { profileEmpty } from '../env/setup';
 import { markDeleted, syncStore } from '../../st/store';
 
 /** Avatar of the card shown in 档案; null = follow the current card. */
@@ -207,6 +208,11 @@ export function updateRecord(avatar: string, cardName: string, patch: Partial<Ca
 
 // --------------------------------------------------- recommended preset ---
 
+/** 预设属于哪种 API，给人看的名字。 */
+export function apiLabel(api: string): string {
+  return ({ openai: '对话补全', textgenerationwebui: '文本补全', kobold: 'KoboldAI', novel: 'NovelAI' } as Record<string, string>)[api] ?? api;
+}
+
 export function presetApi(): string {
   try {
     return loaded.regexEngine?.getCurrentPresetAPI?.() ?? ctx().mainApi ?? '';
@@ -240,45 +246,10 @@ export function presetRegexCount(name: string): number {
   }
 }
 
-/** Shared with the remembered card environment: the recommended preset is the `preset` part of the remembered environment. */
-/** The card's own recommended model (null = none; then its recommended preset's model is used). */
-export function setCardModel(avatar: string, cardName: string, model: ModelChoice | null): void {
-  const s = settings();
-  const p: EnvProfile = s.profiles[avatar] ?? { savedAt: new Date().toISOString(), cardName };
-  if (model) p.model = model;
-  else delete p.model;
-  p.cardName = cardName;
-  p.updatedAt = new Date().toISOString();
-  if (profileEmpty(p)) { delete s.profiles[avatar]; markDeleted('profiles', avatar); }
-  else s.profiles[avatar] = p;
-  saveSettings();
-  refreshEnv();
-  bump();
-}
-
-/** 改「换到这张卡时」记下的全局世界书或全局正则（总表里解绑一项、撤销时用）。null = 不再记这一项。 */
-export function setProfileList(avatar: string, cardName: string, key: 'globalWorlds' | 'globalRegexEnabled', list: string[] | null): void {
-  const s = settings();
-  const p: EnvProfile = s.profiles[avatar] ?? { savedAt: new Date().toISOString(), cardName };
-  if (list) p[key] = list;
-  else delete p[key];
-  p.cardName = cardName;
-  p.updatedAt = new Date().toISOString();
-  if (profileEmpty(p)) { delete s.profiles[avatar]; markDeleted('profiles', avatar); }
-  else s.profiles[avatar] = p;
-  saveSettings();
-  refreshEnv();
-  bump();
-}
-
-/** 整个换成另一份（「全部解绑」和它的撤销）。null = 删掉。 */
-/** 这张卡什么都没设了（推荐预设、模型、世界书、正则、美化都没有）：整条删掉。 */
-export { profileEmpty } from '../env/env';
-
 /** 卡的美化：和这张卡聊天时整个界面换成这套美化。null = 不指定。 */
 export function setCardTheme(avatar: string, cardName: string, name: string | null): void {
   const s = settings();
-  const p: EnvProfile = s.profiles[avatar] ?? { savedAt: new Date().toISOString(), cardName };
+  const p: EnvProfile = s.profiles[avatar] ?? { cardName };
   if (name) p.theme = name;
   else delete p.theme;
   p.cardName = cardName;
@@ -289,18 +260,9 @@ export function setCardTheme(avatar: string, cardName: string, name: string | nu
   bump();
 }
 
-export function setProfile(avatar: string, p: EnvProfile | null): void {
-  const s = settings();
-  if (p) s.profiles[avatar] = { ...p, updatedAt: new Date().toISOString() };
-  else { delete s.profiles[avatar]; markDeleted('profiles', avatar); }
-  saveSettings();
-  refreshEnv();
-  bump();
-}
-
 export function setRecommendedPreset(avatar: string, cardName: string, name: string | null): void {
   const s = settings();
-  const p: EnvProfile = s.profiles[avatar] ?? { savedAt: new Date().toISOString(), cardName };
+  const p: EnvProfile = s.profiles[avatar] ?? { cardName };
   if (name) p.preset = { api: presetApi(), name };
   else delete p.preset;
   p.cardName = cardName;
@@ -357,6 +319,59 @@ async function backupWorld(name: string): Promise<string> {
   return file;
 }
 
+/** 世界书条目 → 卡里的 character_book 条目（和酒馆保存角色卡时 convertWorldInfoToCharacterBook 写的一样）。 */
+function worldToCharacterBook(name: string, entries: Record<string, Any>): Any {
+  return {
+    name,
+    entries: Object.values(entries).map((e: Any) => ({
+      id: e.uid, keys: e.key, secondary_keys: e.keysecondary, comment: e.comment, content: e.content, constant: e.constant, selective: e.selective,
+      insertion_order: e.order, enabled: !e.disable, position: e.position == 0 ? 'before_char' : 'after_char', use_regex: true,
+      extensions: {
+        ...e.extensions, position: e.position, exclude_recursion: e.excludeRecursion, display_index: e.displayIndex,
+        probability: e.probability ?? null, useProbability: e.useProbability ?? false, depth: e.depth ?? 4, selectiveLogic: e.selectiveLogic ?? 0,
+        outlet_name: e.outletName ?? '', group: e.group ?? '', group_override: e.groupOverride ?? false, group_weight: e.groupWeight ?? null,
+        prevent_recursion: e.preventRecursion ?? false, delay_until_recursion: e.delayUntilRecursion ?? false, scan_depth: e.scanDepth ?? null,
+        match_whole_words: e.matchWholeWords ?? null, use_group_scoring: e.useGroupScoring ?? false, case_sensitive: e.caseSensitive ?? null,
+        automation_id: e.automationId ?? '', role: e.role ?? 0, vectorized: e.vectorized ?? false, sticky: e.sticky ?? null, cooldown: e.cooldown ?? null,
+        delay: e.delay ?? null, match_persona_description: e.matchPersonaDescription ?? false, match_character_description: e.matchCharacterDescription ?? false,
+        match_character_personality: e.matchCharacterPersonality ?? false, match_character_depth_prompt: e.matchCharacterDepthPrompt ?? false,
+        match_scenario: e.matchScenario ?? false, match_creator_notes: e.matchCreatorNotes ?? false, triggers: e.triggers ?? [], ignore_budget: e.ignoreBudget ?? false,
+      },
+    })),
+  };
+}
+
+/**
+ * 「用现在的更新卡里的」：把绑定的世界书写回卡里自带的那份（之后导出、分享这张卡带的就是它）。
+ * 写之前把卡里原来那份存一个备份文件。
+ */
+export async function updateCardBook(avatar: string): Promise<boolean> {
+  const f = findChar(avatar);
+  const name: string = f?.char?.data?.extensions?.world ?? '';
+  const data = name ? await loaded.worldInfo?.loadWorldInfo?.(name) : null;
+  if (!f || !data?.entries) { toast('error', '读不到这本世界书，没有更新。'); return false; }
+  try {
+    const old = f.char.data?.character_book;
+    if (old) {
+      const file = backupFileName(`${name}（卡里原来的）`, new Date());
+      const res = await fetch('/api/files/upload', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({ name: file, data: toBase64(JSON.stringify({ character_book: old, rbtBackupOf: avatar }, null, 2)) }) });
+      if (!res.ok) throw new Error(`备份失败：${res.status}`);
+      settings().worldBackups.push({ file, world: name, at: new Date().toISOString() });
+      saveSettings();
+    }
+    const book = worldToCharacterBook(name, data.entries);
+    const res = await fetch('/api/characters/merge-attributes', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({ avatar, data: { character_book: book } }) });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    if (f.char.data) f.char.data.character_book = book;
+    toast('success', '已更新角色卡中的世界书，原版本已备份');
+    bump();
+    return true;
+  } catch (e) {
+    toast('error', `没能更新卡里的世界书：${String((e as Error)?.message ?? e)}`);
+    return false;
+  }
+}
+
 export type ImportResult = 'imported' | 'overwritten' | 'exists' | 'nobook' | 'failed';
 
 /**
@@ -382,7 +397,7 @@ export async function importCardWorld(avatar: string, { overwrite = false, quiet
     try { ctx().accountStorage?.setItem(`AlertWI_${avatar}`, 'true'); } catch { /* ignore */ }
     if (!quiet) {
       toast('success', exists
-        ? `已用卡里的版本覆盖世界书「${name}」，旧版本已备份。`
+        ? '已替换当前世界书，原版本已备份'
         : `已从卡里导入世界书「${name}」并绑定到「${f.char.name}」`, '角色档案');
     }
     refreshEnv();
@@ -515,7 +530,7 @@ export async function importArchive(text: string, mode: 'merge' | 'overwrite'): 
     if (!ok) return;
   }
   s.cards = mergeRecords(s.cards, inc.cards, mode, (v) => v.updatedAt ?? '');
-  s.profiles = mergeRecords(s.profiles, inc.profiles as Record<string, EnvProfile>, mode, (v) => v.savedAt ?? '');
+  s.profiles = mergeRecords(s.profiles, inc.profiles as Record<string, EnvProfile>, mode, (v) => v.updatedAt ?? v.savedAt ?? '');
   s.regexOwners = mergeRecords(s.regexOwners, inc.regexOwners, mode);
   s.presetInfo = mergeRecords(s.presetInfo, inc.presetInfo ?? {}, mode, (v) => v.updatedAt ?? '');
   s.pluginInfo = mergeRecords(s.pluginInfo, inc.pluginInfo ?? {}, mode, (v) => v.updatedAt ?? '');
@@ -533,28 +548,13 @@ export async function importArchive(text: string, mode: 'merge' | 'overwrite'): 
 
 let lastAvatar: string | null = null;
 
-export function installCardsWatch(openPanel: (tab: string) => void): void {
+export function installCardsWatch(): void {
   const c = ctx();
   c.eventSource.on(c.eventTypes.CHAT_CHANGED, () => {
     archiveTarget.value = null;
     bump();
-    setTimeout(async () => {
-      const char = currentCharacter();
-      if (!char?.avatar || char.avatar === lastAvatar) return;
-      lastAvatar = char.avatar;
-      // Auto-apply imports the card's lorebook and reports the switch itself; doing it here too would import twice.
-      if (settings().autoApplyEnv) return;
-      const info = cardInfo(char);
-      if (settings().autoImportWorld && info.world.embedded && (info.world.state === 'missing' || info.world.state === 'unbound')) {
-        await importCardWorld(char.avatar);
-      }
-      const installed = installedExtensions();
-      const bad = requiredExtensions(info).map((r) => ({ ...r, ...extStatus(r.req, installed) })).filter((r) => r.status !== 'enabled');
-      if (bad.length) {
-        const text = bad.map((b) => `${b.match?.name ?? b.req.name}${b.status === 'missing' ? '（未安装）' : '（未启用）'}`).join('、');
-        toast('warning', `「${info.name}」需要的插件：${text}。点这里查看。`, '角色档案', { onclick: () => openPanel('cards'), timeOut: 8000 });
-      }
-    }, 300);
+    // 换卡时导入卡里的世界书、提示插件，由 autoapply.ts 做
+    lastAvatar = String(currentCharacter()?.avatar ?? '') || null;
   });
   for (const ev of [c.eventTypes.SETTINGS_UPDATED, c.eventTypes.WORLDINFO_SETTINGS_UPDATED, c.eventTypes.OAI_PRESET_CHANGED_AFTER, c.eventTypes.CHARACTER_EDITED]) {
     if (ev) c.eventSource.on(ev, bump);

@@ -3,7 +3,7 @@
  * 写进酒馆的 data/<用户>/user/files/，方便排查问题（也方便把文件发给别人看）。
  */
 import { ctx, currentCharacter, settings, toast } from '../st/st';
-import { lastApplied, planFor } from './env/autoapply';
+import { planFor } from './env/autoapply';
 import { installedVersion } from './update';
 import { buildEnvReport } from './env/env';
 import { captures } from './flow/capture';
@@ -39,16 +39,15 @@ export function buildDiagnostics(): unknown {
   } catch (e) {
     vars = { error: String(e) };
   }
-  // 换卡时会自动开关哪些全局正则、依据是什么（正则属于谁、上次自动改了什么）：查「和记住的不一样」要用
+  // 换卡时会换哪些、依据是什么（本卡专用、正则归属、进卡前的原值）：查「换卡时怎么没换 / 换错了」要用
   let switching: unknown = null;
   try {
     const plan = char ? planFor(char) : null;
-    const last = lastApplied.value;
     switching = {
-      autoApply: !!settings().autoApplyEnv,
       regexOwners: settings().regexOwners,
-      plan: plan && { regexOn: plan.regexOn, regexOff: plan.regexOff },
-      lastApplied: last && { cardName: last.cardName, at: new Date(last.at).toISOString(), changes: last.changes, undone: !!last.undone },
+      profile: char ? settings().profiles[char.avatar] ?? null : null,
+      baseline: settings().baseline ?? null,
+      plan: plan && { preset: plan.preset, worldsOn: plan.worldsOn, worldsOff: plan.worldsOff, regexOn: plan.regexOn, regexOff: plan.regexOff },
     };
   } catch (e) {
     switching = { error: String(e) };

@@ -1,21 +1,22 @@
 /**
- * 换卡自动套用环境：换到一张卡时，把预设、全局世界书、全局正则切成这张卡该有的样子，
- * 插件（酒馆不能在运行中开关）则提示一键启用并刷新。每次自动切换都能撤销。
+ * 换卡时换上这张卡的本卡专用（规则见 dev/角色档案重做-spec.md 和 setup.ts）。
  *
- * 依据（按优先级）：
- * 1. 这张卡「记住的环境」（换卡体检 / 角色档案里的推荐预设）：有记的部分严格照着来；
- * 2. 没记的部分只做确定该做的事：
+ * 要换的（按优先级）：
+ * 1. 这张卡的本卡专用：预设、模型、全局世界书 / 全局正则的开关；
+ * 2. 没设专用的项只做确定该做的事：
+ *    - 预设推荐的模型（本预设专用）；
  *    - 别的卡绑定的世界书被开成了全局 → 关掉；
  *    - 在「正则归属」里标成属于别的卡 / 别的预设的全局正则 → 关掉，属于这张卡 / 当前预设的 → 打开。
+ * 换之前记下原值（baseline），离卡时换回去。插件（酒馆不能在运行中开关）提示一键启用并刷新。
  */
 import { signal } from '@preact/signals';
 import { presetScriptLine } from '../scripts/notice';
-import { charaFileName, ctx, currentCharacter, loaded, reloadChatSafe, runSlash, saveSettings, settings, slashQuote, toast, type Any } from '../../st/st';
-import { cardInfo, currentPresetName, extStatus, importCardWorld, installedExtensions, presetApi, presetNames, requiredExtensions, switchPreset } from '../cards/cards';
-import { refreshEnv, regexKey } from './env';
-import { currentModel, modelLabel, modelsApply, sameModel, setModel, withoutModelGuard, type ModelChoice } from '../model';
-
-const GLOBAL = 0; // ST regex SCRIPT_TYPES.GLOBAL
+import { charaFileName, ctx, currentCharacter, loaded, settings, toast, type Any } from '../../st/st';
+import { cardInfo, currentPresetName, extStatus, importCardWorld, installedExtensions, presetApi, presetNames, requiredExtensions } from '../cards/cards';
+import { refreshEnv } from './env';
+import { currentModel, modelLabel, modelsApply, sameModel, type ModelChoice } from '../model';
+import { applyLive, globalRegex, globalWorlds, leaveCard, liveValue, overriddenKeys, profileOf, recordBaseline, settleBaseline } from './setup';
+import { unnamedRegex } from '../../core/setup';
 
 export interface PluginNeed { id: string; name: string; status: 'disabled' | 'missing' }
 
@@ -32,24 +33,6 @@ export interface ApplyPlan {
   plugins: PluginNeed[];
 }
 
-interface Snapshot {
-  preset: string;
-  model: ModelChoice | null;
-  globalWorlds: string[];
-  regexDisabled: Record<string, boolean>;
-}
-
-export interface Applied {
-  avatar: string;
-  cardName: string;
-  at: number;
-  changes: string[];
-  snapshot: Snapshot;
-  undone?: boolean;
-}
-
-/** The last automatic switch (shown in the status panel with an undo button). */
-export const lastApplied = signal<Applied | null>(null);
 /**
  * 换卡时正在换成的预设名（换完是 null）。酒馆要等这一步做完才显示聊天，手机上要一秒多，
  * 导航条下沿显示一条进度条，让人知道没卡住。
@@ -60,14 +43,6 @@ export const applyingPreset = signal<string | null>(null);
  * 导航条下沿的进度条看这个：超过 4 秒酒馆先显示聊天（见 index.tsx），这时进度条还在，说明后台还在换。
  */
 export const applyingCard = signal<string | null>(null);
-
-function globalWorlds(): string[] {
-  return [...(loaded.worldInfo?.selected_world_info ?? [])];
-}
-
-function globalRegex(): Any[] {
-  return loaded.regexEngine?.getScriptsByType?.(GLOBAL) ?? [];
-}
 
 /** Lorebooks bound to some other character (main or extra books). */
 function booksOfOtherCards(avatar: string): Set<string> {
@@ -96,7 +71,7 @@ function ownBooks(char: Any): Set<string> {
 export function planFor(char: Any): ApplyPlan {
   const avatar: string = char.avatar;
   const s = settings();
-  const profile = s.profiles[avatar];
+  const profile = profileOf(avatar);
   const owners = s.regexOwners ?? {};
   const api = presetApi();
   const cur = currentPresetName();
@@ -113,31 +88,31 @@ export function planFor(char: Any): ApplyPlan {
   const wantModel = profile?.model ?? s.presetInfo?.[targetPreset]?.model;
   if (wantModel && modelsApply()) plan.model = wantModel;
 
-  // --- global lorebooks
+  // --- global lorebooks: 本卡专用的照它；其余只关掉别的卡的书
   const now = globalWorlds();
   const existing = new Set<string>(loaded.worldInfo?.world_names ?? []);
-  if (profile?.globalWorlds) {
-    plan.worldsOn = profile.globalWorlds.filter((w) => !now.includes(w) && existing.has(w));
-    plan.worldsOff = now.filter((w) => !profile.globalWorlds!.includes(w));
-  } else {
-    const others = booksOfOtherCards(avatar);
-    const mine = ownBooks(char);
-    plan.worldsOff = now.filter((w) => others.has(w) && !mine.has(w));
+  const set = profile?.worlds ?? {};
+  for (const [w, on] of Object.entries(set)) {
+    if (on && !now.includes(w) && existing.has(w)) plan.worldsOn.push(w);
+    if (!on && now.includes(w)) plan.worldsOff.push(w);
   }
+  const others = booksOfOtherCards(avatar);
+  const mine = ownBooks(char);
+  for (const w of now) if (!(w in set) && others.has(w) && !mine.has(w)) plan.worldsOff.push(w);
 
-  // --- global regex
+  // --- global regex: 本卡专用的照它；其余按归属
   for (const r of globalRegex()) {
-    let want: boolean | undefined;
-    if (profile?.globalRegexEnabled) want = profile.globalRegexEnabled.includes(regexKey(r));
-    else {
+    const id = String(r.id);
+    let want: boolean | undefined = profile?.regex?.[id];
+    if (want === undefined) {
       const o = owners[r.id];
       if (o?.kind === 'card') want = o.key === avatar;
       else if (o?.kind === 'preset') want = o.key === targetPreset;
     }
     if (want === undefined) continue;
     const on = !r.disabled;
-    if (want && !on) plan.regexOn.push({ id: r.id, name: regexKey(r) });
-    if (!want && on) plan.regexOff.push({ id: r.id, name: regexKey(r) });
+    if (want && !on) plan.regexOn.push({ id, name: unnamedRegex(r.scriptName) });
+    if (!want && on) plan.regexOff.push({ id, name: unnamedRegex(r.scriptName) });
   }
 
   // --- plugins (reported; enabling needs a page reload)
@@ -154,104 +129,69 @@ export function planHasChanges(p: ApplyPlan): boolean {
   return !!p.preset || (!!p.model && !sameModel(p.model, currentModel())) || p.worldsOn.length > 0 || p.worldsOff.length > 0 || p.regexOn.length > 0 || p.regexOff.length > 0;
 }
 
-async function setRegexStates(changes: Record<string, boolean>, { duringChatLoad = false } = {}): Promise<void> {
-  const re = loaded.regexEngine;
-  if (!re || !Object.keys(changes).length) return;
-  const next = globalRegex().map((r: Any) => (r.id in changes ? { ...r, disabled: changes[r.id] } : r));
-  await re.saveScriptsByType(next, GLOBAL);
-  saveSettings();
-  // Only display-only regex needs the messages re-rendered; the others act on new text / the prompt.
-  const chatId = ctx().getCurrentChatId?.();
-  if (!chatId || !next.some((r: Any) => r.id in changes && r.markdownOnly)) return;
-  if (!duringChatLoad) { await reloadChatSafe(); return; }
-  // We're inside ST's CHAT_CHANGED: reloading now would load the chat again in the middle of its own
-  // load (every CHAT_CHANGED / first-message listener would run twice). Reload once it has finished.
-  setTimeout(() => { if (ctx().getCurrentChatId?.() === chatId) void reloadChatSafe(); }, 1000);
+/** 计划里要换的项（setup.ts 的键）。 */
+function targetsOf(plan: ApplyPlan, withModel: boolean): Record<string, unknown> {
+  const t: Record<string, unknown> = {};
+  if (plan.preset) t.preset = plan.preset;
+  if (withModel && plan.model && !sameModel(plan.model, currentModel())) t.model = plan.model;
+  for (const w of plan.worldsOn) t[`w:${w}`] = true;
+  for (const w of plan.worldsOff) t[`w:${w}`] = false;
+  for (const r of plan.regexOn) t[`r:${r.id}`] = true;
+  for (const r of plan.regexOff) t[`r:${r.id}`] = false;
+  return t;
 }
 
-async function setWorlds(on: string[], off: string[]): Promise<void> {
-  for (const w of off) await runSlash(`/world state=off silent=true ${slashQuote(w)}`);
-  for (const w of on) await runSlash(`/world state=on silent=true ${slashQuote(w)}`);
-}
+/** 换卡时还在后台换的模型：离卡前要等它换完，不然离卡换回的值会被它盖掉。 */
+let modelJob: Promise<void> = Promise.resolve();
 
 /**
- * 套用推荐配置。`deferModel` 时先把预设、世界书、正则换好就返回（换卡时酒馆在等这一步才显示聊天），
+ * 换上这张卡的设置。`deferModel` 时先把预设、世界书、正则换好就返回（换卡时酒馆在等这一步才显示聊天），
  * 模型放到后面再换：换模型要连 API、等模型列表，手机上要一两秒，而显示聊天用不到它。
- * 换完模型后调用 `onModel`，并把结果补进「撤销」记录。
+ * 只给本卡专用的项记原值（离卡换回）；预设推荐的模型、别的卡的书、正则归属这些规则改的不记，改了就留着（和以前一样）。
  */
 export async function applyPlan(plan: ApplyPlan, opts: { deferModel?: boolean; onModel?: (changes: string[]) => void } = {}): Promise<string[]> {
-  const snapshot: Snapshot = {
-    preset: currentPresetName(),
-    model: currentModel(),
-    globalWorlds: globalWorlds(),
-    regexDisabled: Object.fromEntries(globalRegex().map((r: Any) => [r.id, !!r.disabled])),
-  };
   const changes: string[] = [];
   // 换卡要好几秒：中途玩家又点了别的卡，剩下的步骤就不做了，免得这张卡的预设、世界书落到那张卡上
   const moved = () => String(currentCharacter()?.avatar ?? '') !== plan.avatar;
-  if (plan.preset) {
-    // 这张卡有推荐模型：预设带过来的模型马上会被换成推荐的，不用提示；没有的话，模型被预设换掉会单独提示（能换回去）
-    const ok = plan.model ? await withoutModelGuard(() => switchPreset(plan.preset!)) : await switchPreset(plan.preset);
-    if (ok) {
-      changes.push(`预设换成「${plan.preset}」`);
-      const sl = presetScriptLine(plan.preset);
-      if (sl) changes.push(sl);
-    }
+  const profile = profileOf(plan.avatar);
+  const own = overriddenKeys(profile).filter((k) => !(k === 'preset' && profile?.preset?.api !== presetApi()));
+  const first = targetsOf(plan, !opts.deferModel);
+  // 本卡专用的项都记原值，包括进卡时本来就一样的（之后在酒馆里改它，离卡时才知道要记进这张卡）
+  const mine = own;
+  recordBaseline(plan.avatar, Object.fromEntries(mine.map((k) => [k, k in first ? first[k] : liveValue(k)])));
+  const doneList = await applyLive(first, { inChatLoad: true });
+  settleBaseline(plan.avatar, mine, doneList);
+  const done = new Set(doneList);
+  if (done.has('preset')) {
+    changes.push(`预设换成「${plan.preset}」`);
+    const sl = presetScriptLine(plan.preset!);
+    if (sl) changes.push(sl);
   }
-  const doModel = async (): Promise<string[]> => {
-    const m = plan.model;
-    if (!m || sameModel(m, currentModel())) return [];
-    return (await withoutModelGuard(() => setModel(m)))
-      ? [`模型换成 ${modelLabel(m)}`]
-      : [`没能换成推荐的模型 ${modelLabel(m)}（这个 API 可能还没填密钥）`];
-  };
-  if (moved()) return changes;
-  if (!opts.deferModel) changes.push(...(await doModel()));
-  if (moved()) return changes;
-  if (plan.worldsOn.length || plan.worldsOff.length) {
-    await setWorlds(plan.worldsOn, plan.worldsOff);
-    for (const w of plan.worldsOff) changes.push(`关掉全局世界书「${w}」`);
-    for (const w of plan.worldsOn) changes.push(`打开全局世界书「${w}」`);
-  }
-  const rx: Record<string, boolean> = {};
-  for (const r of plan.regexOff) { rx[r.id] = true; changes.push(`关掉全局正则「${r.name}」`); }
-  for (const r of plan.regexOn) { rx[r.id] = false; changes.push(`打开全局正则「${r.name}」`); }
-  if (moved()) return changes;
-  await setRegexStates(rx, { duringChatLoad: true });
-  if (moved()) return changes;
-  const record = () => { if (changes.length) lastApplied.value = { avatar: plan.avatar, cardName: plan.cardName, at: Date.now(), changes: [...changes], snapshot }; };
-  record();
+  if (done.has('model')) changes.push(`模型换成 ${modelLabel(plan.model!)}`);
+  for (const w of plan.worldsOff) if (done.has(`w:${w}`)) changes.push(`关掉全局世界书「${w}」`);
+  for (const w of plan.worldsOn) if (done.has(`w:${w}`)) changes.push(`打开全局世界书「${w}」`);
+  for (const r of plan.regexOff) if (done.has(`r:${r.id}`)) changes.push(`关掉全局正则「${r.name}」`);
+  for (const r of plan.regexOn) if (done.has(`r:${r.id}`)) changes.push(`打开全局正则「${r.name}」`);
   refreshEnv();
   if (opts.deferModel) {
     // 不等它：让酒馆先把聊天显示出来
-    void (async () => {
+    modelJob = (async () => {
       let more: string[] = [];
-      try { if (!moved()) more = await doModel(); } catch (e) { console.error('[RedBird] model switch failed', e); }
-      if (more.length && !moved()) { changes.push(...more); record(); refreshEnv(); }
+      try {
+        const m = plan.model;
+        if (m && !moved() && !sameModel(m, currentModel())) {
+          const isOwn = own.includes('model');
+          if (isOwn) recordBaseline(plan.avatar, { model: m });
+          const ok = (await applyLive({ model: m })).length > 0;
+          if (isOwn) settleBaseline(plan.avatar, ['model'], ok ? ['model'] : []);
+          more = ok ? [`模型换成 ${modelLabel(m)}`] : [`没能换成模型 ${modelLabel(m)}（这个 API 可能还没填密钥）`];
+        } else if (own.includes('model')) recordBaseline(plan.avatar, { model: currentModel() });
+      } catch (e) { console.error('[RedBird] model switch failed', e); }
+      if (more.length && !moved()) refreshEnv();
       opts.onModel?.(more);
     })();
   }
   return changes;
-}
-
-export async function undoLastApply(): Promise<void> {
-  const a = lastApplied.value;
-  if (!a || a.undone) return;
-  const s = a.snapshot;
-  await withoutModelGuard(async () => {
-    if (s.preset && s.preset !== currentPresetName()) await switchPreset(s.preset);
-    if (s.model && !sameModel(s.model, currentModel())) await setModel(s.model);
-  });
-  const now = globalWorlds();
-  await setWorlds(s.globalWorlds.filter((w) => !now.includes(w)), now.filter((w) => !s.globalWorlds.includes(w)));
-  const rx: Record<string, boolean> = {};
-  for (const r of globalRegex()) {
-    if (r.id in s.regexDisabled && s.regexDisabled[r.id] !== !!r.disabled) rx[r.id] = s.regexDisabled[r.id];
-  }
-  await setRegexStates(rx);
-  lastApplied.value = { ...a, undone: true };
-  refreshEnv();
-  toast('success', '已撤销刚才的自动切换');
 }
 
 /** Enable extensions (ST needs a reload for them to load). */
@@ -259,25 +199,45 @@ export async function enablePluginsAndReload(ids: string[]): Promise<void> {
   const ext = loaded.extensions;
   if (!ext?.enableExtension || !ids.length) return;
   // ST names extensions "third-party/<folder>"; ids here are folder names.
-  for (const id of ids) await ext.enableExtension(id.startsWith("third-party/") ? id : `third-party/${id}`, false);
+  for (const id of ids) await ext.enableExtension(id.startsWith('third-party/') ? id : `third-party/${id}`, false);
   location.reload();
 }
 
 let lastAvatar: string | null = null;
 let switchSeq = 0;
+/** 一次只换一张：后来的那次等前面的（离卡、进卡、后台换模型）都做完再开始。 */
+let queue: Promise<void> = Promise.resolve();
 
-/** Called on chat change; applies the card's environment once per card switch. */
-export async function autoApplyOnSwitch(openStatus: () => void): Promise<void> {
+/** Called on chat change: leave the previous card (put back what we changed), then switch to this one. */
+export function autoApplyOnSwitch(openStatus: () => void): Promise<void> {
   const c = ctx();
-  if (c.groupId) return;
-  const char = c.characters?.[Number(c.characterId)];
-  if (!char?.avatar || char.avatar === lastAvatar) return;
-  lastAvatar = char.avatar;
-  if (!settings().autoApplyEnv) return;
+  const char = c.groupId ? null : c.characters?.[Number(c.characterId)];
+  const avatar: string | null = char?.avatar ?? null;
+  if (avatar && avatar === lastAvatar) return Promise.resolve();
+  lastAvatar = avatar;
   const my = ++switchSeq;
-  applyingCard.value = char.name;
-  // 先结束的那次不能把后来那张卡的进度条清掉
-  try { await applyForCard(char, openStatus); } finally { if (my === switchSeq) applyingCard.value = null; }
+  const job = queue.then(async () => {
+    await modelJob;
+    // 刷新页面后回到同一张卡：原值还记着，不用换回去
+    const b = settings().baseline;
+    if (b && b.avatar !== avatar) await leaveCard({ inChatLoad: true });
+    if (!char || my !== switchSeq) return;
+    applyingCard.value = char.name;
+    // 先结束的那次不能把后来那张卡的进度条清掉
+    try { await applyForCard(char, openStatus); } finally { if (my === switchSeq) applyingCard.value = null; }
+  });
+  queue = job.catch(() => {});
+  return job;
+}
+
+/**
+ * 页面打开时停在首页（酒馆不发换聊天的事件）：上次离开前记的原值还在，换回去。
+ * 不知道离开前在酒馆里改过什么，所以只换回还是工具箱换上的那些项，不往卡里记。
+ */
+export function settleOnStart(): void {
+  const c = ctx();
+  if (lastAvatar !== null || c.groupId || currentCharacter() || !settings().baseline) return;
+  queue = queue.then(() => leaveCard({ noSave: true })).catch(() => {});
 }
 
 async function applyForCard(char: Any, openStatus: () => void): Promise<void> {
@@ -289,10 +249,15 @@ async function applyForCard(char: Any, openStatus: () => void): Promise<void> {
   }
   if (String(currentCharacter()?.avatar ?? '') !== char.avatar) return;
   const plan = planFor(char);
+  // 没什么要换的：本卡专用的项也要记下原值（之后在酒馆里改了它，离卡时才知道要记进这张卡）
+  if (!planHasChanges(plan)) {
+    const p = profileOf(char.avatar);
+    recordBaseline(char.avatar, Object.fromEntries(overriddenKeys(p).filter((k) => !(k === 'preset' && p?.preset?.api !== presetApi())).map((k) => [k, liveValue(k)])));
+  }
   if (planHasChanges(plan) || imported.length) {
     const tell = (changes: string[]) => {
       if (String(currentCharacter()?.avatar ?? '') !== char.avatar) return;
-      if (changes.length) toast('success', `已换成「${char.name}」的配套：${changes.join('；')}。点这里查看或撤销。`, '自动切换', { onclick: openStatus, timeOut: 9000 });
+      if (changes.length) toast('success', `进「${char.name}」时换了：${changes.join('；')}。点这里查看`, '换卡', { onclick: openStatus, timeOut: 9000 });
     };
     if (!planHasChanges(plan)) tell(imported);
     else {
@@ -316,6 +281,6 @@ async function applyForCard(char: Any, openStatus: () => void): Promise<void> {
       disabled.length && `未启用：${disabled.map((p) => p.name).join('、')}`,
       missing.length && `未安装：${missing.map((p) => p.name).join('、')}`,
     ].filter(Boolean);
-    toast('warning', `「${char.name}」需要的插件${parts.join('；')}。点这里处理。`, '自动切换', { onclick: openStatus, timeOut: 9000 });
+    toast('warning', `「${char.name}」需要的插件${parts.join('；')}。点这里处理。`, '换卡', { onclick: openStatus, timeOut: 9000 });
   }
 }

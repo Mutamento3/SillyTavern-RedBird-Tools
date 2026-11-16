@@ -12,7 +12,7 @@ import './look/look.css';
 import { LOOK_COPY } from './ui/copy';
 import { installLongTaskLog, slow, withTimeout } from './st/perf';
 import { applyLook, lookOn, retireOldTheme, setLook, useBuiltInLook, watchStThemeSwitch, watchSurface } from './look/look';
-import { cardLookEnabled, cardLookTick, installCardLook, setCardLookEnabled } from './look/cardLook';
+import { installCardLook } from './look/cardLook';
 import { ctx, preloadModules, reloadChatSafe, saveSettings, settings, toast } from './st/st';
 import { DEFAULT_THINK_TAGS, parseThinkTags, prefixTag } from './core/think';
 import { installThinkFold, refreshThinkFold, thinkFoldSupported, thinkTags } from './tools/thinkFold';
@@ -33,8 +33,9 @@ import { SheetHost } from './shell/Sheet';
 import { ImportDialog } from './ui/ImportDialog';
 import { Shell, initShellState, setShellEnabled, shellOn } from './shell/Shell';
 import { installCardsWatch } from './tools/cards/cards';
-import { autoApplyOnSwitch } from './tools/env/autoapply';
+import { autoApplyOnSwitch, settleOnStart } from './tools/env/autoapply';
 import { installEnvWatch, refreshEnv } from './tools/env/env';
+import { migrateAll } from './tools/env/setup';
 import { refreshStatus } from './shell/EnvStatus';
 import { captures, installFlowCapture } from './tools/flow/capture';
 import { installVarsWatch } from './tools/vars/vars';
@@ -117,9 +118,7 @@ function addSettingsDrawer(): void {
         </div>
         <div class="rbt-set-group">
           <div class="rbt-set-title">换卡时</div>
-          ${row('rbt_auto_switch', '自动换成这张卡的预设、世界书和正则', '随时可以撤销')}
           ${row('rbt_auto_world', '自动导入卡里自带的世界书', '导入后绑到这张卡上')}
-          ${row('rbt_card_look', '换成这张卡的美化', '回首页或换卡时，换回全局美化')}
         </div>
         <div class="rbt-set-foot">
           <span>版本 <span id="rbt_version"></span></span>
@@ -151,11 +150,8 @@ function addSettingsDrawer(): void {
   const mesCb = bind('rbt_mes_layout', () => mesLayoutOn.value, (v) => setMesLayout(v));
   mesLayoutOn.subscribe((v) => { mesCb.checked = v; });
   shellOn.subscribe((v) => { mesCb.closest('label')?.toggleAttribute('hidden', !v); });
-  bind('rbt_auto_switch', () => settings().autoApplyEnv, (v) => { settings().autoApplyEnv = v; saveSettings(); });
   bind('rbt_auto_world', () => settings().autoImportWorld, (v) => { settings().autoImportWorld = v; saveSettings(); });
   bindThinkFold(wrap, bind);
-  const cardLookCb = bind('rbt_card_look', () => cardLookEnabled(), (v) => setCardLookEnabled(v));
-  cardLookTick.subscribe(() => { cardLookCb.checked = cardLookEnabled(); });
   const ver = wrap.querySelector<HTMLElement>('#rbt_version');
   if (ver) ver.textContent = installedVersion() || '?';
   wrap.querySelector('#rbt_check_update')?.addEventListener('click', () => { void checkForUpdate(true); });
@@ -248,6 +244,8 @@ async function init(): Promise<void> {
   // 最多等 5 秒：网慢时别让整个工具箱出不来
   await withTimeout(installStore(), 5000, false, '读取工具箱存档');
   installModelGuard();
+  // 旧版「记住的配套」转成本卡专用（store 合并回来的旧格式，读的时候也会再转）
+  migrateAll();
 
   configureViews({
     openInDock: (v) => openPanel(v),
@@ -258,8 +256,8 @@ async function init(): Promise<void> {
 
   installFlowCapture();
   installVarsWatch();
-  installEnvWatch(legacy);
-  installCardsWatch(legacy);
+  installEnvWatch();
+  installCardsWatch();
 
   const root = document.createElement('div');
   root.id = 'rbt-root';
@@ -289,6 +287,8 @@ async function init(): Promise<void> {
   const es = ctx().eventSource;
   if (typeof es.makeFirst === 'function') es.makeFirst(ctx().eventTypes.CHAT_CHANGED, onSwitch);
   else es.on(ctx().eventTypes.CHAT_CHANGED, onSwitch);
+  // 页面打开时停在首页：上次离开前换上的本卡专用还留着，换回全局（开着聊天的话，换聊天时会处理）
+  setTimeout(settleOnStart, 3000);
 
   // 模型 / API / 预设在酒馆里改了：刷新「需要注意」和工具箱按钮上的小点
   for (const ev of ['CHATCOMPLETION_MODEL_CHANGED', 'CHATCOMPLETION_SOURCE_CHANGED', 'OAI_PRESET_CHANGED_AFTER', 'WORLDINFO_SETTINGS_UPDATED']) {

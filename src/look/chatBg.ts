@@ -4,7 +4,7 @@
  * 锁 / 解锁走酒馆的 /lockbg、/unlockbg 命令。
  */
 import { signal } from '@preact/signals';
-import { ctx, runSlash } from '../st/st';
+import { ctx, currentCharacter, runSlash } from '../st/st';
 
 /** 背景换了、锁了、解锁了：酒馆都会改 #bg1 的行内样式，看着它就知道要重画。 */
 export const bgTick = signal(0);
@@ -60,12 +60,15 @@ export async function loadBgFiles(): Promise<void> {
 
 /** 锁定的是这个存档自己上传的背景（不在背景库里），下拉框里单独一项。 */
 export const CUSTOM_BG = '__rbt_custom__';
+/** 用这张卡的头像（卡的原图）当背景：直接指向酒馆里的卡图，不复制、不进背景库。 */
+export const AVATAR_BG = '__rbt_avatar__';
 
 /** 现在锁定的是哪个文件（没锁是 ''；锁的是这个存档自己上传的背景时是 CUSTOM_BG）。 */
 export function lockedFile(): string {
   void bgTick.value;
   const u: string = ctx().chatMetadata?.custom_background ?? '';
   if (!u) return '';
+  if (/url\(\s*["']?\/?characters\//.test(u)) return AVATAR_BG;
   const p = u.match(/url\(\s*["']?\/?backgrounds\/([^"')]+)["']?\s*\)/)?.[1];
   return p ? decodeURIComponent(p) : CUSTOM_BG;
 }
@@ -78,7 +81,9 @@ export async function setChatBg(file: string | null): Promise<void> {
   const c = ctx();
   if (!file) { await runSlash('/unlockbg'); bgTick.value++; return; }
   if (file === CUSTOM_BG) return;
-  const url = `url("backgrounds/${encodeURIComponent(file)}")`;
+  const avatar: string | undefined = currentCharacter()?.avatar;
+  if (file === AVATAR_BG && !avatar) return;
+  const url = file === AVATAR_BG ? `url("characters/${encodeURIComponent(avatar!)}")` : `url("backgrounds/${encodeURIComponent(file)}")`;
   if (!c.chatMetadata) return;
   c.chatMetadata.custom_background = url;
   c.saveMetadataDebounced?.();

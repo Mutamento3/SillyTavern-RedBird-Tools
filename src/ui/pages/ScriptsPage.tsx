@@ -67,7 +67,7 @@ function scriptSub(s: ThScript): string {
 const folderOpen = signal<Record<string, boolean>>({});
 const FOLD_OVER = 5;
 
-function NodeRows({ g }: { g: ThGroup }) {
+export function NodeRows({ g }: { g: ThGroup }) {
   const set = (id: string) => (v: boolean) => { void setNodeEnabled(g, id, v); };
   const rows: preact.JSX.Element[] = [];
   for (const n of g.nodes) {

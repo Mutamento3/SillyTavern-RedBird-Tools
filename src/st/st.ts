@@ -157,6 +157,12 @@ export function escHtml(v: unknown): string {
 }
 
 /** ST's confirm popup with plain-text title and body (escaped). Resolves to whether the user confirmed. */
+/** 确认框：标题、一句说明、一行灰色小字；按钮是酒馆自己的「取消」（跟着酒馆的语言）和 ok（比如「确认更新」），确认在右边。 */
+export async function confirmBox(title: string, text: string, note: string, ok: string): Promise<boolean> {
+  const html = `<div class="rbt-confirm"><p>${escHtml(text)}</p><small>${escHtml(note)}</small></div>`;
+  return !!(await ctx().Popup?.show?.confirm?.(escHtml(title), html, { okButton: ok, cancelButton: true, leftAlign: true }));
+}
+
 export async function confirmText(title: string, text: string): Promise<boolean> {
   return !!(await ctx().Popup?.show?.confirm?.(escHtml(title), escHtml(text)));
 }
@@ -182,9 +188,9 @@ export interface RbtSettings {
   mesLayoutTipThemes?: string[];
   /** 电脑上已经提醒过「推荐用红鸟适配美化」的主题名 */
   lookTipThemes?: string[];
-  /** 换卡时自动把预设、全局世界书、全局正则切成这张卡的配套环境。 */
-  autoApplyEnv: boolean;
   profiles: Record<string, EnvProfile>;
+  /** 进卡前的原值（见 Baseline）。 */
+  baseline?: Baseline;
   /** 角色档案: hand-filled info per card avatar. */
   cards: Record<string, CardRecord>;
   /** 角色档案: which extension / card / preset a global regex script belongs to, by script id. */
@@ -221,21 +227,34 @@ export interface RbtSettings {
 }
 
 /**
- * The environment remembered for one card. Every part is optional: a profile may only carry the
- * recommended preset (set from 角色档案), in which case global lorebooks/regex are not compared.
+ * 一张卡的「本卡专用」：只存和全局不一样的那几项，没有这一项 = 用全局（酒馆当前的设置）。
+ * 在角色档案里改了就存进来（见 tools/env/setup.ts）。
  */
 export interface EnvProfile {
-  savedAt: string;
   cardName: string;
-  globalWorlds?: string[];
-  globalRegexEnabled?: string[];
+  updatedAt?: string;
   preset?: { api: string; name: string };
-  /** The model this card plays best with (switched to on card change). */
   model?: ModelChoice;
   /** 卡的美化：和这张卡聊天时整个界面换成这套酒馆主题（见 look/cardLook.ts）。 */
   theme?: string;
-  /** Last change of any part (savedAt is when the global setup was remembered). */
-  updatedAt?: string;
+  /** 全局世界书在这张卡开 / 关（按书名）。 */
+  worlds?: Record<string, boolean>;
+  /** 全局正则在这张卡开 / 关（按正则 id）。 */
+  regex?: Record<string, boolean>;
+  /** 旧版「记住的配套」（整份清单），读到就转成上面两项（见 setup.ts migrate）。 */
+  globalWorlds?: string[];
+  globalRegexEnabled?: string[];
+  savedAt?: string;
+}
+
+/**
+ * 进卡前被换掉的那几项原来是什么（before）、换成了什么（after）。离卡时：还是 after 的换回 before；
+ * 玩家在别处改过的：本卡专用的项记进这张卡，其他的当全局，不动。存在设置里，刷新页面后还在。
+ * 键：preset / model / w:书名 / r:正则 id。
+ */
+export interface Baseline {
+  avatar: string;
+  items: Record<string, { before: unknown; after: unknown }>;
 }
 
 export function settings(): RbtSettings {
@@ -245,7 +264,6 @@ export function settings(): RbtSettings {
   s.toastOnCardSwitch ??= true;
   // 新装的人先用酒馆原来的界面 + 工具箱；三栏界面在设置里或 /rbt shell 打开
   s.shellEnabled ??= false;
-  s.autoApplyEnv ??= true;
   s.profiles ??= {};
   s.cards ??= {};
   s.regexOwners ??= {};

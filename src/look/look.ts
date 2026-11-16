@@ -27,9 +27,11 @@ export const lookId = signal('dark');
 export const lookOn = signal(false);
 /** 卡的美化盖在上面时，自带美化先让开（设置不变，离开那张卡就回来）。见 cardLook.ts */
 export const lookSuspended = signal(false);
-/** 现在页面上真的在用自带美化吗（开着、而且没被卡的美化暂时盖住） */
+/** 这张卡专用的是红鸟自带美化的某一套（dark / light / warm）：和这张卡聊天时用它，设置不变。见 cardLook.ts */
+export const lookOverride = signal<string | null>(null);
+/** 现在页面上真的在用自带美化吗（开着或者这张卡专用它，而且没被卡的美化暂时盖住） */
 export function lookShown(): boolean {
-  return lookOn.value && !lookSuspended.value;
+  return (lookOn.value || !!lookOverride.value) && !lookSuspended.value;
 }
 /** Set while the toolbox itself switches ST's theme dropdown, so the watcher below ignores it. */
 let switching = false;
@@ -46,10 +48,13 @@ export function applyLook(): void {
   lookOn.value = !!s.look;
   accentId.value = s.accent ?? 'blue';
   lookId.value = LOOKS.some((l) => l.id === s.lookId) ? s.lookId! : 'dark';
+  // 这张卡专用红鸟自带美化的某一套：页面上用它，设置里的 lookId 不动
+  const ov = lookOverride.value;
+  const eff = ov && LOOKS.some((l) => l.id === ov) ? ov : lookId.value;
   const root = document.documentElement;
   const shown = lookShown();
   root.classList.toggle('rbt-look', shown);
-  for (const l of LOOKS) root.classList.toggle(`rbt-look-${l.id}`, shown && lookId.value === l.id && l.id !== 'dark');
+  for (const l of LOOKS) root.classList.toggle(`rbt-look-${l.id}`, shown && eff === l.id && l.id !== 'dark');
   root.style.setProperty('--rbd-accent', accentColor());
   readWidth.value = s.readWidth ?? 'normal';
   root.classList.toggle('rbt-read-wide', readWidth.value === 'wide');

@@ -245,7 +245,7 @@ function Item({ it, onChange, cardName, nested, children }: {
       {(bindWorld || bindPreset || bindTheme || act) && (
         <div class="rbt-imp-actions">
           {bindWorld && <CheckRow label={`绑到「${cardName}」上`} detail={it.note || undefined} checked={!!it.toCard} onChange={(v) => onChange({ toCard: v })} />}
-          {bindPreset && <CheckRow label={`设为「${cardName}」的推荐预设`} detail="换到这张卡时自动换成它" checked={!!it.toCard} onChange={(v) => onChange({ toCard: v })} />}
+          {bindPreset && <CheckRow label={`设为「${cardName}」专用的预设`} detail="进这张卡时换成它" checked={!!it.toCard} onChange={(v) => onChange({ toCard: v })} />}
           {bindTheme && <CheckRow label={`设为「${cardName}」的美化`} detail="和这张卡聊天时，整个界面换成它" checked={!!it.toCard} onChange={(v) => onChange({ toCard: v })} />}
           {act && <CheckRow label={act.label} detail={act.detail} checked={it.activate} onChange={(v) => onChange({ activate: v })} />}
         </div>

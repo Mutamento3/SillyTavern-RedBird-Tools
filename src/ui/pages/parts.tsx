@@ -2,57 +2,27 @@
  * 「这张卡」页面用到的各个分区（原「角色档案 · 这张卡」）。
  */
 import { RELOAD_COPY, reloadAdvised, reloadPage } from '../../tools/scripts/reload';
-import { EditButton, editRegex, openRegexManager, openScriptManager } from './GlobalPage';
-import { thInstalled } from '../../tools/scripts/th';
 import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
-import { normalizeUrl, splitLinks, type BookDiff, type RegexOwner } from '../../core/cards';
-import { ctx, currentCharacter, loaded, saveSettings, settings, confirmText, toast } from '../../st/st';
-import { undoable } from '../undo';
+import { useState } from 'preact/hooks';
+import { normalizeUrl, splitLinks } from '../../core/cards';
+import { ctx, currentCharacter, loaded, toast } from '../../st/st';
 import { openFloatMenu } from '../floatMenu';
 import {
-  allCharacters,
   archiveTarget,
-  archiveVersion,
-  buildOverview,
-  cardInfo,
-  cardsMissingWorld,
-  checkWorld,
-  currentPresetName,
-  dropRecord,
-  ensureFullCharacter,
-  exportArchive,
   extStatus,
-  findChar,
-  globalRegexScripts,
-  guessRegexOwner,
-  importAllMissingWorlds,
-  importArchive,
-  importCardWorld,
   installedExtensions,
-  presetApi,
-  presetNames,
-  presetRegexCount,
-  relink,
   requiredExtensions,
-  setCardModel,
-  setRecommendedPreset,
-  setRegexOwner,
-  switchPreset,
   thumbnailUrl,
   updateRecord,
-  worldNames,
   type CardInfo,
   type ExtStatus,
 } from '../../tools/cards/cards';
 import { Chip } from '../common';
 import { SourceLine } from '../SourceEditor';
-import { ModelPicker } from '../ModelPicker';
 import { openDrawer } from '../../shell/drawers';
 import { closeSheet } from '../views';
 import { openBookInEditor } from '../../shell/worldNote';
-import { currentModel, modelLabel, sameModel, setModel, withoutModelGuard } from '../../tools/model';
 
 export const OK = '#2fbf8f';
 export const WARN = '#f0a43a';
@@ -289,7 +259,7 @@ export function SourceSection({ info, bare }: { info: CardInfo; bare?: boolean }
 // ---------------------------------------------------- preset & extensions ---
 
 /** 打开酒馆的世界书面板，并选中这本书。 */
-function openWorldInST(name: string): void {
+export function openWorldInST(name: string): void {
   openDrawer('worldinfo');
   setTimeout(() => openBookInEditor(name), 300);
 }
@@ -304,11 +274,6 @@ function IconBtn({ icon, title, onClick }: { icon: string; title: string; onClic
   return <button type="button" class="rbt-iconbtn" title={title} aria-label={title} onClick={onClick}><i class={`fa-solid ${icon}`} /></button>;
 }
 
-/** 正在用的就是推荐的：一个绿色的勾，不写字。 */
-function InUse({ title }: { title: string }) {
-  return <i class="fa-solid fa-circle-check rbt-inuse" title={title} aria-label={title} />;
-}
-
 /** 换了带脚本的预设、还没刷新：琥珀色一行 + 「刷新页面」。只在 name 就是那个预设时出现。 */
 export function ReloadNotice({ name, bare }: { name: string; /** 角色档案里正在聊的卡：「需要注意」里已经有这个按钮，这里只说状态 */ bare?: boolean }) {
   if (reloadAdvised.value !== name) return null;
@@ -319,80 +284,6 @@ export function ReloadNotice({ name, bare }: { name: string; /** 角色档案里
     </div>
   );
 }
-
-/** 正在用的和推荐的不一样：琥珀色一行，写出正在用的是什么，右边一个按钮换过去。 */
-function Differs({ now, children }: { now: string; children?: ComponentChildren }) {
-  return (
-    <div class="rbt-differ">
-      <span class="rbt-differ-text"><span class="rbt-differ-k">正在用</span>{now}</span>
-      {children}
-    </div>
-  );
-}
-
-export function PresetSection({ info }: { info: CardInfo }) {
-  const names = presetNames();
-  const rec = info.preset;
-  const current = currentPresetName();
-  const otherApi = rec && rec.api !== presetApi();
-  const recModel = settings().profiles[info.avatar]?.model;
-  const fallbackModel = rec && settings().presetInfo[rec.name]?.model ? settings().presetInfo[rec.name]!.model! : undefined;
-  const wantModel = recModel ?? fallbackModel;
-  const curModel = currentModel();
-  const live = info.isCurrent;
-  const presetDiffers = live && !!rec && !otherApi && !!current && rec.name !== current;
-  const modelDiffers = live && !!wantModel && !!curModel && !sameModel(wantModel, curModel);
-  return (
-    <Section title="推荐预设和模型" actions={<>
-      <OpenBtn label="预设设置" title="打开酒馆的预设面板" onClick={() => openDrawer('preset')} />
-      <OpenBtn label="API 设置" title="打开酒馆的 API 面板" onClick={() => openDrawer('api')} />
-    </>}>
-      <div class="rbt-frow">
-        <span class="rbt-frow-k">预设</span>
-        {/* 正在和这张卡聊天时，选了就马上换过去（不用再去预设面板里换一次） */}
-        <select class="text_pole rbt-select" value={rec?.name ?? ''} onChange={async (e) => {
-          const v = (e.currentTarget as HTMLSelectElement).value || null;
-          setRecommendedPreset(info.avatar, info.name, v);
-          if (!v && rec) { const was = rec.name; undoable(was, () => setRecommendedPreset(info.avatar, info.name, was)); }
-          if (live && v && v !== currentPresetName()) {
-            // 和换卡时一样：这是你要换的，不弹「模型被预设换掉了」；换完再换回这张卡（或这个预设）推荐的模型
-            const want = recModel ?? settings().presetInfo[v]?.model;
-            await withoutModelGuard(async () => {
-              await switchPreset(v);
-              if (want && !sameModel(want, currentModel())) await setModel(want);
-            });
-          }
-        }}>
-          <option value="">不指定</option>
-          {rec && !names.includes(rec.name) && <option value={rec.name}>{rec.name}（已经删掉了）</option>}
-          {names.map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-        {live && rec && !otherApi && rec.name === current
-          ? (reloadAdvised.value === current ? <i class="fa-solid fa-circle-exclamation rbt-inuse rbt-inuse-warn" title={RELOAD_COPY.title} aria-label={RELOAD_COPY.title} /> : <InUse title="正在用这个预设" />)
-          : <span />}
-      </div>
-      {live && current && <ReloadNotice name={current} bare />}
-      {/* 「换成推荐的」按钮在页面顶上的「需要注意」里，这里只标出正在用的是什么，不重复放按钮 */}
-      {presetDiffers && <Differs now={current} />}
-      {live && !rec && current && <button type="button" class="rbt-linkbtn rbt-self-start" onClick={() => setRecommendedPreset(info.avatar, info.name, current)}>推荐正在用的「{current}」</button>}
-      {otherApi && <div class="rbt-hint">这个推荐是在「{rec!.api}」下设的，和现在用的 API 不同，所以不会自动换。</div>}
-
-      <div class="rbt-frow">
-        <span class="rbt-frow-k">模型</span>
-        <ModelPicker compact value={recModel} onChange={(m) => {
-          setCardModel(info.avatar, info.name, m);
-          if (!m && recModel) { const was = recModel; undoable(modelLabel(was), () => setCardModel(info.avatar, info.name, was)); }
-        }} fallback={fallbackModel ? { text: '用预设推荐的', model: fallbackModel } : undefined} />
-        {live && wantModel && curModel && sameModel(wantModel, curModel) ? <InUse title="正在用这个模型" /> : <span />}
-      </div>
-      {modelDiffers && <Differs now={modelLabel(curModel!)} />}
-      {live && !curModel && <Differs now="API 没连上" />}
-    </Section>
-  );
-}
-
-// ------------------------------------------------------------ 人设 ---
-// 绑定用的是酒馆自己的「连接」（人设 › 连接到角色）：换到这张卡时，酒馆自己会换成绑定的人设，工具箱不再另外换。
 
 export const personaTick = signal(0);
 let personaWatch = false;
@@ -442,71 +333,7 @@ export function unbindPersona(id: string, avatar: string): void {
   personaTick.value++;
 }
 
-export function PersonaSection({ info }: { info: CardInfo }) {
-  void personaTick.value;
-  useEffect(watchPersonas, []);
-  const c = ctx();
-  const names: Record<string, string> = c.powerUserSettings?.personas ?? {};
-  const cur = String(loaded.personas?.user_avatar ?? '');
-  const bound = boundPersonas(info.avatar);
-  const live = info.isCurrent;
-  const name = (id: string) => names[id] || id;
-  const multi = !!c.powerUserSettings?.persona_allow_multi_connections;
-  // 没开「允许一张卡连多个人设」时，选一个就是换掉原来绑的
-  const replaces = !multi;
-  // 可选的：还没绑的人设，现在用的排第一
-  const choices = Object.keys(names).filter((id) => !bound.includes(id)).sort((a, b) => (a === cur ? -1 : b === cur ? 1 : name(a).localeCompare(name(b), 'zh')));
-  const locked: string = live ? String(c.chatMetadata?.persona ?? '') : '';
-  return (
-    <Section title="user 人设" hint="换到这张卡时，酒馆会自动换成绑定的人设。" actions={
-      <OpenBtn label="人设设置" title="打开酒馆的人设面板" onClick={() => openDrawer('persona')} />
-    }>
-      {bound.map((id) => (
-        <div key={id} class="rbt-persona-row">
-          <img class="rbt-persona-avatar" src={c.getThumbnailUrl?.('persona', id) ?? `User Avatars/${id}`} alt="" />
-          <span class="rbt-persona-name">{name(id)}</span>
-          {live && id === cur ? <InUse title="正在用这个人设" /> : <span />}
-          {live && id !== cur && (
-            <button type="button" class="rbt-btn rbt-btn-small" onClick={async () => { await loaded.personas?.setUserAvatar?.(id); personaTick.value++; }}>换上</button>
-          )}
-          <button type="button" class="rbt-btn rbt-btn-small" title={`不再把「${name(id)}」绑在这张卡上`} onClick={() => { unbindPersona(id, info.avatar); undoable(name(id), () => bindPersona(id, info.avatar)); }}>解绑</button>
-        </div>
-      ))}
-      {!bound.length && <small class="rbt-muted">没有绑定人设。</small>}
-      {live && bound.length > 0 && !bound.includes(cur) && cur && !locked && <Differs now={name(cur)} />}
-      {/* 存档锁定的人设会盖过卡上绑的：只在真的锁了、又不是卡上绑的那个时说 */}
-      {live && locked && !bound.includes(locked) && (
-        <small class="rbt-muted rbt-persona-lock"><i class="fa-solid fa-lock fa-fw" aria-hidden="true" /> 这个存档锁定了人设「{name(locked)}」，会盖过卡上绑的。只对这个存档。</small>
-      )}
-      {/* 直接选一个人设绑到这张卡，不用先去人设面板切过去；正在聊的卡顺便换上 */}
-      {choices.length > 0 && (
-        <div class="rbt-frow">
-          <span class="rbt-frow-k">绑定</span>
-          <select class="text_pole rbt-select" value="" onChange={async (e) => {
-            const id = (e.currentTarget as HTMLSelectElement).value;
-            if (!id) return;
-            const before = bound.slice();
-            bindPersona(id, info.avatar);
-            if (live && id !== cur) await loaded.personas?.setUserAvatar?.(id);
-            personaTick.value++;
-            if (replaces && before.length) {
-              toast('success', `已把「${info.name}」的人设换成「${name(id)}」。点这里撤销。`, 'RedBird 工具箱', {
-                onclick: () => { unbindPersona(id, info.avatar); for (const b of before) bindPersona(b, info.avatar); },
-                timeOut: 8000,
-              });
-            }
-          }}>
-            <option value="">{replaces && bound.length ? '换成别的人设…' : bound.length ? '再绑一个人设…' : '选一个人设…'}</option>
-            {choices.map((id) => <option key={id} value={id}>{name(id)}{id === cur ? '（现在用的）' : ''}</option>)}
-          </select>
-          <span />
-        </div>
-      )}
-    </Section>
-  );
-}
-
-export function ExtSection({ info }: { info: CardInfo }) {
+export function ExtSection({ info, bare }: { info: CardInfo; bare?: boolean }) {
   const installed = installedExtensions();
   const list = requiredExtensions(info);
   const manual = info.record?.extensions ?? [];
@@ -522,8 +349,11 @@ export function ExtSection({ info }: { info: CardInfo }) {
     setName('');
     setUrl('');
   };
+  // 角色档案的「插件」一块（收起 / 展开）里只要内容；全局工具箱的卡详情还是一整块
+  const Wrap = ({ children }: { children: ComponentChildren }) => (bare ? <div class="rbt-fold-list">{children}</div>
+    : <Section title="需要的插件" actions={<OpenBtn label="插件设置" title="打开酒馆的扩展面板，安装和设置插件" onClick={() => openDrawer('extensions')} />}>{children}</Section>);
   return (
-    <Section title="需要的插件" actions={<OpenBtn label="插件设置" title="打开酒馆的扩展面板，安装和设置插件" onClick={() => openDrawer('extensions')} />}>
+    <Wrap>
       {list.map((l, i) => {
         const st = extStatus(l.req, installed);
         const chip = STATUS_CHIP[st.status];
@@ -555,7 +385,7 @@ export function ExtSection({ info }: { info: CardInfo }) {
           <button class="rbt-btn" disabled={!name.trim()} onClick={add}>添加</button>
         </div>
       )}
-    </Section>
+    </Wrap>
   );
 }
 
@@ -571,98 +401,5 @@ export function DiffList({ title, entries }: { title: string; entries: { comment
         {entries.length > 30 && <li class="rbt-muted">…还有 {entries.length - 30} 条</li>}
       </ul>
     </details>
-  );
-}
-
-export function WorldSection({ info }: { info: CardInfo }) {
-  const [diff, setDiff] = useState<BookDiff | null | 'loading'>('loading');
-  const [busy, setBusy] = useState(false);
-  const w = info.world;
-  useEffect(() => {
-    let alive = true;
-    setDiff('loading');
-    checkWorld(info).then((d) => { if (alive) setDiff(d); }).catch(() => { if (alive) setDiff(null); });
-    return () => { alive = false; };
-  }, [info.avatar, w.name, w.state, archiveVersion.value]);
-
-  const run = async (overwrite: boolean) => {
-    if (overwrite) {
-      const ok = await confirmText('用卡里的版本覆盖？',
-        `世界书「${w.importName}」会换成卡里自带的版本，只在现有世界书里的条目会丢失（可能是你或脚本加的）。覆盖前会自动备份。`);
-      if (!ok) return;
-    }
-    setBusy(true);
-    try { await importCardWorld(info.avatar, { overwrite }); } finally { setBusy(false); }
-  };
-
-  const nameTaken = worldNames().includes(w.importName);
-  return (
-    <Section title="世界书" actions={w.state === 'ok' && w.name ? <OpenBtn label="编辑" title="在酒馆的世界书面板里打开" onClick={() => openWorldInST(w.name)} /> : undefined}>
-      {w.state === 'none' && <div class="rbt-muted">这张卡没有世界书。</div>}
-      {w.state !== 'none' && (
-        <div class="rbt-link-row">
-          <span class="rbt-env-name">{w.name || w.importName}</span>
-          {w.state === 'ok' && <InUse title="已绑定到这张卡" />}
-          {w.state === 'missing' && <Chip color={BAD}>找不到这本世界书</Chip>}
-          {w.state === 'unbound' && <Chip color={WARN}>还没导入</Chip>}
-          {w.embedded !== null && <small class="rbt-muted">{w.embedded} 条</small>}
-        </div>
-      )}
-      {(w.state === 'missing' || w.state === 'unbound') && w.embedded !== null && (
-        nameTaken
-          ? <div class="rbt-warn rbt-row-between"><span>已有一本同名世界书「{w.importName}」，所以没有自动导入。</span><button class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => run(true)}>用卡里的版本覆盖</button></div>
-          // 正在聊的卡：「需要注意」里已经有「导入并绑定」，同一页不放两个
-          : info.isCurrent ? null : <div class="rbt-row"><button class="rbt-btn rbt-btn-primary" disabled={busy} onClick={() => run(false)}>{busy ? '正在导入…' : '导入并绑定'}</button></div>
-      )}
-      {w.state === 'ok' && w.embedded !== null && (
-        diff === 'loading' ? null
-          : diff && (diff.onlyCard.length || diff.onlyWorld.length) ? (
-            <div class="rbt-warn">
-              <div>卡里自带的和现在用的不一样：卡里 {diff.card} 条，现在 {diff.world} 条，其中 {diff.same} 条相同。</div>
-              <small>只在现在这本里的，可能是你或脚本加的；只在卡里的，多半是作者更新了卡。</small>
-              <DiffList title="只在卡里" entries={diff.onlyCard} />
-              <DiffList title="只在现在这本里" entries={diff.onlyWorld} />
-              <div class="rbt-row"><button class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => run(true)}>用卡里的版本覆盖</button></div>
-            </div>
-          ) : null
-      )}
-      {w.extra.length > 0 && <div class="rbt-card-sub"><small class="rbt-muted">附加世界书：</small>{w.extra.map((b) => <Chip key={b}>{b}</Chip>)}</div>}
-    </Section>
-  );
-}
-
-// ------------------------------------------------------------- regex ---
-
-export function RegexSection({ info }: { info: CardInfo }) {
-  // 装了酒馆助手时，脚本在下面单独一块（能开关）；这里只管正则
-  const th = thInstalled();
-  const showScripts = !th && info.scripts.total > 0;
-  const owned = globalRegexScripts().filter((r) => {
-    const o = settings().regexOwners[r.id];
-    return o?.kind === 'card' && o.key === info.avatar;
-  });
-  return (
-    <Section title={th ? '正则' : '正则与脚本'} actions={info.regex.total > 0 || showScripts ? <>
-      {info.regex.total > 0 && <OpenBtn label={showScripts ? '编辑正则' : '编辑'} title="在酒馆的正则面板里编辑这张卡的正则" onClick={() => { void withCardOpen(info, () => openRegexManager('scoped')); }} />}
-      {showScripts && <OpenBtn label={info.regex.total > 0 ? '编辑脚本' : '编辑'} title="在酒馆助手里编辑这张卡的脚本" onClick={() => { void withCardOpen(info, openScriptManager); }} />}
-    </> : undefined}>
-      <div class="rbt-link-row">
-        <span class="rbt-frow-k">卡里的正则</span>
-        <span>{info.regex.total ? `${info.regex.enabled} / ${info.regex.total} 条开着` : '没有'}</span>
-        {info.regex.total > 0 && (info.regex.allowed ? <InUse title="已允许运行" /> : <Chip color={BAD}>未允许运行</Chip>)}
-      </div>
-      {!th && <div class="rbt-link-row">
-        <span class="rbt-frow-k">角色脚本</span>
-        <span>{info.scripts.total ? `${info.scripts.total} 个` : '没有'}</span>
-        {info.scripts.total > 0 && (info.scripts.enabled ? <InUse title="已启用" /> : <Chip color={BAD}>没有启用</Chip>)}
-      </div>}
-      {showScripts && info.scripts.names.length > 0 && <div class="rbt-chips">{info.scripts.names.map((n, i) => <Chip key={i}>{n}</Chip>)}</div>}
-      {owned.length > 0 && (
-        <div class="rbt-card-sub">
-          <small class="rbt-muted">标为属于这张卡的全局正则：</small>
-          {owned.map((r) => <div key={r.id} class="rbt-link-row"><span>{r.scriptName}</span>{r.disabled ? <Chip>关</Chip> : <Chip color={OK}>开</Chip>}<EditButton title="编辑这条正则" onClick={() => editRegex(r.id)} /></div>)}
-        </div>
-      )}
-    </Section>
   );
 }
