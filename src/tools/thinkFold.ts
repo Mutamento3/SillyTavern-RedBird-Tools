@@ -28,11 +28,21 @@ export function thinkFoldSupported(): boolean {
   return typeof ctx().messageFormatter?.addHook === 'function';
 }
 
+/** 这条消息正在流式生成（没写完的思考块才是「思考中」；停了、断了就不是）。 */
+function generating(id: number): boolean {
+  const sp = ctx().streamingProcessor;
+  return !!sp && Number(sp.messageId) === id && !sp.isFinished && !sp.isStopped;
+}
+
 function foldHtml(think: string, closed: boolean, id: number): string {
   const open = id >= 0 && opened.has(id) ? ' open' : '';
-  return `<details class="rbt-think"${open} data-rbt-mesid="${id}"><summary>${closed ? '思考过程' : '思考中…'}</summary>`
+  const stopped = !closed && !generating(id);
+  // 停在思考中途：框外面放「继续生成」，不用展开就看得到。只有最后一条能接着写。
+  const last = id === (ctx().chat?.length ?? 0) - 1;
+  return `<details class="rbt-think"${open} data-rbt-mesid="${id}"><summary>${closed ? '思考过程' : stopped ? '思考到一半停了' : '思考中…'}</summary>`
     + `<div class="rbt-think-body">${escHtml(think.trim())}</div>`
-    + '<div class="rbt-think-foot"><span class="rbt-think-set">在设置里修改 ›</span></div></details>';
+    + '<div class="rbt-think-foot"><span class="rbt-think-set">在设置里修改 ›</span></div></details>'
+    + (stopped && last ? '<div class="rbt-think-stop"><span class="rbt-think-go">继续生成</span></div>' : '');
 }
 
 /** 打开扩展设置里工具箱的「聊天」分组（思考框底部那行字点进来）。 */
@@ -84,6 +94,7 @@ export function installThinkFold(): void {
   document.addEventListener('click', (e) => {
     const t = e.target as HTMLElement | null;
     if (t?.closest('.custom-rbt-think-set')) { e.preventDefault(); openThinkSettings(); return; }
+    if (t?.closest('.custom-rbt-think-go')) { e.preventDefault(); void ctx().executeSlashCommandsWithOptions?.('/continue'); return; }
     const sum = t?.closest('.custom-rbt-think > summary');
     if (!sum) return;
     const box = sum.parentElement as HTMLDetailsElement;
@@ -103,6 +114,18 @@ export function installThinkFold(): void {
       if (s?.closed) m.mes = (s.lead + s.rest).replace(/^\s+/, '');
     });
   };
+  // 生成停了（点停止、出错）：酒馆不一定重画最后一条，「思考中…」会一直留着。停了以后重画一次。
+  const redrawLast = () => setTimeout(() => {
+    const id = (c.chat?.length ?? 0) - 1;
+    const m = c.chat?.[id];
+    if (!m || m.is_user || m.is_system || !settings().thinkFold) return;
+    const s = splitThink(String(m.extra?.display_text ?? m.mes ?? ''), thinkTags());
+    if (s && !s.closed) c.updateMessageBlock?.(id, m);
+  }, 300);
+  for (const k of ['GENERATION_STOPPED', 'GENERATION_ENDED']) {
+    const ev = c.eventTypes?.[k];
+    if (ev) c.eventSource?.on(ev, redrawLast);
+  }
   // 工具箱加载前已经画好的消息
   refreshThinkFold();
 }

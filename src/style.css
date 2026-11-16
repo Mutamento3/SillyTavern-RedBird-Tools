@@ -1362,9 +1362,15 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 }
 .mes_text .custom-rbt-think-foot { padding: 6px 0 0 16px; font-size: 12px; }
 .mes_text .custom-rbt-think-set { color: var(--rbd-accent, var(--SmartThemeQuoteColor, inherit)); cursor: pointer; }
+.mes_text .custom-rbt-think-stop { margin: -0.2em 0 0.6em 2px; }
+.mes_text .custom-rbt-think-go {
+  display: inline-flex; align-items: center; min-height: 32px; padding: 0 14px; border-radius: 8px; cursor: pointer; user-select: none;
+  background: var(--rbd-accent, var(--SmartThemeQuoteColor, #0a84ff)); color: #fff; font-size: calc(var(--mainFontSize, 15px) * 0.9); font-weight: 500;
+}
 @media (max-width: 1000px) {
   .mes_text .custom-rbt-think > summary { min-height: 36px; }
   .mes_text .custom-rbt-think-set { display: inline-flex; align-items: center; min-height: 36px; }
+  .mes_text .custom-rbt-think-go { min-height: 40px; }
 }
 
 /* 「聊天」分组：标签名单可以折行；点「修改」后下面出现输入框 */
