@@ -1640,8 +1640,9 @@ body.rbt-shell #select_chat_div .select_chat_block {
 }
 body.rbt-shell #select_chat_div .select_chat_block > .flex-container,
 body.rbt-shell #select_chat_div .select_chat_block > .flex-container > .flex-container { display: contents; }
+/* 酒馆给存档名写了 width: fit-content：名字长了会撑出这一格，盖住「⋯」。宽度跟着格子走，放不下就显示省略号 */
 body.rbt-shell #select_chat_div .select_chat_block .select_chat_block_filename {
-  grid-area: name; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  grid-area: name; width: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-size: 15px; font-weight: 600; color: var(--rbd-text1, var(--SmartThemeBodyColor)); opacity: 1;
 }
 body.rbt-shell #select_chat_div .select_chat_block :is(.renameChatButton, .select_chat_info, .select_chat_actions) { display: none; }

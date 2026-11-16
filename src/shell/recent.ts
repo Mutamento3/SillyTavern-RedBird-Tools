@@ -1,6 +1,7 @@
 /**
  * 三栏外壳：左栏的「最近聊天」。数据来自酒馆首页用的同一个接口 /api/chats/recent，
- * 置顶状态读酒馆首页的 pinnedChats（只读，置顶仍在酒馆首页操作，避免两边缓存打架）。
+ * 置顶状态和酒馆首页共用 accountStorage 里的 pinnedChats，键和值的写法和酒馆的 PinnedChatsManager 一样。
+ * 酒馆首页在页面加载时把它缓存一次，所以在这里改了置顶、不刷新就去酒馆首页再改，会盖掉这里的改动。
  */
 import { signal } from '@preact/signals';
 import { confirmText, ctx, currentCharacter, stModule, toast, type Any } from '../st/st';
@@ -35,6 +36,20 @@ function pinnedState(): Record<string, Any> {
 function pinKey(c: { group?: string; avatar?: string; file_name: string }): string {
   return `${c.group ? `group_${c.group}` : ''}${c.avatar ? `char_${c.avatar}` : ''}_${c.file_name}`;
 }
+
+/** 置顶 / 取消置顶，和酒馆首页的图钉按钮写同一份数据。改完就地重排，不用重新下载列表。 */
+export function togglePinnedChat(r: RecentChat): void {
+  const c = { group: r.group || undefined, avatar: r.avatar || undefined, file_name: r.fileName };
+  const state = { ...pinnedState() };
+  if (r.pinned) delete state[pinKey(c)];
+  else state[pinKey(c)] = c;
+  ctx().accountStorage.setItem('pinnedChats', JSON.stringify(state));
+  const out = recentChats.value.map((x) => (x.key === r.key ? { ...x, pinned: !r.pinned } : x));
+  out.sort(byPinThenTime);
+  recentChats.value = out;
+}
+
+const byPinThenTime = (a: RecentChat, b: RecentChat) => Number(b.pinned) - Number(a.pinned) || b.time - a.time;
 
 /** Strip markup so the preview is the actual last line of story text. */
 export function cleanPreview(text: string): string {
@@ -94,7 +109,7 @@ export async function loadRecentChats(): Promise<void> {
         messages: Number(r.chat_items ?? 0),
       });
     }
-    out.sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.time - a.time);
+    out.sort(byPinThenTime);
     recentChats.value = out;
   } catch (e) {
     console.warn('[RedBird] loading recent chats failed', e);
@@ -129,7 +144,7 @@ function patchCurrentRow(): void {
   const row: RecentChat = { ...list[i], preview: cleanPreview(last?.mes ?? ''), time: Date.now(), messages: chat.length };
   const rest = list.filter((_, j) => j !== i);
   const out = [row, ...rest];
-  out.sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.time - a.time);
+  out.sort(byPinThenTime);
   recentChats.value = out;
 }
 

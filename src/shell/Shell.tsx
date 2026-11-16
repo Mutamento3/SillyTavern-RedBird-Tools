@@ -30,6 +30,7 @@ import {
   recentLoading,
   shortTime,
   timeGroup,
+  togglePinnedChat,
   type RecentChat,
 } from './recent';
 
@@ -203,9 +204,10 @@ function GlobalButton() {
   );
 }
 
-/** 每一行右下角一个「⋯」：这张卡的所有存档、删除这个存档。 */
+/** 每一行右下角一个「⋯」：置顶、这张卡的所有存档、删除这个存档。 */
 function recentMenu(r: RecentChat, anchor: HTMLElement): void {
   openFloatMenu(anchor, `${r.name} · ${prettyChatName(r.chatId, r.name)}`, [
+    { label: r.pinned ? '取消置顶' : '置顶', icon: 'fa-thumbtack', run: () => togglePinnedChat(r) },
     { label: '所有存档', icon: 'fa-clock-rotate-left', run: async () => {
       await openRecentChat(r);
       // 等真的换到这个聊天再打开存档页（大聊天载入慢，不等的话会列出上一张卡的存档）
@@ -230,7 +232,7 @@ function RecentRow({ r, current }: { r: RecentChat; current: boolean }) {
         <span class="rbt-recent-preview">{r.preview || prettyChatName(r.chatId, r.name)}</span>
       </span>
     </button>
-    <button type="button" class="rbt-recent-more" title="所有存档、删除" aria-label="更多" aria-haspopup="menu" onClick={(e) => { e.stopPropagation(); recentMenu(r, e.currentTarget as HTMLElement); }}>
+    <button type="button" class="rbt-recent-more" title="置顶、所有存档、删除" aria-label="更多" aria-haspopup="menu" onClick={(e) => { e.stopPropagation(); recentMenu(r, e.currentTarget as HTMLElement); }}>
       <i class="fa-solid fa-ellipsis" />
     </button>
     </div>
