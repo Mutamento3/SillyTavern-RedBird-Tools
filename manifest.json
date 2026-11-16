@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.14",
+  "version": "0.6.16",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "回复停在思考中途时，思考框会写「思考到一半停了」，下面有「继续生成」按钮，点了接着写这条回复。"
+  "rbt_whats_new": "左栏「最近聊过」每个聊天的「⋯」里可以置顶了；手机存档页的「⋯」不再被长存档名挡住；浅色主题下「思考中…」按钮也看得清了。"
 }

@@ -1350,7 +1350,8 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .mes_text details.custom-rbt-think { margin: 0 0 0.6em; }
 .mes_text .custom-rbt-think > summary {
   display: inline-flex; align-items: center; gap: 8px; margin: 0.2em 2px; padding: 7px 14px; border-radius: 5px;
-  background-color: var(--grey30, color-mix(in srgb, currentColor 12%, transparent)); font-size: calc(var(--mainFontSize, 15px) * 0.9);
+  /* 底色跟着字色走：酒馆的 --grey30 是写死的深灰，浅色主题下黑字压在上面看不清 */
+  background-color: color-mix(in srgb, currentColor 12%, transparent); font-size: calc(var(--mainFontSize, 15px) * 0.9);
   list-style: none; cursor: pointer; user-select: none;
 }
 .mes_text .custom-rbt-think > summary::-webkit-details-marker { display: none; }
