@@ -15,6 +15,7 @@ import type { EnvProfile } from '../../st/st';
 import { cardIssues, envReportForView, LEVEL_ICON, statusTick } from '../../shell/EnvStatus';
 import { Empty, CheckRow } from '../common';
 import { CardScriptsSection } from './ScriptsPage';
+import { EditButton } from './GlobalPage';
 import { boundPersonas, CardHeader, ExtSection, PersonaSection, PresetSection, RegexSection, Section, SourceSection, WorldSection } from './parts';
 import { loadThemes, stThemes, themesLoading } from '../../look/look';
 import { appliedCardTheme, cardLookEnabled, cardLookTick, cardThemeOf, setCardLookEnabled } from '../../look/cardLook';
@@ -101,6 +102,7 @@ function AttentionBox({ char }: { char: unknown }) {
         <div key={i} class="rbt-attn-line">
           <i class={`fa-solid ${LEVEL_ICON.warn}`} />
           <span class="rbt-attn-text"><small>{section}</small> {line.text}{line.detail && <small class="rbt-muted"> · {line.detail}</small>}</span>
+          {line.edit && <EditButton title="编辑这条正则" onClick={line.edit} />}
           {line.action && (
             <button class="rbt-btn rbt-btn-small" disabled={busy} onClick={async () => {
               setBusy(true);
@@ -211,7 +213,10 @@ function SaveBar({ avatar }: { avatar: string }) {
   };
   return (
     <div class="rbt-save-bar" role="status">
-      <span class="rbt-save-bar-text">{what}和记住的不一样</span>
+      {/* 点了跳到「需要注意」：不一样的每一项都在那里，能逐条打开、关掉 */}
+      <button type="button" class="rbt-save-bar-text" onClick={(e) => e.currentTarget.closest('.rbt-card-page')?.querySelector('.rbt-attn')?.scrollIntoView({ block: 'start', behavior: 'smooth' })}>
+        {what}和记住的不一样 <i class="fa-solid fa-chevron-right" />
+      </button>
       <span class="rbt-save-bar-actions">
         <button class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => run(() => applyProfile({ worldsAndRegexOnly: true }))}>恢复</button>
         <button class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={busy} onClick={() => run(() => rememberProfile({ keepPreset: true }))}>记住改动</button>

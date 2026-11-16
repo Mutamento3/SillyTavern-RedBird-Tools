@@ -2,7 +2,9 @@
  * 导出诊断数据：把最近捕获的提示词归因、变量楼层、换卡体检结果存成一个 JSON 文件，
  * 写进酒馆的 data/<用户>/user/files/，方便排查问题（也方便把文件发给别人看）。
  */
-import { ctx, currentCharacter, toast } from '../st/st';
+import { ctx, currentCharacter, settings, toast } from '../st/st';
+import { lastApplied, planFor } from './env/autoapply';
+import { installedVersion } from './update';
 import { buildEnvReport } from './env/env';
 import { captures } from './flow/capture';
 import { collectFloors, floorDiffs } from './vars/vars';
@@ -37,9 +39,24 @@ export function buildDiagnostics(): unknown {
   } catch (e) {
     vars = { error: String(e) };
   }
+  // 换卡时会自动开关哪些全局正则、依据是什么（正则属于谁、上次自动改了什么）：查「和记住的不一样」要用
+  let switching: unknown = null;
+  try {
+    const plan = char ? planFor(char) : null;
+    const last = lastApplied.value;
+    switching = {
+      autoApply: !!settings().autoApplyEnv,
+      regexOwners: settings().regexOwners,
+      plan: plan && { regexOn: plan.regexOn, regexOff: plan.regexOff },
+      lastApplied: last && { cardName: last.cardName, at: new Date(last.at).toISOString(), changes: last.changes, undone: !!last.undone },
+    };
+  } catch (e) {
+    switching = { error: String(e) };
+  }
   return {
     exportedAt: new Date().toISOString(),
     tool: 'RedBird 工具箱',
+    version: installedVersion(),
     chatId: c.getCurrentChatId?.() ?? null,
     card: char?.name ?? null,
     mainApi: c.mainApi,
@@ -47,6 +64,7 @@ export function buildDiagnostics(): unknown {
     captures: captures.value.map(({ rawChat: _raw, ...cap }) => cap),
     vars,
     env,
+    switching,
   };
 }
 

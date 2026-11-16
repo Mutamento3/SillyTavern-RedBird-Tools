@@ -12,7 +12,7 @@ import { signal } from '@preact/signals';
 import { presetScriptLine } from '../scripts/notice';
 import { charaFileName, ctx, currentCharacter, loaded, reloadChatSafe, runSlash, saveSettings, settings, slashQuote, toast, type Any } from '../../st/st';
 import { cardInfo, currentPresetName, extStatus, importCardWorld, installedExtensions, presetApi, presetNames, requiredExtensions, switchPreset } from '../cards/cards';
-import { refreshEnv } from './env';
+import { refreshEnv, regexKey } from './env';
 import { currentModel, modelLabel, modelsApply, sameModel, setModel, withoutModelGuard, type ModelChoice } from '../model';
 
 const GLOBAL = 0; // ST regex SCRIPT_TYPES.GLOBAL
@@ -128,7 +128,7 @@ export function planFor(char: Any): ApplyPlan {
   // --- global regex
   for (const r of globalRegex()) {
     let want: boolean | undefined;
-    if (profile?.globalRegexEnabled) want = profile.globalRegexEnabled.includes(r.scriptName);
+    if (profile?.globalRegexEnabled) want = profile.globalRegexEnabled.includes(regexKey(r));
     else {
       const o = owners[r.id];
       if (o?.kind === 'card') want = o.key === avatar;
@@ -136,8 +136,8 @@ export function planFor(char: Any): ApplyPlan {
     }
     if (want === undefined) continue;
     const on = !r.disabled;
-    if (want && !on) plan.regexOn.push({ id: r.id, name: r.scriptName });
-    if (!want && on) plan.regexOff.push({ id: r.id, name: r.scriptName });
+    if (want && !on) plan.regexOn.push({ id: r.id, name: regexKey(r) });
+    if (!want && on) plan.regexOff.push({ id: r.id, name: regexKey(r) });
   }
 
   // --- plugins (reported; enabling needs a page reload)

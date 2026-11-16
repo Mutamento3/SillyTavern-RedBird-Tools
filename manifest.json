@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.12",
+  "version": "0.6.13",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "不怕爆思维链了：AI 回复开头的思考过程会自动收起来，生成时也不会先刷出来。不想要可以在扩展设置的「聊天」里关掉。"
+  "rbt_whats_new": "「需要注意」里能直接处理和记住的不一样的世界书、正则了：每条写明原因，正则点 ✎ 直接打开，不用再按名字去找。"
 }

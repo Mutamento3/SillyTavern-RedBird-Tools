@@ -54,6 +54,14 @@ export interface EnvSubItem {
 const RX = { GLOBAL: 0, SCOPED: 1, PRESET: 2 } as const;
 type RxType = (typeof RX)[keyof typeof RX];
 
+/**
+ * 全局正则在「记住的配套」里用的名字。记住、比对、换卡、恢复都用它，不然没名字的正则
+ * 记住时是「(未命名正则)」、比对时是空串，永远对不上。
+ */
+export function regexKey(r: Any): string {
+  return r.scriptName || '(未命名正则)';
+}
+
 function regexEffectLabel(r: Any): string {
   return [r.markdownOnly ? '只改显示' : '', r.promptOnly ? '只改发给 AI 的' : ''].filter(Boolean).join('、') || '改消息原文';
 }
@@ -191,7 +199,7 @@ export function buildEnvReport(): EnvReport {
     const ownerText = owner ? `属于${owner.kind === 'extension' ? '插件' : owner.kind === 'card' ? '角色卡' : '预设'}「${owner.label}」` : '';
     const elsewhere = owner && ((owner.kind === 'card' && owner.key !== avatar) || (owner.kind === 'preset' && owner.key !== preset.name));
     items.push({
-      id: `rx:g:${r.id ?? r.scriptName}`, scope: 'global', kind: 'regex', name: r.scriptName || '(未命名正则)',
+      id: `rx:g:${r.id ?? r.scriptName}`, scope: 'global', kind: 'regex', name: regexKey(r),
       enabled: !r.disabled, leaks: !r.disabled,
       misplaced: elsewhere && !r.disabled ? ownerText : undefined,
       detail: [regexEffectLabel(r), ownerText].filter(Boolean).join(' · '),
@@ -375,8 +383,8 @@ export async function applyProfile(opts: { worldsAndRegexOnly?: boolean } = {}):
   if (d.regexOff.length || d.regexOn.length) {
     const re = loaded.regexEngine;
     const list: Any[] = re?.getScriptsByType(RX.GLOBAL) ?? [];
-    const next = list.map((s) => (d.regexOff.includes(s.scriptName) ? { ...s, disabled: true }
-      : d.regexOn.includes(s.scriptName) ? { ...s, disabled: false } : s));
+    const next = list.map((s) => (d.regexOff.includes(regexKey(s)) ? { ...s, disabled: true }
+      : d.regexOn.includes(regexKey(s)) ? { ...s, disabled: false } : s));
     await re?.saveScriptsByType(next, RX.GLOBAL);
     saveSettings();
     await reloadChatSafe();
@@ -393,7 +401,7 @@ export async function applyProfile(opts: { worldsAndRegexOnly?: boolean } = {}):
       ...left.regexOn.map((r) => `打开正则「${r}」`),
       ...left.regexOff.map((r) => `关掉正则「${r}」`),
     ].filter(Boolean);
-    toast('warning', `还有 ${leftCount} 项没能恢复：${what.join('、')}。`);
+    toast('warning', `还有 ${leftCount} 项没能恢复：${what.join('、')}。可以在「需要注意」里逐条打开或关掉。`);
   }
   else toast('success', `已恢复「${r.cardName}」记住的配套`);
 }

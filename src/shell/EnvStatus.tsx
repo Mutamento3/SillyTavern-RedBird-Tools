@@ -3,7 +3,7 @@
  * 导航条上的「环境」按钮显示问题数；完整内容在「这张卡」页面里。
  */
 import { computed, signal } from '@preact/signals';
-import { ctx, currentCharacter, loaded, reloadChatSafe, saveSettings, settings, type Any } from '../st/st';
+import { ctx, currentCharacter, loaded, reloadChatSafe, runSlash, saveSettings, settings, slashQuote, type Any } from '../st/st';
 import { archiveVersion, cardInfo, currentPresetName, importCardWorld, presetApi, setRecommendedPreset, switchPreset } from '../tools/cards/cards';
 import { enablePluginsAndReload, planFor } from '../tools/env/autoapply';
 import { currentBookScopes } from '../tools/flow/capture';
@@ -14,12 +14,13 @@ import { chatTick } from './Shell';
 import { openDrawers } from './drawers';
 import { sourcesTick } from '../tools/sources';
 import { RELOAD_COPY, reloadAdvised, reloadPage } from '../tools/scripts/reload';
+import { editRegex } from '../ui/pages/GlobalPage';
 
 /** Bumped after actions so the panel re-reads ST state. */
 export const statusTick = signal(0);
 
 export type Level = 'ok' | 'warn' | 'info';
-export interface Line { level: Level; text: string; detail?: string; action?: { label: string; run: () => void | Promise<void> } }
+export interface Line { level: Level; text: string; detail?: string; action?: { label: string; run: () => void | Promise<void> }; edit?: () => void }
 interface Section { title: string; lines: Line[] }
 
 function hasMvu(char: Any): boolean {
@@ -80,9 +81,16 @@ function buildSectionsNow(char: Any): { sections: Section[]; issues: number } {
   for (const b of w.extra) wb.push({ level: 'ok', text: `「${b}」已加载`, detail: '附加世界书，也绑在这张卡上' });
   for (const b of scopes.chat) wb.push({ level: 'ok', text: `「${b}」已加载`, detail: '绑在当前这个聊天上' });
   for (const b of scopes.persona) wb.push({ level: 'info', text: `「${b}」`, detail: '绑在你的 user 人设上，所有卡都会用' });
+  // 和换卡时的判断一样（planFor）：记住过配套就照配套，没记住就关掉别的卡的。每一行都能当场开、关
+  const profile = settings().profiles[info.avatar];
+  const setWorld = (name: string, on: boolean) => async () => { await runSlash(`/world state=${on ? 'on' : 'off'} silent=true ${slashQuote(name)}`); bump(); };
   for (const b of scopes.global) {
-    const off = plan.worldsOff.includes(b);
-    wb.push({ level: off ? 'warn' : 'info', text: `全局世界书「${b}」开着`, detail: off ? '它属于别的卡，或不在这张卡记住的配套里' : '对所有卡生效' });
+    if (!plan.worldsOff.includes(b)) { wb.push({ level: 'info', text: `全局世界书「${b}」开着`, detail: '对所有卡生效' }); continue; }
+    wb.push({ level: 'warn', text: `全局世界书「${b}」开着`, detail: profile?.globalWorlds ? '不在这张卡记住的配套里' : '属于别的卡',
+      action: { label: '关掉', run: setWorld(b, false) } });
+  }
+  for (const b of plan.worldsOn) {
+    wb.push({ level: 'warn', text: `全局世界书「${b}」关着`, detail: '记住的配套里是开着的', action: { label: '打开', run: setWorld(b, true) } });
   }
   sections.push({ title: '世界书', lines: wb });
 
@@ -121,10 +129,22 @@ function buildSectionsNow(char: Any): { sections: Section[]; issues: number } {
           await reloadChatSafe();
         } } });
   } else rx.push({ level: 'info', text: '这张卡没有自带正则' });
-  const globalOn = report.items.filter((i) => i.scope === 'global' && i.kind === 'regex' && i.enabled);
-  for (const g of globalOn) {
-    const bad = plan.regexOff.some((r) => r.name === g.name);
-    rx.push({ level: bad ? 'warn' : 'info', text: `全局正则「${g.name}」开着`, detail: bad ? '它被标为属于别的卡或预设' : (g.detail ?? '对所有卡生效') });
+  // 原因的判断顺序和 planFor 一样：记住过配套就只看配套，没记住才看这条正则属于谁（只有卡和预设会走到这里）
+  const regexWhy = (id: string, on: boolean): string => {
+    const o = settings().regexOwners[id];
+    if (profile?.globalRegexEnabled || !o) return on ? '记住的配套里是开着的' : '不在这张卡记住的配套里';
+    if (o.kind === 'preset') return `属于预设「${o.label}」`;
+    return on ? '属于这张卡' : `属于角色卡「${o.label}」`;
+  };
+  for (const g of report.items.filter((i) => i.scope === 'global' && i.kind === 'regex')) {
+    const off = plan.regexOff.find((r) => g.id === `rx:g:${r.id}`);
+    const on = plan.regexOn.find((r) => g.id === `rx:g:${r.id}`);
+    const fix = off ?? on;
+    if (fix) {
+      rx.push({ level: 'warn', text: `全局正则「${g.name}」${off ? '开着' : '关着'}`, detail: regexWhy(fix.id, !!on),
+        edit: () => editRegex(fix.id),
+        action: { label: off ? '关掉' : '打开', run: async () => { await g.toggle?.(!off); bump(); } } });
+    } else if (g.enabled) rx.push({ level: 'info', text: `全局正则「${g.name}」开着`, detail: g.detail ?? '对所有卡生效' });
   }
   sections.push({ title: '正则', lines: rx });
 
