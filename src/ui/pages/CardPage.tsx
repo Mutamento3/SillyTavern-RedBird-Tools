@@ -17,7 +17,7 @@ import { countScripts, currentGroups, thInstalled, thTick, cardGroup, setGroupAl
 import { NodeRows } from './ScriptsPage';
 import { EditButton, openRegexManager, openScriptManager } from './GlobalPage';
 import { bindPersona, boundPersonas, CardHeader, DiffList, ExtSection, openWorldInST, personaTick, SourceSection, unbindPersona, withCardOpen } from './parts';
-import { FoldSection, ItemRow, MenuFoot, MenuOpt, PanelBtn, PickRow, Pill, PersonaSetupSection, PresetModelSection, RegexSetupSection, SetupSection, WorldSetupSection, type Opt } from './setupParts';
+import { FoldSection, UseRow, MenuFoot, MenuOpt, PanelBtn, PickRow, Pill, PersonaSetupSection, PresetModelSection, RegexSetupSection, WorldSetupSection, type Opt } from './setupParts';
 import { loadThemes, LOOKS, stThemes, themesLoading } from '../../look/look';
 import { appliedCardTheme, cardLookTick, cardThemeOf, globalLookLabel, lookLabel, RBT_LOOK } from '../../look/cardLook';
 import { GLOBAL_TAB_LABELS, openDetail, openGlobal } from '../views';
@@ -100,9 +100,9 @@ function CardBook({ info }: { info: CardInfo }) {
   const differs = w.state === 'ok' && !!d && (d.onlyCard.length > 0 || d.onlyWorld.length > 0);
   return (
     <>
-      {w.state === 'ok' && <ItemRow name={w.name} sub={`来自角色卡${n}。要换掉，在「编辑角色」里改。`} onEdit={() => openWorldInST(w.name)} />}
-      {w.state === 'missing' && <ItemRow name={w.name} sub="卡上绑了这本，但它已经不在了。" />}
-      {w.state === 'unbound' && <ItemRow name={w.importName} sub={`卡里自带的还没导入${n}`} />}
+      {w.state === 'ok' && <UseRow name={w.name} on sub={w.embedded !== null ? `${w.embedded} 条` : undefined} onEdit={() => openWorldInST(w.name)} />}
+      {w.state === 'missing' && <UseRow name={w.name} on={false} sub="卡上绑了这本，但它已经不在了" />}
+      {w.state === 'unbound' && <UseRow name={w.importName} on={false} sub={`卡里自带的还没导入${n}`} />}
       {(w.state === 'missing' || w.state === 'unbound') && w.embedded !== null && (
         <div class="rbt-pick-hint">
           {taken
@@ -206,13 +206,13 @@ function LookSetupSection({ info }: { info: CardInfo }) {
     ...names.map((n) => ({ key: n, title: n, selected: own === n, onPick: () => pick(n) })),
   ];
   return (
-    <SetupSection title="美化" actions={<PanelBtn label="查看全部美化" onClick={goAll} />}>
+    <FoldSection title="美化" summary={shown} action={<PanelBtn label="查看全部美化" onClick={goAll} />}>
       <PickRow k="美化" value={shown} pill={<Pill kind={own ? 'card' : 'global'} img={thumbnailUrl(info.avatar)} />} open={open} onToggle={() => setOpen(!open)} onClose={() => setOpen(false)}
         top={<MenuOpt title="全局" sub={`和其他卡一样：${global}`} selected={!own} onPick={() => pick(null)} />}
         head={`${info.name}专用`} options={options}
         bottom={<MenuFoot label="查看全部美化" onClick={() => { setOpen(false); goAll(); }} />} />
       {info.isCurrent && ctx().getCurrentChatId?.() && <ChatBgRow />}
-    </SetupSection>
+    </FoldSection>
   );
 }
 
@@ -248,7 +248,7 @@ function ChatBgRow() {
 function differences(info: CardInfo): [string, string, string, string][] {
   const p = profileOf(info.avatar);
   const lines: [string, string, string, string][] = [];
-  const show = (key: string, v: unknown) => (key === 'model' ? (v ? modelLabel(v as ModelChoice) : '—') : key.startsWith('w:') || key.startsWith('r:') ? (v ? '开' : '关') : String(v ?? '—'));
+  const show = (key: string, v: unknown) => (key === 'model' ? (v ? modelLabel(v as ModelChoice) : '—') : key.startsWith('w:') || key.startsWith('r:') ? (v ? '启用' : '停用') : String(v ?? '—'));
   for (const k of overriddenKeys(p)) {
     if (k.startsWith('r:') && liveValue(k) === undefined) continue; // 正则已经删掉了
     if (k.startsWith('w:') && worldNames().length && !worldNames().includes(k.slice(2))) continue; // 世界书已经删掉了

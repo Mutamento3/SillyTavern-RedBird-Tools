@@ -4,9 +4,9 @@
 import { trash } from '../../tools/trash';
 import { useEffect, useState } from 'preact/hooks';
 import type { RegexOwner } from '../../core/cards';
-import { confirmText, loaded, runSlash, settings, slashQuote } from '../../st/st';
+import { confirmText, loaded, settings, toast } from '../../st/st';
 import { allCharacters, archiveVersion, currentPresetName, findChar, globalRegexScripts, guessRegexOwner, installedExtensions, presetNames, setRegexOwner, worldNames } from '../../tools/cards/cards';
-import { globalValue, heldByCard, setGlobal } from '../../tools/env/setup';
+import { bookOwners, globalValue, heldByCard, keepForOwner, setGlobal, trueGlobalWorlds } from '../../tools/env/setup';
 import { currentBookScopes } from '../../tools/flow/capture';
 import { openDrawer } from '../../shell/drawers';
 import { envReport, refreshEnv, type EnvItem, type EnvSubItem } from '../../tools/env/env';
@@ -170,7 +170,9 @@ export function GlobalRegexList({ items }: { items: EnvItem[] }) {
         <div class="rbt-row"><button class="rbt-btn rbt-btn-small" onClick={() => { for (const { r, g } of guesses) setRegexOwner(r.id, g!); }}>按名字自动选好 {guesses.length} 条</button></div>
       )}
       {scripts.map((r) => {
-        const item = byId.get(`rx:g:${r.id ?? r.scriptName}`);
+        const live = byId.get(`rx:g:${r.id ?? r.scriptName}`);
+        // 显示、修改真正的全局：正在聊的卡单独停用 / 启用的，按进卡前的算，改了等离开这张卡再换上
+        const item = live && { ...live, misplaced: undefined, enabled: !!globalValue(`r:${r.id}`), toggle: (on: boolean) => setGlobal(`r:${r.id}`, on) };
         const g = owners[r.id] ? null : guessRegexOwner(r);
         return (
           <div key={r.id} class="rbt-owner-row">
@@ -235,9 +237,44 @@ export function EditButton({ title, onClick }: { title: string; onClick: () => v
   );
 }
 
+/**
+ * 全局世界书：真正的全局（正在聊的卡单独停用的也算开着）。别的卡的书被开成了全局，
+ * 给一个「只给「X」用」：从全局拿掉，书留在那张卡上。
+ */
+export function GlobalWorldList() {
+  void archiveVersion.value;
+  const books = trueGlobalWorlds().sort((x, y) => x.localeCompare(y, 'zh-Hans-CN'));
+  const owners = bookOwners('');
+  const [busy, setBusy] = useState(false);
+  const run = async (f: () => Promise<unknown>) => { setBusy(true); try { await f(); } finally { setBusy(false); refreshEnv(); } };
+  const keep = (w: string, owner: string) => run(async () => {
+    const undo = await keepForOwner(w);
+    toast('success', `「${w}」不再是全局的，只在「${owner}」里启用。点这里撤销。`, 'RedBird 工具箱', { onclick: () => { void run(undo); }, timeOut: 8000 });
+  });
+  if (!books.length) return <small class="rbt-muted">没有开着的全局世界书。</small>;
+  return (
+    <>
+      {books.map((w) => {
+        const owner = owners.get(w);
+        return (
+          <div key={w} class="rbt-env-item">
+            <Chip>{KIND_LABEL.worldbook}</Chip>
+            <span class="rbt-env-name">{w}</span>
+            {owner && <small class="rbt-muted">角色卡「{owner}」的书</small>}
+            {owner && <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => { void keep(w, owner); }}>只给「{owner}」用</button>}
+            <span class="rbt-env-toggle"><Toggle checked onChange={(on) => { void run(() => setGlobal(`w:${w}`, on)); }} title="点击开 / 关" /></span>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 export function AddGlobalWorld() {
+  void archiveVersion.value;
+  const global = new Set(trueGlobalWorlds());
   const scopes = currentBookScopes();
-  const options = worldNames().filter((w) => !scopes.global.has(w)).sort((x, y) => x.localeCompare(y, 'zh-Hans-CN'));
+  const options = worldNames().filter((w) => !global.has(w)).sort((x, y) => x.localeCompare(y, 'zh-Hans-CN'));
   const [busy, setBusy] = useState(false);
   if (!options.length) return null;
   return (
@@ -246,7 +283,7 @@ export function AddGlobalWorld() {
         const name = (e.currentTarget as HTMLSelectElement).value;
         if (!name) return;
         setBusy(true);
-        try { await runSlash(`/world state=on silent=true ${slashQuote(name)}`); } finally { setBusy(false); refreshEnv(); }
+        try { await setGlobal(`w:${name}`, true); } finally { setBusy(false); refreshEnv(); }
       }}>
         <option value="">打开一本全局世界书…</option>
         {options.map((w) => <option key={w} value={w}>{w}{scopes.character.has(w) ? '（已绑在当前卡上）' : ''}</option>)}

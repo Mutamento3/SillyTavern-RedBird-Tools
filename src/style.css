@@ -1573,8 +1573,6 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 /* ================================================================ 角色档案：全局 / 本卡专用 ===
    每项一行：左边小字名字，右边整行是框（全名换行、谁在用的标签在框里右边）。点框在原地展开选项。
    标签只说谁在用：全局（灰）；本卡专用 / 本存档专用 / 本预设专用 / 本人设专用（强调色 + 图标）。见 dev/角色档案重做-spec.md。 */
-.rbt-setup-head { display: flex; align-items: center; gap: 12px; }
-.rbt-setup-head .rbt-card-section-title { flex: 1; min-width: 0; }
 .rbt-setup-acts { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
 .rbt-setup .rbt-btn i.fa-arrow-up-right-from-square { font-size: 10.5px; opacity: .8; }
 
@@ -1617,26 +1615,32 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-fold { gap: 0; }
 .rbt-fold-head { display: flex; align-items: center; gap: 10px; min-height: 36px; }
 .rbt-fold-head.can { cursor: pointer; }
-.rbt-fold-head .rbt-card-section-title { flex: 1; min-width: 0; }
-.rbt-fold-sum { font-size: 13px; color: var(--t2); text-align: right; }
+.rbt-fold-head .rbt-card-section-title { flex: none; max-width: 50%; }
+.rbt-fold-sum { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--t2); text-align: right; }
 .rbt-fold-sum.ok { color: var(--ok, #4cb782); }
 .rbt-fold-sum.warn { color: var(--warnc, #e0a040); }
 .rbt-fold-sum.dim { color: var(--t3); }
 .rbt-fold-body { display: flex; flex-direction: column; gap: 2px; margin-top: var(--rbd-s-3); padding-top: var(--rbd-s-2); border-top: 1px solid var(--hair); }
 .rbt-fold-list { display: flex; flex-direction: column; gap: var(--rbd-s-2); }
 
-.rbt-colh { display: flex; justify-content: flex-end; font-size: 11.5px; color: var(--t3); }
-.rbt-colh span { width: 40px; text-align: center; }
-.rbt-item { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; }
-.rbt-item + .rbt-item { border-top: 1px solid var(--hair); }
-.rbt-item.dim .rbt-item-n { color: var(--t3); }
-.rbt-item-n { flex: 1; min-width: 0; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
-.rbt-item-n small { display: block; margin-top: 2px; font-size: 11.5px; color: var(--t3); }
-.rbt-item-pill { display: block; margin-top: 4px; }
-.rbt-item-edit { flex: none; }
-.rbt-item-cb { width: 40px; flex: none; display: flex; justify-content: center; padding-top: 4px; }
-.rbt-item-state { font-size: 12px; color: var(--t3); }
-.rbt-item-state.on { color: var(--ok, #4cb782); }
+/* 角色档案里的一条：圆点（绿 = 启用，灰 = 停用）、名字和原因、动作按钮、编辑 */
+.rbt-use-group { display: flex; flex-direction: column; }
+.rbt-use-group + .rbt-use-group, .rbt-use-group + .rbt-pick { padding-top: var(--rbd-s-2); border-top: 1px solid var(--hair); }
+.rbt-use { display: flex; align-items: center; gap: 8px; padding: 5px 0; min-height: 36px; }
+.rbt-use-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--t3); opacity: .6; }
+.rbt-use.on .rbt-use-dot { background: var(--ok, #4cb782); opacity: 1; }
+.rbt-use-n { flex: 1; min-width: 0; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.rbt-use:not(.on) .rbt-use-n { color: var(--t2); }
+.rbt-use-n small { display: block; margin-top: 1px; font-size: 12px; color: var(--t3); }
+.rbt-use-act, .rbt-use-edit { flex: none; }
+/* 停用：淡的文字按钮；启用：绿色。两个一眼分得开 */
+.rbt-use-act.quiet { background: none; border-color: transparent; color: var(--t2); }
+.rbt-use-act.quiet:hover { color: var(--t1); background: var(--g2); }
+.rbt-use-act.go { background: color-mix(in srgb, var(--ok, #4cb782) 16%, transparent); border-color: color-mix(in srgb, var(--ok, #4cb782) 45%, transparent); color: var(--ok, #4cb782); }
+.rbt-use-add { padding-top: 2px; }
+.rbt-pick.wide .rbt-menu { left: 0; right: auto; width: min(360px, 100%); }
+.rbt-group-issue { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 2px 0 4px; font-size: 13px; color: var(--warnc, #e0a040); }
+.rbt-group-issue span { flex: 1; min-width: 0; }
 .rbt-allow { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; font-size: 14px; cursor: pointer; }
 .rbt-allow small { display: block; font-size: 12px; color: var(--t3); }
 .rbt-search { margin: 4px 0 !important; }
@@ -1667,10 +1671,8 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
   .rbt-pick-box { min-height: 44px; }
   .rbt-menu-opt { min-height: 44px; }
   .rbt-fold-head { min-height: 44px; }
-  .rbt-item-edit { min-height: 36px; }
 }
-.rbt-item.can { cursor: pointer; }
-.rbt-item .rbt-cb, .rbt-allow .rbt-cb { width: 22px; height: 22px; flex: none; }
+.rbt-allow .rbt-cb { width: 22px; height: 22px; flex: none; }
 
 /* 选择框：电脑上盖在下面的内容上（不推开），手机上从底部弹出；选项多时上面有搜索 */
 .rbt-pick { position: relative; }

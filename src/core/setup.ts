@@ -44,6 +44,35 @@ export function migrateProfile<T extends ProfileLike>(p: T, live: { worldsOn: st
   return out;
 }
 
+/**
+ * 判断一本书在一张卡上默认开不开要知道的事：
+ * global = 真正的全局（进卡前的）；others = 别的卡的书（自带或附加）；mine = 这张卡自己的书。
+ */
+export interface WorldFacts { global: Set<string>; others: Set<string>; mine: Set<string> }
+
+/** 这张卡没单独设时，这本书开不开：全局的开，但别的卡的书（不是这张卡的）进卡时自动停用。 */
+export function worldDefault(book: string, f: WorldFacts): boolean {
+  return f.global.has(book) && !(f.others.has(book) && !f.mine.has(book));
+}
+
+/**
+ * 0.6.19：`worlds` 从「全局书在这张卡开 / 关」改成「和默认不一样的才记」。
+ * - 记着开、但不是全局的书：其实是只给这张卡用的书，挂成附加世界书（attach），删记录；
+ * - 和默认一样的、书已经删了的（exists 给了才查）：删记录；
+ * - 其余保留（全局书在这张卡停用；别的卡的书在这张卡也启用）。
+ */
+export function migrateWorlds(worlds: Record<string, boolean>, f: WorldFacts, exists?: Set<string>): { worlds: Record<string, boolean>; attach: string[] } {
+  const out: Record<string, boolean> = {};
+  const attach: string[] = [];
+  for (const [w, on] of Object.entries(worlds)) {
+    if (exists && !exists.has(w)) continue;
+    if (on && !f.global.has(w)) { if (!f.mine.has(w)) attach.push(w); continue; }
+    if (on === worldDefault(w, f)) continue;
+    out[w] = on;
+  }
+  return { worlds: out, attach };
+}
+
 export type Items = Record<string, { before: unknown; after: unknown }>;
 
 /**

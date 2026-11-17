@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.18",
+  "version": "0.6.19",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "修了进卡时误弹「模型变了」的问题。「全局工具箱 › 预设」最上面改成「全局预设」：没设专用预设的卡都用它。"
+  "rbt_whats_new": "角色档案的世界书和正则按来源分组，绿点是启用、灰点是停用。以前只给一张卡开的全局世界书，现在挂成那张卡的附加世界书。"
 }

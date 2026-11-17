@@ -246,6 +246,8 @@ async function init(): Promise<void> {
   installModelGuard();
   // 旧版「记住的配套」转成本卡专用（store 合并回来的旧格式，读的时候也会再转）
   migrateAll();
+  // 世界书的迁移要知道哪本书是哪张卡的：角色列表读完（酒馆准备好）再转一遍。已经准备好时酒馆会马上调用
+  ctx().eventSource.on(ctx().eventTypes.APP_READY, migrateAll);
 
   configureViews({
     openInDock: (v) => openPanel(v),

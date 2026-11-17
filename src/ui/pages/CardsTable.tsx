@@ -113,7 +113,7 @@ type ListKey = 'worlds' | 'regex';
 /** 这张卡专用的全局世界书 / 全局正则开关：[键, 显示的字]。 */
 function listOf(r: Row, k: ListKey): [string, string][] {
   const m = r.profile?.[k] ?? {};
-  return Object.entries(m).map(([key, on]) => [key, `${on ? '开' : '关'} ${k === 'regex' ? regexName(key) : key}`]);
+  return Object.entries(m).map(([key, on]) => [key, `${on ? '启用' : '停用'} ${k === 'regex' ? regexName(key) : key}`]);
 }
 
 function unbindItem(r: Row, k: ListKey, key: string, text: string): void {

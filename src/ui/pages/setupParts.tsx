@@ -9,7 +9,7 @@ import { isPhone } from '../Menu';
 import { ctx, loaded, settings, toast, type Any } from '../../st/st';
 import { apiLabel, archiveVersion, currentPresetName, presetApi, presetNames, thumbnailUrl, worldNames, type CardInfo } from '../../tools/cards/cards';
 import { currentModel, modelLabel, modelsApply, sameModel, SOURCE_LABEL, stModelList, type ModelChoice } from '../../tools/model';
-import { globalRegex, globalValue, globalWorlds, makeGlobal, profileOf, setCardItem } from '../../tools/env/setup';
+import { attachBook, attachedBooks, bookOwners, cardUses, detachBook, globalRegex, globalValue, makeGlobal, profileOf, setCardItem, setCardUse, worldFacts } from '../../tools/env/setup';
 import { unnamedRegex } from '../../core/setup';
 import { buildEnvReport } from '../../tools/env/env';
 import { openDrawer } from '../../shell/drawers';
@@ -44,6 +44,28 @@ export function PickRow({ k, value, sub, lead, pill, thumb, disabled, open, onTo
   open: boolean; onToggle: () => void; onClose: () => void;
   top?: ComponentChildren; head?: string; options?: Opt[]; bottom?: ComponentChildren;
 }) {
+  return (
+    <Popup title={k} open={open} onClose={onClose} top={top} head={head} options={options} bottom={bottom}>
+      <div class="rbt-pick-row">
+        <span class="rbt-pick-k">{k}</span>
+        <button type="button" class={`rbt-pick-box ${open ? 'open' : ''}`} disabled={disabled} aria-expanded={open} aria-haspopup="listbox" onClick={onToggle}>
+          {lead && <img class="rbt-pick-lead" src={lead} alt="" />}
+          <span class="rbt-pick-v">{value}{sub && <small>{sub}</small>}</span>
+          {pill}
+          {thumb && <img class="rbt-pick-thumb" src={thumb} alt="" />}
+          {!disabled && <i class={`fa-solid ${open ? 'fa-chevron-up' : 'fa-chevron-down'} rbt-pick-ar`} aria-hidden="true" />}
+        </button>
+      </div>
+    </Popup>
+  );
+}
+
+/** 点一个按钮（children）弹出的选择框，PickRow 和「＋ 附加世界书」共用。 */
+function Popup({ title, open, onClose, top, head, options, bottom, wide, children }: {
+  title: string; open: boolean; onClose: () => void; top?: ComponentChildren; head?: string; options?: Opt[]; bottom?: ComponentChildren;
+  /** 选择框和按钮左边对齐（PickRow 里是和框对齐） */
+  wide?: boolean; children: ComponentChildren;
+}) {
   const [q, setQ] = useState('');
   const ref = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -61,22 +83,13 @@ export function PickRow({ k, value, sub, lead, pill, thumb, disabled, open, onTo
   const sheet = (node: ComponentChildren) => (isPhone() ? createPortal(<div class="rbt-scope rbt-menu-portal">{node}</div>, document.body) : node);
   const list = (options ?? []).filter((o) => !q.trim() || o.title.toLowerCase().includes(q.trim().toLowerCase()));
   return (
-    <div class={`rbt-pick ${open ? 'open' : ''}`} ref={ref}>
-      <div class="rbt-pick-row">
-        <span class="rbt-pick-k">{k}</span>
-        <button type="button" class={`rbt-pick-box ${open ? 'open' : ''}`} disabled={disabled} aria-expanded={open} aria-haspopup="listbox" onClick={onToggle}>
-          {lead && <img class="rbt-pick-lead" src={lead} alt="" />}
-          <span class="rbt-pick-v">{value}{sub && <small>{sub}</small>}</span>
-          {pill}
-          {thumb && <img class="rbt-pick-thumb" src={thumb} alt="" />}
-          {!disabled && <i class={`fa-solid ${open ? 'fa-chevron-up' : 'fa-chevron-down'} rbt-pick-ar`} aria-hidden="true" />}
-        </button>
-      </div>
+    <div class={`rbt-pick ${open ? 'open' : ''} ${wide ? 'wide' : ''}`} ref={ref}>
+      {children}
       {open && sheet(<>
         <div class="rbt-menu-scrim" onClick={onClose} />
-        <div class="rbt-menu" role="listbox" aria-label={k} ref={sheetRef}>
-          <div class="rbt-menu-title">{k}<button type="button" class="rbt-iconbtn" aria-label="关闭" onClick={onClose}><i class="fa-solid fa-xmark" /></button></div>
-          {(options?.length ?? 0) > 8 && <input class="text_pole rbt-input rbt-menu-search" placeholder={`搜${k}名字`} value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />}
+        <div class="rbt-menu" role="listbox" aria-label={title} ref={sheetRef}>
+          <div class="rbt-menu-title">{title}<button type="button" class="rbt-iconbtn" aria-label="关闭" onClick={onClose}><i class="fa-solid fa-xmark" /></button></div>
+          {(options?.length ?? 0) > 8 && <input class="text_pole rbt-input rbt-menu-search" placeholder={`搜${title}名字`} value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />}
           <div class="rbt-menu-scroll">
             {!q.trim() && top}
             {head && <>{!q.trim() && top && <MenuLine />}<MenuHead>{head}</MenuHead></>}
@@ -118,26 +131,22 @@ export function PanelBtn({ label, onClick }: { label: string; onClick: () => voi
   return <button type="button" class="rbt-btn rbt-btn-small" onClick={(e) => { e.stopPropagation(); onClick(); }}>{label} <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" /></button>;
 }
 
-export function SetupSection({ title, actions, children }: { title: string; actions?: ComponentChildren; children: ComponentChildren }) {
-  return (
-    <section class="rbt-card-section rbt-setup">
-      <div class="rbt-setup-head"><h3 class="rbt-card-section-title">{title}</h3>{actions && <span class="rbt-setup-acts">{actions}</span>}</div>
-      {children}
-    </section>
-  );
-}
-
-/** 收起时一行（标题、数量、面板按钮、箭头），点标题那一行在原地展开。 */
-export function FoldSection({ title, summary, tone, action, children }: { title: string; summary: string; tone?: 'ok' | 'warn' | 'dim'; action?: ComponentChildren; children?: ComponentChildren }) {
-  const [open, setOpen] = useState(false);
+/**
+ * 角色档案的一块：标题行（标题、收起时的摘要、面板按钮、箭头），点标题那一行在原地展开 / 收起。
+ * 常用的几块（预设和模型、世界书、人设）默认展开，其余默认收起。
+ */
+export function FoldSection({ title, summary, tone, action, defaultOpen = false, children }: {
+  title: string; summary?: string; tone?: 'ok' | 'warn' | 'dim'; action?: ComponentChildren; defaultOpen?: boolean; children?: ComponentChildren;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   const can = !!children;
   return (
     <section class="rbt-card-section rbt-setup rbt-fold">
       <div class={`rbt-fold-head ${can ? 'can' : ''}`} role={can ? 'button' : undefined} tabIndex={can ? 0 : undefined} aria-expanded={can ? open : undefined}
         onClick={() => can && setOpen(!open)} onKeyDown={(e) => { if (can && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setOpen(!open); } }}>
         <h3 class="rbt-card-section-title">{title}</h3>
-        <span class={`rbt-fold-sum ${tone ?? ''}`}>{summary}</span>
-        {action}
+        <span class={`rbt-fold-sum ${tone ?? ''}`}>{open && can ? '' : summary}</span>
+        {action && <span class="rbt-setup-acts">{action}</span>}
         {can && <i class={`fa-solid ${open ? 'fa-chevron-up' : 'fa-chevron-down'} rbt-pick-ar`} aria-hidden="true" />}
       </div>
       {open && can && <div class="rbt-fold-body">{children}</div>}
@@ -145,27 +154,32 @@ export function FoldSection({ title, summary, tone, action, children }: { title:
   );
 }
 
-/** 列表里的一条：名字（全名）、标签、来源小字；右边「编辑」和开关。 */
-export function ItemRow({ name, pill, sub, onEdit, check, dim }: {
-  name: string; pill?: ComponentChildren; sub?: string; onEdit?: () => void; dim?: boolean;
-  check?: { on: boolean; disabled?: boolean; onChange?: (v: boolean) => void };
+/**
+ * 列表里的一条：圆点（绿 = 启用，灰 = 停用）、名字（全名）、原因小字；右边动作按钮（停用 / 启用 / 移除）、编辑。
+ */
+export function UseRow({ name, on, sub, action, onEdit }: {
+  name: string; on: boolean; sub?: string;
+  /** tone：quiet = 淡的文字按钮（停用），go = 绿色（启用），不写 = 普通按钮（移除） */
+  action?: { label: string; onClick: () => void; tone?: 'quiet' | 'go' };
+  onEdit?: () => void;
 }) {
-  const body = <>
-    <span class="rbt-item-n">{name}{pill && <span class="rbt-item-pill">{pill}</span>}{sub && <small>{sub}</small>}</span>
-    {onEdit && <button type="button" class="rbt-btn rbt-btn-small rbt-item-edit" onClick={(e) => { e.preventDefault(); onEdit(); }}>编辑</button>}
-    {check && <span class="rbt-item-cb">
-      {(check.onChange
-        ? <input type="checkbox" class="rbt-cb" checked={check.on} disabled={check.disabled} aria-label={`${name} 开着`} onChange={(e) => check.onChange!((e.currentTarget as HTMLInputElement).checked)} />
-        : <span class={`rbt-item-state ${check.on ? 'on' : ''}`}>{check.on ? '开着' : '关着'}</span>)}
-    </span>}
-  </>;
-  // 能开关的：整行都能点（DESIGN.md：勾选框整行可点）
-  return check?.onChange && !check.disabled ? <label class={`rbt-item can ${dim ? 'dim' : ''}`}>{body}</label> : <div class={`rbt-item ${dim ? 'dim' : ''}`}>{body}</div>;
+  return (
+    <div class={`rbt-use ${on ? 'on' : ''}`}>
+      <span class="rbt-use-dot" role="img" aria-label={on ? '启用' : '停用'} />
+      <span class="rbt-use-n">{name}{sub && <small>{sub}</small>}</span>
+      {action && <button type="button" class={`rbt-btn rbt-btn-small rbt-use-act ${action.tone ?? ''}`} onClick={action.onClick}>{action.label}</button>}
+      {onEdit && <button type="button" class="rbt-iconbtn rbt-use-edit" title={`编辑「${name}」`} aria-label={`编辑「${name}」`} onClick={onEdit}><i class="fa-solid fa-pen" /></button>}
+    </div>
+  );
 }
-export const ColHead = () => <div class="rbt-colh"><span>开着</span></div>;
-/** 列表里一段的小标题：来源、条数（不能收起）。 */
-export const GroupHead = ({ title, count, note }: { title: string; count: number; note?: string }) => (
-  <div class="rbt-group-head"><span>{title}</span><small>{count} 条{note ? ` · ${note}` : ''}</small></div>
+/** 列表里一段的小标题：来源、数量、一句说明（不能收起）。 */
+export const GroupHead = ({ title, count, unit = '条', note }: { title: string; count?: number; unit?: string; note?: string }) => {
+  const small = [count !== undefined ? `${count} ${unit}` : '', note ?? ''].filter(Boolean).join(' · ');
+  return <div class="rbt-group-head"><span>{title}</span>{small && <small>{small}</small>}</div>;
+};
+/** 一段里出了问题（没允许运行）：一句话 + 去改的按钮。 */
+const GroupIssue = ({ text, button, onClick }: { text: string; button?: string; onClick?: () => void }) => (
+  <div class="rbt-group-issue"><span>{text}</span>{button && onClick && <button type="button" class="rbt-btn rbt-btn-small" onClick={onClick}>{button}</button>}</div>
 );
 
 /** 同一时间只开一个选择框。 */
@@ -203,7 +217,7 @@ export function PresetModelSection({ info }: { info: CardInfo }) {
   const cardImg = thumbnailUrl(info.avatar);
 
   return (
-    <SetupSection title="预设和模型" actions={<>
+    <FoldSection title="预设和模型" summary={preset || '没有预设'} defaultOpen action={<>
       <PanelBtn label="预设设置" onClick={() => openDrawer('preset')} />
       <PanelBtn label="API 设置" onClick={() => openDrawer('api')} />
     </>}>
@@ -235,7 +249,7 @@ export function PresetModelSection({ info }: { info: CardInfo }) {
           </>} />
       )}
       {modelsApply() && live && !model && <div class="rbt-pick-hint">连上以后才能选模型。点右上角「API 设置」。</div>}
-    </SetupSection>
+    </FoldSection>
   );
 }
 
@@ -302,7 +316,7 @@ export function PersonaSetupSection({ info }: { info: CardInfo }) {
     });
   };
   return (
-    <SetupSection title="user 人设" actions={<PanelBtn label="人设设置" onClick={() => openDrawer('persona')} />}>
+    <FoldSection title="user 人设" summary={cur ? personaName(cur) : '没有人设'} defaultOpen action={<PanelBtn label="人设设置" onClick={() => openDrawer('persona')} />}>
       <PickRow k="人设" value={cur ? personaName(cur) : '没有人设'} lead={cur ? personaThumb(cur) : undefined}
         pill={<Pill kind={kind} img={thumbnailUrl(info.avatar)} />} open={open === 'p'} onToggle={() => toggle('p')} onClose={close}
         top={<>
@@ -313,7 +327,7 @@ export function PersonaSetupSection({ info }: { info: CardInfo }) {
         options={all.map((id) => ({ key: id, title: personaName(id), lead: personaThumb(id), selected: bound.includes(id), onPick: () => { void use(id); } }))}
         bottom={<MenuFoot label="人设设置" onClick={() => { close(); openDrawer('persona'); }} />} />
       {locked && <div class="rbt-pick-hint">这个存档锁定了人设「{personaName(locked)}」，只对这个存档。{bound.length ? `换到这张卡的其他存档，用「${personaName(bound[0])}」。` : ''}</div>}
-    </SetupSection>
+    </FoldSection>
   );
 }
 
@@ -321,34 +335,53 @@ export function PersonaSetupSection({ info }: { info: CardInfo }) {
 
 export function WorldSetupSection({ info, openWorld, cardBook }: { info: CardInfo; openWorld: (name: string) => void; cardBook: ComponentChildren }) {
   void archiveVersion.value;
-  const p = profileOf(info.avatar);
+  const [open, setOpen] = useState(false);
+  const avatar = info.avatar;
   const live = info.isCurrent;
-  // 别的卡：全局开着的书看进卡前的值（正在聊的卡换上的不算）
-  const on = live ? globalWorlds() : [...new Set([...globalWorlds(), ...Object.keys(settings().baseline?.items ?? {}).filter((k) => k.startsWith('w:')).map((k) => k.slice(2))])].filter((w) => !!globalValue(`w:${w}`));
-  const set = p?.worlds ?? {};
-  const names = [...new Set([...on, ...Object.keys(set)])];
-  const bound = new Set([info.world.name, ...info.world.extra].filter(Boolean));
+  const set = profileOf(avatar)?.worlds ?? {};
+  const facts = worldFacts(avatar);
+  const owners = bookOwners(avatar);
+  const attached = attachedBooks(avatar);
+  const known = worldNames();
+  // 世界书列表还没读到时不筛（不然全都当成删掉了）
+  const exists = (w: string) => !known.length || known.includes(w);
+  // 全局的：真正的全局 + 这张卡单独设过的（停用了的也列出来）；这张卡自己的书在上面两组里，不重复
+  const globals = [...new Set([...facts.global, ...Object.keys(set)])].filter((w) => exists(w) && !facts.mine.has(w)).sort((a, b) => a.localeCompare(b, 'zh'));
   const report = live ? buildEnvReport() : null;
   const chat = report ? report.items.filter((i) => i.scope === 'chat' && i.kind === 'worldbook').map((i) => i.name) : [];
   const persona = report ? report.items.filter((i) => i.scope === 'persona' && i.kind === 'worldbook').map((i) => i.name) : [];
-  // 只列正在起作用的书。全局的书在这里不开关：要关去世界书面板（那里改的是全局）
-  const known = worldNames();
-  // 已经删掉的书不列（本卡专用里可能还记着它）；世界书列表还没读到时不筛
-  const rows = names.filter((w) => (!known.length || known.includes(w)) && !bound.has(w) && (w in set ? set[w] : on.includes(w))).map((w) => (
-    w in set && !globalValue(`w:${w}`)
-      ? <ItemRow key={w} name={w} pill={<Pill kind="card" img={thumbnailUrl(info.avatar)} />} sub="只这张卡开着" onEdit={() => openWorld(w)} />
-      : <ItemRow key={w} name={w} sub="全局 · 所有卡都开着" onEdit={() => openWorld(w)} />
-  ));
-  const has = !!cardBook || rows.length || chat.length || persona.length || info.world.extra.length;
+  const detach = (w: string) => {
+    detachBook(avatar, w);
+    toast('success', `已从「${info.name}」移除附加世界书「${w}」。点这里撤销。`, 'RedBird 工具箱', { onclick: () => attachBook(avatar, w), timeOut: 8000 });
+  };
+  const addable = known.filter((w) => !facts.mine.has(w) && !facts.global.has(w)).sort((a, b) => a.localeCompare(b, 'zh'));
+  const onCount = (info.world.state === 'ok' ? 1 : 0) + attached.filter(exists).length + globals.filter((w) => cardUses(avatar, `w:${w}`)).length + chat.length + persona.length;
   return (
-    <SetupSection title="世界书" actions={<PanelBtn label="世界书面板" onClick={() => openDrawer('worldinfo')} />}>
-      {!has && <div class="rbt-muted">没有开着的世界书。</div>}
-      {cardBook}
-      {info.world.extra.map((w) => <ItemRow key={`x${w}`} name={w} sub="附加在这张卡上。要去掉，在「编辑角色」里改。" onEdit={() => openWorld(w)} />)}
-      {chat.map((w) => <ItemRow key={`c${w}`} name={w} sub="绑在这个存档上，只对这个存档" onEdit={() => openWorld(w)} />)}
-      {persona.map((w) => <ItemRow key={`p${w}`} name={w} sub={`来自人设「${personaName(String(loaded.personas?.user_avatar ?? ''))}」，用这个人设时都会用`} onEdit={() => openWorld(w)} />)}
-      {rows}
-    </SetupSection>
+    <FoldSection title="世界书" summary={onCount ? `${onCount} 本启用` : '没有'} defaultOpen action={<PanelBtn label="世界书面板" onClick={() => openDrawer('worldinfo')} />}>
+      {info.world.state !== 'none' && <div class="rbt-use-group"><GroupHead title="角色卡自带" />{cardBook}</div>}
+      {attached.length > 0 && <div class="rbt-use-group">
+        <GroupHead title="附加给这张卡" count={attached.length} unit="本" />
+        {attached.map((w) => <UseRow key={`x${w}`} name={w} on={exists(w)} sub={exists(w) ? undefined : '这本已经不在了'} action={{ label: '移除', onClick: () => detach(w) }} onEdit={exists(w) ? () => openWorld(w) : undefined} />)}
+      </div>}
+      {globals.length > 0 && <div class="rbt-use-group">
+        <GroupHead title="全局" count={globals.length} unit="本" note="所有卡共用" />
+        {globals.map((w) => {
+          const key = `w:${w}`;
+          const on = !!cardUses(avatar, key);
+          const owner = owners.get(w);
+          const sub = owner ? (on ? `角色卡「${owner}」的书，这张卡也启用` : `角色卡「${owner}」的书，进别的卡自动停用`)
+            : w in set ? (set[w] ? '只在这张卡启用' : '只在这张卡停用') : undefined;
+          return <UseRow key={`g${w}`} name={w} on={on} sub={sub} action={{ label: on ? '停用' : '启用', tone: on ? 'quiet' : 'go', onClick: () => { void setCardUse(avatar, info.name, key, !on); } }} onEdit={() => openWorld(w)} />;
+        })}
+      </div>}
+      {chat.length > 0 && <div class="rbt-use-group"><GroupHead title="这个存档的" />{chat.map((w) => <UseRow key={`c${w}`} name={w} on onEdit={() => openWorld(w)} />)}</div>}
+      {persona.length > 0 && <div class="rbt-use-group"><GroupHead title={`人设「${personaName(String(loaded.personas?.user_avatar ?? ''))}」的`} />{persona.map((w) => <UseRow key={`p${w}`} name={w} on onEdit={() => openWorld(w)} />)}</div>}
+      <Popup title="附加世界书" open={open} onClose={() => setOpen(false)} wide
+        options={addable.map((w) => ({ key: w, title: w, onPick: () => { setOpen(false); attachBook(avatar, w); } }))}
+        bottom={addable.length ? undefined : <div class="rbt-menu-empty">没有可以附加的世界书。全局的书已经对所有卡生效。</div>}>
+        <div class="rbt-use-add"><button type="button" class="rbt-btn rbt-btn-small" aria-expanded={open} onClick={() => setOpen(!open)}><i class="fa-solid fa-plus" aria-hidden="true" /> 附加世界书</button></div>
+      </Popup>
+    </FoldSection>
   );
 }
 
@@ -357,63 +390,62 @@ export function WorldSetupSection({ info, openWorld, cardBook }: { info: CardInf
 export function RegexSetupSection({ info, openScoped }: { info: CardInfo; openScoped: () => void }) {
   void archiveVersion.value;
   const [q, setQ] = useState('');
-  const p = profileOf(info.avatar);
+  const avatar = info.avatar;
+  const p = profileOf(avatar);
   const live = info.isCurrent;
   const owners = settings().regexOwners ?? {};
   const report = live ? buildEnvReport() : null;
   const cardItem = report?.items.find((i) => i.id === 'rx:c');
   const presetItem = report?.items.find((i) => i.id === 'rx:p');
-  const card: Any[] = (live ? [] : (ctx().characters ?? []).find((c: Any) => c.avatar === info.avatar)?.data?.extensions?.regex_scripts) ?? [];
-  const glob = globalRegex();
+  const card: Any[] = (live ? [] : (ctx().characters ?? []).find((c: Any) => c.avatar === avatar)?.data?.extensions?.regex_scripts) ?? [];
   const preset = currentPresetName();
   const match = (n: string) => !q || n.toLowerCase().includes(q.toLowerCase());
+  const allowed = live ? !!cardItem?.enabled : info.regex.allowed;
+  const presetAllowed = !!presetItem?.enabled;
   const cardRows = live ? (cardItem?.subItems ?? []).map((s) => ({ key: s.id, name: s.name, on: s.enabled, toggle: s.toggle }))
     : card.map((r, i) => ({ key: String(r.id ?? i), name: unnamedRegex(r.scriptName), on: !r.disabled, toggle: undefined }));
   const presetRows = (presetItem?.subItems ?? []).map((s) => ({ key: s.id, name: s.name, on: s.enabled, toggle: s.toggle }));
-  const globalOn = (r: Any) => { const id = String(r.id); return live ? !r.disabled : p?.regex?.[id] ?? !!(globalValue(`r:${id}`) ?? !r.disabled); };
-  const total = cardRows.filter((r) => r.on).length + glob.filter(globalOn).length + presetRows.filter((r) => r.on).length;
-  const count = cardRows.length + glob.length + presetRows.length;
-  const allowed = live ? !!cardItem?.enabled : info.regex.allowed;
+  const globRows = globalRegex().map((r: Any) => {
+    const id = String(r.id);
+    const key = `r:${id}`;
+    const on = !!cardUses(avatar, key);
+    const o = owners[id];
+    const sub = p?.regex && id in p.regex ? (on ? '只在这张卡启用' : '只在这张卡停用')
+      : o?.kind === 'card' ? (o.key === avatar ? '属于这张卡，进这张卡自动启用' : `属于角色卡「${o.label}」，进别的卡自动停用`)
+        : o?.kind === 'preset' && !on ? `属于预设「${o.label}」，用这个预设时才启用`
+          : !on ? '所有卡都停用' : undefined;
+    return { id, key, name: unnamedRegex(r.scriptName), on, sub };
+  });
+  const total = cardRows.filter((r) => r.on && allowed).length + globRows.filter((r) => r.on).length + presetRows.filter((r) => r.on && presetAllowed).length;
+  const count = cardRows.length + globRows.length + presetRows.length;
+  // 卡和预设里的正则：开关改在卡 / 预设里（和酒馆一样）；没允许运行时不能开关
+  const flip = (r: { on: boolean; toggle?: (v: boolean) => unknown }, ok: boolean) => (r.toggle && ok ? { label: r.on ? '停用' : '启用', tone: r.on ? 'quiet' as const : 'go' as const, onClick: () => { void r.toggle!(!r.on); } } : undefined);
   return (
-    <FoldSection title="正则" summary={count ? `${total} 条开着` : '没有'} tone={count ? undefined : 'dim'} action={<PanelBtn label="正则面板" onClick={openScoped} />}>
+    <FoldSection title="正则" summary={count ? `${total} 条启用` : '没有'} tone={count ? undefined : 'dim'} action={<PanelBtn label="正则面板" onClick={openScoped} />}>
       {count > 0 && <>
         {count > 8 && <input class="text_pole rbt-input rbt-search" placeholder="搜正则名字" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />}
-        {/* 按来源分成几段，每段一个小标题（不再套一层收起，免得收起里面还有收起） */}
-        {cardRows.length > 0 && <>
+        {cardRows.length > 0 && <div class="rbt-use-group">
           <GroupHead title="角色卡里的" count={cardRows.length} />
-          <label class="rbt-allow">
-            <input type="checkbox" class="rbt-cb" checked={allowed} disabled={!live} onChange={(e) => { void cardItem?.toggle?.((e.currentTarget as HTMLInputElement).checked); }} />
-            <span>允许角色卡里的正则运行<small>{allowed ? '关掉后，下面这几条都不生效（各自的开关不变）。' : '现在关着，下面这几条都不生效。打开后，打勾的那几条才生效。'}</small></span>
-          </label>
-          <ColHead />
+          {!allowed && <GroupIssue text="酒馆还没允许这张卡的正则运行" button={live ? '允许运行' : undefined} onClick={() => { void cardItem?.toggle?.(true); }} />}
           {cardRows.filter((r) => match(r.name)).map((r) => (
-            <ItemRow key={`c${r.key}`} name={r.name} dim={!allowed} onEdit={live ? () => editRegex(r.key) : undefined}
-              check={{ on: r.on, disabled: !allowed, onChange: r.toggle ? (v) => { void r.toggle!(v); } : undefined }} />
+            <UseRow key={`c${r.key}`} name={r.name} on={r.on && allowed} action={flip(r, allowed)} onEdit={live ? () => editRegex(r.key) : undefined} />
           ))}
-        </>}
-        {glob.length > 0 && <>
-          <GroupHead title="全局的" count={glob.length} />
-          <ColHead />
-          {glob.filter((r) => match(unnamedRegex(r.scriptName))).map((r) => {
-            const id = String(r.id);
-            const o = owners[r.id];
-            const own = p?.regex && id in p.regex;
-            const byPreset = !own && o?.kind === 'preset';
-            const kind: PillKind = own || (o?.kind === 'card' && o.key === info.avatar) ? 'card' : 'global';
-            const sub = !own && o?.kind === 'card' && o.key === info.avatar ? '标为属于这张卡' : byPreset ? `标为属于预设「${o.label}」，用这个预设时开` : undefined;
-            return <ItemRow key={`g${id}`} name={unnamedRegex(r.scriptName)} pill={byPreset ? undefined : <Pill kind={kind} img={thumbnailUrl(info.avatar)} />} sub={sub} onEdit={() => editRegex(id)}
-              check={{ on: globalOn(r), onChange: (v) => { void setCardItem(info.avatar, info.name, `r:${id}`, v); } }} />;
-          })}
-        </>}
-        {presetRows.length > 0 && <>
-          <GroupHead title={`预设「${preset}」里的`} count={presetRows.length} note={presetItem?.enabled ? undefined : '没允许运行'} />
-          <ColHead />
+        </div>}
+        {globRows.length > 0 && <div class="rbt-use-group">
+          <GroupHead title="全局" count={globRows.length} note="所有卡共用" />
+          {globRows.filter((r) => match(r.name)).map((r) => (
+            <UseRow key={`g${r.id}`} name={r.name} on={r.on} sub={r.sub} onEdit={() => editRegex(r.id)}
+              action={{ label: r.on ? '停用' : '启用', tone: r.on ? 'quiet' : 'go', onClick: () => { void setCardUse(avatar, info.name, r.key, !r.on); } }} />
+          ))}
+        </div>}
+        {presetRows.length > 0 && <div class="rbt-use-group">
+          <GroupHead title={`预设「${preset}」里的`} count={presetRows.length} note="改了会存进预设" />
+          {!presetAllowed && <GroupIssue text={`酒馆还没允许预设「${preset}」的正则运行`} button="允许运行" onClick={() => { void presetItem?.toggle?.(true); }} />}
           {presetRows.filter((r) => match(r.name)).map((r) => (
-            <ItemRow key={`p${r.key}`} name={r.name} dim={!presetItem?.enabled} onEdit={() => editRegex(r.key)} check={{ on: r.on, disabled: !presetItem?.enabled, onChange: (v) => { void r.toggle(v); } }} />
+            <UseRow key={`p${r.key}`} name={r.name} on={r.on && presetAllowed} action={flip(r, presetAllowed)} onEdit={() => editRegex(r.key)} />
           ))}
-        </>}
+        </div>}
       </>}
     </FoldSection>
   );
 }
-

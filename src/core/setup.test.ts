@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { leavePlan, migrateProfile, type ProfileLike } from './setup';
+import { leavePlan, migrateProfile, migrateWorlds, worldDefault, type ProfileLike } from './setup';
 
 type P = ProfileLike & { cardName: string; preset?: unknown; theme?: string };
 const mig = (p: P, l: Parameters<typeof migrateProfile>[1] = live) => migrateProfile(p, l);
@@ -64,5 +64,34 @@ describe('leavePlan', () => {
   it('skips items that no longer exist', () => {
     const r = leavePlan({ 'r:gone': { before: true, after: false } }, {}, new Set(['r:gone']), eq);
     expect(r).toEqual({ restore: {}, save: {} });
+  });
+});
+
+describe('worlds v2 (0.6.19)', () => {
+  const f = { global: new Set(['文风', '星落山庄设定', '自己的']), others: new Set(['星落山庄设定']), mine: new Set(['自己的', '人偶店']) };
+
+  it('default: global books on, other cards\' books off, own books on', () => {
+    expect(worldDefault('文风', f)).toBe(true);
+    expect(worldDefault('星落山庄设定', f)).toBe(false);
+    expect(worldDefault('自己的', f)).toBe(true);
+    expect(worldDefault('不是全局', f)).toBe(false);
+  });
+
+  it('follows the migration table', () => {
+    const out = migrateWorlds({
+      只这张卡: true, // on, not global → attach
+      人偶店: true, // on, not global, already this card's → just drop
+      星落山庄设定: true, // on, global, other card's → keep
+      文风: true, // same as default → drop
+      停掉的: false, // off, not global → drop
+    }, f);
+    expect(out.attach).toEqual(['只这张卡']);
+    expect(out.worlds).toEqual({ 星落山庄设定: true });
+    expect(migrateWorlds({ 文风: false }, f).worlds).toEqual({ 文风: false });
+  });
+
+  it('drops deleted books when the book list is known', () => {
+    expect(migrateWorlds({ 文风: false, 没了: true }, f, new Set(['文风'])).attach).toEqual([]);
+    expect(migrateWorlds({ 文风: false, 没了: true }, f, new Set(['文风'])).worlds).toEqual({ 文风: false });
   });
 });

@@ -9,7 +9,7 @@
  */
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { ctx, runSlash, saveSettings, settings, slashQuote, confirmText } from '../../st/st';
+import { ctx, saveSettings, settings, confirmText } from '../../st/st';
 import {
   allCharacters,
   archiveVersion,
@@ -35,7 +35,7 @@ import { allSeries, compareVersions, renameSeries, setSeries, sourceFor, sources
 import { openDrawer } from '../../shell/drawers';
 import { openBookInEditor } from '../../shell/worldNote';
 import { Empty, NavRow, CheckRow, Tag, Toggle } from '../common';
-import { globalValue, heldByCard, setGlobal } from '../../tools/env/setup';
+import { globalValue, heldByCard, setGlobal, trueGlobalWorlds } from '../../tools/env/setup';
 import { SourceEditor } from '../SourceEditor';
 import { ModelPicker } from '../ModelPicker';
 import { currentModel, modelLabel, presetBindsConnection, presetConnection, SOURCE_LABEL } from '../../tools/model';
@@ -43,7 +43,7 @@ import { currentDetail, detailStack, GLOBAL_TAB_LABELS, GLOBAL_TABS, globalTab, 
 import { installPlugin } from '../../tools/importer';
 import { importOpen, openImport } from '../ImportDialog';
 import { CardPage } from './CardPage';
-import { AddGlobalWorld, GlobalRegexList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
+import { AddGlobalWorld, GlobalRegexList, GlobalWorldList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
 import { trash, TRASH_LABEL, type TrashKind } from '../../tools/trash';
 import { charsTick } from '../../shell/characters';
 import { ReloadNotice, Section } from './parts';
@@ -466,7 +466,7 @@ function WorldsPage() {
   const [auto, setAuto] = useState(settings().autoImportWorld);
   const ov = overview();
   const missing = cardsMissingWorld();
-  const globalOn = (report?.items ?? []).filter((i) => i.kind === 'worldbook' && (i.scope === 'global' || i.scope === 'persona'));
+  const personaOn = (report?.items ?? []).filter((i) => i.kind === 'worldbook' && i.scope === 'persona');
   const names = worldNames();
   const back = GLOBAL_TAB_LABELS.worlds;
   const scopes = currentBookScopes();
@@ -482,8 +482,8 @@ function WorldsPage() {
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
           <Section title="全局世界书" hint="对所有卡生效。只给某张卡用的，最好绑到那张卡上">
-            {globalOn.map((i) => <ItemRow key={i.id} item={i} />)}
-            {!globalOn.length && <small class="rbt-muted">没有开着的全局世界书。</small>}
+            <GlobalWorldList />
+            {personaOn.map((i) => <ItemRow key={i.id} item={i} />)}
             <AddGlobalWorld />
             {viaChat.length > 0 && <small class="rbt-muted">现在的聊天还通过角色卡加载了：{viaChat.join('、')}。</small>}
           </Section>
@@ -522,11 +522,12 @@ function WorldsPage() {
 function WorldDetail({ name }: { name: string }) {
   void archiveVersion.value;
   const ov = overview();
-  const on = currentBookScopes().global.has(name);
+  // 真正的全局：正在聊的卡单独停用的也算开着，改了离开这张卡后生效
+  const on = trueGlobalWorlds().includes(name);
   const [busy, setBusy] = useState(false);
   const toggle = async (v: boolean) => {
     setBusy(true);
-    try { await runSlash(`/world state=${v ? 'on' : 'off'} silent=true ${slashQuote(name)}`); } finally { setBusy(false); refreshEnv(); archiveVersion.value++; }
+    try { await setGlobal(`w:${name}`, v); } finally { setBusy(false); refreshEnv(); }
   };
   return (
     <div class="rbt-page">

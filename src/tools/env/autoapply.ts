@@ -2,7 +2,7 @@
  * 换卡时换上这张卡的本卡专用（规则见 dev/角色档案重做-spec.md 和 setup.ts）。
  *
  * 要换的（按优先级）：
- * 1. 这张卡的本卡专用：预设、模型、全局世界书 / 全局正则的开关；
+ * 1. 这张卡的本卡专用：预设、模型、全局世界书 / 全局正则在这张卡停用或启用（只给这张卡用的书是附加世界书，酒馆自己加载）；
  * 2. 没设专用的项只做确定该做的事：
  *    - 预设推荐的模型（本预设专用）；
  *    - 别的卡绑定的世界书被开成了全局 → 关掉；
@@ -11,11 +11,11 @@
  */
 import { signal } from '@preact/signals';
 import { presetScriptLine } from '../scripts/notice';
-import { charaFileName, ctx, currentCharacter, loaded, settings, toast, type Any } from '../../st/st';
+import { ctx, currentCharacter, loaded, settings, toast, type Any } from '../../st/st';
 import { cardInfo, currentPresetName, extStatus, importCardWorld, installedExtensions, presetApi, presetNames, requiredExtensions } from '../cards/cards';
 import { refreshEnv } from './env';
 import { currentModel, modelLabel, modelsApply, sameModel, type ModelChoice } from '../model';
-import { applyLive, globalRegex, globalWorlds, leaveCard, liveValue, overriddenKeys, profileOf, recordBaseline, settleBaseline } from './setup';
+import { applyLive, bookOwners, globalRegex, globalWorlds, leaveCard, ownBooks, liveValue, overriddenKeys, profileOf, recordBaseline, settleBaseline } from './setup';
 import { unnamedRegex } from '../../core/setup';
 
 export interface PluginNeed { id: string; name: string; status: 'disabled' | 'missing' }
@@ -43,30 +43,6 @@ export const applyingPreset = signal<string | null>(null);
  * 导航条下沿的进度条看这个：超过 4 秒酒馆先显示聊天（见 index.tsx），这时进度条还在，说明后台还在换。
  */
 export const applyingCard = signal<string | null>(null);
-
-/** Lorebooks bound to some other character (main or extra books). */
-function booksOfOtherCards(avatar: string): Set<string> {
-  const out = new Set<string>();
-  for (const ch of ctx().characters ?? []) {
-    if (ch.avatar === avatar) continue;
-    const w = ch.data?.extensions?.world;
-    if (w) out.add(w);
-  }
-  for (const e of loaded.worldInfo?.world_info?.charLore ?? []) {
-    if (e.name === charaFileName(avatar)) continue;
-    for (const b of e.extraBooks ?? []) out.add(b);
-  }
-  return out;
-}
-
-function ownBooks(char: Any): Set<string> {
-  const out = new Set<string>();
-  const w = char.data?.extensions?.world;
-  if (w) out.add(w);
-  const extra = loaded.worldInfo?.world_info?.charLore?.find((e: Any) => e.name === charaFileName(char.avatar))?.extraBooks ?? [];
-  for (const b of extra) out.add(b);
-  return out;
-}
 
 export function planFor(char: Any): ApplyPlan {
   const avatar: string = char.avatar;
@@ -96,8 +72,8 @@ export function planFor(char: Any): ApplyPlan {
     if (on && !now.includes(w) && existing.has(w)) plan.worldsOn.push(w);
     if (!on && now.includes(w)) plan.worldsOff.push(w);
   }
-  const others = booksOfOtherCards(avatar);
-  const mine = ownBooks(char);
+  const others = bookOwners(avatar);
+  const mine = ownBooks(avatar);
   for (const w of now) if (!(w in set) && others.has(w) && !mine.has(w)) plan.worldsOff.push(w);
 
   // --- global regex: 本卡专用的照它；其余按归属

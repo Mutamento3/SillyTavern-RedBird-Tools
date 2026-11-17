@@ -9,11 +9,11 @@
  * 项的键：preset（预设名）/ model / w:书名（开 / 关）/ r:正则 id（开 / 关）。
  * 美化（cardLook.ts 自己换、自己换回）和人设（酒馆自己的「连接到角色」）不走这里。
  */
-import { ctx, currentCharacter, loaded, reloadChatSafe, runSlash, saveSettings, settings, slashQuote, type Any, type Baseline, type EnvProfile } from '../../st/st';
+import { charaFileName, ctx, currentCharacter, loaded, reloadChatSafe, runSlash, saveSettings, settings, slashQuote, type Any, type Baseline, type EnvProfile } from '../../st/st';
 import { markDeleted } from '../../st/store';
-import { leavePlan, migrateProfile, unnamedRegex } from '../../core/setup';
+import { leavePlan, migrateProfile, migrateWorlds, unnamedRegex, worldDefault, type WorldFacts } from '../../core/setup';
 import { currentModel, sameModel, setModel, withoutModelGuard, type ModelChoice } from '../model';
-import { archiveVersion, currentPresetName, presetApi, presetNames, switchPreset } from '../cards/cards';
+import { archiveVersion, currentPresetName, presetApi, presetNames, switchPreset, worldNames } from '../cards/cards';
 
 const GLOBAL = 0; // ST regex SCRIPT_TYPES.GLOBAL
 
@@ -31,10 +31,21 @@ export function profileOf(avatar: string): EnvProfile | undefined {
   const s = settings();
   const p = s.profiles[avatar];
   if (!p) return undefined;
-  // 酒馆的世界书 / 正则模块没读到时不转：转的时候要知道现在开着哪些，读不到会把旧清单转丢
-  if (!loaded.worldInfo || !loaded.regexEngine) return p;
-  const next = migrateProfile(p, { worldsOn: globalWorlds(), regex: globalRegex().map((r: Any) => ({ id: String(r.id), name: r.scriptName, on: !r.disabled })) });
-  if (next !== p) { s.profiles[avatar] = { ...next, updatedAt: p.updatedAt ?? p.savedAt ?? new Date().toISOString() }; saveSettings(); }
+  // 酒馆的世界书 / 正则模块、角色列表没读到时不转：转的时候要知道现在开着哪些、哪本书是哪张卡的，读不到会转错
+  if (!loaded.worldInfo || !loaded.regexEngine || !(ctx().characters ?? []).length) return p;
+  let next = migrateProfile(p, { worldsOn: globalWorlds(), regex: globalRegex().map((r: Any) => ({ id: String(r.id), name: r.scriptName, on: !r.disabled })) });
+  if (next.v !== 2) {
+    const known = worldNames();
+    const { worlds, attach } = migrateWorlds(next.worlds ?? {}, worldFacts(avatar), known.length ? new Set(known) : undefined);
+    if (attach.length && findCharacter(avatar)) setAttached(avatar, [...attachedBooks(avatar), ...attach]);
+    next = { ...next, v: 2 };
+    if (Object.keys(worlds).length) next.worlds = worlds; else delete next.worlds;
+  }
+  if (next !== p) {
+    if (profileEmpty(next)) { delete s.profiles[avatar]; markDeleted('profiles', avatar); saveSettings(); return undefined; }
+    s.profiles[avatar] = { ...next, updatedAt: p.updatedAt ?? p.savedAt ?? new Date().toISOString() };
+    saveSettings();
+  }
   return s.profiles[avatar];
 }
 
@@ -68,6 +79,7 @@ function writeProfile(avatar: string, cardName: string, edit: (p: EnvProfile) =>
   if (p.regex) p.regex = { ...p.regex };
   edit(p);
   p.cardName = cardName;
+  p.v = 2;
   p.updatedAt = new Date().toISOString();
   if (p.worlds && !Object.keys(p.worlds).length) delete p.worlds;
   if (p.regex && !Object.keys(p.regex).length) delete p.regex;
@@ -196,7 +208,8 @@ export async function leaveCard({ noSave = false, inChatLoad = false } = {}): Pr
   // 换了 API：现在的预设是另一种 API 的，不能记成这张卡的
   if (p?.preset && p.preset.api !== presetApi()) keys.delete('preset');
   const { restore, save } = leavePlan(b.items, live, noSave ? new Set() : keys, sameValue);
-  if (Object.keys(save).length && p) writeProfile(b.avatar, p.cardName, (q) => { for (const [k, v] of Object.entries(save)) setProfileKey(q, k, v); });
+  // 改成和默认一样的：这张卡不用再单独记
+  if (Object.keys(save).length && p) writeProfile(b.avatar, p.cardName, (q) => { for (const [k, v] of Object.entries(save)) setProfileKey(q, k, cardDefault(b.avatar, k) === v ? undefined : v); });
   delete settings().baseline;
   saveSettings();
   await applyLive(restore, { inChatLoad });
@@ -316,4 +329,134 @@ export async function revertCard(avatar: string): Promise<() => Promise<void>> {
 export function regexName(id: string): string {
   const r = globalRegex().find((x: Any) => String(x.id) === id);
   return unnamedRegex(r?.scriptName);
+}
+
+// ------------------------------------------- 世界书属于哪张卡、附加世界书 ---
+
+function findCharacter(avatar: string): Any | undefined {
+  return (ctx().characters ?? []).find((c: Any) => c.avatar === avatar);
+}
+
+/** 挂在这张卡上的附加世界书（酒馆「附加世界书」）。 */
+export function attachedBooks(avatar: string): string[] {
+  const e = (loaded.worldInfo?.world_info?.charLore ?? []).find((x: Any) => x.name === charaFileName(avatar));
+  return [...(e?.extraBooks ?? [])];
+}
+
+/** 改这张卡的附加世界书：用酒馆自己的函数（老版本酒馆没有时，照它的写法改）。 */
+function setAttached(avatar: string, books: string[]): void {
+  const file = charaFileName(avatar);
+  const next = [...new Set(books.filter(Boolean))];
+  const wi = loaded.worldInfo;
+  if (typeof wi?.charSetAuxWorlds === 'function') wi.charSetAuxWorlds(file, next);
+  else {
+    const lore: Any[] = wi?.world_info?.charLore ?? [];
+    const i = lore.findIndex((e) => e.name === file);
+    if (!next.length) { if (i !== -1) lore.splice(i, 1); }
+    else if (i === -1) lore.push({ name: file, extraBooks: next });
+    else lore[i] = { ...lore[i], extraBooks: next };
+    if (wi?.world_info) wi.world_info.charLore = lore;
+    ctx().saveSettingsDebounced?.();
+  }
+  archiveVersion.value++;
+}
+
+export function attachBook(avatar: string, book: string): void {
+  setAttached(avatar, [...attachedBooks(avatar), book]);
+}
+export function detachBook(avatar: string, book: string): void {
+  setAttached(avatar, attachedBooks(avatar).filter((b) => b !== book));
+}
+
+/** 这张卡自己的书：自带的 + 附加的。 */
+export function ownBooks(avatar: string): Set<string> {
+  const out = new Set(attachedBooks(avatar));
+  const w = findCharacter(avatar)?.data?.extensions?.world;
+  if (w) out.add(w);
+  return out;
+}
+
+/** 书名 → 用它的别的卡的名字（自带或附加；不含这张卡）。 */
+export function bookOwners(avatar: string): Map<string, string> {
+  const out = new Map<string, string>();
+  const chars: Any[] = ctx().characters ?? [];
+  for (const ch of chars) {
+    if (ch.avatar === avatar) continue;
+    const w = ch.data?.extensions?.world;
+    if (w && !out.has(w)) out.set(w, ch.name);
+  }
+  for (const e of loaded.worldInfo?.world_info?.charLore ?? []) {
+    if (e.name === charaFileName(avatar)) continue;
+    const ch = chars.find((c) => charaFileName(c.avatar) === e.name);
+    if (!ch) continue;
+    for (const b of e.extraBooks ?? []) if (!out.has(b)) out.set(b, ch.name);
+  }
+  return out;
+}
+
+/** 真正的全局世界书：正在聊的卡换掉的，按进卡前的算。 */
+export function trueGlobalWorlds(): string[] {
+  const out = new Set(globalWorlds());
+  const b = baseline();
+  if (b) for (const [k, v] of Object.entries(b.items)) if (k.startsWith('w:')) { if (v.before) out.add(k.slice(2)); else out.delete(k.slice(2)); }
+  return [...out];
+}
+
+export function worldFacts(avatar: string): WorldFacts {
+  return { global: new Set(trueGlobalWorlds()), others: new Set(bookOwners(avatar).keys()), mine: ownBooks(avatar) };
+}
+
+/** 这张卡要用的预设（没专用的用全局）。 */
+function cardPreset(avatar: string): string {
+  const p = settings().profiles[avatar]?.preset;
+  return p && p.api === presetApi() ? p.name : String(globalValue('preset') ?? '');
+}
+
+/**
+ * 这张卡没单独设时，全局书 / 全局正则开不开（undefined = 正则不在了）。
+ * 世界书：全局的开，别的卡的书停用。正则：标了属于哪张卡 / 哪个预设的按归属，其余跟全局。
+ */
+export function cardDefault(avatar: string, key: string): boolean | undefined {
+  if (key.startsWith('w:')) return worldDefault(key.slice(2), worldFacts(avatar));
+  if (key.startsWith('r:')) {
+    const id = key.slice(2);
+    const o = settings().regexOwners?.[id];
+    if (o?.kind === 'card') return o.key === avatar;
+    if (o?.kind === 'preset') return o.key === cardPreset(avatar);
+    const g = globalValue(key);
+    return g === undefined ? undefined : !!g;
+  }
+  return undefined;
+}
+
+/** 这张卡现在用不用这本全局书 / 这条全局正则（单独设了的照它，没设的按默认）。 */
+export function cardUses(avatar: string, key: string): boolean | undefined {
+  const p = profileOf(avatar);
+  const own = p ? profileValue(p, key) : undefined;
+  return own === undefined ? cardDefault(avatar, key) : !!own;
+}
+
+/** 角色档案里点「停用 / 启用」：和默认一样就删掉这张卡的记录，不一样就记下。 */
+export async function setCardUse(avatar: string, cardName: string, key: string, on: boolean): Promise<void> {
+  await setCardItem(avatar, cardName, key, cardDefault(avatar, key) === on ? null : on);
+}
+
+/**
+ * 「只给「X」用」：这本书从全局拿掉（它本来就绑在那张卡上），各卡关于这本书的记录一起删。返回撤销。
+ */
+export async function keepForOwner(book: string): Promise<() => Promise<void>> {
+  const key = `w:${book}`;
+  const s = settings();
+  const prev: [string, string, boolean][] = [];
+  for (const [avatar, p] of Object.entries(s.profiles)) {
+    if (p.worlds && book in p.worlds) {
+      prev.push([avatar, p.cardName, p.worlds[book]]);
+      writeProfile(avatar, p.cardName, (q) => setProfileKey(q, key, undefined));
+    }
+  }
+  await setGlobal(key, false);
+  return async () => {
+    for (const [avatar, name, v] of prev) writeProfile(avatar, name, (q) => setProfileKey(q, key, v));
+    await setGlobal(key, true);
+  };
 }

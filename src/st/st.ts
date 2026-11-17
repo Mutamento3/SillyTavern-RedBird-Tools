@@ -237,10 +237,12 @@ export interface EnvProfile {
   model?: ModelChoice;
   /** 卡的美化：和这张卡聊天时整个界面换成这套酒馆主题（见 look/cardLook.ts）。 */
   theme?: string;
-  /** 全局世界书在这张卡开 / 关（按书名）。 */
+  /** 全局世界书在这张卡和默认不一样时：停用（false）/ 启用（true），按书名。只给这张卡用的书挂成附加世界书，不记在这里。 */
   worlds?: Record<string, boolean>;
-  /** 全局正则在这张卡开 / 关（按正则 id）。 */
+  /** 全局正则在这张卡和默认不一样时：停用 / 启用（按正则 id）。 */
   regex?: Record<string, boolean>;
+  /** 格式版本：2 = 0.6.19 起（worlds 只记和默认不一样的）。没有 = 更早的，读到时迁移。 */
+  v?: number;
   /** 旧版「记住的配套」（整份清单），读到就转成上面两项（见 setup.ts migrate）。 */
   globalWorlds?: string[];
   globalRegexEnabled?: string[];
