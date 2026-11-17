@@ -1402,7 +1402,8 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
   #rbt_settings .rbt-set-item { min-height: 56px; }
   #rbt_settings .rbt-set-link, #rbt_settings .rbt-set-tip a { display: inline-flex; align-items: center; min-height: 32px; vertical-align: middle; }
   #rbt_settings .rbt-set-primary { min-height: 34px; display: inline-flex; align-items: center; }
-  #rbt_settings .inline-drawer-icon { min-width: 32px; min-height: 32px; text-align: center; line-height: 32px; }
+  /* 标题行整行可点：只加高，不动箭头的位置（和别的扩展的箭头对齐） */
+  #rbt_settings > .inline-drawer > .inline-drawer-header { min-height: 36px; }
 }
 
 /* 角色档案：在宽窗口（全局工具箱）里也是一列，宽度和聊天工具箱里差不多，看起来是同一个页面 */

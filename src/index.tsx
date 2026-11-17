@@ -71,7 +71,7 @@ function addSettingsDrawer(): void {
     <div class="inline-drawer">
       <div class="inline-drawer-toggle inline-drawer-header">
         <b>RedBird 工具箱</b>
-        <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        <div class="inline-drawer-icon fa-solid fa-circle-chevron-up up"></div>
       </div>
       <div class="inline-drawer-content rbt-set">
         <!-- 有新版本时才显示，放在最上面 -->

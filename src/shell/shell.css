@@ -1312,8 +1312,8 @@ body.rbt-shell #WorldInfo > .flex-container.gap10px:has(> #WI_panel_pin_div) { d
 }
 
 /* 世界书面板（电脑和手机都适用）：条目标题和状态垂直居中；顶上几行统一间距 */
-body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEntryTitleAndStatus { align-items: center !important; }
-body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEntryTitleAndStatus > * { margin-top: 0 !important; margin-bottom: 0 !important; align-self: center; }
+body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEntryTitleAndStatus { align-items: center !important; }
+body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEntryTitleAndStatus > * { margin-top: 0 !important; margin-bottom: 0 !important; align-self: center; }
 /* #world_popup 没选世界书时会被酒馆藏起来，所以不改它的 display，间距用子元素的外边距 */
 body.rbt-shell #WorldInfo #world_popup > * { margin-top: 0 !important; margin-bottom: 0 !important; }
 body.rbt-shell #WorldInfo #world_popup > * + * { margin-top: 10px !important; }
@@ -1344,10 +1344,11 @@ body.rbt-shell .rbt-sheet-head .rbt-sheet-note { align-items: center; }
    否则「展开后收不回去」「藏起来的东西露出来」。要排间距，就在不会被隐藏的外层容器上用 gap。
    只排还是酒馆原样的条目（标题区里直接是 .world_entry_thin_controls）。别的扩展重排过的条目（比如柏宝箱的「世界书新布局」）
    我们不排版，也不显示「更多设置」，否则两套排法叠在一起，标题被挤没。不为某个扩展单独适配。
+   美化或别的扩展只用 CSS 把条目的开关 / 按钮挪了位置（position: absolute）时也一样：worldEntries.ts 给面板加 .rbt-wi-off，整段都不生效。
    （按钮的最小点击区域这类通用规则仍然作用在它们上面。）不支持 :has 的老浏览器上整段都不生效，条目保持酒馆原样。 */
 
 /* 「更多设置」（电脑和手机都有）：展开后先只放常用的，其余收起来 */
-body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls):not(.rbt-wi-adv) :is(
+body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls):not(.rbt-wi-adv) :is(
   [name="keywordsAndLogicBlock"] > :not(.keyprimary),
   [name="perEntryOverridesBlock"],
   .world_entry_edit > .flex-container.flexGap10,
@@ -1357,7 +1358,7 @@ body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-dra
 ) { display: none !important; }
 /* 按钮默认藏着，只在上面那条收起规则生效的条目里出现：两者同进同退，不会出现点了没反应的按钮 */
 body.rbt-shell #WorldInfo .rbt-wi-more { display: none; }
-body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .rbt-wi-more {
+body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .rbt-wi-more {
   align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; margin: 4px 0 0;
   border: 0; border-radius: var(--rbd-r-s); background: transparent; color: var(--rbd-accent, #0a84ff); font: inherit; font-size: 13px; cursor: pointer;
 }
@@ -1378,64 +1379,64 @@ body.rbt-shell #WorldInfo .rbt-wi-sum { display: none; }
   body.rbt-shell #WorldInfo #world_popup .menu_button { min-width: 36px; height: 34px; }
 
   /* ---- 条目卡片 ---- */
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) { margin-bottom: 10px; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) > .world_entry_form { border: 0 !important; border-radius: var(--rbd-r-m) !important; background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 6%, transparent)) !important; padding: 0 !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) { margin-bottom: 10px; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) > .world_entry_form { border: 0 !important; border-radius: var(--rbd-r-m) !important; background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 6%, transparent)) !important; padding: 0 !important; }
 
   /* 标题区：12 格。第一行 展开 | 开关 | 标题 + 触发方式；收起时第二行是摘要；展开后第二行 位置 + 移动/复制/删除，第三行 深度/顺序/概率 */
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) > form > .inline-drawer > .inline-drawer-header {
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) > form > .inline-drawer > .inline-drawer-header {
     display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: center;
     column-gap: 6px; row-gap: 10px; padding: 10px 10px 12px !important;
   }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_thin_controls:not([name]),
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_thin_controls:not([name]) > .flex-container,
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEnteryHeaderControls { display: contents; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header > .world_entry_thin_controls > .inline-drawer-toggle { grid-column: 1; grid-row: 1; justify-self: center; font-size: 20px; min-width: 32px; min-height: 32px; display: grid; place-items: center; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .killSwitch { grid-column: 2; grid-row: 1; justify-self: center; font-size: 20px; min-width: 32px; min-height: 32px; display: grid; place-items: center; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEntryTitleAndStatus { grid-column: 3 / -1; grid-row: 1; min-width: 0; display: flex; align-items: center !important; gap: 6px; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEntryTitleAndStatus > * { margin: 0 !important; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEntryTitleAndStatus > .flex-container { flex: 1 1 auto; min-width: 0; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) textarea[name="comment"] { width: 100% !important; height: 36px !important; min-height: 36px !important; resize: none !important; overflow: hidden; white-space: nowrap; font-size: 15px !important; font-weight: 600; line-height: 1.4 !important; padding-top: 7px !important; padding-bottom: 7px !important; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) select[name="entryStateSelector"] { height: 36px !important; min-height: 36px !important; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .rbt-wi-sum {
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_thin_controls:not([name]),
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_thin_controls:not([name]) > .flex-container,
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEnteryHeaderControls { display: contents; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header > .world_entry_thin_controls > .inline-drawer-toggle { grid-column: 1; grid-row: 1; justify-self: center; font-size: 20px; min-width: 32px; min-height: 32px; display: grid; place-items: center; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .killSwitch { grid-column: 2; grid-row: 1; justify-self: center; font-size: 20px; min-width: 32px; min-height: 32px; display: grid; place-items: center; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEntryTitleAndStatus { grid-column: 3 / -1; grid-row: 1; min-width: 0; display: flex; align-items: center !important; gap: 6px; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEntryTitleAndStatus > * { margin: 0 !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEntryTitleAndStatus > .flex-container { flex: 1 1 auto; min-width: 0; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) textarea[name="comment"] { width: 100% !important; height: 36px !important; min-height: 36px !important; resize: none !important; overflow: hidden; white-space: nowrap; font-size: 15px !important; font-weight: 600; line-height: 1.4 !important; padding-top: 7px !important; padding-bottom: 7px !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) select[name="entryStateSelector"] { height: 36px !important; min-height: 36px !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .rbt-wi-sum {
     grid-column: 1 / -1; grid-row: 2; display: block; padding: 0 2px 0 4px;
     font-size: 12.5px; line-height: 1.45; color: var(--rbd-text3, #8a8f98);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) [name="PositionBlock"] { grid-column: 1 / -1; grid-row: 2; min-width: 0; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) [name="PositionBlock"] select { width: 100% !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) [name="PositionBlock"] { grid-column: 1 / -1; grid-row: 2; min-width: 0; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) [name="PositionBlock"] select { width: 100% !important; }
   /* 第四行：左边拖动排序（只在「自定义」排序时有），右边 移动 / 复制 / 删除，每个占两格，不再挤在一起 */
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header > .menu_button { grid-row: 4; justify-self: end; margin: 0 !important; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header > .move_entry_button { grid-column: 7 / 9; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header > .duplicate_entry_button { grid-column: 9 / 11; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header > .delete_entry_button { grid-column: 11 / 13; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header > .drag-handle { grid-column: 1 / 3; grid-row: 4; justify-self: start; min-width: 32px; min-height: 32px; display: grid; place-items: center; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEnteryHeaderControls > .world_entry_form_control:not([name="PositionBlock"]) { grid-row: 3; min-width: 0; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEnteryHeaderControls > .world_entry_form_control:nth-child(2) { grid-column: 1 / 5; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEnteryHeaderControls > .world_entry_form_control:nth-child(3) { grid-column: 5 / 9; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEnteryHeaderControls > .world_entry_form_control:nth-child(4) { grid-column: 9 / -1; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_form_control:has(> input[name="depth"]:disabled) { display: none !important; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header:has(input[name="depth"]:disabled) .WIEnteryHeaderControls > .world_entry_form_control:nth-child(3) { grid-column: 1 / 7; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header:has(input[name="depth"]:disabled) .WIEnteryHeaderControls > .world_entry_form_control:nth-child(4) { grid-column: 7 / -1; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .wi-enter-footer-text input { width: 100% !important; max-width: none !important; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEntryHeaderTitleMobile { display: block; margin: 0 0 6px !important; font-size: 12px !important; color: var(--rbd-text3, #8a8f98); }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header > .menu_button { grid-row: 4; justify-self: end; margin: 0 !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header > .move_entry_button { grid-column: 7 / 9; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header > .duplicate_entry_button { grid-column: 9 / 11; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header > .delete_entry_button { grid-column: 11 / 13; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header > .drag-handle { grid-column: 1 / 3; grid-row: 4; justify-self: start; min-width: 32px; min-height: 32px; display: grid; place-items: center; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEnteryHeaderControls > .world_entry_form_control:not([name="PositionBlock"]) { grid-row: 3; min-width: 0; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEnteryHeaderControls > .world_entry_form_control:nth-child(2) { grid-column: 1 / 5; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEnteryHeaderControls > .world_entry_form_control:nth-child(3) { grid-column: 5 / 9; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEnteryHeaderControls > .world_entry_form_control:nth-child(4) { grid-column: 9 / -1; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_form_control:has(> input[name="depth"]:disabled) { display: none !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header:has(input[name="depth"]:disabled) .WIEnteryHeaderControls > .world_entry_form_control:nth-child(3) { grid-column: 1 / 7; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .inline-drawer-header:has(input[name="depth"]:disabled) .WIEnteryHeaderControls > .world_entry_form_control:nth-child(4) { grid-column: 7 / -1; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .wi-enter-footer-text input { width: 100% !important; max-width: none !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .WIEntryHeaderTitleMobile { display: block; margin: 0 0 6px !important; font-size: 12px !important; color: var(--rbd-text3, #8a8f98); }
 
   /* 收起时：标题区只留第一行和摘要；展开后摘要换成可编辑的字段（只加 display:none，不改酒馆自己的 display） */
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls):has(> form > .inline-drawer > .inline-drawer-header .inline-drawer-icon.down) .inline-drawer-header :is([name="PositionBlock"], .wi-enter-footer-text, .menu_button, .drag-handle) { display: none !important; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls):has(> form > .inline-drawer > .inline-drawer-header .inline-drawer-icon.up) .rbt-wi-sum { display: none; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls):has(> form > .inline-drawer > .inline-drawer-header .inline-drawer-icon.down) .inline-drawer-header :is([name="PositionBlock"], .wi-enter-footer-text, .menu_button, .drag-handle) { display: none !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls):has(> form > .inline-drawer > .inline-drawer-header .inline-drawer-icon.up) .rbt-wi-sum { display: none; }
 
   /* ---- 展开后：字段一行一个，说明在上；间距用外层的 gap，不碰会被酒馆藏起来的元素 ---- */
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) > form > .inline-drawer > .inline-drawer-content { padding: 0 10px 12px !important; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_edit { display: flex; flex-direction: column; gap: 12px; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_edit .flex-container { flex-wrap: wrap !important; gap: 12px !important; margin: 0 !important; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_edit .world_entry_form_control { flex: 1 1 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_edit .world_entry_form_control > label,
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_edit .world_entry_form_control > small { display: block; margin: 0 0 6px !important; font-size: 12px !important; color: var(--rbd-text3, #8a8f98); text-align: left !important; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) :is(input.text_pole, select.text_pole) { height: 36px !important; min-height: 36px; font-size: 15px !important; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) :is(textarea.keyprimarytextpole, textarea.keysecondarytextpole) { min-height: 36px !important; padding-top: 7px !important; padding-bottom: 7px !important; font-size: 15px !important; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) textarea[name="content"] { min-height: 180px; font-size: 15px !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) > form > .inline-drawer > .inline-drawer-content { padding: 0 10px 12px !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_edit { display: flex; flex-direction: column; gap: 12px; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_edit .flex-container { flex-wrap: wrap !important; gap: 12px !important; margin: 0 !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_edit .world_entry_form_control { flex: 1 1 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_edit .world_entry_form_control > label,
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_edit .world_entry_form_control > small { display: block; margin: 0 0 6px !important; font-size: 12px !important; color: var(--rbd-text3, #8a8f98); text-align: left !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) :is(input.text_pole, select.text_pole) { height: 36px !important; min-height: 36px; font-size: 15px !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) :is(textarea.keyprimarytextpole, textarea.keysecondarytextpole) { min-height: 36px !important; padding-top: 7px !important; padding-bottom: 7px !important; font-size: 15px !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) textarea[name="content"] { min-height: 180px; font-size: 15px !important; }
   /* 「更多设置」里的两排小设置（包含组 / 组权重 / 黏性 / 冷却 / 延迟，角色绑定 / 生成类型）：手机上一行两个，不挤成五等分 */
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_edit > .flex-container.flexGap10 > * { flex: 1 1 calc(50% - 6px) !important; min-width: 0 !important; }
-  body.rbt-shell #WorldInfo .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_edit > .flex-container.flexGap10 > .flex4 { flex-basis: 100% !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_edit > .flex-container.flexGap10 > * { flex: 1 1 calc(50% - 6px) !important; min-width: 0 !important; }
+  body.rbt-shell #WorldInfo:not(.rbt-wi-off) .world_entry:has(> form > .inline-drawer > .inline-drawer-header > .world_entry_thin_controls) .world_entry_edit > .flex-container.flexGap10 > .flex4 { flex-basis: 100% !important; }
 }
 
 /* ============================================================ 预设：单条提示词编辑器 ===

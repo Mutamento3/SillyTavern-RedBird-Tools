@@ -103,6 +103,19 @@ function enhance(entry: HTMLElement): void {
   }
 }
 
+/**
+ * 美化或别的扩展用 CSS 把条目的开关 / 展开箭头 / 移动复制删除 / 拖动手柄挪出了正常排版（absolute / fixed）：
+ * 说明条目已经有人排过，我们整段条目样式让开（#WorldInfo.rbt-wi-off，见 shell.css「世界书条目」）。
+ * 酒馆和我们自己都不给这些元素设 position，所以不会误判。这类 CSS 对每个条目都一样，看第一条就够。
+ */
+const MOVED = '.killSwitch, .inline-drawer-toggle, .move_entry_button, .duplicate_entry_button, .delete_entry_button, .drag-handle';
+function detectMoved(): void {
+  const header = document.querySelector('#world_popup_entries_list .world_entry .inline-drawer-header');
+  if (!header) return;
+  const moved = [...header.querySelectorAll(MOVED)].some((el) => /absolute|fixed/.test(getComputedStyle(el).position));
+  document.getElementById('WorldInfo')?.classList.toggle('rbt-wi-off', moved);
+}
+
 let pending = false;
 /** 等着处理的条目；null 表示整页都看一遍（第一次、换书、数据重读后）。 */
 let queue: Set<HTMLElement> | null = null;
@@ -117,6 +130,7 @@ function scan(entries?: Iterable<HTMLElement>): void {
     const todo = queue;
     queue = new Set();
     if (!document.body.classList.contains('rbt-shell')) return;
+    detectMoved();
     const name = bookName();
     if (name && !books.has(name)) void loadBook(name);
     const list = todo ?? document.querySelectorAll<HTMLElement>('#world_popup_entries_list .world_entry');
@@ -155,5 +169,7 @@ export function installWorldEntries(tries = 0): void {
   // 改了关键词以后，世界书数据要重新读（收起时的摘要用它）
   let t: ReturnType<typeof setTimeout> | undefined;
   list.addEventListener('change', () => { clearTimeout(t); t = setTimeout(() => { books.delete(bookName()); scan(); }, 1500); });
+  // 别人的排版可能只在某个宽度以下生效（手机横过来、拖窗口）
+  window.addEventListener('resize', detectMoved);
   scan();
 }
