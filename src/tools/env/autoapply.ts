@@ -159,7 +159,8 @@ export async function applyPlan(plan: ApplyPlan, opts: { deferModel?: boolean; o
   // 本卡专用的项都记原值，包括进卡时本来就一样的（之后在酒馆里改它，离卡时才知道要记进这张卡）
   const mine = own;
   recordBaseline(plan.avatar, Object.fromEntries(mine.map((k) => [k, k in first ? first[k] : liveValue(k)])));
-  const doneList = await applyLive(first, { inChatLoad: true });
+  // 这张卡要换模型（本卡专用或预设推荐的，模型可能稍后才换）：换预设顺带换掉模型是预料之中，不弹「模型变了」
+  const doneList = await applyLive(first, { inChatLoad: true, quiet: !!plan.model });
   settleBaseline(plan.avatar, mine, doneList);
   const done = new Set(doneList);
   if (done.has('preset')) {

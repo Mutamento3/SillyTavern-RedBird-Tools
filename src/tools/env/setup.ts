@@ -265,6 +265,29 @@ export function globalValue(key: string): unknown {
   return liveValue(key);
 }
 
+/** 正在聊的卡专用了这一项（全局先收起来了）时，返回这张卡的名字；否则 null。 */
+export function heldByCard(key: string): string | null {
+  const b = baseline();
+  return b && key in b.items && isCurrent(b.avatar) ? String(currentCharacter()?.name ?? '') : null;
+}
+
+/**
+ * 全局工具箱里换全局：正在聊的卡专用了这一项时，只改收起来的全局（离开这张卡时换上），这张卡继续用自己的；
+ * 否则直接换上。
+ */
+export async function setGlobal(key: string, value: unknown): Promise<void> {
+  const b = baseline();
+  if (b && key in b.items && heldByCard(key) !== null) {
+    b.items[key].before = value;
+    saveSettings();
+    archiveVersion.value++;
+    return;
+  }
+  if (key === 'preset') await switchPreset(String(value));
+  else await applyLive({ [key]: value });
+  archiveVersion.value++;
+}
+
 /** 「改回全局」：这张卡的本卡专用全部去掉（美化、人设由调用方一起处理）。返回撤销。 */
 export async function revertCard(avatar: string): Promise<() => Promise<void>> {
   const s = settings();

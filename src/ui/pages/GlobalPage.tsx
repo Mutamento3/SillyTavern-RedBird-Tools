@@ -5,7 +5,8 @@ import { trash } from '../../tools/trash';
 import { useEffect, useState } from 'preact/hooks';
 import type { RegexOwner } from '../../core/cards';
 import { confirmText, loaded, runSlash, settings, slashQuote } from '../../st/st';
-import { allCharacters, archiveVersion, currentPresetName, findChar, globalRegexScripts, guessRegexOwner, installedExtensions, presetNames, setRegexOwner, switchPreset, worldNames } from '../../tools/cards/cards';
+import { allCharacters, archiveVersion, currentPresetName, findChar, globalRegexScripts, guessRegexOwner, installedExtensions, presetNames, setRegexOwner, worldNames } from '../../tools/cards/cards';
+import { globalValue, heldByCard, setGlobal } from '../../tools/env/setup';
 import { currentBookScopes } from '../../tools/flow/capture';
 import { openDrawer } from '../../shell/drawers';
 import { envReport, refreshEnv, type EnvItem, type EnvSubItem } from '../../tools/env/env';
@@ -254,23 +255,29 @@ export function AddGlobalWorld() {
   );
 }
 
+/** 全局预设：始终显示、修改全局的那个。正在聊的卡用自己的预设时，改了等离开这张卡再换上。 */
 export function PresetPicker() {
+  void archiveVersion.value;
   const names = presetNames();
   const cur = currentPresetName();
+  const global = String(globalValue('preset') ?? cur);
+  const held = heldByCard('preset');
   const [busy, setBusy] = useState(false);
   return (
     <>
     <div class="rbt-form-row">
-      <select class="text_pole rbt-select" value={cur} disabled={busy} onChange={async (e) => {
+      <select class="text_pole rbt-select" value={global} disabled={busy} onChange={async (e) => {
         const name = (e.currentTarget as HTMLSelectElement).value;
-        if (!name || name === cur) return;
+        if (!name || name === global) return;
         setBusy(true);
-        try { await switchPreset(name); } finally { setBusy(false); refreshEnv(); }
+        try { await setGlobal('preset', name); } finally { setBusy(false); refreshEnv(); }
       }}>
+        {!names.includes(global) && <option value={global}>{global}</option>}
         {names.map((n) => <option key={n} value={n}>{n}</option>)}
       </select>
       <button class="rbt-btn" onClick={() => openDrawer('preset')}>编辑预设</button>
     </div>
+    {held && cur !== global && <small class="rbt-muted">「{held}」用自己的「{cur}」。在这里换的全局预设，离开这张卡后生效。</small>}
     </>
   );
 }

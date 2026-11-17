@@ -35,6 +35,7 @@ import { allSeries, compareVersions, renameSeries, setSeries, sourceFor, sources
 import { openDrawer } from '../../shell/drawers';
 import { openBookInEditor } from '../../shell/worldNote';
 import { Empty, NavRow, CheckRow, Tag, Toggle } from '../common';
+import { globalValue, heldByCard, setGlobal } from '../../tools/env/setup';
 import { SourceEditor } from '../SourceEditor';
 import { ModelPicker } from '../ModelPicker';
 import { currentModel, modelLabel, presetBindsConnection, presetConnection, SOURCE_LABEL } from '../../tools/model';
@@ -378,16 +379,18 @@ function PresetsPage() {
   const cur = currentPresetName();
   const ov = overview();
   const presetRx = (report?.items ?? []).filter((i) => i.scope === 'preset' && i.kind !== 'preset');
+  const global = String(globalValue('preset') ?? cur);
   const back = GLOBAL_TAB_LABELS.presets;
   return (
     <div class="rbt-page">
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
-          <Section title="正在用" hint="进有专用预设的卡时会换掉">
+          <Section title="全局预设" hint="没设专用预设的卡都用它">
             <PresetPicker />
             <ReloadNotice name={cur} />
-            {presetRx.map((i) => <ItemRow key={i.id} item={i} />)}
-            {!presetRx.length && <small class="rbt-muted">这个预设没有自带正则或脚本。</small>}
+            {/* 自带的正则、脚本说的是正在用的预设；正在聊的卡用自己的预设时，那不是全局预设，不列 */}
+            {cur === global && presetRx.map((i) => <ItemRow key={i.id} item={i} />)}
+            {cur === global && !presetRx.length && <small class="rbt-muted">这个预设没有自带正则或脚本。</small>}
           </Section>
         </div>
         <div class="rbt-page-group">
@@ -402,11 +405,11 @@ function PresetsPage() {
               const rec = ov.byPreset.get(n);
               const rx = presetRegexCount(n);
               const m = settings().presetInfo[n]?.model;
-              return [v.version && `版本 ${v.version}`, m && `模型 ${m.model}`, v.author && `作者 ${v.author}`, rec?.length && `${rec.length} 张卡推荐`, rx && `${rx} 条正则`].filter(Boolean).join(' · ');
+              return [v.version && `版本 ${v.version}`, m && `模型 ${m.model}`, v.author && `作者 ${v.author}`, rec?.length && `${rec.length} 张卡专用`, rx && `${rx} 条正则`].filter(Boolean).join(' · ');
             }}
-            trail={(n) => (n === cur ? <Tag tone="accent">正在用</Tag> : null)}
-            locked={(n) => (n === cur ? '正在用' : null)}
-            deleteNote={(list) => { const used = list.filter((n) => ov.byPreset.get(n)?.length); return used.length ? `这些是角色卡推荐的预设：${used.map((n) => `「${n}」`).join('')}。删除后那些卡的推荐会失效。` : ''; }}
+            trail={(n) => (n === cur ? <Tag tone="accent">正在用</Tag> : n === global ? <Tag>全局</Tag> : null)}
+            locked={(n) => (n === cur ? '正在用' : n === global ? '全局预设' : null)}
+            deleteNote={(list) => { const used = list.filter((n) => ov.byPreset.get(n)?.length); return used.length ? `这些预设有卡专用：${used.map((n) => `「${n}」`).join('')}。删除后这些卡改用全局的预设。` : ''; }}
           />
         </div>
       </div>
@@ -417,6 +420,7 @@ function PresetsPage() {
 function PresetDetail({ name }: { name: string }) {
   void archiveVersion.value;
   const cur = currentPresetName();
+  const global = String(globalValue('preset') ?? cur);
   const ov = overview();
   const exists = presetNames().includes(name);
   const rx = presetRegexCount(name);
@@ -425,7 +429,9 @@ function PresetDetail({ name }: { name: string }) {
     <div class="rbt-page">
       <div class="rbt-detail-head">
         <h2>{name}</h2>
-        {name === cur ? <Tag tone="accent">正在用</Tag> : exists && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={async () => { setBusy(true); try { await switchPreset(name); } finally { setBusy(false); } }}>换成这个</button>}
+        {name === cur && <Tag tone="accent">正在用</Tag>}
+        {name === global && name !== cur && <Tag>全局</Tag>}
+        {name !== cur && name !== global && exists && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={async () => { setBusy(true); try { await setGlobal('preset', name); } finally { setBusy(false); } }}>{heldByCard('preset') ? '设为全局预设' : '换成这个'}</button>}
         {name === cur && <button type="button" class="rbt-btn rbt-btn-small" onClick={() => openDrawer('preset')}>编辑预设 <i class="fa-solid fa-arrow-up-right-from-square" /></button>}
       </div>
       {name === cur && <ReloadNotice name={name} />}
@@ -439,12 +445,12 @@ function PresetDetail({ name }: { name: string }) {
         <div class="rbt-page-group">
           <PresetModelSection name={name} isCurrent={name === cur} />
           <PresetScriptsSection name={name} />
-          <Section title="推荐它的卡" hint="换到这些卡时会自动换上这个预设">
+          <Section title="专用它的卡" hint="进这些卡时会换上这个预设">
             <CardRows cards={ov.byPreset.get(name) ?? []} back={name} empty="还没有卡专用它。在角色档案的「预设和模型」里选。" />
           </Section>
         </div>
       </div>
-      {exists && <DeleteOne kind="preset" name={name} locked={name === cur ? '正在用这个预设' : null} note={ov.byPreset.get(name)?.length ? `有 ${ov.byPreset.get(name)!.length} 张卡推荐这个预设，删除后它们的推荐会失效。` : undefined} />}
+      {exists && <DeleteOne kind="preset" name={name} locked={name === cur ? '正在用这个预设' : null} note={ov.byPreset.get(name)?.length ? `有 ${ov.byPreset.get(name)!.length} 张卡专用这个预设，删除后这些卡改用全局的预设。` : undefined} />}
     </div>
   );
 }
@@ -1016,7 +1022,7 @@ function PresetModelSection({ name, isCurrent }: { name: string; isCurrent: bool
   const cur = currentModel();
   const bound = presetBindsConnection();
   return (
-    <Section title="推荐模型" hint="推荐了这个预设、又没单独指定模型的卡，换过去时会用这个模型">
+    <Section title="推荐模型" hint="用这个预设、又没设专用模型的卡，会用这个模型">
       <ModelPicker value={settings().presetInfo[name]?.model} onChange={(m) => updateSource('preset', name, { model: m ?? undefined })} offerSwitch={isCurrent} />
       {own && (
         <div class={bound && cur && own.source !== cur.source ? 'rbt-warn' : 'rbt-hint'}>

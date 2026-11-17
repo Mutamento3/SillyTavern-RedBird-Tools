@@ -1,7 +1,7 @@
 /**
  * 聊天里的状态栏（像 Mac 菜单栏右上角）：现在用的预设、模型、世界书、人设，一眼看到。
  * 每一项只露一点点字——够看出「不是空的」「是不是那个」就行，完整的在鼠标悬停的提示里。
- * 和这张卡推荐的不一样时，前面亮一个琥珀色小点；点一下打开酒馆对应的面板。
+ * 和这张卡专用的（或预设推荐的模型）不一样时，前面亮一个琥珀色小点；点一下打开酒馆对应的面板。
  */
 import { ctx, currentCharacter, loaded, settings } from '../st/st';
 import { currentPresetName, cardInfo } from '../tools/cards/cards';
@@ -80,13 +80,14 @@ export function StatusBar() {
   // 预设
   const preset = currentPresetName();
   const recPreset = info?.preset?.name;
-  const presetWarn = recPreset && recPreset !== preset ? `这张卡推荐「${recPreset}」` : undefined;
+  const presetWarn = recPreset && recPreset !== preset ? `这张卡专用「${recPreset}」` : undefined;
 
   // 模型
   const model = modelsApply() ? currentModel() : null;
-  const wantModel = char ? s.profiles[char.avatar]?.model ?? (recPreset ? s.presetInfo[recPreset]?.model : undefined) : undefined;
+  const cardModel = char ? s.profiles[char.avatar]?.model : undefined;
+  const wantModel = cardModel ?? (char && recPreset ? s.presetInfo[recPreset]?.model : undefined);
   const conn = activeConnection();
-  const modelWarn = !apiOnline.value ? 'API 没连上' : wantModel && !sameModel(wantModel, model) ? `这张卡推荐 ${modelLabel(wantModel)}` : undefined;
+  const modelWarn = !apiOnline.value ? 'API 没连上' : wantModel && !sameModel(wantModel, model) ? `${cardModel ? '这张卡专用' : '预设推荐'} ${modelLabel(wantModel)}` : undefined;
   const shortModel = conn.model ? conn.model.split('/').pop()! : '没选模型';
 
   // 世界书
