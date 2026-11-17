@@ -60,11 +60,14 @@ export function PickRow({ k, value, sub, lead, pill, thumb, disabled, open, onTo
   );
 }
 
-/** 点一个按钮（children）弹出的选择框，PickRow 和「＋ 附加世界书」共用。 */
-function Popup({ title, open, onClose, top, head, options, bottom, wide, children }: {
+/** 点一个按钮（children）弹出的选择框，PickRow、「＋ 附加世界书」、首页的排序和筛选共用。 */
+export function Popup({ title, open, onClose, top, head, options, bottom, wide, cls, children }: {
   title: string; open: boolean; onClose: () => void; top?: ComponentChildren; head?: string; options?: Opt[]; bottom?: ComponentChildren;
   /** 选择框和按钮左边对齐（PickRow 里是和框对齐） */
-  wide?: boolean; children: ComponentChildren;
+  wide?: boolean;
+  /** 外层再加的 class（各处自己定选择框在电脑上的位置和宽度） */
+  cls?: string;
+  children: ComponentChildren;
 }) {
   const [q, setQ] = useState('');
   const ref = useRef<HTMLDivElement>(null);
@@ -83,7 +86,7 @@ function Popup({ title, open, onClose, top, head, options, bottom, wide, childre
   const sheet = (node: ComponentChildren) => (isPhone() ? createPortal(<div class="rbt-scope rbt-menu-portal">{node}</div>, document.body) : node);
   const list = (options ?? []).filter((o) => !q.trim() || o.title.toLowerCase().includes(q.trim().toLowerCase()));
   return (
-    <div class={`rbt-pick ${open ? 'open' : ''} ${wide ? 'wide' : ''}`} ref={ref}>
+    <div class={`rbt-pick ${open ? 'open' : ''} ${wide ? 'wide' : ''} ${cls ?? ''}`} ref={ref}>
       {children}
       {open && sheet(<>
         <div class="rbt-menu-scrim" onClick={onClose} />

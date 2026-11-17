@@ -9,6 +9,7 @@ import { openImport } from '../ui/ImportDialog';
 import { Menu } from '../ui/Menu';
 import { ctx } from '../st/st';
 import { compact } from './Shell';
+import { Popup } from '../ui/pages/setupParts';
 import {
   allTags,
   charsTick,
@@ -308,16 +309,21 @@ const SORT_TEXT: Record<CharSort, string> = { recent: '最近聊过', name: '名
  * 筛选 / 排序：一个图标 + 文字的按钮，上面盖一个看不见的系统下拉框（点了弹系统自带的选择器，手机上也好用）。
  * 电脑上显示图标和文字；手机上平时只显示图标，选了标签、换了排序时，图标后面写出现在的值（一眼看出筛了什么、怎么排）。
  */
-function IconPicker({ icon, label, title, value, options, onChange, active }: { icon: string; label: string; title: string; value: string; options: { value: string; text: string }[]; onChange: (v: string) => void; active?: boolean }) {
+/**
+ * 排序、按标签筛选：一个按钮，点开是工具箱自己的选择菜单（电脑上在按钮下面，手机上从底部弹出）。
+ * 不用浏览器自带的下拉框：有的手机浏览器（比如火狐）把选项贴在按钮下面、和按钮一样窄，标签名被截断。
+ */
+function IconPicker({ icon, label, title, name, value, options, onChange, active }: { icon: string; label: string; title: string; name: string; value: string; options: { value: string; text: string }[]; onChange: (v: string) => void; active?: boolean }) {
+  const [open, setOpen] = useState(false);
   return (
-    <label class={'rbt-home-select rbt-home-picker' + (active ? ' active' : '')} title={title}>
-      <i class={`fa-solid ${icon} fa-fw`} aria-hidden="true" />
-      <span class="rbt-home-picker-text">{label}</span>
-      <i class="fa-solid fa-chevron-down rbt-home-picker-chev" aria-hidden="true" />
-      <select value={value} aria-label={title} onChange={(e) => onChange((e.currentTarget as HTMLSelectElement).value)}>
-        {options.map((o) => <option key={o.value} value={o.value}>{o.text}</option>)}
-      </select>
-    </label>
+    <Popup title={name} open={open} onClose={() => setOpen(false)} cls="rbt-home-pop"
+      options={options.map((o) => ({ key: o.value || '-', title: o.text, selected: o.value === value, onPick: () => { setOpen(false); onChange(o.value); } }))}>
+      <button type="button" class={'rbt-home-select rbt-home-picker' + (active ? ' active' : '')} title={title} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <i class={`fa-solid ${icon} fa-fw`} aria-hidden="true" />
+        <span class="rbt-home-picker-text">{label}</span>
+        <i class="fa-solid fa-chevron-down rbt-home-picker-chev" aria-hidden="true" />
+      </button>
+    </Popup>
   );
 }
 
@@ -368,11 +374,11 @@ export function HomeGallery() {
   const tools = (
           <div class="rbt-home-tools">
             {tags.length > 0 && (
-              <IconPicker icon="fa-filter" label={tagValue ? (tags.find((t) => 'tag:' + t.tag.id === tagValue)?.tag.name ?? '标签') : '按标签筛选'} title="只看带某个标签的角色" active={!!tagValue}
+              <IconPicker icon="fa-filter" name="标签" label={tagValue ? (tags.find((t) => 'tag:' + t.tag.id === tagValue)?.tag.name ?? '标签') : '按标签筛选'} title="只看带某个标签的角色" active={!!tagValue}
                 value={tagValue} onChange={(v) => setFilter((v || 'all') as Filter)}
                 options={[{ value: '', text: '全部标签' }, ...tags.map(({ tag, count }) => ({ value: 'tag:' + tag.id, text: `${tag.name}（${count}）` }))]} />
             )}
-            <IconPicker icon="fa-arrow-down-wide-short" label={phone ? SORT_TEXT[sort] : `排序：${SORT_TEXT[sort]}`} title="排序方式" active={phone && sort !== 'recent'} value={sort} onChange={(v) => setSort(v as CharSort)}
+            <IconPicker icon="fa-arrow-down-wide-short" name="排序" label={phone ? SORT_TEXT[sort] : `排序：${SORT_TEXT[sort]}`} title="排序方式" active={phone && sort !== 'recent'} value={sort} onChange={(v) => setSort(v as CharSort)}
               options={(Object.keys(SORT_TEXT) as CharSort[]).map((k) => ({ value: k, text: SORT_TEXT[k] }))} />
             <button type="button" class={'rbt-home-select rbt-home-manage' + (managing ? ' active' : '')} title="多选：批量置顶、加减标签、导出、删除" onClick={() => (managing ? stopManaging() : setManaging(true))}>
               <i class="fa-solid fa-list-check fa-fw" /> <span class="rbt-home-picker-text">{managing ? '完成' : '管理'}</span>

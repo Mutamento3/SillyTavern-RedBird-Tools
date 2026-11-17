@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.20",
+  "version": "0.6.21",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "全局工具箱新增「人设」，电脑上标签改成竖排在左边。红鸟适配美化可以给对白选颜色；有背景图时聊天区按图的亮度盖黑，图透出来更多。"
+  "rbt_whats_new": "修了两处手机上的显示问题：装着柏宝箱时世界书条目挤乱；首页点「按标签筛选」时标签名被截断。"
 }
