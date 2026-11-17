@@ -610,6 +610,23 @@ body.rbt-shell.rbt-shell-ready .rbt-nav { transition: left 0.18s ease, width 0.1
   flex-shrink: 0;
 }
 .rbt-sheet-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--rbd-s-4) var(--rbd-inset) var(--rbd-s-6); }
+/* 电脑：左边竖排标签，右边内容。内容区自己当宽度容器，里面按宽度换布局的地方量的是内容区的宽 */
+.rbt-sheet-main { flex: 1 1 auto; min-height: 0; display: flex; }
+.rbt-sheet-main > .rbt-sheet-body { flex: 1 1 auto; min-width: 0; container-type: inline-size; }
+.rbt-sheet-rail {
+  flex: none; width: 152px; display: flex; flex-direction: column; gap: 2px;
+  padding: var(--rbd-s-3) var(--rbd-s-2); overflow-y: auto;
+  border-right: 1px solid var(--rbd-hairline, color-mix(in srgb, var(--rbd-text1) 6%, transparent));
+}
+.rbt-sheet-rail button {
+  display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 12px;
+  border: 0; border-radius: var(--rbd-r-s); background: transparent;
+  color: var(--rbd-text2, #9ca1aa); font: inherit; font-size: 14px; text-align: left; cursor: pointer;
+}
+.rbt-sheet-rail button i { color: var(--rbd-text3, #6b7079); }
+.rbt-sheet-rail button:hover { color: var(--SmartThemeBodyColor); background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 5%, transparent)); }
+.rbt-sheet-rail button.active { color: var(--SmartThemeBodyColor); font-weight: 600; background: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1) 8%, transparent)); }
+.rbt-sheet-rail button.active i { color: var(--SmartThemeBodyColor); }
 
 .rbt-char-problem {
   display: block;

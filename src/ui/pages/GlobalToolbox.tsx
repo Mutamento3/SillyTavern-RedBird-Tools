@@ -9,7 +9,7 @@
  */
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { ctx, saveSettings, settings, confirmText } from '../../st/st';
+import { confirmText, ctx, currentCharacter, loaded, saveSettings, settings } from '../../st/st';
 import {
   allCharacters,
   archiveVersion,
@@ -39,14 +39,17 @@ import { globalValue, heldByCard, setGlobal, trueGlobalWorlds } from '../../tool
 import { SourceEditor } from '../SourceEditor';
 import { ModelPicker } from '../ModelPicker';
 import { currentModel, modelLabel, presetBindsConnection, presetConnection, SOURCE_LABEL } from '../../tools/model';
-import { currentDetail, detailStack, GLOBAL_TAB_LABELS, GLOBAL_TABS, globalTab, goBack, openDetail, setGlobalTab, type GlobalTab } from '../views';
+import { currentDetail, detailStack, GLOBAL_TAB_ICONS, GLOBAL_TAB_LABELS, GLOBAL_TABS, globalTab, goBack, openDetail, setGlobalTab, type GlobalTab } from '../views';
 import { installPlugin } from '../../tools/importer';
 import { importOpen, openImport } from '../ImportDialog';
 import { CardPage } from './CardPage';
 import { AddGlobalWorld, GlobalRegexList, GlobalWorldList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
 import { trash, TRASH_LABEL, type TrashKind } from '../../tools/trash';
 import { charsTick } from '../../shell/characters';
-import { ReloadNotice, Section } from './parts';
+import { personaTick, ReloadNotice, Section, watchPersonas } from './parts';
+import { QUOTE_COLORS, type LookKind } from '../../core/quote';
+import { personaThumb } from './setupParts';
+import { personaStatus } from '../../shell/StatusBar';
 import { BindingsDetail, CardsTablePage } from './CardsTable';
 import { ScopePage } from './scope';
 import { LOOK_COPY, LOOK_NAME } from '../copy';
@@ -54,7 +57,7 @@ import { mesLayoutOn, setMesLayout } from '../../shell/mesActions';
 import { compact, shellOn } from '../../shell/Shell';
 import { PresetScriptsSection, ScriptsPage } from './ScriptsPage';
 import {
-  ACCENTS, accentId, currentStTheme, loadThemes, LOOKS, lookId, lookOn, READ_WIDTHS, readWidth, setAccent, setReadWidth, setStChatWidth, stChatWidth, stThemes, themeHasCss, themesLoading,
+  ACCENTS, accentId, currentStTheme, loadThemes, LOOKS, lookId, lookOn, quoteId, READ_WIDTHS, readWidth, setAccent, setQuoteColor, setReadWidth, setStChatWidth, stChatWidth, stThemes, themeHasCss, themesLoading,
   useBuiltInLook, useStTheme, type StTheme,
 } from '../../look/look';
 
@@ -417,6 +420,67 @@ function PresetsPage() {
   );
 }
 
+// ----------------------------------------------------------- personas ---
+
+/**
+ * 全局人设 = 酒馆的默认人设：没设专用人设（没绑定、存档没锁定）的卡都用它。
+ * 正在聊的卡用自己的人设时，换全局不动现在的人设，离开这张卡后生效。
+ */
+function PersonasPage() {
+  void personaTick.value;
+  useEffect(watchPersonas, []);
+  const c = ctx();
+  const pu = c.powerUserSettings ?? {};
+  const all = Object.keys(pu.personas ?? {}).sort((a, b) => personaLabel(a).localeCompare(personaLabel(b), 'zh'));
+  const def = String(pu.default_persona ?? '');
+  const now = personaStatus();
+  const held = !!currentCharacter() && (now.source === 'chat' || now.source === 'character' || now.source === 'group');
+  const cards = (id: string) => ((pu.persona_descriptions?.[id]?.connections ?? []) as { type: string }[]).filter((x) => x.type === 'character').length;
+  const [busy, setBusy] = useState(false);
+  const pick = async (id: string) => {
+    if (!id || id === def) return;
+    setBusy(true);
+    try {
+      pu.default_persona = id;
+      c.saveSettingsDebounced();
+      // 正在聊的卡用的就是全局人设：马上换上
+      if (currentCharacter() && !held && now.avatar !== id) await loaded.personas?.setUserAvatar?.(id);
+      personaTick.value++;
+    } finally { setBusy(false); }
+  };
+  return (
+    <div class="rbt-page">
+      <div class="rbt-page-cols">
+        <div class="rbt-page-group">
+          <Section title="全局人设" hint="没设专用人设的卡都用它">
+            <div class="rbt-form-row">
+              <select class="text_pole rbt-select" value={def} disabled={busy} onChange={(e) => { void pick((e.currentTarget as HTMLSelectElement).value); }}>
+                {!def && <option value="">还没设</option>}
+                {all.map((id) => <option key={id} value={id}>{personaLabel(id)}</option>)}
+              </select>
+              <button class="rbt-btn" onClick={() => openDrawer('persona')}>编辑人设 <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" /></button>
+            </div>
+            {held && now.avatar !== def && <small class="rbt-muted">「{currentCharacter()?.name}」用自己的「{now.name}」。在这里换的全局人设，离开这张卡后生效。</small>}
+          </Section>
+        </div>
+        <div class="rbt-page-group">
+          <h2 class="rbt-page-group-title">全部人设</h2>
+          {all.map((id) => {
+            const n = cards(id);
+            return (
+              <NavRow key={id} img={personaThumb(id)} title={personaLabel(id)} sub={n ? `${n} 张卡专用` : undefined} external
+                trailing={id === now.avatar ? <Tag tone="accent">正在用</Tag> : id === def ? <Tag>全局</Tag> : undefined}
+                hint="在酒馆的人设面板里编辑" onClick={() => openDrawer('persona')} />
+            );
+          })}
+          {!all.length && <small class="rbt-muted">还没有人设。</small>}
+        </div>
+      </div>
+    </div>
+  );
+}
+const personaLabel = (id: string): string => (ctx().powerUserSettings?.personas ?? {})[id] || id;
+
 function PresetDetail({ name }: { name: string }) {
   void archiveVersion.value;
   const cur = currentPresetName();
@@ -714,6 +778,22 @@ function ChatWidthRow() {
   );
 }
 
+/** 对白（引号里的话）的颜色：不上色，或者六种颜色之一。圆点画的是现在这套美化上的颜色，选中的名字写在标签里。 */
+function QuoteColorRow() {
+  const look = (lookId.value === 'light' || lookId.value === 'warm' ? lookId.value : 'dark') as LookKind;
+  const cur = quoteId.value;
+  const label = QUOTE_COLORS.find((q) => q.id === cur)?.label ?? '不上色';
+  return (
+    <div class="rbt-look-accents rbt-quote-row">
+      <small>对白颜色 · {label}</small>
+      <button type="button" class={`rbt-accent-dot rbt-quote-none ${cur ? '' : 'on'}`} title="不上色" aria-label="不上色" aria-pressed={!cur} onClick={() => setQuoteColor(null)} />
+      {QUOTE_COLORS.map((q) => (
+        <button key={q.id} type="button" class={`rbt-accent-dot ${cur === q.id ? 'on' : ''}`} title={q.label} aria-label={q.label} aria-pressed={cur === q.id} style={{ '--c': q[look] }} onClick={() => setQuoteColor(q.id)} />
+      ))}
+    </div>
+  );
+}
+
 function LooksPage() {
   useThemes();
   void sourcesTick.value;
@@ -729,7 +809,8 @@ function LooksPage() {
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
           {/* 全局美化只有一个：红鸟适配美化的三套之一，或者别的美化。四个选项里正好一个打勾 */}
-          <Section title="全局美化" hint="没设美化的卡都用它">
+          {/* 「红鸟适配美化」「别的美化」两个小标题前面故意空得宽一点，分开两组 */}
+          <Section title="全局美化" hint="没设美化的卡都用它" lintSpacing="ok">
             <div class="rbt-look-sub">{LOOK_NAME}<small>{LOOK_COPY.builtInHint}</small></div>
             <div class="rbt-lookcards">
               {LOOKS.map((l) => <LookCard key={l.id} l={l} on={builtIn && lookId.value === l.id} />)}
@@ -742,6 +823,7 @@ function LooksPage() {
                 ))}
               </div>
             )}
+            {builtIn && <QuoteColorRow />}
             {/* 手机屏幕本来就窄，正文总是铺满，这一项只在电脑上有用 */}
             {builtIn && !compact.value && (
               <div class="rbt-frow">
@@ -864,7 +946,7 @@ function DetailBody() {
  * 标签一行放不下时（窄手机）可以左右滑：哪边还有没露出来的标签，那边就淡出一截，提示能滑；
  * 选中的标签自动滚到看得见的地方。
  */
-export function GlobalTabs() {
+export function GlobalTabs({ vertical }: { vertical?: boolean } = {}) {
   const ref = useRef<HTMLDivElement>(null);
   const [edge, setEdge] = useState('');
   const measure = () => {
@@ -884,9 +966,11 @@ export function GlobalTabs() {
     measure();
   }, [globalTab.value]);
   return (
-    <div ref={ref} class={`rbt-sheet-tabs${edge}`} role="tablist" onScroll={measure}>
+    <div ref={ref} class={vertical ? 'rbt-sheet-rail' : `rbt-sheet-tabs${edge}`} role="tablist" aria-orientation={vertical ? 'vertical' : undefined} onScroll={measure}>
       {GLOBAL_TABS.map((t) => (
-        <button key={t} type="button" role="tab" class={globalTab.value === t ? 'active' : ''} onClick={() => setGlobalTab(t)}>{GLOBAL_TAB_LABELS[t]}</button>
+        <button key={t} type="button" role="tab" aria-selected={globalTab.value === t} class={globalTab.value === t ? 'active' : ''} onClick={() => setGlobalTab(t)}>
+          {vertical && <i class={`fa-solid ${GLOBAL_TAB_ICONS[t]} fa-fw`} aria-hidden="true" />}{GLOBAL_TAB_LABELS[t]}
+        </button>
       ))}
     </div>
   );
@@ -899,6 +983,7 @@ export function GlobalToolbox() {
   if (currentDetail()) return <DetailBody />;
   if (t === 'cards') return <CardsTablePage />;
   if (t === 'presets') return <PresetsPage />;
+  if (t === 'personas') return <PersonasPage />;
   if (t === 'worlds') return <WorldsPage />;
   if (t === 'regex') return <RegexPage />;
   if (t === 'scripts') return <ScriptsPage />;

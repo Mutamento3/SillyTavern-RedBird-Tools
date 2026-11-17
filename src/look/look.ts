@@ -6,6 +6,8 @@
 import { signal } from '@preact/signals';
 import { ctx, saveSettings, settings, toast, confirmText, escHtml } from '../st/st';
 import { LOOK_COPY, LOOK_NAME } from '../ui/copy';
+import { quoteColor, type LookKind } from '../core/quote';
+import { refreshShade } from './bgShade';
 
 export const ACCENTS: { id: string; label: string; color: string }[] = [
   { id: 'blue', label: '蓝', color: '#0a84ff' },
@@ -38,6 +40,8 @@ let switching = false;
 /** Bumped when the ST theme in use changes, so views re-read it. */
 export const themeTick = signal(0);
 export const accentId = signal('blue');
+/** 对白颜色（core/quote.ts 的 id），null = 不上色。 */
+export const quoteId = signal<string | null>(null);
 
 export function accentColor(id = accentId.value): string {
   return (ACCENTS.find((a) => a.id === id) ?? ACCENTS[0]).color;
@@ -56,6 +60,14 @@ export function applyLook(): void {
   root.classList.toggle('rbt-look', shown);
   for (const l of LOOKS) root.classList.toggle(`rbt-look-${l.id}`, shown && eff === l.id && l.id !== 'dark');
   root.style.setProperty('--rbd-accent', accentColor());
+  // 对白颜色：同一种颜色在三套美化上各用调好的那个值（写在 <html> 上，盖过 look.css 里的默认）
+  quoteId.value = s.quoteColor ?? null;
+  const qc = shown ? quoteColor(quoteId.value, eff as LookKind) : null;
+  if (qc) root.style.setProperty('--rbd-quote', qc); else root.style.removeProperty('--rbd-quote');
+  // 有背景图时聊天区用深色那套的字，对白也用深色那套调好的值（look.css「有背景图」）
+  const qd = quoteColor(quoteId.value, 'dark');
+  if (qd) root.style.setProperty('--rbd-quote-onbg', qd); else root.style.removeProperty('--rbd-quote-onbg');
+  refreshShade();
   readWidth.value = s.readWidth ?? 'normal';
   root.classList.toggle('rbt-read-wide', readWidth.value === 'wide');
   root.classList.toggle('rbt-read-full', readWidth.value === 'full');
@@ -217,6 +229,12 @@ export function watchSurface(): void {
 
 export function setLook(on: boolean): void {
   settings().look = on;
+  saveSettings();
+  applyLook();
+}
+
+export function setQuoteColor(id: string | null): void {
+  if (id) settings().quoteColor = id; else delete settings().quoteColor;
   saveSettings();
   applyLook();
 }

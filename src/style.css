@@ -1040,9 +1040,23 @@ input.rbt-cb.rbt-cb[type='checkbox']:focus-visible { outline: 2px solid var(--rb
 .rbt-look-now-text b { font-size: 14px; font-weight: 600; color: var(--t1); }
 .rbt-look-now-text small { font-size: 12px; color: var(--t2); }
 .rbt-look-accents { display: flex; align-items: center; gap: 10px; padding: var(--rbd-s-1) 0 var(--rbd-s-3); }
-.rbt-look-accents small { margin-right: 2px; font-size: 12px; color: var(--t2); }
+.rbt-look-accents small { flex: none; min-width: 8.5em; margin-right: 2px; font-size: 12px; color: var(--t2); }
+/* 电脑上两行的圆点从同一列开始：标签都占同样宽 */
 .rbt-accent-dot { flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: var(--c); cursor: pointer; }
 .rbt-accent-dot.on { box-shadow: 0 0 0 2px var(--rbd-bg1, #1e1e21), 0 0 0 4px var(--c); }
+/* 对白颜色：第一个圆点是「不上色」（空心、带斜线），选中的名字写在最后 */
+.rbt-quote-row { flex-wrap: wrap; padding-top: 0; }
+.rbt-quote-none { --c: var(--t3); background: transparent; box-shadow: inset 0 0 0 1.5px var(--t3); position: relative; }
+.rbt-quote-none::after { content: ""; position: absolute; left: 50%; top: 3px; bottom: 3px; width: 1.5px; background: var(--t3); transform: rotate(45deg); }
+.rbt-quote-none.on { box-shadow: inset 0 0 0 1.5px var(--t3), 0 0 0 2px var(--rbd-bg1, #1e1e21), 0 0 0 4px var(--t3); }
+/* 手机：强调色和对白颜色的圆点放大到 32px，好点 */
+@media (max-width: 1000px) {
+  .rbt-accent-dot { width: 32px; height: 32px; }
+  .rbt-quote-none::after { top: 5px; bottom: 5px; }
+  /* 放不下一行：标签单独一行，圆点排在下面 */
+  .rbt-look-accents { flex-wrap: wrap; }
+  .rbt-look-accents small { flex-basis: 100%; min-width: 0; }
+}
 /* 主题的几个关键颜色，叠在一起的小圆点 */
 .rbt-swatches { display: inline-flex; align-items: center; margin-left: 8px; }
 .rbt-swatches i { width: 12px; height: 12px; margin-left: -3px; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--g2, #2a2a2e); }

@@ -6,6 +6,7 @@ import { useEffect } from 'preact/hooks';
 import { GlobalTabs, GlobalToolbox } from '../ui/pages/GlobalToolbox';
 import { closeSheet, sheetOpen } from '../ui/views';
 import { TitleBar } from '../ui/TitleBar';
+import { compact } from './Shell';
 
 export function SheetHost() {
   const open = sheetOpen.value;
@@ -22,15 +23,20 @@ export function SheetHost() {
   if (!open) return null;
 
   const title = '全局工具箱';
+  const phone = compact.value;
   return (
     <>
       <div class="rbt-sheet-backdrop" onMouseDown={() => closeSheet()} />
       <section class="rbt-sheet rbt-scope" role="dialog" aria-label={title}>
         <TitleBar class="rbt-sheet-bar" icon="fa-globe" title={title} onClose={() => closeSheet()}>
-          <GlobalTabs />
+          {phone && <GlobalTabs />}
         </TitleBar>
-        <div class="rbt-sheet-body">
-          <GlobalToolbox />
+        {/* 电脑上标签竖排在左边（八个标签横排太挤）；手机上屏幕窄，还是在标题下面横排 */}
+        <div class="rbt-sheet-main">
+          {!phone && <GlobalTabs vertical />}
+          <div class="rbt-sheet-body">
+            <GlobalToolbox />
+          </div>
         </div>
       </section>
     </>

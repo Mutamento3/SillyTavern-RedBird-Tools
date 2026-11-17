@@ -8,7 +8,7 @@
 import { signal } from '@preact/signals';
 
 export type ViewId = 'flow' | 'vars' | 'card' | 'global';
-export type GlobalTab = 'cards' | 'presets' | 'worlds' | 'regex' | 'scripts' | 'plugins' | 'looks' | 'backup';
+export type GlobalTab = 'cards' | 'presets' | 'personas' | 'worlds' | 'regex' | 'scripts' | 'plugins' | 'looks' | 'backup';
 
 export const VIEW_LABELS: Record<ViewId, string> = {
   card: '角色档案',
@@ -17,16 +17,29 @@ export const VIEW_LABELS: Record<ViewId, string> = {
   global: '全局工具箱',
 };
 
-export const GLOBAL_TABS: GlobalTab[] = ['cards', 'presets', 'worlds', 'regex', 'scripts', 'plugins', 'looks', 'backup'];
+export const GLOBAL_TABS: GlobalTab[] = ['cards', 'presets', 'personas', 'worlds', 'regex', 'scripts', 'plugins', 'looks', 'backup'];
 export const GLOBAL_TAB_LABELS: Record<GlobalTab, string> = {
   cards: '角色',
   presets: '预设',
+  personas: '人设',
   worlds: '世界书',
   regex: '正则',
   scripts: '脚本',
   plugins: '插件',
   looks: '美化',
   backup: '备份',
+};
+/** 电脑上全局工具箱左边竖排标签的图标（和导入窗口、左栏用的同一套）。 */
+export const GLOBAL_TAB_ICONS: Record<GlobalTab, string> = {
+  cards: 'fa-address-card',
+  presets: 'fa-sliders',
+  personas: 'fa-face-smile',
+  worlds: 'fa-book-atlas',
+  regex: 'fa-code',
+  scripts: 'fa-scroll',
+  plugins: 'fa-puzzle-piece',
+  looks: 'fa-palette',
+  backup: 'fa-box-archive',
 };
 
 /** Whether the 全局工具箱 overlay is shown (shell mode only). */

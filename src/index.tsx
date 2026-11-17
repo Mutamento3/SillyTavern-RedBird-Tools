@@ -12,6 +12,7 @@ import './look/look.css';
 import { LOOK_COPY } from './ui/copy';
 import { installLongTaskLog, slow, withTimeout } from './st/perf';
 import { applyLook, lookOn, retireOldTheme, setLook, useBuiltInLook, watchStThemeSwitch, watchSurface } from './look/look';
+import { watchBackground } from './look/bgShade';
 import { installCardLook } from './look/cardLook';
 import { ctx, preloadModules, reloadChatSafe, saveSettings, settings, toast } from './st/st';
 import { DEFAULT_THINK_TAGS, parseThinkTags, prefixTag } from './core/think';
@@ -237,6 +238,8 @@ async function init(): Promise<void> {
   watchStThemeSwitch();
   // 别人的主题底色是半透明的时候，三栏界面的底色垫一层实色（见 look.ts）
   watchSurface();
+  // 有背景图时聊天区盖多深（红鸟自带美化）
+  watchBackground();
   // 卡的美化（试用）：和记了美化的卡聊天时，整个界面换成那套美化
   installCardLook();
   await preloadModules();

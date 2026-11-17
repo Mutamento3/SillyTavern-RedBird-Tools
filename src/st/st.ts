@@ -212,6 +212,8 @@ export interface RbtSettings {
   accent?: string;
   /** Which built-in look: dark / light / warm. */
   lookId?: string;
+  /** 红鸟自带美化里对白（引号里的话）的颜色 id（core/quote.ts）。没有 = 不上色。 */
+  quoteColor?: string;
   /** 电脑上正文多宽（红鸟适配美化）：适中（默认，一行约 44 字）/ 宽（约 60 字）/ 铺满 */
   readWidth?: 'normal' | 'wide' | 'full';
   /** Don't warn again before switching to someone else's look. */

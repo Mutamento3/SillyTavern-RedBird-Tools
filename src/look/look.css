@@ -160,6 +160,32 @@ html.rbt-look body {
 }
 /* 聊天区和输入区留一点透明，让背景图透出来（不加模糊，见上面）。没设背景图时透出来的是 body 的同一个底色，看起来不变 */
 html.rbt-look :is(#chat, #form_sheld) { background-color: color-mix(in srgb, var(--rbd-canvas) 82%, transparent); }
+/* 有背景图（<html> 上有 rbt-has-bg，见 bgShade.ts）：三套美化都一样，聊天区盖一层黑，
+   深浅按图的亮度算（--rbd-shade，30%–70%，暗图盖 30%，亮图盖得多），
+   正文换成深色那套的浅色字，加一圈暗光晕托住图里局部很亮的地方。没有背景图时上面那条不变。 */
+html.rbt-look.rbt-has-bg :is(#chat, #form_sheld) { background-color: rgba(0, 0, 0, var(--rbd-shade, 0.4)); }
+html.rbt-look.rbt-has-bg #chat {
+  color-scheme: dark;
+  --rbd-text1: #ececf1;
+  --rbd-text2: rgba(235, 235, 245, 0.64);
+  --rbd-text3: rgba(235, 235, 245, 0.4);
+  --rbd-hairline: rgba(255, 255, 255, 0.07);
+  --rbd-line: rgba(255, 255, 255, 0.1);
+  --rbd-user-tint: rgba(255, 255, 255, 0.022);
+  --rbd-em: #b9b9c3;
+  --rbd-quote: var(--rbd-quote-onbg, #f5f5f7);
+  --white20a: rgba(255, 255, 255, 0.2);
+  --white30a: rgba(255, 255, 255, 0.3);
+  --white50a: rgba(255, 255, 255, 0.5);
+  --white60a: rgba(255, 255, 255, 0.6);
+  --white70a: rgba(255, 255, 255, 0.7);
+  /* 酒馆的颜色变量在 <html> 上就算好了，往下传的是算好的值：这里要重新写一遍才会变 */
+  --SmartThemeBodyColor: #ececf1 !important;
+  --SmartThemeEmColor: #b9b9c3 !important;
+  --SmartThemeUnderlineColor: #ececf1 !important;
+  --SmartThemeQuoteColor: var(--rbd-quote-onbg, #f5f5f7) !important;
+}
+html.rbt-look.rbt-has-bg #chat .mes :is(.mes_text, .name_text, .mes_reasoning) { text-shadow: 0 0 2px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.5); }
 html.rbt-look ::selection { background-color: color-mix(in srgb, var(--rbd-accent) 40%, transparent); }
 
 /* ---------- 3. 顶栏和面板 ---------- */
