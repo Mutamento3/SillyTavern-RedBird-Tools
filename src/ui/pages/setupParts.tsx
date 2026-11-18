@@ -32,20 +32,20 @@ export function Pill({ kind, img }: { kind: PillKind; img?: string }) {
 export const personaThumb = (id: string): string => ctx().getThumbnailUrl?.('persona', id) ?? `User Avatars/${id}`;
 const personaName = (id: string): string => (ctx().powerUserSettings?.personas ?? {})[id] || id;
 
-export interface Opt { key: string; title: string; sub?: string; lead?: string; selected?: boolean; disabled?: boolean; onPick: () => void }
+export interface Opt { key: string; title: string; sub?: string; /** 分组：和上一个不同时，前面加一个小标题 */ group?: string; lead?: string; selected?: boolean; disabled?: boolean; onPick: () => void }
 
 /**
  * 一行：左边小字名字，右边整行是框（全名换行、标签在右、箭头图标）。点框弹出选择框：
  * 电脑上盖在下面的内容上；手机上从底部弹出（点外面关掉）。选项多（超过 8 个）时上面有搜索框。
  * 选择框里：top（「全局」和「让所有卡都用」，都是关于全局的，放最上面不用往下翻）→ head（「卡名专用」小标题）+ options → bottom（去面板的按钮）。
  */
-export function PickRow({ k, value, sub, lead, pill, thumb, disabled, open, onToggle, onClose, top, head, options, bottom }: {
-  k: string; value: ComponentChildren; sub?: string; lead?: string; pill?: ComponentChildren; thumb?: string; disabled?: boolean;
+export function PickRow({ k, title, placeholder, value, sub, lead, pill, thumb, disabled, open, onToggle, onClose, top, head, options, bottom }: {
+  k: string; title?: string; placeholder?: string; value: ComponentChildren; sub?: string; lead?: string; pill?: ComponentChildren; thumb?: string; disabled?: boolean;
   open: boolean; onToggle: () => void; onClose: () => void;
   top?: ComponentChildren; head?: string; options?: Opt[]; bottom?: ComponentChildren;
 }) {
   return (
-    <Popup title={k} open={open} onClose={onClose} top={top} head={head} options={options} bottom={bottom}>
+    <Popup title={title ?? k} placeholder={placeholder} open={open} onClose={onClose} top={top} head={head} options={options} bottom={bottom}>
       <div class="rbt-pick-row">
         <span class="rbt-pick-k">{k}</span>
         <button type="button" class={`rbt-pick-box ${open ? 'open' : ''}`} disabled={disabled} aria-expanded={open} aria-haspopup="listbox" onClick={onToggle}>
@@ -61,8 +61,8 @@ export function PickRow({ k, value, sub, lead, pill, thumb, disabled, open, onTo
 }
 
 /** 点一个按钮（children）弹出的选择框，PickRow、「＋ 附加世界书」、首页的排序和筛选共用。 */
-export function Popup({ title, open, onClose, top, head, options, bottom, wide, cls, children }: {
-  title: string; open: boolean; onClose: () => void; top?: ComponentChildren; head?: string; options?: Opt[]; bottom?: ComponentChildren;
+export function Popup({ title, placeholder, open, onClose, top, head, options, bottom, wide, cls, children }: {
+  title: string; placeholder?: string; open: boolean; onClose: () => void; top?: ComponentChildren; head?: string; options?: Opt[]; bottom?: ComponentChildren;
   /** 选择框和按钮左边对齐（PickRow 里是和框对齐） */
   wide?: boolean;
   /** 外层再加的 class（各处自己定选择框在电脑上的位置和宽度） */
@@ -94,11 +94,11 @@ export function Popup({ title, open, onClose, top, head, options, bottom, wide, 
         <div class="rbt-menu-scrim" onClick={onClose} />
         <div class="rbt-menu" role="listbox" aria-label={title} ref={sheetRef}>
           <div class="rbt-menu-title">{title}<button type="button" class="rbt-iconbtn" aria-label="关闭" onClick={onClose}><i class="fa-solid fa-xmark" /></button></div>
-          {(options?.length ?? 0) > 8 && <input class="text_pole rbt-input rbt-menu-search" placeholder={`搜${title}名字`} value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />}
+          {(options?.length ?? 0) > 8 && <input class="text_pole rbt-input rbt-menu-search" placeholder={placeholder ?? `搜${title}名字`} value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />}
           <div class="rbt-menu-scroll">
             {!q.trim() && top}
             {head && <>{!q.trim() && top && <MenuLine />}<MenuHead>{head}</MenuHead></>}
-            {list.map((o) => <MenuOpt key={o.key} title={o.title} sub={o.sub} lead={o.lead} selected={o.selected} disabled={o.disabled} onPick={o.onPick} />)}
+            {list.map((o, i) => [o.group && o.group !== list[i - 1]?.group && <MenuHead key={`g:${o.group}`}>{o.group}</MenuHead>, <MenuOpt key={o.key} title={o.title} sub={o.sub} lead={o.lead} selected={o.selected} disabled={o.disabled} onPick={o.onPick} />])}
             {q.trim() && !list.length && <div class="rbt-menu-empty">没有找到「{q.trim()}」</div>}
             {!q.trim() && bottom}
           </div>

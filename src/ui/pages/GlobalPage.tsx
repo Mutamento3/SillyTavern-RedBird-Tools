@@ -14,6 +14,8 @@ import { Chip, CheckMark, Toggle } from '../common';
 import { SourceEditor } from '../SourceEditor';
 import { sourceFor } from '../../tools/sources';
 import { OK, Section } from './parts';
+import { checkPluginUpdates, pluginStates, updatePlugins } from '../../tools/update';
+import { MenuOpt, PickRow, type Opt } from './setupParts';
 
 const KIND_LABEL: Record<EnvItem['kind'], string> = {
   worldbook: '世界书', regex: '正则', script: '脚本', extension: '插件', preset: '预设',
@@ -109,6 +111,29 @@ function ownerValue(o: RegexOwner | undefined): string {
   return o ? `${o.kind}:${o.key}` : '';
 }
 
+/**
+ * 一条正则的「属于」。点开才列出插件、预设和角色卡：以前每条正则下面一个原生下拉框，
+ * 卡多时整页上万个选项，手机上地址栏一收一放就要重排整页，滑动很卡。
+ */
+function OwnerPick({ owner, exts, presets, chars, onPick }: {
+  owner: RegexOwner | undefined; exts: { id: string; name: string }[]; presets: string[]; chars: { avatar: string; name: string }[]; onPick: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const cur = ownerValue(owner);
+  const pick = (v: string) => { setOpen(false); onPick(v); };
+  const opt = (v: string, title: string, group: string): Opt => ({ key: v, title, group, selected: v === cur, onPick: () => pick(v) });
+  const options = open ? [
+    ...exts.map((e) => opt(`extension:${e.id}`, e.name, '插件')),
+    ...presets.map((p) => opt(`preset:${p}`, p, '预设')),
+    ...chars.map((c) => opt(`card:${c.avatar}`, c.name, '角色卡')),
+  ] : [];
+  return (
+    <PickRow k="属于" title="这条正则属于" placeholder="搜插件、预设或角色卡" value={owner?.label ?? NO_OWNER} open={open} onToggle={() => setOpen(!open)} onClose={() => setOpen(false)}
+      top={<MenuOpt title={NO_OWNER} selected={!cur} onPick={() => pick('')} />} options={options} />
+  );
+}
+const NO_OWNER = '没选（换卡时不动它）';
+
 /** One global regex: on/off and "belongs to" on the same row. */
 export function GlobalRegexList({ items }: { items: EnvItem[] }) {
   void archiveVersion.value;
@@ -178,14 +203,8 @@ export function GlobalRegexList({ items }: { items: EnvItem[] }) {
           <div key={r.id} class="rbt-owner-row">
             {item ? <ItemRow item={item} /> : <div class="rbt-env-item"><span class="rbt-env-name">{r.scriptName}</span></div>}
             <div class="rbt-form-row rbt-owner-pick">
-              <small class="rbt-muted">属于</small>
-              <select class="text_pole rbt-select" value={ownerValue(owners[r.id])} onChange={(e) => onPick(r.id, (e.currentTarget as HTMLSelectElement).value)}>
-                <option value="">没选（换卡时不动它）</option>
-                <optgroup label="插件">{exts.map((e) => <option key={e.id} value={`extension:${e.id}`}>{e.name}</option>)}</optgroup>
-                <optgroup label="预设">{presets.map((p) => <option key={p} value={`preset:${p}`}>{p}</option>)}</optgroup>
-                <optgroup label="角色卡">{chars.map((c) => <option key={c.avatar} value={`card:${c.avatar}`}>{c.name}</option>)}</optgroup>
-              </select>
-              {g && <button class="rbt-btn rbt-btn-small" title="按名字猜的，点一下就选上" onClick={() => setRegexOwner(r.id, g)}>可能是 {g.label}</button>}
+              <OwnerPick owner={owners[r.id]} exts={exts} presets={presets} chars={chars} onPick={(v) => onPick(r.id, v)} />
+              {g && <div class="rbt-owner-guess"><button class="rbt-btn rbt-btn-small" title="按名字猜的，点一下就选上" onClick={() => setRegexOwner(r.id, g)}>可能是 {g.label}</button></div>}
             </div>
           </div>
         );
@@ -326,6 +345,10 @@ export function PluginList() {
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const changed = list.filter((e) => e.id in want && want[e.id] !== e.enabled);
+  // 打开插件页时查一遍哪些插件有新版本
+  useEffect(() => { checkPluginUpdates(list.map((e) => e.id)); }, []);
+  const states = pluginStates.value;
+  const fresh = list.filter((e) => states[e.id] === 'new');
   const apply = async () => {
     const ext = loaded.extensions;
     if (!ext) return;
@@ -339,8 +362,15 @@ export function PluginList() {
   };
   return (
     <>
+      {fresh.length > 1 && (
+        <div class="rbt-row-between rbt-plugin-news">
+          <span>{fresh.length} 个插件有新版本</span>
+          <button type="button" class="rbt-btn rbt-btn-small" onClick={() => { void updatePlugins(fresh); }}>全部更新</button>
+        </div>
+      )}
       {list.map((e) => {
         const on = e.id in want ? want[e.id] : e.enabled;
+        const st = states[e.id];
         return (
           <div key={e.id} class="rbt-plugin">
           <div class={`rbt-env-item ${on ? '' : 'off'}`}>
@@ -349,7 +379,10 @@ export function PluginList() {
               <span class="rbt-env-name">{e.name}</span>
             </button>
             {sourceFor('plugin', e.id).author && <small class="rbt-muted">{sourceFor('plugin', e.id).author}</small>}
-            {e.id in want && want[e.id] !== e.enabled && <Chip color="#f0a43a">刷新后生效</Chip>}
+            {((e.id in want && want[e.id] !== e.enabled) || st === 'updated') && <Chip color="#f0a43a">刷新后生效</Chip>}
+            {(st === 'new' || st === 'updating') && (
+              <button type="button" class="rbt-btn rbt-btn-small rbt-plugin-up" disabled={st === 'updating'} onClick={() => { void updatePlugins([e]); }}>{st === 'updating' ? '正在更新…' : '更新'}</button>
+            )}
             <span class="rbt-env-toggle">
               <Toggle checked={on} onChange={(v) => setWant({ ...want, [e.id]: v })} title="启用 / 停用这个插件" />
             </span>

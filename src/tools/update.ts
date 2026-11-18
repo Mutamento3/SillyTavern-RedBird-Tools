@@ -56,12 +56,37 @@ function openManager(): void {
   document.getElementById('extensions_details')?.click();
 }
 
-let updating = false;
+/** 插件是给所有用户装的（global）还是只给自己装的；更新、查版本时酒馆要知道。 */
+const isGlobal = (id: string): boolean => loaded.extensions?.extensionTypes?.[`third-party/${id}`] === 'global';
 
 /**
- * 一键更新：调用酒馆自己的更新接口（git pull），和在「管理扩展程序」里点更新一样。
- * 更新完问要不要刷新页面（新版本刷新后才生效）。失败时说清原因，并给出手动更新的入口。
+ * 更新一个插件：调用酒馆自己的更新接口（git pull），和在「管理扩展程序」里点更新一样。
+ * `id` 是插件的文件夹名（不带 third-party/）。
  */
+export async function updateExtension(id: string): Promise<{ ok: true; upToDate: boolean } | { ok: false; why: string }> {
+  try {
+    const res = await fetch('/api/extensions/update', {
+      method: 'POST',
+      headers: ctx().getRequestHeaders(),
+      body: JSON.stringify({ extensionName: id, global: isGlobal(id) }),
+    });
+    if (!res.ok) return { ok: false, why: res.status === 403 ? '这个插件是给所有用户装的，只有管理员能更新。' : (await res.text()).slice(0, 160) || `错误 ${res.status}` };
+    const data = await res.json().catch(() => ({}));
+    return { ok: true, upToDate: !!data?.isUpToDate };
+  } catch (e) {
+    return { ok: false, why: (e as Error).message };
+  }
+}
+
+/** 刷新页面后新版本才生效：问一句要不要现在刷新。 */
+export async function askReload(): Promise<void> {
+  if (await confirmText('已经更新好了', '刷新页面后新版本才会生效。现在刷新吗？')) location.reload();
+  else toast('info', '下次刷新页面时会换成新版本。', 'RedBird 工具箱');
+}
+
+let updating = false;
+
+/** 一键更新工具箱自己。更新完问要不要刷新页面；失败时说清原因，并给出手动更新的入口。 */
 export async function updateNow(): Promise<void> {
   if (updating) return;
   const id = installedId();
@@ -69,25 +94,51 @@ export async function updateNow(): Promise<void> {
   updating = true;
   toast('info', '正在更新…', 'RedBird 工具箱', { timeOut: 4000 });
   try {
-    const res = await fetch('/api/extensions/update', {
-      method: 'POST',
-      headers: ctx().getRequestHeaders(),
-      body: JSON.stringify({ extensionName: id.replace(/^third-party\//, ''), global: loaded.extensions?.extensionTypes?.[id] === 'global' }),
-    });
-    if (!res.ok) {
-      const why = res.status === 403 ? '这个扩展是给所有用户装的，只有管理员能更新。' : (await res.text()).slice(0, 160) || `错误 ${res.status}`;
-      toast('error', `没能更新：${why} 点这里打开「管理扩展程序」手动更新。`, 'RedBird 工具箱', { onclick: openManager, timeOut: 12000 });
-      return;
-    }
-    const data = await res.json().catch(() => ({}));
-    if (data?.isUpToDate) { toast('success', '已经是最新版本。', 'RedBird 工具箱'); return; }
-    if (await confirmText('已经更新好了', '刷新页面后新版本才会生效。现在刷新吗？')) location.reload();
-    else toast('info', '下次刷新页面时会换成新版本。', 'RedBird 工具箱');
-  } catch (e) {
-    toast('error', `没能更新：${(e as Error).message}`, 'RedBird 工具箱', { onclick: openManager, timeOut: 12000 });
+    const r = await updateExtension(id.replace(/^third-party\//, ''));
+    if (!r.ok) { toast('error', `没能更新：${r.why} 点这里打开「管理扩展程序」手动更新。`, 'RedBird 工具箱', { onclick: openManager, timeOut: 12000 }); return; }
+    if (r.upToDate) { toast('success', '已经是最新版本。', 'RedBird 工具箱'); return; }
+    await askReload();
   } finally {
     updating = false;
   }
+}
+
+// ---------------------------------------------------------- 别的插件 ---
+
+/** 每个插件的更新状态。插件页打开时查一遍（每次打开页面最多查一次，酒馆每查一个都要去 Git 仓库拉一次）。 */
+export type PluginState = 'new' | 'updating' | 'updated';
+export const pluginStates = signal<Record<string, PluginState>>({});
+let pluginsChecked = false;
+
+export function checkPluginUpdates(ids: string[]): void {
+  if (pluginsChecked) return;
+  pluginsChecked = true;
+  for (const id of ids) {
+    void (async () => {
+      try {
+        const res = await fetch('/api/extensions/version', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({ extensionName: id, global: isGlobal(id) }) });
+        const data = res.ok ? await res.json() : null;
+        // 不是 Git 装的插件，酒馆会说「已是最新」，这里就什么都不显示
+        if (data && data.isUpToDate === false) pluginStates.value = { ...pluginStates.value, [id]: 'new' };
+      } catch { /* 查不到就当没有新版本 */ }
+    })();
+  }
+}
+
+/** 更新这些插件（一个接一个），全部做完后问一次要不要刷新。 */
+export async function updatePlugins(list: { id: string; name: string }[]): Promise<void> {
+  const set = (id: string, st: PluginState | undefined) => {
+    const next = { ...pluginStates.value };
+    if (st) next[id] = st; else delete next[id];
+    pluginStates.value = next;
+  };
+  let done = 0;
+  for (const { id, name } of list) {
+    set(id, 'updating');
+    const r = await updateExtension(id);
+    if (r.ok) { set(id, 'updated'); done++; } else { set(id, 'new'); toast('error', `没能更新「${name}」：${r.why}`, 'RedBird 工具箱', { timeOut: 12000 }); }
+  }
+  if (done) await askReload();
 }
 
 /** 问一句要不要更新到这个版本，点「是」就更新。 */

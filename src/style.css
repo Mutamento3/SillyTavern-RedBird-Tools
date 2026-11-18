@@ -472,7 +472,7 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-owner-row { margin-bottom: 6px; }
 .rbt-owner-row .rbt-env-item { margin-bottom: 2px; }
 .rbt-owner-pick { padding-left: 8px; align-items: center; }
-.rbt-owner-pick .rbt-select { flex: 1; }
+.rbt-owner-pick .rbt-pick { flex: 1; min-width: 0; }
 
 /* =====================================================================
    设计系统 v2（Apple HIG 式）：覆盖上面的旧样式，让工具箱各页面和三栏外壳是同一种语言。
@@ -739,7 +739,7 @@ body.rbt-resizing #sheld { transition: none !important; }
 @media (max-width: 1000px) { .rbt-source-link { min-height: 36px; margin-block: -9px; } }
 .rbt-source-edit { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding: 10px 12px; border-radius: var(--rbd-r-s); background: var(--g3); }
 .rbt-source-k { flex: none; width: 32px; }
-.rbt-plugin-name { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; min-width: 0; }
+.rbt-plugin-name { display: inline-flex; align-items: center; gap: 6px; text-align: left; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; min-width: 0; }
 .rbt-plugin-caret { flex: none; width: 10px; font-size: 9px; color: var(--t3); }
 .rbt-plugin-more { padding: 0 0 8px 16px; }
 .rbt-plugin-more .rbt-source-line { margin-top: 0; }
@@ -1116,6 +1116,13 @@ input.rbt-cb.rbt-cb[type='checkbox']:focus-visible { outline: 2px solid var(--rb
 .rbt-row-edit:hover { background: var(--g2h); color: var(--t1); }
 .rbt-env-item .rbt-row-edit, .rbt-sub-item .rbt-row-edit { margin-left: auto; }
 .rbt-env-item .rbt-row-edit + .rbt-env-toggle, .rbt-sub-item .rbt-row-edit + .rbt-env-toggle { margin-left: 4px; }
+/* 插件有新版本：「更新」靠右，挨着开关 */
+.rbt-env-item .rbt-plugin-up { margin-left: auto; flex: none; }
+.rbt-plugin-up + .rbt-env-toggle { margin-left: 8px; }
+/* 插件一行不折行：名字和作者让出位置，「更新」和开关总在同一行最右边 */
+.rbt-plugin .rbt-env-item { flex-wrap: nowrap; }
+.rbt-plugin .rbt-env-item > small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbt-plugin-news { padding: var(--rbd-s-2) 0; font-size: 13px; color: var(--t2); }
 
 /* ---- 信息流的层级 ----
    卡片：标题（13.5px 粗、正文色）+ 同一行的灰色说明。
@@ -1688,6 +1695,11 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
   .rbt-pick-box { min-height: 44px; }
   .rbt-menu-opt { min-height: 44px; }
   .rbt-fold-head { min-height: 44px; }
+  /* 正则的「属于」：手机上「可能是 …」放到框下面，和框左对齐（不然框被挤窄，字折成好几行） */
+  .rbt-plugin-name { min-height: 36px; margin: -8px 0; } /* 点名字展开作者和链接：点击区域放大，行高不变 */
+  .rbt-owner-pick { flex-wrap: wrap; }
+  .rbt-owner-pick .rbt-pick { flex-basis: 100%; }
+  .rbt-owner-guess { flex-basis: 100%; padding-left: calc(2.6em + 8px); } /* 和「属于」那一行的框（左边一列 2.6em + 8px 间距）对齐 */
 }
 .rbt-allow .rbt-cb { width: 22px; height: 22px; flex: none; }
 
