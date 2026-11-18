@@ -4,6 +4,7 @@
  * 更新完问一句要不要刷新页面。
  * 不依赖酒馆自己的「在扩展程序更新时通知」开关。只读一个公开文件，不发送任何东西。
  */
+import { signal } from '@preact/signals';
 import { compareVersion } from '../core/version';
 import { confirmText, ctx, loaded, toast } from '../st/st';
 
@@ -36,7 +37,11 @@ export function installedVersion(): string {
 
 export interface UpdateInfo { current: string; latest: string; whatsNew: string }
 
-async function fetchLatest(): Promise<{ version: string; whatsNew: string } | null> {
+interface Latest { version: string; whatsNew: string }
+/** GitHub 上比装着的新的版本（没有就是 null）。每次打开页面查一次；左栏版本号和扩展设置里的「更新」行都看它。 */
+export const newVersion = signal<Latest | null>(null);
+
+async function fetchLatest(): Promise<Latest | null> {
   try {
     const res = await fetch(`${REMOTE}?t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) return null;
@@ -85,47 +90,40 @@ export async function updateNow(): Promise<void> {
   }
 }
 
-/** `force`: the 「检查更新」 button — always checks and always says something. */
+/** 问一句要不要更新到这个版本，点「是」就更新。 */
+export async function askUpdate(latest: Latest): Promise<void> {
+  if (await confirmText(`有新版本 ${latest.version}`, `你装的是 ${installedVersion()}。${latest.whatsNew ? `${latest.whatsNew}　` : ''}现在更新吗？`)) await updateNow();
+}
+
+/** `force`: the 「检查更新」 button — always says something. Otherwise the startup check: the toast shows at most once a day. */
 export async function checkForUpdate(force = false): Promise<UpdateInfo | null> {
   const current = installedVersion();
   if (!current) return null;
-  const today = new Date().toDateString();
-  if (!force) {
-    try {
-      if (localStorage.getItem(DAY_KEY) === today) return null;
-      localStorage.setItem(DAY_KEY, today);
-    } catch { /* private mode: just check */ }
-  }
   const latest = await fetchLatest();
   if (!latest) {
     if (force) toast('warning', '连不上 GitHub，没法检查更新。', 'RedBird 工具箱');
     return null;
   }
-  if (compareVersion(latest.version, current) <= 0) {
+  const newer = compareVersion(latest.version, current) > 0;
+  newVersion.value = newer ? latest : null;
+  if (!newer) {
     if (force) toast('success', `已经是最新版本（${current}）。`, 'RedBird 工具箱');
     return null;
   }
+  const info = { current, latest: latest.version, whatsNew: latest.whatsNew };
   // 手动点「检查更新」时，有新版本就直接问要不要现在更新
-  if (force) {
-    if (await confirmText(`有新版本 ${latest.version}`, `你装的是 ${current}。${latest.whatsNew ? `${latest.whatsNew}　` : ''}现在更新吗？`)) await updateNow();
-    return { current, latest: latest.version, whatsNew: latest.whatsNew };
-  }
-  let skipped = '';
-  try { skipped = localStorage.getItem(SKIP_KEY) ?? ''; } catch { /* ignore */ }
-  if (!force && skipped === latest.version) return null;
+  if (force) { await askUpdate(latest); return info; }
+  try {
+    const today = new Date().toDateString();
+    if (localStorage.getItem(DAY_KEY) === today || localStorage.getItem(SKIP_KEY) === latest.version) return info;
+    localStorage.setItem(DAY_KEY, today);
+  } catch { /* private mode: just show it */ }
   toast('info', `新版 ${latest.version}，当前 ${current}。${latest.whatsNew}点这里更新。`, 'RedBird 工具箱有更新', {
     onclick: () => { void updateNow(); },
     timeOut: 15000,
     extendedTimeOut: 8000,
   });
-  return { current, latest: latest.version, whatsNew: latest.whatsNew };
-}
-
-/** 扩展设置用：GitHub 上的版本比装着的新时返回新版本号，否则返回空。 */
-export async function newerVersion(): Promise<string> {
-  const current = installedVersion();
-  const latest = current ? await fetchLatest() : null;
-  return latest && compareVersion(latest.version, current) > 0 ? latest.version : '';
+  return info;
 }
 
 /** On startup, a few seconds after load so it doesn't compete with ST's own work. */

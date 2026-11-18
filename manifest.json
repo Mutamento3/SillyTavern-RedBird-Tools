@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.22",
+  "version": "0.6.23",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "修了两处显示问题：用某些美化时世界书条目的按钮叠在一起；扩展列表里工具箱的箭头没对齐、方向反了。"
+  "rbt_whats_new": "左栏「首页」旁边能看到版本号了，有新版本时会变成「更新」按钮。「附加世界书」现在列出所有书，不能附加的写明原因。"
 }

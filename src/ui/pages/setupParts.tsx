@@ -32,7 +32,7 @@ export function Pill({ kind, img }: { kind: PillKind; img?: string }) {
 export const personaThumb = (id: string): string => ctx().getThumbnailUrl?.('persona', id) ?? `User Avatars/${id}`;
 const personaName = (id: string): string => (ctx().powerUserSettings?.personas ?? {})[id] || id;
 
-export interface Opt { key: string; title: string; sub?: string; lead?: string; selected?: boolean; onPick: () => void }
+export interface Opt { key: string; title: string; sub?: string; lead?: string; selected?: boolean; disabled?: boolean; onPick: () => void }
 
 /**
  * 一行：左边小字名字，右边整行是框（全名换行、标签在右、箭头图标）。点框弹出选择框：
@@ -74,6 +74,8 @@ export function Popup({ title, open, onClose, top, head, options, bottom, wide, 
   const sheetRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) { setQ(''); return; }
+    // 电脑上选择框往下展开，按钮在面板底部时会被面板挡住一截：把面板滚到能看全
+    if (!isPhone()) sheetRef.current?.scrollIntoView({ block: 'nearest' });
     // 手机上点外面是点到遮罩上，遮罩自己会关（这里再关，那一下点击会落到下面的按钮上）
     const away = (e: PointerEvent) => { const t = e.target as Node; if (!isPhone() && !ref.current?.contains(t) && !sheetRef.current?.contains(t)) onClose(); };
     // Esc 只关这个选择框，不要连带关掉外面的全局工具箱或酒馆面板
@@ -96,7 +98,7 @@ export function Popup({ title, open, onClose, top, head, options, bottom, wide, 
           <div class="rbt-menu-scroll">
             {!q.trim() && top}
             {head && <>{!q.trim() && top && <MenuLine />}<MenuHead>{head}</MenuHead></>}
-            {list.map((o) => <MenuOpt key={o.key} title={o.title} sub={o.sub} lead={o.lead} selected={o.selected} onPick={o.onPick} />)}
+            {list.map((o) => <MenuOpt key={o.key} title={o.title} sub={o.sub} lead={o.lead} selected={o.selected} disabled={o.disabled} onPick={o.onPick} />)}
             {q.trim() && !list.length && <div class="rbt-menu-empty">没有找到「{q.trim()}」</div>}
             {!q.trim() && bottom}
           </div>
@@ -106,9 +108,9 @@ export function Popup({ title, open, onClose, top, head, options, bottom, wide, 
   );
 }
 
-export function MenuOpt({ title, sub, lead, selected, onPick }: { title: ComponentChildren; sub?: string; lead?: string; selected?: boolean; onPick: () => void }) {
+export function MenuOpt({ title, sub, lead, selected, disabled, onPick }: { title: ComponentChildren; sub?: string; lead?: string; selected?: boolean; disabled?: boolean; onPick: () => void }) {
   return (
-    <button type="button" role="option" aria-selected={!!selected} class={`rbt-menu-opt ${selected ? 'cur' : ''}`} onClick={onPick}>
+    <button type="button" role="option" aria-selected={!!selected} aria-disabled={disabled || undefined} disabled={disabled} class={`rbt-menu-opt ${selected ? 'cur' : ''}`} onClick={onPick}>
       <span class="rbt-menu-tick">{selected && <i class="fa-solid fa-check" aria-hidden="true" />}</span>
       {lead && <img class="rbt-pick-lead" src={lead} alt="" />}
       <span class="rbt-menu-t">{title}{sub && <small>{sub}</small>}</span>
@@ -357,7 +359,12 @@ export function WorldSetupSection({ info, openWorld, cardBook }: { info: CardInf
     detachBook(avatar, w);
     toast('success', `已从「${info.name}」移除附加世界书「${w}」。点这里撤销。`, 'RedBird 工具箱', { onclick: () => attachBook(avatar, w), timeOut: 8000 });
   };
-  const addable = known.filter((w) => !facts.mine.has(w) && !facts.global.has(w)).sort((a, b) => a.localeCompare(b, 'zh'));
+  // 所有书都列出来，不能附加的灰掉、写原因（不然看着像列表不全）
+  const whyNot = (w: string) => (attached.includes(w) ? '已附加' : facts.mine.has(w) ? '这张卡自带' : facts.global.has(w) ? '已是全局' : '');
+  const addOpts: Opt[] = [...known].sort((a, b) => a.localeCompare(b, 'zh')).map((w) => {
+    const why = whyNot(w);
+    return { key: w, title: w, sub: why || undefined, disabled: !!why, onPick: () => { setOpen(false); attachBook(avatar, w); } };
+  });
   const onCount = (info.world.state === 'ok' ? 1 : 0) + attached.filter(exists).length + globals.filter((w) => cardUses(avatar, `w:${w}`)).length + chat.length + persona.length;
   return (
     <FoldSection title="世界书" summary={onCount ? `${onCount} 本启用` : '没有'} defaultOpen action={<PanelBtn label="世界书面板" onClick={() => openDrawer('worldinfo')} />}>
@@ -380,8 +387,8 @@ export function WorldSetupSection({ info, openWorld, cardBook }: { info: CardInf
       {chat.length > 0 && <div class="rbt-use-group"><GroupHead title="这个存档的" />{chat.map((w) => <UseRow key={`c${w}`} name={w} on onEdit={() => openWorld(w)} />)}</div>}
       {persona.length > 0 && <div class="rbt-use-group"><GroupHead title={`人设「${personaName(String(loaded.personas?.user_avatar ?? ''))}」的`} />{persona.map((w) => <UseRow key={`p${w}`} name={w} on onEdit={() => openWorld(w)} />)}</div>}
       <Popup title="附加世界书" open={open} onClose={() => setOpen(false)} wide
-        options={addable.map((w) => ({ key: w, title: w, onPick: () => { setOpen(false); attachBook(avatar, w); } }))}
-        bottom={addable.length ? undefined : <div class="rbt-menu-empty">没有可以附加的世界书。全局的书已经对所有卡生效。</div>}>
+        options={addOpts}
+        bottom={addOpts.length ? undefined : <div class="rbt-menu-empty">还没有世界书。</div>}>
         <div class="rbt-use-add"><button type="button" class="rbt-btn rbt-btn-small" aria-expanded={open} onClick={() => setOpen(!open)}><i class="fa-solid fa-plus" aria-hidden="true" /> 附加世界书</button></div>
       </Popup>
     </FoldSection>

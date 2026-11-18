@@ -18,7 +18,7 @@ import { ctx, preloadModules, reloadChatSafe, saveSettings, settings, toast } fr
 import { DEFAULT_THINK_TAGS, parseThinkTags, prefixTag } from './core/think';
 import { installThinkFold, refreshThinkFold, thinkFoldSupported, thinkTags } from './tools/thinkFold';
 import { installStore } from './st/store';
-import { checkForUpdate, newerVersion, updateNow, installedVersion, installUpdateCheck } from './tools/update';
+import { checkForUpdate, newVersion, updateNow, installedVersion, installUpdateCheck } from './tools/update';
 import { installModelGuard } from './tools/model';
 import { installCharactersWatch } from './shell/characters';
 import { closeDrawer, installDrawers, openDrawers } from './shell/drawers';
@@ -156,14 +156,12 @@ function addSettingsDrawer(): void {
   const ver = wrap.querySelector<HTMLElement>('#rbt_version');
   if (ver) ver.textContent = installedVersion() || '?';
   wrap.querySelector('#rbt_check_update')?.addEventListener('click', () => { void checkForUpdate(true); });
-  // 有新版本时，在设置里直接给一个「更新到 vX」按钮（打开设置时查一次 GitHub 上的版本号）
+  // 有新版本时，在设置里直接给一个「更新」按钮（启动后查一次 GitHub 上的版本号）
   wrap.querySelector('#rbt_update_now')?.addEventListener('click', () => { void updateNow(); });
-  void newerVersion().then((v) => {
-    if (!v) return;
-    const row = wrap.querySelector<HTMLElement>('#rbt_update_row');
+  newVersion.subscribe((v) => {
     const title = wrap.querySelector<HTMLElement>('#rbt_update_title');
-    if (title) title.textContent = `有新版本 ${v}`;
-    row?.removeAttribute('hidden');
+    if (title && v) title.textContent = `有新版本 ${v.version}`;
+    wrap.querySelector<HTMLElement>('#rbt_update_row')?.toggleAttribute('hidden', !v);
   });
 }
 

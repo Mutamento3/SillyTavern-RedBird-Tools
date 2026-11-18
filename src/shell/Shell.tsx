@@ -6,6 +6,7 @@
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Menu } from '../ui/Menu';
+import { askUpdate, installedVersion, newVersion } from '../tools/update';
 import { ctx, currentCharacter, saveSettings, settings, confirmText } from '../st/st';
 import { panelOpen } from '../ui/Panel';
 import { openGlobal, sheetOpen, shellActive } from '../ui/views';
@@ -413,10 +414,13 @@ function LeftColumn() {
   return (
     <aside class="rbt-left" aria-label="RedBird 左栏" onClickCapture={autoClose}>
       <div class="rbt-left-head">
-        <button type="button" class="rbt-brand" title="回到首页" onClick={() => { goHome(); if (phone) setNavOpen(false); }}>
-          <i class="rbt-brand-mark fa-solid fa-crow" aria-hidden="true" />
-          <span>首页</span>
-        </button>
+        <div class="rbt-left-brand">
+          <button type="button" class="rbt-brand" title="回到首页" onClick={() => { goHome(); if (phone) setNavOpen(false); }}>
+            <i class="rbt-brand-mark fa-solid fa-crow" aria-hidden="true" />
+            <span>首页</span>
+          </button>
+          <Version />
+        </div>
         {phone ? (
           <button type="button" class="rbt-icon-btn" title="关闭" aria-label="关闭" onClick={() => setNavOpen(false)}>
             <i class="fa-solid fa-xmark" />
@@ -633,4 +637,18 @@ export function initShellState(): void {
   for (const ev of [c.eventTypes.ONLINE_STATUS_CHANGED, c.eventTypes.MAIN_API_CHANGED, c.eventTypes.CHATCOMPLETION_SOURCE_CHANGED, c.eventTypes.CONNECTION_PROFILE_LOADED]) {
     if (ev) c.eventSource.on(ev, () => setTimeout(readOnline, 0));
   }
+}
+
+/** 首页旁边的小字版本号；有新版本时换成「更新」按钮，点了先问再更新。 */
+function Version() {
+  const latest = newVersion.value;
+  if (latest) {
+    return (
+      <button type="button" class="rbt-ver new" onClick={() => { void askUpdate(latest); }}>
+        更新<span class="rbt-ver-dot" aria-hidden="true" />
+      </button>
+    );
+  }
+  const v = installedVersion();
+  return v ? <span class="rbt-ver">v{v}</span> : null;
 }

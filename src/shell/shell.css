@@ -230,6 +230,18 @@ body.rbt-shell.rbt-shell-lcollapsed .rbt-left { display: none; }
 }
 .rbt-brand:hover { background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 5%, transparent)); }
 .rbt-brand-mark { font-size: 16px; color: #e5484d; } /* 品牌标志：红色小鸟（字体图标，各系统显示一致，不用 emoji） */
+.rbt-left-brand { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.rbt-ver { font-size: 11.5px; color: var(--rbd-text3, #6b707a); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* 有新版本：普通按钮（浅底、细边、圆角矩形），右上角一个红点 */
+button.rbt-ver.new {
+  position: relative; display: inline-flex; align-items: center; margin: 0 0 0 4px; padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--rbd-text1, #888) 18%, transparent); border-radius: var(--rbd-r-s, 8px);
+  background: color-mix(in srgb, var(--rbd-text1, #888) 6%, transparent); color: var(--SmartThemeBodyColor);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+}
+button.rbt-ver.new:hover { background: color-mix(in srgb, var(--rbd-text1, #888) 12%, transparent); }
+.rbt-ver-dot { position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 2px var(--rbd-bg1, var(--SmartThemeBlurTintColor)); }
+@media (max-width: 1000px) { button.rbt-ver.new { min-height: 32px; padding: 0 11px; } }
 
 .rbt-icon-btn {
   width: 30px;
