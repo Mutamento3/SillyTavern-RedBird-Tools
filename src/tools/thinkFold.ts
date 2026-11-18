@@ -34,12 +34,21 @@ function generating(id: number): boolean {
   return !!sp && Number(sp.messageId) === id && !sp.isFinished && !sp.isStopped;
 }
 
+/** 想的时候：前面一个小圈在转、后面浅色的字数一直在涨，看得出没卡住。
+ * 每来一段字消息就整条重画，动画会从头开始；按现在的时间往回拨，重画了也接着转。 */
+const SPIN_MS = 900;
+function thinkingLabel(think: string): string {
+  const n = think.replace(/\s/g, '').length;
+  return `<span class="rbt-think-spin" style="animation-delay:-${Date.now() % SPIN_MS}ms"></span>思考中…`
+    + (n ? `<span class="rbt-think-count">${n} 字</span>` : '');
+}
+
 function foldHtml(think: string, closed: boolean, id: number): string {
   const open = id >= 0 && opened.has(id) ? ' open' : '';
   const stopped = !closed && !generating(id);
   // 停在思考中途：框外面放「继续生成」，不用展开就看得到。只有最后一条能接着写。
   const last = id === (ctx().chat?.length ?? 0) - 1;
-  return `<details class="rbt-think"${open} data-rbt-mesid="${id}"><summary>${closed ? '思考过程' : stopped ? '思考到一半停了' : '思考中…'}</summary>`
+  return `<details class="rbt-think"${open} data-rbt-mesid="${id}"><summary>${closed ? '思考过程' : stopped ? '思考到一半停了' : thinkingLabel(think)}</summary>`
     + `<div class="rbt-think-body">${escHtml(think.trim())}</div>`
     + '<div class="rbt-think-foot"><span class="rbt-think-set">在设置里修改 ›</span></div></details>'
     + (stopped && last ? '<div class="rbt-think-stop"><span class="rbt-think-go">继续生成</span></div>' : '');

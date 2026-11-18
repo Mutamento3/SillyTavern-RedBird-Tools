@@ -1362,33 +1362,58 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 #rbt_settings .rbt-set-tip[hidden],
 #rbt_settings .rbt-set-row[hidden] { display: none; }
 #rbt_settings .rbt-set-tip a { color: var(--rbd-accent, #0a84ff); text-decoration: none; }
+/* 酒馆助手开了「流式渲染」时，消息会复制一份到 .TH-streaming 里显示，原来的 .mes_text 藏起来。
+   酒馆只给 .mes_text 写了行距、段距、对话和斜体的颜色，复制出来的那份全没了：对话不上色，字距一跳。照着酒馆自己的规则补上 */
+.TH-streaming { padding: 5px 0; font-weight: 500; line-height: calc(var(--mainFontSize) + .5rem); max-width: 100%; overflow-wrap: anywhere; }
+.TH-streaming p { margin: 0 0 10px; }
+.TH-streaming p:last-child { margin-bottom: 0; }
+.TH-streaming q { color: var(--SmartThemeQuoteColor); }
+.TH-streaming :is(i, em) { color: var(--SmartThemeEmColor); }
+.TH-streaming u { color: var(--SmartThemeUnderlineColor); }
+.TH-streaming q :is(i, em),
+.TH-streaming font[color] :is(em, i, u, q) { color: inherit; }
+.TH-streaming blockquote { border-left: 3px solid var(--SmartThemeQuoteColor); padding-left: 10px; background-color: var(--black30a); margin: 0; }
 /* 工具箱收起的思考过程（tools/thinkFold.ts）。样式照酒馆自己的思考框：灰底小标题 + 左边一条竖线的正文。
    酒馆会给消息里的 class 加 custom- 前缀 */
-.mes_text details.custom-rbt-think { margin: 0 0 0.6em; }
-.mes_text .custom-rbt-think > summary {
+:is(.mes_text, .TH-streaming) details.custom-rbt-think { margin: 0 0 0.6em; }
+:is(.mes_text, .TH-streaming) .custom-rbt-think > summary {
   display: inline-flex; align-items: center; gap: 8px; margin: 0.2em 2px; padding: 7px 14px; border-radius: 5px;
   /* 底色跟着字色走：酒馆的 --grey30 是写死的深灰，浅色主题下黑字压在上面看不清 */
   background-color: color-mix(in srgb, currentColor 12%, transparent); font-size: calc(var(--mainFontSize, 15px) * 0.9);
   list-style: none; cursor: pointer; user-select: none;
 }
-.mes_text .custom-rbt-think > summary::-webkit-details-marker { display: none; }
-.mes_text .custom-rbt-think > summary::after { content: '›'; display: inline-block; transition: transform 0.15s; }
-.mes_text .custom-rbt-think[open] > summary::after { transform: rotate(90deg); }
-.mes_text .custom-rbt-think-body {
-  margin: 0.4em 0 0; padding: 5px 5px 5px 14px; border-left: 2px solid var(--reasoning-body-color, var(--SmartThemeEmColor, currentColor)); border-radius: 2px;
-  white-space: pre-wrap; color: var(--reasoning-body-color, var(--SmartThemeEmColor, inherit)); max-height: 60vh; overflow-y: auto;
+:is(.mes_text, .TH-streaming) .custom-rbt-think > summary::-webkit-details-marker { display: none; }
+:is(.mes_text, .TH-streaming) .custom-rbt-think > summary::after { content: '›'; display: inline-block; transition: transform 0.15s; }
+:is(.mes_text, .TH-streaming) .custom-rbt-think[open] > summary::after { transform: rotate(90deg); }
+/* 思考中：前面一个小圈在转，后面浅色的字数在涨。
+   圈只转（transform），浏览器不用每一帧重算样式。以前试过让光扫过字（动 background-position），
+   每一帧都要重算整页样式，消息长的卡在生成时会更卡 */
+:is(.mes_text, .TH-streaming) .custom-rbt-think-spin {
+  display: inline-block; box-sizing: border-box; width: 0.9em; height: 0.9em; flex: none;
+  border: 2px solid color-mix(in srgb, currentColor 25%, transparent); border-top-color: currentColor; border-radius: 50%;
+  animation: rbt-think-spin 0.9s linear infinite;
 }
-.mes_text .custom-rbt-think-foot { padding: 6px 0 0 16px; font-size: 12px; }
-.mes_text .custom-rbt-think-set { color: var(--rbd-accent, var(--SmartThemeQuoteColor, inherit)); cursor: pointer; }
-.mes_text .custom-rbt-think-stop { margin: -0.2em 0 0.6em 2px; }
-.mes_text .custom-rbt-think-go {
+@keyframes rbt-think-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  :is(.mes_text, .TH-streaming) .custom-rbt-think-spin { animation-duration: 3s; }
+}
+:is(.mes_text, .TH-streaming) .custom-rbt-think-count { font-size: 0.85em; opacity: 0.45; font-variant-numeric: tabular-nums; }
+:is(.mes_text, .TH-streaming) .custom-rbt-think-body {
+  margin: 0.4em 0 0; padding: 5px 5px 5px 14px; border-left: 2px solid var(--reasoning-body-color, var(--SmartThemeEmColor, currentColor)); border-radius: 2px;
+  white-space: pre-wrap; color: var(--reasoning-body-color, var(--SmartThemeEmColor, inherit));
+}
+/* 展开后整段排在消息里，跟着聊天一起滚，框里不再自己滚：生成中每来一段字消息就重画一次，框里滚到的位置会被打回开头，手机上看着像被截断 */
+:is(.mes_text, .TH-streaming) .custom-rbt-think-foot { padding: 6px 0 0 16px; font-size: 12px; }
+:is(.mes_text, .TH-streaming) .custom-rbt-think-set { color: var(--rbd-accent, var(--SmartThemeQuoteColor, inherit)); cursor: pointer; }
+:is(.mes_text, .TH-streaming) .custom-rbt-think-stop { margin: -0.2em 0 0.6em 2px; }
+:is(.mes_text, .TH-streaming) .custom-rbt-think-go {
   display: inline-flex; align-items: center; min-height: 32px; padding: 0 14px; border-radius: 8px; cursor: pointer; user-select: none;
   background: var(--rbd-accent, var(--SmartThemeQuoteColor, #0a84ff)); color: #fff; font-size: calc(var(--mainFontSize, 15px) * 0.9); font-weight: 500;
 }
 @media (max-width: 1000px) {
-  .mes_text .custom-rbt-think > summary { min-height: 36px; }
-  .mes_text .custom-rbt-think-set { display: inline-flex; align-items: center; min-height: 36px; }
-  .mes_text .custom-rbt-think-go { min-height: 40px; }
+  :is(.mes_text, .TH-streaming) .custom-rbt-think > summary { min-height: 36px; }
+  :is(.mes_text, .TH-streaming) .custom-rbt-think-set { display: inline-flex; align-items: center; min-height: 36px; }
+  :is(.mes_text, .TH-streaming) .custom-rbt-think-go { min-height: 40px; }
 }
 
 /* 「聊天」分组：标签名单可以折行；点「修改」后下面出现输入框 */

@@ -160,9 +160,9 @@ function ScriptsSetupSection({ info }: { info: CardInfo }) {
         </>}
         {others.map((x) => (
           <div key={x.kind} class="rbt-sub-list">
-            <div class="rbt-sub-head">{x.kind === 'global' ? <Pill kind="global" /> : <small>来自预设「{x.label}」</small>}{!x.allowed && <small>没允许运行</small>}</div>
-            {/* 全局、预设的脚本这一版只显示，不在这里开关（在这里点会改到所有卡） */}
-            <NodeRows g={{ ...x, editable: false }} />
+            <div class="rbt-sub-head">{x.kind === 'global' ? <Pill kind="global" /> : <small>来自预设「{x.label}」</small>}{!x.allowed && <small>没允许运行</small>}
+              <small>{x.kind === 'global' ? '改这里会影响所有卡。' : '改这里会影响用这个预设的所有卡。'}</small></div>
+            <NodeRows g={x} />
           </div>
         ))}
       </>}

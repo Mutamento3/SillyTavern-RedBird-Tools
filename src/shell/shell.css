@@ -1606,6 +1606,8 @@ body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-actions .mes_edit { order: 1;
 body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-actions .extraMesButtonsHint { order: 2; }
 body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-actions .mes_bookmark { order: 3; }
 body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-swipes { display: flex; align-items: center; }
+/* 正在生成、正在换回复时这一行不能用（酒馆自己也把最后一条的按钮藏起来，这一行是挪出来的，要另外藏） */
+body:is([data-generating="true"], [data-swiping="true"]).rbt-shell.rbt-compact.rbt-mes-layout #chat .last_mes .rbt-mes-actions { display: none; }
 body.rbt-shell.rbt-compact.rbt-mes-layout .mes:not(.last_mes):not(.swipes_visible) .rbt-mes-swipes { display: none; }
 body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-swipes :is(.swipe_left, .swipe_right) { position: static; display: flex; align-items: center; justify-content: center; font-size: 17px; }
 body.rbt-shell.rbt-compact.rbt-mes-layout .rbt-mes-swipes .swipeRightBlock { position: static; flex-direction: row-reverse; align-items: center; pointer-events: auto; }

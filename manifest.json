@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.24",
+  "version": "0.6.25",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "「插件」页能查新版本了，有新版本时点「更新」就能装上。还修好了手机上「正则」页滚动卡顿。"
+  "rbt_whats_new": "修好了换带脚本的预设后，刷新页面还一直提示刷新、界面变卡。「思考中…」加了转动的小圈和字数，看得出模型还在想。"
 }

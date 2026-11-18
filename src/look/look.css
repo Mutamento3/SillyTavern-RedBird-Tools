@@ -163,7 +163,9 @@ html.rbt-look :is(#chat, #form_sheld) { background-color: color-mix(in srgb, var
 /* 有背景图（<html> 上有 rbt-has-bg，见 bgShade.ts）：三套美化都一样，聊天区盖一层黑，
    深浅按图的亮度算（--rbd-shade，30%–70%，暗图盖 30%，亮图盖得多），
    正文换成深色那套的浅色字，加一圈暗光晕托住图里局部很亮的地方。没有背景图时上面那条不变。 */
-html.rbt-look.rbt-has-bg :is(#chat, #form_sheld) { background-color: rgba(0, 0, 0, var(--rbd-shade, 0.4)); }
+/* 黑色盖在背景图那一层上，图画到哪就盖到哪：只盖聊天区和输入区的话，iOS 上图比这两块大，左右和底下会露出没盖的图 */
+html.rbt-look.rbt-has-bg :is(#chat, #form_sheld) { background-color: transparent; }
+html.rbt-look.rbt-has-bg #bg1::after { content: ''; position: absolute; inset: 0; background-color: rgba(0, 0, 0, var(--rbd-shade, 0.4)); }
 html.rbt-look.rbt-has-bg #chat {
   color-scheme: dark;
   --rbd-text1: #ececf1;
@@ -185,7 +187,7 @@ html.rbt-look.rbt-has-bg #chat {
   --SmartThemeUnderlineColor: #ececf1 !important;
   --SmartThemeQuoteColor: var(--rbd-quote-onbg, #f5f5f7) !important;
 }
-html.rbt-look.rbt-has-bg #chat .mes :is(.mes_text, .name_text, .mes_reasoning) { text-shadow: 0 0 2px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.5); }
+html.rbt-look.rbt-has-bg #chat .mes :is(.mes_text, .TH-streaming, .name_text, .mes_reasoning) { text-shadow: 0 0 2px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.5); }
 html.rbt-look ::selection { background-color: color-mix(in srgb, var(--rbd-accent) 40%, transparent); }
 
 /* ---------- 3. 顶栏和面板 ---------- */
@@ -349,10 +351,10 @@ html.rbt-look #chat .mes .extraMesButtonsHint { opacity: 0.4; transition: opacit
 html.rbt-look #chat .mes:hover .mes_buttons,
 html.rbt-look #chat .mes:hover .extraMesButtonsHint { opacity: 1; }
 /* 正文：只调段落的行距和段距，卡片自己的 HTML 不碰 */
-html.rbt-look #chat .mes_text > p { line-height: 1.8; margin: 0 0 0.75em; }
-html.rbt-look #chat .mes_text > p:last-child { margin-bottom: 0; }
-html.rbt-look #chat .mes_text > pre,
-html.rbt-look #chat .mes_text > p > code {
+html.rbt-look #chat :is(.mes_text, .TH-streaming > div) > p { line-height: 1.8; margin: 0 0 0.75em; }
+html.rbt-look #chat :is(.mes_text, .TH-streaming > div) > p:last-child { margin-bottom: 0; }
+html.rbt-look #chat :is(.mes_text, .TH-streaming > div) > pre,
+html.rbt-look #chat :is(.mes_text, .TH-streaming > div) > p > code {
   border-radius: var(--rbd-r-s);
   background-color: var(--rbd-bg2);
 }

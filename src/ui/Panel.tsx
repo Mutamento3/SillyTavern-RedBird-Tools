@@ -11,7 +11,7 @@ import { shellActive, VIEW_LABELS, type ViewId } from './views';
 export type TabId = ViewId;
 
 export const panelOpen = signal(false);
-export const activeTab = signal<TabId>('flow');
+export const activeTab = signal<TabId>('card');
 
 /** In shell mode the management views open as overlays, so the dock keeps only the watch-while-playing tabs. */
 function tabsNow(): TabId[] {
@@ -57,7 +57,7 @@ export function openPanel(tab?: TabId): void {
 
 export function Panel() {
   const open = panelOpen.value;
-  if (!tabsNow().includes(activeTab.value)) activeTab.value = 'flow';
+  if (!tabsNow().includes(activeTab.value)) activeTab.value = 'card';
 
   useEffect(() => {
     document.body.classList.toggle('rbt-docked', open);

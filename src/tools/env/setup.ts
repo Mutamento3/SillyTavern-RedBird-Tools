@@ -196,7 +196,7 @@ export function settleBaseline(avatar: string, keys: string[], done: string[]): 
 
 /**
  * 离开记了原值的那张卡（换卡、回首页、进群聊）：本卡专用的项在别处改过的，记进那张卡；
- * 还是进卡时换上的，换回原来的。`noSave`：重新打开页面时停在首页，不知道离开前改过什么，只换回、不记。
+ * 还是进卡时换上的，换回原来的。`noSave`：刷新页面后第一次离开，不知道这期间在哪改的，只换回、不记。
  */
 export async function leaveCard({ noSave = false, inChatLoad = false } = {}): Promise<void> {
   const b = baseline();

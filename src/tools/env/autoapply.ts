@@ -181,6 +181,8 @@ export async function enablePluginsAndReload(ids: string[]): Promise<void> {
 }
 
 let lastAvatar: string | null = null;
+/** 刷新页面后还没换过聊天 */
+let sinceLoad = true;
 let switchSeq = 0;
 /** 一次只换一张：后来的那次等前面的（离卡、进卡、后台换模型）都做完再开始。 */
 let queue: Promise<void> = Promise.resolve();
@@ -192,12 +194,14 @@ export function autoApplyOnSwitch(openStatus: () => void): Promise<void> {
   const avatar: string | null = char?.avatar ?? null;
   if (avatar && avatar === lastAvatar) return Promise.resolve();
   lastAvatar = avatar;
+  const fresh = sinceLoad;
+  sinceLoad = false;
   const my = ++switchSeq;
   const job = queue.then(async () => {
     await modelJob;
-    // 刷新页面后回到同一张卡：原值还记着，不用换回去
+    // 刷新页面后回到同一张卡：原值还记着，不用换回去。刷新后第一次去别处：只换回、不往卡里记
     const b = settings().baseline;
-    if (b && b.avatar !== avatar) await leaveCard({ inChatLoad: true });
+    if (b && b.avatar !== avatar) await leaveCard({ inChatLoad: true, noSave: fresh });
     if (!char || my !== switchSeq) return;
     applyingCard.value = char.name;
     // 先结束的那次不能把后来那张卡的进度条清掉
@@ -205,16 +209,6 @@ export function autoApplyOnSwitch(openStatus: () => void): Promise<void> {
   });
   queue = job.catch(() => {});
   return job;
-}
-
-/**
- * 页面打开时停在首页（酒馆不发换聊天的事件）：上次离开前记的原值还在，换回去。
- * 不知道离开前在酒馆里改过什么，所以只换回还是工具箱换上的那些项，不往卡里记。
- */
-export function settleOnStart(): void {
-  const c = ctx();
-  if (lastAvatar !== null || c.groupId || currentCharacter() || !settings().baseline) return;
-  queue = queue.then(() => leaveCard({ noSave: true })).catch(() => {});
 }
 
 async function applyForCard(char: Any, openStatus: () => void): Promise<void> {
