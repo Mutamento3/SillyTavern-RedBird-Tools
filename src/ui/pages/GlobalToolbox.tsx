@@ -46,7 +46,7 @@ import { CardPage } from './CardPage';
 import { AddGlobalWorld, GlobalRegexList, GlobalWorldList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
 import { trash, TRASH_LABEL, type TrashKind } from '../../tools/trash';
 import { charsTick } from '../../shell/characters';
-import { personaTick, ReloadNotice, Section, watchPersonas } from './parts';
+import { personaTick, Section, watchPersonas } from './parts';
 import { QUOTE_COLORS, type LookKind } from '../../core/quote';
 import { personaThumb } from './setupParts';
 import { personaStatus } from '../../shell/StatusBar';
@@ -390,7 +390,6 @@ function PresetsPage() {
         <div class="rbt-page-group">
           <Section title="全局预设" hint="没设专用预设的卡都用它">
             <PresetPicker />
-            <ReloadNotice name={cur} />
             {/* 自带的正则、脚本说的是正在用的预设；正在聊的卡用自己的预设时，那不是全局预设，不列 */}
             {cur === global && presetRx.map((i) => <ItemRow key={i.id} item={i} />)}
             {cur === global && !presetRx.length && <small class="rbt-muted">这个预设没有自带正则或脚本。</small>}
@@ -498,7 +497,6 @@ function PresetDetail({ name }: { name: string }) {
         {name !== cur && name !== global && exists && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={async () => { setBusy(true); try { await setGlobal('preset', name); } finally { setBusy(false); } }}>{heldByCard('preset') ? '设为全局预设' : '换成这个'}</button>}
         {name === cur && <button type="button" class="rbt-btn rbt-btn-small" onClick={() => openDrawer('preset')}>编辑预设 <i class="fa-solid fa-arrow-up-right-from-square" /></button>}
       </div>
-      {name === cur && <ReloadNotice name={name} />}
       {!exists && <div class="rbt-warn">找不到这个预设，可能被删除或改名了。</div>}
       {rx > 0 && <small class="rbt-muted">自带 {rx} 条正则，用这个预设时生效。</small>}
       <div class="rbt-page-cols">

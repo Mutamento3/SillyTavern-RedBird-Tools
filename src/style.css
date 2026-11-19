@@ -1306,9 +1306,6 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
   color: var(--t2); font-size: 12px;
 }
 .rbt-panel .rbt-iconbtn:hover, .rbt-scope .rbt-iconbtn:hover { color: var(--t1); background: color-mix(in srgb, var(--rbd-text1) 14%, transparent); }
-.rbt-differ { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 8px 8px 8px 12px; border-radius: var(--rbd-r-s); background: color-mix(in srgb, var(--warnc, #e0a040) 13%, transparent); font-size: 13px; }
-.rbt-differ-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; color: var(--t1); overflow-wrap: anywhere; }
-.rbt-differ-k { font-size: 12px; color: var(--warnc, #e0a040); font-weight: 600; }
 .rbt-link-row .rbt-frow-k { min-width: 5.5em; }
 @media (max-width: 1000px) {
   .rbt-panel .rbt-iconbtn, .rbt-scope .rbt-iconbtn { width: 36px; height: 36px; font-size: 13px; }

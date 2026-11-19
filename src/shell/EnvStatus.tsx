@@ -12,7 +12,6 @@ import { panelOpen } from '../ui/Panel';
 import { chatTick } from './Shell';
 import { openDrawers } from './drawers';
 import { sourcesTick } from '../tools/sources';
-import { RELOAD_COPY, reloadAdvised, reloadPage } from '../tools/scripts/reload';
 import { cardGroup, setGroupAllowed } from '../tools/scripts/th';
 
 /** Bumped after actions so the panel re-reads ST state. */
@@ -37,7 +36,7 @@ function hasMvu(char: Any): boolean {
  */
 let genN = 0;
 // 档案、绑定改了（archiveVersion）也要重算：不然在角色表里解绑后，「需要注意」还显示旧的
-const envGen = computed(() => { void chatTick.value; void statusTick.value; void sourcesTick.value; void openDrawers.value; void reloadAdvised.value; void archiveVersion.value; return ++genN; });
+const envGen = computed(() => { void chatTick.value; void statusTick.value; void sourcesTick.value; void openDrawers.value; void archiveVersion.value; return ++genN; });
 
 function cached<T>(fn: (char: Any) => T): (char: Any) => T {
   let last: { gen: number; avatar: string; val: T } | null = null;
@@ -87,8 +86,7 @@ function buildSectionsNow(char: Any): { sections: Section[]; issues: number } {
   // ---- 预设
   const pr: Line[] = [];
   const cur = currentPresetName();
-  if (cur && reloadAdvised.value === cur) pr.push({ level: 'warn', text: RELOAD_COPY.title, detail: RELOAD_COPY.detail, action: { label: RELOAD_COPY.button, run: reloadPage } });
-  else pr.push({ level: 'info', text: `「${cur}」` });
+  pr.push({ level: 'info', text: `「${cur}」` });
   const presetRx = report.items.find((i) => i.id === 'rx:p');
   if (presetRx) pr.push({ level: 'info', text: presetRx.name, detail: '预设自带的正则，跟着预设走' });
   sections.push({ title: '预设', lines: pr });

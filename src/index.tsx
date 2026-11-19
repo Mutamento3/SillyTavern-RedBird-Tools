@@ -27,7 +27,6 @@ import { installWorldEntries } from './shell/worldEntries';
 import { installMesActions, mesLayoutOn, setMesLayout } from './shell/mesActions';
 import { installThWatch } from './tools/scripts/th';
 import { installScriptNotice } from './tools/scripts/notice';
-import { installReloadAdvice } from './tools/scripts/reload';
 import { installChatSaves } from './shell/chatSaves';
 import { installRecentWatch } from './shell/recent';
 import { SheetHost } from './shell/Sheet';
@@ -291,7 +290,7 @@ async function init(): Promise<void> {
   if (typeof es.makeFirst === 'function') es.makeFirst(ctx().eventTypes.CHAT_CHANGED, onSwitch);
   else es.on(ctx().eventTypes.CHAT_CHANGED, onSwitch);
   // 刷新页面不算离卡：上次换上的本卡专用先留着，打开别的聊天时再换回全局（autoApplyOnSwitch）。
-  // 以前一打开页面就换回全局，回到同一张卡又换一次：带脚本的预设每次都要重新加载脚本，卡好几秒，还一直提醒刷新
+  // 以前一打开页面就换回全局，回到同一张卡又换一次：带脚本的预设每次都要重新加载脚本，卡好几秒
 
   // 模型 / API / 预设在酒馆里改了：刷新「需要注意」和工具箱按钮上的小点
   for (const ev of ['CHATCOMPLETION_MODEL_CHANGED', 'CHATCOMPLETION_SOURCE_CHANGED', 'OAI_PRESET_CHANGED_AFTER', 'WORLDINFO_SETTINGS_UPDATED']) {
@@ -308,7 +307,6 @@ async function init(): Promise<void> {
   installThinkFold();
   installThWatch();
   installScriptNotice();
-  installReloadAdvice();
   // 存档页每一条：存档名 + ⋯、两行预览、时间和大小
   installChatSaves();
   // 所有通知（包括酒馆和别的插件发的）右上角都有 ✕，可以直接关掉

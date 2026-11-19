@@ -73,7 +73,7 @@ async function setRegexEnabled(type: RxType, id: string, on: boolean): Promise<v
   if (!re) throw new Error('regex engine not loaded');
   const list: Any[] = re.getScriptsByType(type) ?? [];
   if (!list.some((s) => s.id === id)) {
-    toast('error', '没找到这条正则，可能已经被改名或删除。请点"刷新"。');
+    toast('error', '没找到这条正则，可能已经被改名或删除。');
     return;
   }
   const next = list.map((s) => (s.id === id ? { ...s, disabled: !on } : s));

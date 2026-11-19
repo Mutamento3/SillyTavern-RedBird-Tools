@@ -1,7 +1,6 @@
 /**
  * 「这张卡」页面用到的各个分区（原「角色档案 · 这张卡」）。
  */
-import { RELOAD_COPY, reloadAdvised, reloadPage } from '../../tools/scripts/reload';
 import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useState } from 'preact/hooks';
@@ -272,17 +271,6 @@ export function OpenBtn({ label, title, onClick }: { label: string; title: strin
 /** 一个只有图标的按钮（有边框，看得出能点）。 */
 function IconBtn({ icon, title, onClick }: { icon: string; title: string; onClick: () => void }) {
   return <button type="button" class="rbt-iconbtn" title={title} aria-label={title} onClick={onClick}><i class={`fa-solid ${icon}`} /></button>;
-}
-
-/** 换了带脚本的预设、还没刷新：琥珀色一行 + 「刷新页面」。只在 name 就是那个预设时出现。 */
-export function ReloadNotice({ name, bare }: { name: string; /** 角色档案里正在聊的卡：「需要注意」里已经有这个按钮，这里只说状态 */ bare?: boolean }) {
-  if (reloadAdvised.value !== name) return null;
-  return (
-    <div class="rbt-differ" role="status">
-      <span class="rbt-differ-text"><span class="rbt-differ-k">{RELOAD_COPY.title}</span>{RELOAD_COPY.detail}</span>
-      {!bare && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" onClick={() => void reloadPage()}>{RELOAD_COPY.button}</button>}
-    </div>
-  );
 }
 
 export const personaTick = signal(0);
