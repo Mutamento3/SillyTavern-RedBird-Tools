@@ -30,7 +30,7 @@ import {
   type RegexOwner,
   type RequiredExt,
 } from '../../core/cards';
-import { charaFileName, ctx, currentCharacter, loaded, runSlash, saveSettings, settings, slashQuote, thCharacterScriptsEnabled, toast, type Any, type EnvProfile, confirmText } from '../../st/st';
+import { charaFileName, ctx, currentCharacter, loaded, runSlash, saveSettings, settings, slashQuote, thCharacterScriptsEnabled, toast, type Any, type CardFacts, type EnvProfile, confirmText } from '../../st/st';
 import { refreshEnv, thScripts } from '../env/env';
 import { profileEmpty } from '../env/setup';
 import { markDeleted, syncStore } from '../../st/store';
@@ -136,19 +136,46 @@ export function worldNames(): string[] {
   return loaded.worldInfo?.world_names ?? [];
 }
 
+/**
+ * 卡里的正则、脚本、世界书各有多少。完整的卡现读，顺便记下；只有名字等几项的卡（懒加载）用记下的，
+ * 没记过或卡换过了 = null（这张卡就不显示这几样的提醒，而不是显示成「没有」）。
+ */
+export function cardFacts(char: Any): CardFacts | null {
+  const all = (settings().cardFacts ??= {});
+  const d = char.data ?? {};
+  const key = `${char.data_size ?? ''}|${d.character_version ?? ''}`;
+  if (char.shallow) {
+    const f = all[char.avatar];
+    return f && f.key === key ? f : null;
+  }
+  const ext = d.extensions ?? {};
+  const rx: Any[] = ext.regex_scripts ?? [];
+  const book = d.character_book;
+  const f: CardFacts = {
+    key,
+    regex: rx.length,
+    regexOn: rx.filter((r) => !r.disabled).length,
+    scripts: thScripts(ext.tavern_helper ?? ext.TavernHelper_scripts).length,
+    book: book?.entries ? book.entries.length : null,
+    bookName: book?.name ?? '',
+  };
+  if (JSON.stringify(all[char.avatar]) !== JSON.stringify(f)) { all[char.avatar] = f; saveSettings(); }
+  return f;
+}
+
 export function cardInfo(char: Any): CardInfo {
   const d = char.data ?? {};
   const ext = d.extensions ?? {};
   const es = ctx().extensionSettings ?? {};
   const names = worldNames();
   const bound: string = ext.world ?? '';
-  const book = d.character_book;
-  const state: WorldState = bound ? (names.includes(bound) ? 'ok' : 'missing') : book?.entries?.length ? 'unbound' : 'none';
+  const facts = cardFacts(char);
+  const state: WorldState = bound ? (names.includes(bound) ? 'ok' : 'missing') : facts?.book ? 'unbound' : 'none';
   const extra: string[] = loaded.worldInfo?.world_info?.charLore?.find((e: Any) => e.name === charaFileName(char.avatar))?.extraBooks ?? [];
-  const cardRegex: Any[] = ext.regex_scripts ?? [];
-  const th = thScripts(ext.tavern_helper ?? ext.TavernHelper_scripts);
+  const th = char.shallow ? [] : thScripts(ext.tavern_helper ?? ext.TavernHelper_scripts);
+  const scriptCount = facts?.scripts ?? 0;
   const autoExts: CardInfo['autoExts'] = [];
-  if (th.length) autoExts.push({ req: TAVERN_HELPER, reason: `卡里有 ${th.length} 个酒馆助手脚本` });
+  if (scriptCount) autoExts.push({ req: TAVERN_HELPER, reason: `卡里有 ${scriptCount} 个酒馆助手脚本` });
   const cur = currentCharacter();
   return {
     avatar: char.avatar,
@@ -164,17 +191,17 @@ export function cardInfo(char: Any): CardInfo {
     world: {
       name: bound,
       state,
-      embedded: book?.entries ? book.entries.length : null,
+      embedded: facts?.book ?? null,
       extra,
-      importName: bound || book?.name || `${char.name}'s Lorebook`,
+      importName: bound || facts?.bookName || `${char.name}'s Lorebook`,
     },
     regex: {
-      total: cardRegex.length,
-      enabled: cardRegex.filter((r) => !r.disabled).length,
+      total: facts?.regex ?? 0,
+      enabled: facts?.regexOn ?? 0,
       allowed: (es.character_allowed_regex ?? []).includes(char.avatar),
     },
     scripts: {
-      total: th.length,
+      total: scriptCount,
       enabled: thCharacterScriptsEnabled(es, char),
       names: th.map((s) => s.name),
     },
@@ -379,6 +406,8 @@ export type ImportResult = 'imported' | 'overwritten' | 'exists' | 'nobook' | 'f
  * Never overwrites an existing world file unless `overwrite` is set, and then backs it up first.
  */
 export async function importCardWorld(avatar: string, { overwrite = false, quiet = false } = {}): Promise<ImportResult> {
+  // 懒加载时没打开过的卡读不到世界书，先把整张卡读回来
+  await ensureFullCharacter(avatar);
   const f = findChar(avatar);
   const wi = loaded.worldInfo;
   const book = f?.char?.data?.character_book;

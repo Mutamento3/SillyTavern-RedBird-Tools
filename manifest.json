@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.26",
+  "version": "0.6.27",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "换成带脚本的预设后，不用再刷新页面，可以直接发消息。"
+  "rbt_whats_new": "手机上打开酒馆很慢时，工具箱会提醒一次原因和改法。"
 }

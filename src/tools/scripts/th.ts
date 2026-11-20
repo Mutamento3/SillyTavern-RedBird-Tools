@@ -13,6 +13,7 @@
  */
 import { signal } from '@preact/signals';
 import { ctx, toast, type Any } from '../../st/st';
+import { cardFacts } from '../cards/cards';
 
 export type ThKind = 'global' | 'preset' | 'character';
 
@@ -209,8 +210,8 @@ export function cardsWithScripts(): { avatar: string; name: string; count: numbe
   const allowed = enabledLists().characters;
   const out: { avatar: string; name: string; count: number; allowed: boolean }[] = [];
   for (const ch of ctx().characters ?? []) {
-    // 「懒加载角色」打开着时，没打开过的卡读不到脚本，不会列在这里
-    const count = countScripts(parseTrees(cardScriptsRaw(ch)));
+    // 「懒加载角色」打开着时，没打开过的卡读不到脚本，用打开时记下的个数（没记过的不列）
+    const count = ch.shallow ? cardFacts(ch)?.scripts ?? 0 : countScripts(parseTrees(cardScriptsRaw(ch)));
     if (count) out.push({ avatar: String(ch.avatar), name: String(ch.name ?? ''), count, allowed: allowed.includes(String(ch.avatar)) });
   }
   return out;

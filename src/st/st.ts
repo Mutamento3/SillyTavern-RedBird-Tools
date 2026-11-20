@@ -226,6 +226,23 @@ export interface RbtSettings {
   thinkTags?: string[];
   /** Lorebook backups written to data/<user>/user/files before overwriting. */
   worldBackups: { file: string; world: string; at: string }[];
+  /** 每张卡里自带的几样东西，看到完整的卡时记下（见 cards.ts cardFacts）。不进 redbird-tools.json：丢了下次打开卡再记。 */
+  cardFacts?: Record<string, CardFacts>;
+}
+
+/**
+ * 酒馆开了「懒加载角色」（config.yaml 的 lazyLoadCharacters）时，没打开过的卡只有名字等几项，
+ * 读不到卡里的正则、脚本和世界书。key = 酒馆算的卡数据大小（data_size，不含正则、脚本、世界书）+ 卡的版本号，
+ * 对不上 = 卡换过了。
+ */
+export interface CardFacts {
+  key: string;
+  regex: number;
+  regexOn: number;
+  scripts: number;
+  /** 卡里世界书的条目数；卡里没有世界书 = null */
+  book: number | null;
+  bookName: string;
 }
 
 /**
