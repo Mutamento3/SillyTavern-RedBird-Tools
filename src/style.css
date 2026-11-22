@@ -466,13 +466,16 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-attn-line > i { color: #e0a040; }
 .rbt-attn-text { flex: 1; min-width: 0; }
 .rbt-attn-text > small:first-child { color: var(--rbt-muted); margin-right: 4px; }
-@media (max-width: 1000px) { .rbt-attn-line .rbt-row-edit { width: 36px; height: 36px; font-size: 13px; } }
 
 /* 全局正则：开关一行，"属于谁"紧跟在下面 */
 .rbt-owner-row { margin-bottom: 6px; }
 .rbt-owner-row .rbt-env-item { margin-bottom: 2px; }
 .rbt-owner-pick { padding-left: 8px; align-items: center; }
 .rbt-owner-pick .rbt-pick { flex: 1; min-width: 0; }
+/* 名字和说明在这一行里折行，✎ 和开关一直在第一行右边（手机上以前开关被挤到下一行） */
+.rbt-owner-row .rbt-env-item { flex-wrap: nowrap; }
+.rbt-owner-row .rbt-env-item > :is(.rbt-env-name, small) { min-width: 0; }
+.rbt-owner-row .rbt-env-item > :not(.rbt-env-name, small) { flex: none; }
 
 /* =====================================================================
    设计系统 v2（Apple HIG 式）：覆盖上面的旧样式，让工具箱各页面和三栏外壳是同一种语言。
@@ -1114,6 +1117,8 @@ input.rbt-cb.rbt-cb[type='checkbox']:focus-visible { outline: 2px solid var(--rb
   border: 0; border-radius: var(--rbd-r-s); background: transparent; color: var(--t3); font-size: 11px; cursor: pointer;
 }
 .rbt-row-edit:hover { background: var(--g2h); color: var(--t1); }
+/* 手机上 ✎ 要好点：36px */
+@media (max-width: 1000px) { .rbt-row-edit { width: 36px; height: 36px; font-size: 13px; } }
 .rbt-env-item .rbt-row-edit, .rbt-sub-item .rbt-row-edit { margin-left: auto; }
 .rbt-env-item .rbt-row-edit + .rbt-env-toggle, .rbt-sub-item .rbt-row-edit + .rbt-env-toggle { margin-left: 4px; }
 /* 插件有新版本：「更新」靠右，挨着开关 */
@@ -1199,6 +1204,8 @@ input.rbt-cb.rbt-cb[type='checkbox']:focus-visible { outline: 2px solid var(--rb
 }
 .rbt-card-section { gap: var(--rbd-s-3); padding: var(--rbd-s-4); }
 .rbt-card-section-head { margin-bottom: 0; }
+/* 分区里的间距只用分区自己的 gap，子元素的外边距不再叠上去（不然有的地方 12px、有的 24px） */
+.rbt-card-section > :is(.rbt-row, .rbt-org-bar, .rbt-owner-row) { margin-top: 0; margin-bottom: 0; }
 .rbt-scope h3.rbt-card-section-title, .rbt-panel h3.rbt-card-section-title {
   margin: 0; padding: 0; font-family: inherit; font-size: 15px; font-weight: 700; line-height: 1.35; color: var(--t1);
 }

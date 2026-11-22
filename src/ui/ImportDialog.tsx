@@ -13,7 +13,7 @@ import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { normalizeUrl } from '../core/cards';
 import { charaFileName, ctx, loaded, runSlash, settings, slashQuote, toast } from '../st/st';
-import { importCardWorld, presetNames, setCardTheme, setRecommendedPreset, switchPreset, updateRecord, worldNames, archiveVersion } from '../tools/cards/cards';
+import { presetNames, skipWorldPrompt, setCardTheme, setRecommendedPreset, switchPreset, updateRecord, worldNames, archiveVersion } from '../tools/cards/cards';
 import { KIND_LABEL, KIND_TAB, prepareImport, runImport, type ImportItem } from '../tools/importer';
 import { updateSource } from '../tools/sources';
 import { refreshStatus } from '../shell/EnvStatus';
@@ -336,7 +336,7 @@ export function ImportDialog() {
         },
         useTheme: useStTheme,
         importScript: importThScripts,
-        importCardWorld: settings().autoImportWorld ? (avatar) => importCardWorld(avatar, { quiet: true }) : undefined,
+        skipWorldPrompt: settings().autoImportWorld ? skipWorldPrompt : undefined,
         setCardTheme: (avatar, theme) => {
           const ch = (ctx().characters ?? []).find((c: { avatar: string }) => c.avatar === avatar);
           setCardTheme(avatar, ch?.name ?? avatar, theme);

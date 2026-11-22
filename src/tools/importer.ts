@@ -165,7 +165,7 @@ export function relate(items: ImportItem[]): ImportItem[] {
 const baseName = (f: File) => f.name.replace(/\.[^/.]+$/, '');
 
 async function waitFor(ok: () => boolean, ms: number): Promise<boolean> {
-  for (const t0 = Date.now(); Date.now() - t0 < ms; await wait(300)) if (ok()) return true;
+  for (const t0 = Date.now(); Date.now() - t0 < ms; await wait(100)) if (ok()) return true;
   return ok();
 }
 
@@ -220,10 +220,10 @@ export async function runImport(items: ImportItem[], hooks: {
   /** 卡的美化：和这张卡聊天时整个界面换成它 */
   setCardTheme: (avatar: string, theme: string) => void;
   /**
-   * 卡里自带世界书时，导入后马上把它导入并绑到卡上（设置里开着「自动导入卡里自带的世界书」时）。
-   * 这样酒馆不会再弹英文的「要不要导入」，也不会接着自动打开世界书面板。
+   * 卡里自带世界书时：告诉酒馆打开这张卡时别弹英文的「要不要导入」。
+   * 和酒馆一样，世界书在打开这张卡时才导入：由换卡时的自动导入来做（设置里「自动导入卡里自带的世界书」）。
    */
-  importCardWorld?: (avatar: string) => Promise<unknown>;
+  skipWorldPrompt?: (avatar: string) => void;
   normalizeUrl: (s: string) => string;
   /** Switch ST's UI theme to this one (and turn the toolbox's own look off). */
   useTheme: (name: string) => Promise<void>;
@@ -291,14 +291,15 @@ export async function runImport(items: ImportItem[], hooks: {
     if (avatar && it.activate) lastCard = avatar;
     // 一起发布的世界书 / 预设：绑到这张卡上
     if (avatar) {
-      if (it.card?.bookEntries && hooks.importCardWorld) await hooks.importCardWorld(avatar);
+      if (it.card?.bookEntries) hooks.skipWorldPrompt?.(avatar);
       for (const w of toCardWorlds) await hooks.bindWorld(avatar, w, !!it.card?.bookEntries);
       if (toCardPreset) hooks.setCardPreset(avatar, toCardPreset);
       if (toCardTheme) hooks.setCardTheme(avatar, toCardTheme);
     }
     done.push({ item: it, name: avatar });
   }
-  if (lastCard) await hooks.openCharacter(lastCard);
+  // 不等卡打开：卡一进列表就算导完（和酒馆自己导入一样），导入窗口马上关
+  if (lastCard) void hooks.openCharacter(lastCard);
   setTimeout(() => refreshEnv(), 1500);
   return done;
 }

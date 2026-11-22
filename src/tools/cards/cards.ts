@@ -400,6 +400,11 @@ export async function updateCardBook(avatar: string): Promise<boolean> {
   }
 }
 
+/** 酒馆打开带世界书的卡时，每张卡会弹一次英文的「要不要导入」。工具箱自己导入时，让它别再问。 */
+export function skipWorldPrompt(avatar: string): void {
+  try { ctx().accountStorage?.setItem(`AlertWI_${avatar}`, 'true'); } catch { /* ignore */ }
+}
+
 export type ImportResult = 'imported' | 'overwritten' | 'exists' | 'nobook' | 'failed';
 
 /**
@@ -423,8 +428,7 @@ export async function importCardWorld(avatar: string, { overwrite = false, quiet
     await wi.saveWorldInfo(name, wi.convertCharacterBook(structuredClone(book)), true);
     await wi.updateWorldInfoList();
     if (f.char.data?.extensions?.world !== name) await ctx().writeExtensionField(f.chid, 'world', name);
-    // ST asks once per card whether to import; we just did it, so don't ask again.
-    try { ctx().accountStorage?.setItem(`AlertWI_${avatar}`, 'true'); } catch { /* ignore */ }
+    skipWorldPrompt(avatar);
     if (!quiet) {
       toast('success', exists
         ? '已替换当前世界书，原版本已备份'
