@@ -4,7 +4,6 @@
  */
 import { sharpImage, sharpNow } from './sharpImg';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { openGlobal } from '../ui/views';
 import { openImport } from '../ui/ImportDialog';
 import { Menu } from '../ui/Menu';
 import { ctx } from '../st/st';
@@ -33,6 +32,9 @@ import {
 } from './characters';
 
 const SORT_KEY = 'rbt-shell-char-sort';
+/** 首页怎么排：大图（默认）或列表（一屏看到更多卡，找卡快）。两种用同一个卡片，只是样式不同（shell.css「列表」） */
+const VIEW_KEY = 'rbt-shell-char-view';
+type HomeView = 'grid' | 'list';
 
 // ------------------------------------------------------------ colour ---
 
@@ -207,13 +209,22 @@ function Card({ it, managing, selected, onSelect }: { it: CharItem; managing?: b
           ? <img ref={imgRef} class="rbt-hcard-img" src={src} alt="" loading="lazy" decoding="async" onLoad={onLoad} onError={() => setBroken(true)} />
           : <img class="rbt-hcard-img" src={it.thumb} alt="" />}
         <span class="rbt-hcard-shade" />
-        {it.problems.length > 0
-          ? <span class="rbt-hcard-pill warn" title={it.problems.join('、')}><i /><span class="rbt-hcard-pill-text">{it.problems.length > 1 ? `${it.problems.length} 项待处理` : it.problems[0]}</span></span>
-          : it.kind === 'group' && <span class="rbt-hcard-pill"><i class="fa-solid fa-users" /> 群组</span>}
         <span class="rbt-hcard-text">
-          <span class="rbt-hcard-name">{it.fav && <i class="fa-solid fa-thumbtack rbt-hcard-namefav" aria-label="已置顶" />}{it.name}</span>
+          {/* 提醒放在名字上面：和右上角的「⋯」不在一行，手机上窄卡片也写得下 */}
+          {it.problems.length > 0
+            ? <span class="rbt-hcard-pill warn" title={it.problems.join('、')}><i /><span class="rbt-hcard-pill-text">{it.problems.length > 1 ? `${it.problems.length} 个问题` : it.problems[0]}</span></span>
+            : it.kind === 'group' && <span class="rbt-hcard-pill"><i class="fa-solid fa-users" /> 群组</span>}
+          <span class="rbt-hcard-name">{it.fav && <i class="fa-solid fa-thumbtack rbt-hcard-namefav" aria-label="已置顶" />}{it.name}{it.aux && <small class="rbt-hcard-aux">{it.aux}</small>}</span>
           <span class="rbt-hcard-meta">{it.kind === 'group' ? it.note : lastChatText(it.lastChat)}</span>
           {it.tags.length > 0 && <span class="rbt-hcard-meta">{it.tags.slice(0, 3).map((t) => t.name).join(' · ')}</span>}
+          {/* 下面两项只在列表里显示（和酒馆角色列表一样：作者简介一行、标签带颜色） */}
+          {it.kind === 'character' && it.note && <span class="rbt-hcard-note">{it.note.slice(0, 160)}</span>}
+          {it.tags.length > 0 && (
+            <span class="rbt-hcard-tags">
+              {it.tags.slice(0, 4).map((t) => <span key={t.id} class="rbt-hcard-tag" style={t.color ? { background: t.color, color: t.color2 || undefined } : undefined}>{t.name}</span>)}
+              {it.tags.length > 4 && <span class="rbt-hcard-tag more">+{it.tags.length - 4}</span>}
+            </span>
+          )}
         </span>
       </button>
       {managing ? (
@@ -303,22 +314,20 @@ function ManageBar({ picked, total, onAll, onDone }: { picked: CharItem[]; total
 
 type Filter = 'all' | 'fav' | 'problem' | 'group' | `tag:${string}`;
 
-const SORT_TEXT: Record<CharSort, string> = { recent: '最近聊过', name: '名称', added: '最近添加' };
+const SORT_TEXT: Record<CharSort, string> = { recent: '最近聊过', chats: '聊得最多', name: '名称', added: '最近添加' };
 
 /**
- * 筛选 / 排序：一个图标 + 文字的按钮，上面盖一个看不见的系统下拉框（点了弹系统自带的选择器，手机上也好用）。
- * 电脑上显示图标和文字；手机上平时只显示图标，选了标签、换了排序时，图标后面写出现在的值（一眼看出筛了什么、怎么排）。
- */
-/**
- * 排序、按标签筛选：一个按钮，点开是工具箱自己的选择菜单（电脑上在按钮下面，手机上从底部弹出）。
+ * 筛选、排序：一个按钮，点开是工具箱自己的选择菜单（电脑上在按钮下面，手机上从底部弹出）。
  * 不用浏览器自带的下拉框：有的手机浏览器（比如火狐）把选项贴在按钮下面、和按钮一样窄，标签名被截断。
  */
-function IconPicker({ icon, label, title, name, value, options, onChange, active }: { icon: string; label: string; title: string; name: string; value: string; options: { value: string; text: string }[]; onChange: (v: string) => void; active?: boolean }) {
+function IconPicker({ icon, label, title, name, value, options, onChange, active, dot, placeholder }: { icon: string; label: string; title: string; name: string; value: string; options: { value: string; text: string; group?: string }[]; onChange: (v: string) => void; active?: boolean; dot?: boolean; placeholder?: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <Popup title={name} open={open} onClose={() => setOpen(false)} cls="rbt-home-pop"
-      options={options.map((o) => ({ key: o.value || '-', title: o.text, selected: o.value === value, onPick: () => { setOpen(false); onChange(o.value); } }))}>
-      <button type="button" class={'rbt-home-select rbt-home-picker' + (active ? ' active' : '')} title={title} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(!open)}>
+    <Popup title={name} placeholder={placeholder} open={open} onClose={() => setOpen(false)} cls="rbt-home-pop"
+      options={options.map((o) => ({ key: o.value || '-', title: o.text, group: o.group, selected: o.value === value, onPick: () => { setOpen(false); onChange(o.value); } }))}>
+      <button type="button" class={'rbt-home-select rbt-home-picker' + (active ? ' active' : '')} title={title} aria-label={`${name}：${label}`} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {/* 有卡出问题时，「筛选」前面一个琥珀色小点，和卡片上的提醒同色 */}
+        {dot && <span class="rbt-home-dot" aria-hidden="true" />}
         <i class={`fa-solid ${icon} fa-fw`} aria-hidden="true" />
         <span class="rbt-home-picker-text">{label}</span>
         <i class="fa-solid fa-chevron-down rbt-home-picker-chev" aria-hidden="true" />
@@ -335,6 +344,10 @@ export function HomeGallery() {
     try { return (localStorage.getItem(SORT_KEY) as CharSort) || 'recent'; } catch { return 'recent'; }
   });
   const setSort = (v: CharSort) => { setSortState(v); try { localStorage.setItem(SORT_KEY, v); } catch { /* ignore */ } };
+  const [view, setViewState] = useState<HomeView>(() => {
+    try { return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid'; } catch { return 'grid'; }
+  });
+  const setView = (v: HomeView) => { setViewState(v); try { localStorage.setItem(VIEW_KEY, v); } catch { /* ignore */ } };
   const [managing, setManaging] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   // 整理角色列表要把每张卡看一遍；搜索框每打一个字都会重画，所以只在角色数据变了时重算
@@ -353,7 +366,8 @@ export function HomeGallery() {
   const nFav = all.filter((x) => x.fav).length;
   const nProblem = all.filter((x) => x.problems.length).length;
   const nGroup = all.filter((x) => x.kind === 'group').length;
-  const tagValue = filter.startsWith('tag:') ? filter : '';
+  const filterText = filter === 'all' ? '筛选' : filter === 'problem' ? '有问题' : filter === 'fav' ? '置顶' : filter === 'group' ? '群组'
+    : (tags.find((t) => 'tag:' + t.tag.id === filter)?.tag.name ?? '筛选');
   // 管理模式：只能选角色（群组不在这里管）；选中的里面被删掉 / 筛掉的不算
   const selectable = shown.filter((x) => x.kind === 'character');
   const pickedItems = selectable.filter((x) => picked.has(x.key));
@@ -365,19 +379,19 @@ export function HomeGallery() {
   const toggleAll = () => setPicked(pickedItems.length === selectable.length ? new Set() : new Set(selectable.map((x) => x.key)));
   const stopManaging = () => { setManaging(false); setPicked(new Set()); };
 
-  const Pill = ({ v, label, dot }: { v: Filter; label: string; dot?: boolean }) => (
-    <button type="button" class={filter === v ? 'active' : ''} onClick={() => setFilter(v)}>{dot && <span class="rbt-home-pill-dot" />}{label}</button>
-  );
-
-  // 筛选 / 排序 / 管理：电脑上在第二行右边；手机上在搜索框下面单独一行（只放图标时大家看不懂是什么）
+  // 筛选 / 排序 / 管理：电脑上在搜索框下面靠右；手机上在搜索框下面单独一行（只放图标时大家看不懂是什么）
   const phone = compact.value;
   const tools = (
           <div class="rbt-home-tools">
-            {tags.length > 0 && (
-              <IconPicker icon="fa-filter" name="标签" label={tagValue ? (tags.find((t) => 'tag:' + t.tag.id === tagValue)?.tag.name ?? '标签') : '筛选'} title="只看带某个标签的角色" active={!!tagValue}
-                value={tagValue} onChange={(v) => setFilter((v || 'all') as Filter)}
-                options={[{ value: '', text: '全部标签' }, ...tags.map(({ tag, count }) => ({ value: 'tag:' + tag.id, text: `${tag.name}（${count}）` }))]} />
-            )}
+            <IconPicker icon="fa-filter" name="筛选" label={filterText} title="只看有问题的、置顶的、群组，或带某个标签的角色" active={filter !== 'all'} dot={nProblem > 0 && filter !== 'problem'}
+              placeholder="搜标签名字" value={filter} onChange={(v) => setFilter(v as Filter)}
+              options={[
+                { value: 'all', text: `全部（${all.length}）` },
+                ...(nProblem > 0 ? [{ value: 'problem', text: `有问题（${nProblem}）` }] : []),
+                ...(nFav > 0 ? [{ value: 'fav', text: `置顶（${nFav}）` }] : []),
+                ...(nGroup > 0 ? [{ value: 'group', text: `群组（${nGroup}）` }] : []),
+                ...tags.map(({ tag, count }) => ({ value: 'tag:' + tag.id, text: `${tag.name}（${count}）`, group: '标签' })),
+              ]} />
             <IconPicker icon="fa-arrow-down-wide-short" name="排序" label={`排序：${SORT_TEXT[sort]}`} title="排序方式" value={sort} onChange={(v) => setSort(v as CharSort)}
               options={(Object.keys(SORT_TEXT) as CharSort[]).map((k) => ({ value: k, text: SORT_TEXT[k] }))} />
             <button type="button" class={'rbt-home-select rbt-home-manage' + (managing ? ' active' : '')} title="多选：批量置顶、加减标签、导出、删除" onClick={() => (managing ? stopManaging() : setManaging(true))}>
@@ -395,6 +409,11 @@ export function HomeGallery() {
             <i class="fa-solid fa-magnifying-glass" />
             <input type="search" placeholder="搜索角色、备注、标签" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
           </label>
+          {/* 大图 / 列表：两个图标，亮的是现在的 */}
+          <div class="rbt-home-view" role="group" aria-label="显示方式">
+            <button type="button" class={view === 'grid' ? 'active' : ''} aria-pressed={view === 'grid'} title="大图" aria-label="大图" onClick={() => setView('grid')}><i class="fa-solid fa-table-cells-large" /></button>
+            <button type="button" class={view === 'list' ? 'active' : ''} aria-pressed={view === 'list'} title="列表" aria-label="列表" onClick={() => setView('list')}><i class="fa-solid fa-list" /></button>
+          </div>
         </div>
         {phone && tools}
         <div class="rbt-home-actions">
@@ -403,24 +422,11 @@ export function HomeGallery() {
           <NewMenu />
         </div>
       </header>
-      <div class="rbt-home-filters">
-        <div class="rbt-home-pills" role="tablist">
-          <Pill v="all" label="全部" />
-          {nFav > 0 && <Pill v="fav" label={`置顶 ${nFav}`} />}
-          {nProblem > 0 && <Pill v="problem" label={`待处理 ${nProblem}`} dot />}
-          {nGroup > 0 && <Pill v="group" label={`群组 ${nGroup}`} />}
-        </div>
-        {/* 第二行：左边是常用的几种范围（全部 / 置顶…），右边是细调：按标签筛选、排序、管理 */}
-        {!phone && tools}
-      </div>
+      {!phone && <div class="rbt-home-filters">{tools}</div>}
       {filter === 'problem' && (
-        <div class="rbt-home-note">
-          这些卡缺世界书、插件，或者正则 / 脚本没开。点进去后，在「聊天工具箱 › 角色档案」里一键处理；缺的世界书也可以在
-          <button type="button" class="rbt-linkbtn" onClick={() => openGlobal('worlds')}>全局工具箱 › 世界书</button>
-          里一次全部导入。
-        </div>
+        <div class="rbt-home-note">这些卡缺插件或世界书文件，打开卡也补不上。点进去，在「聊天工具箱 › 角色档案」里看缺什么。</div>
       )}
-      <div class="rbt-home-grid">
+      <div class={'rbt-home-grid' + (view === 'list' ? ' list' : '')}>
         {shown.map((it) => <Card key={it.key} it={it} managing={managing} selected={picked.has(it.key)} onSelect={toggle} />)}
       </div>
       {!shown.length && (query || filter !== 'all'

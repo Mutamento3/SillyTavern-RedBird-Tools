@@ -57,7 +57,14 @@ function addMenuButton(): void {
   item.tabIndex = 0;
   item.innerHTML = '<div class="fa-solid fa-feather-pointed extensionsMenuExtensionButton"></div><span>RedBird 工具箱</span>';
   item.addEventListener('click', () => { panelOpen.value = !panelOpen.value; });
-  menu.appendChild(item);
+  // 原版界面里一下切到三栏界面（三栏界面里藏起来，那里左栏底部有「原版界面」）
+  const shell = document.createElement('div');
+  shell.id = 'rbt_shell_button';
+  shell.className = item.className;
+  shell.tabIndex = 0;
+  shell.innerHTML = '<div class="fa-solid fa-table-columns extensionsMenuExtensionButton"></div><span>三栏界面</span>';
+  shell.addEventListener('click', () => setShellEnabled(true));
+  menu.append(item, shell);
 }
 
 /** The one place for the toolbox's switches. */

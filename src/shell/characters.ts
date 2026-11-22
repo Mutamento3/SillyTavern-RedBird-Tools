@@ -6,12 +6,14 @@ import { signal } from '@preact/signals';
 import { cleanPreview } from './recent';
 import { ctx, escHtml, stModule, toast, type Any } from '../st/st';
 import { openDrawer } from './drawers';
-import { cardInfo, extStatus, installedExtensions, requiredExtensions } from '../tools/cards/cards';
+import { cardFacts, cardInfo, extStatus, installedExtensions, requiredExtensions } from '../tools/cards/cards';
 
 export interface TagInfo {
   id: string;
   name: string;
   color?: string;
+  /** 字的颜色（酒馆标签的第二个颜色） */
+  color2?: string;
 }
 
 export interface CharItem {
@@ -23,16 +25,19 @@ export interface CharItem {
   thumb: string;
   fav: boolean;
   note: string;
-  version: string;
+  /** 名字后面的小灰字：和酒馆角色列表一样，按酒馆设置显示版本号或作者名 */
+  aux: string;
+  /** 聊天记录一共多大（酒馆「聊得最多」排序用的就是它） */
+  chatSize: number;
   tags: TagInfo[];
   lastChat: number;
   added: number;
-  /** Short labels of what is not in place (lorebook missing, regex not allowed…). */
+  /** 打开卡也补不上的问题（缺插件、世界书缺文件），见 listCharacters */
   problems: string[];
   hasLinks: boolean;
 }
 
-export type CharSort = 'recent' | 'name' | 'added';
+export type CharSort = 'recent' | 'name' | 'added' | 'chats';
 
 /** Bumped when favourites / the character list change, so the view re-reads. */
 export const charsTick = signal(0);
@@ -52,20 +57,20 @@ function tagsFor(key: string): TagInfo[] {
   const c = ctx();
   const ids: string[] = c.tagMap?.[key] ?? [];
   const all: Any[] = c.tags ?? [];
-  return ids.map((id) => all.find((t) => t.id === id)).filter(Boolean).map((t) => ({ id: t.id, name: t.name, color: t.color || undefined }));
+  return ids.map((id) => all.find((t) => t.id === id)).filter(Boolean).map((t) => ({ id: t.id, name: t.name, color: t.color || undefined, color2: t.color2 || undefined }));
 }
 
 export function listCharacters(): CharItem[] {
   const c = ctx();
   const installed = installedExtensions();
   const s = (c.extensionSettings?.redbird_tools ?? {}) as Any;
+  const auxField = String(c.powerUserSettings?.aux_field || 'character_version');
   const chars: CharItem[] = (c.characters ?? []).map((ch: Any, i: number) => {
     const info = cardInfo(ch);
+    // 只标打开卡也补不上的。打开卡时：卡里自带的世界书工具箱会自动导入，正则酒馆会问一次，脚本酒馆助手会问一次，
+    // 这些都不算问题。世界书缺文件、卡里也没带一份（还没打开过的卡不知道带没带，先不标）才算
     const problems: string[] = [];
-    if (info.world.state === 'missing') problems.push('世界书缺文件');
-    if (info.world.state === 'unbound') problems.push('世界书没导入');
-    if (info.regex.total > 0 && !info.regex.allowed) problems.push('正则未允许运行');
-    if (info.scripts.total > 0 && !info.scripts.enabled) problems.push('脚本未启用');
+    if (info.world.state === 'missing' && cardFacts(ch) && info.world.embedded === null) problems.push('世界书缺文件');
     if (requiredExtensions(info).some((e) => extStatus(e.req, installed).status !== 'enabled')) problems.push('缺插件');
     const notes = cleanPreview(ch.data?.creator_notes ?? ch.creatorcomment ?? '');
     return {
@@ -76,7 +81,8 @@ export function listCharacters(): CharItem[] {
       thumb: c.getThumbnailUrl('avatar', ch.avatar),
       fav: isFav(ch),
       note: notes,
-      version: String(ch.data?.character_version ?? ''),
+      aux: String(ch.data?.[auxField] ?? ''),
+      chatSize: Number(ch.chat_size) || 0,
       tags: tagsFor(ch.avatar),
       lastChat: toTime(ch.date_last_chat),
       added: toTime(ch.date_added ?? ch.create_date),
@@ -92,7 +98,8 @@ export function listCharacters(): CharItem[] {
     thumb: g.avatar_url || 'img/five.png',
     fav: g.fav === true || g.fav === 'true',
     note: `群组 · ${(g.members ?? []).length} 个角色`,
-    version: '',
+    aux: '',
+    chatSize: Number(g.chat_size) || 0,
     tags: tagsFor(g.id),
     lastChat: toTime(g.date_last_chat),
     added: toTime(g.date_added ?? g.create_date),
@@ -106,6 +113,7 @@ export function sortCharacters(items: CharItem[], sort: CharSort): CharItem[] {
   const out = [...items];
   if (sort === 'name') out.sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN'));
   else if (sort === 'added') out.sort((a, b) => b.added - a.added);
+  else if (sort === 'chats') out.sort((a, b) => b.chatSize - a.chatSize);
   else out.sort((a, b) => b.lastChat - a.lastChat);
   // Favourites always first, like ST's own list.
   return out.sort((a, b) => Number(b.fav) - Number(a.fav));

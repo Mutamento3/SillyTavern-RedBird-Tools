@@ -1,12 +1,15 @@
 /**
  * 世界书面板：酒馆的「已启用的世界书」只列全局世界书，编辑器也不会自动打开这张卡的书，
  * 看起来就像"没加载"。这里做两件事：
- * 1. 标题栏写清楚现在实际加载了哪些书（按 这张卡 / 聊天 / 用户设定 / 全局 分组），书名可以点，点了就在编辑器里打开；
+ * 1. 写清楚现在实际加载了哪些书（按 这张卡 / 聊天 / 用户设定 / 全局 分组），书名可以点，点了就在编辑器里打开。
+ *    电脑上写在标题栏里（一行，放不下截断）；手机上写在标题栏下面、跟着页面滚走：
+ *    手机上要换行，书多了会很高，放在钉住的标题栏里会挡住内容，打开输入法时更是什么都看不到；
  * 2. 换卡或开新聊天后第一次打开面板时，如果编辑器是空的、或者还停在一本这次没加载的书上，就自动打开这张卡的书。
  *    同一个聊天里，你自己选了别的书就不再动它。
  */
 import { ctx } from '../st/st';
 import { currentBookScopes } from '../tools/flow/capture';
+import { isPhone } from '../ui/Menu';
 import { openDrawers, sheetNoteElement } from './drawers';
 
 function editorSelect(): HTMLSelectElement | null {
@@ -39,10 +42,25 @@ function loadedGroups(): { label: string; books: string[] }[] {
   ].filter((g) => g.books.length);
 }
 
+/** 手机上的位置：标题栏下面，内容最上面 */
+function phoneSlot(head: HTMLElement): HTMLElement {
+  let slot = head.nextElementSibling as HTMLElement | null;
+  if (!slot?.classList.contains('rbt-world-loaded')) {
+    slot = document.createElement('div');
+    slot.className = 'rbt-sheet-note rbt-world-loaded';
+    head.after(slot);
+  }
+  return slot;
+}
+
 function render(): void {
-  const note = sheetNoteElement('worldinfo');
-  if (!note) return;
-  note.textContent = '';
+  const headNote = sheetNoteElement('worldinfo');
+  const head = headNote?.closest<HTMLElement>('.rbt-sheet-head');
+  if (!headNote || !head) return;
+  const slot = phoneSlot(head);
+  const note = isPhone() ? slot : headNote;
+  headNote.textContent = headNote.title = '';
+  slot.textContent = slot.title = '';
   const groups = loadedGroups();
   if (!groups.length) {
     note.textContent = '现在没有加载任何世界书';
@@ -82,6 +100,7 @@ function autoSelect(): void {
 }
 
 export function installWorldNote(): void {
+  window.matchMedia?.('(max-width: 1000px)').addEventListener?.('change', render);
   openDrawers.subscribe((open) => {
     if (!open.includes('worldinfo')) return;
     autoSelect();

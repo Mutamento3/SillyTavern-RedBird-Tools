@@ -8,6 +8,8 @@
 
 .rbt-left, .rbt-nav { display: none; }
 .rbt-sheet-head { display: none; }
+/* 魔法棒菜单里的「三栏界面」只在原版界面里有用（三栏界面左栏底部有「原版界面」） */
+body.rbt-shell #rbt_shell_button { display: none; }
 
 body.rbt-shell {
   --rbt-nav-h: 48px;
@@ -835,14 +837,8 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
 .rbt-home-newmenu button i { font-size: 12px; opacity: 0.75; }
 .rbt-home-btn i { font-size: 12px; opacity: 0.85; }
 
-.rbt-home-filters { display: flex; align-items: center; gap: var(--rbd-s-3); margin-bottom: var(--rbd-s-5); }
-.rbt-home-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; }
-.rbt-home-pills button {
-  padding: 5px 14px; border: 0; border-radius: 999px; background: transparent;
-  color: var(--rbd-text2, #9ca1aa); font: inherit; font-size: 13px; cursor: pointer;
-}
-.rbt-home-pills button:hover { color: var(--SmartThemeBodyColor); background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 5%, transparent)); }
-.rbt-home-pills button.active { background: var(--SmartThemeBodyColor, #e8e8e8); color: var(--rbd-canvas, #0f1012); font-weight: 600; }
+/* 电脑：筛选、排序、管理在搜索框下面，靠右 */
+.rbt-home-filters { display: flex; align-items: center; justify-content: flex-end; margin-bottom: var(--rbd-s-5); }
 .rbt-home-select {
   width: auto !important; min-width: 0; margin: 0 !important;
   padding: 5px 10px !important; border: 0 !important; border-radius: 999px !important;
@@ -850,8 +846,16 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
   color: var(--rbd-text2, #9ca1aa) !important; font-size: 13px !important; cursor: pointer;
 }
 .rbt-home-select:hover { color: var(--SmartThemeBodyColor) !important; background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 5%, transparent)) !important; }
-/* 「待处理」是提醒，不只是筛选：前面一个琥珀色小点，和卡片上的提醒同色 */
-.rbt-home-pill-dot { display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: #f0a43a; vertical-align: 2px; }
+/* 有卡出问题时「筛选」前面的琥珀色小点，和卡片上的提醒同色 */
+.rbt-home-dot { width: 6px; height: 6px; border-radius: 50%; background: #f0a43a; flex: none; }
+/* 大图 / 列表：搜索框右边两个图标，亮的是现在的 */
+.rbt-home-view { display: flex; flex: none; gap: 2px; padding: 2px; border-radius: 999px; background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1) 7%, transparent)); }
+.rbt-home-view button {
+  display: grid; place-items: center; width: 32px; height: 28px; padding: 0; margin: 0;
+  border: 0; border-radius: 999px; background: transparent; color: var(--rbd-text2, #9ca1aa); font-size: 13px; cursor: pointer;
+}
+.rbt-home-view button:hover { color: var(--SmartThemeBodyColor); }
+.rbt-home-view button.active { background: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1) 16%, transparent)); color: var(--SmartThemeBodyColor); }
 .rbt-home-select.active { color: var(--SmartThemeBodyColor) !important; background: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1) 12%, transparent)) !important; }
 /* 排序和「管理」：管的是下面这一列卡片，放在一起 */
 .rbt-home-tools { display: flex; align-items: center; gap: var(--rbd-s-2); flex: none; }
@@ -914,10 +918,9 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
   max-width: 100%; font-size: 12px; color: rgba(255, 255, 255, 0.72);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* 左上角：毛玻璃小标签 */
+/* 名字上面：毛玻璃小标签（问题提醒、群组） */
 .rbt-hcard-pill {
-  position: absolute; top: 12px; left: 12px;
-  display: inline-flex; align-items: center; gap: 6px; max-width: calc(100% - 24px);
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin-bottom: 4px;
   padding: 5px 11px 5px 9px; border-radius: 999px;
   background: rgba(20, 20, 24, 0.42);
   -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
@@ -958,7 +961,6 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
 /* 管理模式：卡片不再浮起，点一下是选择；左上角一个圆形勾选 */
 .rbt-hcard.managing:hover { transform: none; }
 .rbt-hcard.managing:hover .rbt-hcard-img { transform: none; }
-.rbt-hcard.managing .rbt-hcard-pill { left: 48px; max-width: calc(100% - 60px); }
 .rbt-hcard.selected { box-shadow: 0 0 0 3px var(--rbd-accent, #0a84ff); }
 .rbt-hcard.managing:not(.selected) .rbt-hcard-img { filter: brightness(0.82); }
 .rbt-hcard.disabled { opacity: 0.4; }
@@ -971,6 +973,64 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
   color: #fff; font-size: 12px;
 }
 .rbt-hcard.selected .rbt-hcard-check { border-color: var(--rbd-accent, #0a84ff); background: var(--rbd-accent, #0a84ff); }
+/* ---- 列表：一行一张卡，放认卡用的信息（和酒馆角色列表一样：版本号或作者、作者简介、带颜色的标签），一屏看到更多，找卡快。
+   和大图是同一个卡片，只换样式（Home.tsx 的「显示」）。大图里不显示版本号、简介和标签小块 ---- */
+.rbt-hcard-aux, .rbt-hcard-note, .rbt-hcard-tags { display: none; }
+.rbt-home-grid.list { grid-template-columns: minmax(0, 1fr); gap: var(--rbd-s-2); }
+.rbt-home-grid.list .rbt-hcard {
+  aspect-ratio: auto; overflow: visible;
+  border-radius: var(--rbd-r-l);
+  background: var(--rbd-bg2, color-mix(in srgb, var(--rbd-text1, #fff) 6%, transparent));
+}
+.rbt-home-grid.list .rbt-hcard:hover { transform: none; background: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1, #fff) 10%, transparent)); }
+.rbt-home-grid.list .rbt-hcard.menu-open { z-index: 6; }
+/* 电脑：头像 | 名字、简介 | 标签 | 最近聊天和提醒，每一栏宽度固定，上下对齐 */
+.rbt-home-grid.list .rbt-hcard-hit {
+  position: relative; display: grid; height: auto; min-height: 64px;
+  grid-template-columns: 48px minmax(0, 1fr) 260px 120px;
+  grid-template-areas: 'img name tags time' 'img note tags pill';
+  align-content: center; align-items: center; column-gap: 12px; row-gap: 2px;
+  padding: 8px 52px 8px 8px; border-radius: inherit; text-align: left;
+}
+.rbt-home-grid.list .rbt-hcard-text { display: contents; }
+.rbt-home-grid.list .rbt-hcard-img { position: static; grid-area: img; width: 48px; height: 48px; border-radius: var(--rbd-r-m); }
+.rbt-home-grid.list .rbt-hcard:hover .rbt-hcard-img { transform: none; }
+.rbt-home-grid.list .rbt-hcard-shade { display: none; }
+.rbt-home-grid.list .rbt-hcard-name { grid-area: name; max-width: 100%; font-size: 15px; -webkit-line-clamp: 1; color: var(--rbd-text1, inherit); }
+.rbt-home-grid.list .rbt-hcard-aux { display: inline; margin-left: 6px; font-size: 12px; font-weight: 400; letter-spacing: 0; color: var(--rbd-text3, #6b707a); }
+.rbt-home-grid.list .rbt-hcard-meta { grid-area: time; justify-self: end; color: var(--rbd-text2, #9ca1aa); }
+.rbt-home-grid.list .rbt-hcard-meta + .rbt-hcard-meta { display: none; }
+.rbt-home-grid.list .rbt-hcard-note {
+  display: block; grid-area: note; min-width: 0;
+  font-size: 12px; color: var(--rbd-text2, #9ca1aa); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rbt-home-grid.list .rbt-hcard-tags { display: flex; grid-area: tags; gap: 4px; min-width: 0; overflow: hidden; }
+.rbt-hcard-tag {
+  flex: none; max-width: 120px; padding: 1px 8px; border-radius: 999px;
+  background: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1, #fff) 10%, transparent)); color: var(--rbd-text2, #9ca1aa);
+  font-size: 12px; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rbt-hcard-tag.more { background: none; padding: 1px 2px; }
+.rbt-home-grid.list .rbt-hcard-pill {
+  grid-area: pill; justify-self: end; max-width: 120px; margin: 0; padding: 0;
+  background: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+  color: var(--rbd-text2, #9ca1aa); font-weight: 500;
+}
+.rbt-home-grid.list .rbt-hcard-acts { top: 50%; right: 8px; transform: translateY(-50%); }
+.rbt-home-grid.list .rbt-hcard-act { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: var(--rbd-text2, #9ca1aa); }
+.rbt-home-grid.list .rbt-hcard-act:hover { background: var(--rbd-hairline, rgba(127, 127, 127, 0.15)); color: var(--rbd-text1, inherit); }
+.rbt-home-grid.list .rbt-hcard-menu { top: calc(50% + 24px); right: 8px; }
+.rbt-home-grid.list .rbt-hcard-check { top: 50%; left: 19px; transform: translateY(-50%); }
+/* 手机：名字和最近聊天一行，简介一行，标签和提醒一行 */
+@media (max-width: 1000px) {
+  .rbt-home-grid.list .rbt-hcard-hit {
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    grid-template-areas: 'img name time' 'img note note' 'img tags pill';
+    row-gap: 4px; padding-right: 48px;
+  }
+  .rbt-home-grid.list .rbt-hcard-img { align-self: start; }
+  .rbt-home-grid.list .rbt-hcard-check { top: 32px; }
+}
 /* 管理模式底部的操作条：贴在画廊底部 */
 .rbt-manage-bar {
   position: sticky; bottom: var(--rbd-s-4); z-index: 5;
@@ -1158,7 +1218,9 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
 
   /* ---- 标题栏里的说明（比如世界书面板列出的已加载世界书）：手机上换到第二行、自动折行，不撑出横向滚动 ---- */
   body.rbt-shell .rbt-sheet-head { flex-wrap: wrap; row-gap: 4px; }
-  body.rbt-shell .rbt-sheet-head .rbt-sheet-note:not(:empty) { order: 100; flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; white-space: normal; }
+  body.rbt-shell .rbt-sheet-note:not(:empty) { order: 100; flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; white-space: normal; }
+  /* 世界书面板列出的已加载世界书：放在标题栏下面，跟着页面滚走（书多时不挡住内容，见 worldNote.ts） */
+  body.rbt-shell .rbt-world-loaded:not(:empty) { margin: calc(-1 * var(--rbd-s-2)) 0 var(--rbd-s-3); }
 
   /* ---- 手机上的点击区域：酒馆面板里的图标按钮、输入框至少 36px（DESIGN.md「按钮」） ---- */
   /* 只设最小尺寸，不改 display：酒馆用 display:none 藏起来的按钮必须保持藏着 */
@@ -1201,22 +1263,18 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
   .rbt-home-actions { order: 2; margin-left: auto; flex-wrap: nowrap; }
   .rbt-home-import { display: inline-flex !important; }
   .rbt-home-actions::-webkit-scrollbar { display: none; }
-  .rbt-home-filters { flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-  .rbt-home-pills { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; flex: 1 1 100%; }
-  .rbt-home-pills button { flex: none; white-space: nowrap; }
   .rbt-home-btn { flex: none; }
-  .rbt-home-pills::-webkit-scrollbar { display: none; }
   .rbt-home-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .rbt-home-view button { width: 40px; height: 36px; }
   .rbt-hcard { border-radius: var(--rbd-r-l); }
   .rbt-hcard:hover { transform: none; }
   .rbt-hcard:hover .rbt-hcard-img { transform: none; }
   .rbt-hcard-text { padding: 0 10px 14px; }
   .rbt-hcard-name { font-size: 16px; }
-  .rbt-hcard-pill { top: 8px; left: 8px; padding: 4px 9px 4px 8px; font-size: 11px; }
+  .rbt-hcard-pill { padding: 4px 9px 4px 8px; font-size: 11px; }
   /* 手机：右上角的「⋯」大一点，好点 */
   .rbt-hcard-acts { top: 6px; right: 6px; }
   .rbt-hcard-act { width: 36px; height: 36px; font-size: 14px; }
-  .rbt-hcard-pill { max-width: calc(100% - 52px); }
 
   /* ---- 聊天：头像小一点、消息左右留白少一点，宽度留给正文 ---- */
   body.rbt-shell #chat { --avatar-base-width: 32px; --avatar-base-height: 32px; }
@@ -1308,7 +1366,7 @@ body.rbt-shell #WorldInfo > .flex-container.gap10px:has(> #WI_panel_pin_div) { d
 /* 手机上的点击区域（DESIGN.md「按钮」）：首页和左栏的按钮、筛选、下拉都至少 32–36px 高 */
 @media (max-width: 1000px) {
   .rbt-home-btn { min-height: 36px; }
-  .rbt-home-pills button, .rbt-home-select { min-height: 32px !important; }
+  .rbt-home-select { min-height: 32px !important; }
   .rbt-segctl button { min-height: 32px; }
   .rbt-brand { min-height: 36px; }
   .rbt-foot-btn { min-height: 36px; }
@@ -1345,7 +1403,7 @@ body.rbt-shell #right-nav-panel #avatar_controls { gap: 8px; align-items: stretc
   body.rbt-shell #right-nav-panel .inline-drawer-icon, body.rbt-shell #WorldInfo .inline-drawer-icon, body.rbt-shell #WorldInfo .inline-drawer-toggle { min-width: 32px; min-height: 32px; text-align: center; line-height: 32px; }
 }
 /* 标题栏第二行的说明：文字和书名按钮垂直居中 */
-body.rbt-shell .rbt-sheet-head .rbt-sheet-note { align-items: center; }
+body.rbt-shell .rbt-sheet-note { align-items: center; }
 @media (max-width: 1000px) {
   /* 「?」帮助链接是行内元素，设最小尺寸要先变成 inline-block（它不会被酒馆藏起来，所以这里可以改 display） */
   body.rbt-shell :is(#right-nav-panel, #WorldInfo) a.notes-link { display: inline-block; vertical-align: middle; }
@@ -1494,11 +1552,10 @@ body.rbt-shell .rbt-nav-progress::before {
 }
 
 
-/* 卡片左上角标签：文字太长时省略，不截断半个字。置顶的卡名字前有个图钉（电脑、手机一样）。
+/* 卡片上的标签：文字太长时省略，不截断半个字。置顶的卡名字前有个图钉（电脑、手机一样）。
    卡片右上角只有一个「⋯」，一直显示（群组是「编辑」），不用鼠标悬停才出现。 */
 .rbt-hcard-pill-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rbt-hcard-namefav { margin-right: 5px; font-size: 0.8em; color: #ffd45e; vertical-align: 0.08em; }
-.rbt-hcard-pill { max-width: calc(100% - 64px); }
 
 /* ============================================================ 顶栏：存档 ===
    电脑：和「编辑角色」「新聊天」一样是带图标的按钮，写明「存档 · 11-06 02:45 ▾」，和存档页同一个图标。
@@ -1721,7 +1778,7 @@ body:not(.rbt-shell) :is(.rbt-chat-more, .rbt-chat-meta) { display: none; }
 }
 
 /* ============================================================ 首页：筛选 / 排序 / 管理 ===
-   电脑：图标 + 文字；手机：只有图标，和「全部 / 置顶」放在同一行右边。看不见的系统下拉框盖在按钮上。 */
+   图标 + 文字，点开是工具箱自己的选择菜单。 */
 .rbt-home-picker { position: relative; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 /* 排序、按标签筛选的选择菜单：电脑上贴着按钮右边往下展开（按钮在页面右边）；手机上从底部弹出（rbt-menu-portal） */
 .rbt-home-picker { font-family: inherit; }
@@ -1737,7 +1794,9 @@ body:not(.rbt-shell) :is(.rbt-chat-more, .rbt-chat-meta) { display: none; }
   /* 筛选 / 排序 / 管理：搜索框下面单独一行，图标加字；选了标签时「筛选」换成标签名，太长就截断 */
   .rbt-home-head .rbt-home-tools { order: 4; width: 100%; justify-content: flex-start; flex-wrap: nowrap; gap: 4px; }
   .rbt-home-tools :is(.rbt-home-picker, .rbt-home-manage) { min-height: 40px !important; min-width: 0; }
-  .rbt-home-tools .rbt-home-picker { flex: 0 1 auto; }
+  /* 筛选、排序外面包着弹出菜单的容器，要它能缩，字才会截断（窄手机上一行放得下） */
+  .rbt-home-tools > .rbt-home-pop { flex: 0 1 auto; min-width: 0; }
+  .rbt-home-tools .rbt-home-picker { flex: 0 1 auto; max-width: 100%; }
   .rbt-home-tools .rbt-home-picker-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* 「管理」靠右，和电脑上一样；筛选、排序在左边 */
   .rbt-home-tools .rbt-home-manage { flex: none; margin-left: auto !important; }
