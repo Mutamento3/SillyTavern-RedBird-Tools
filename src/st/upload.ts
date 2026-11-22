@@ -9,7 +9,9 @@ const IMPORT = /\/api\/characters\/import(?:[?#]|$)/;
 const SHOW_AFTER = 600;
 
 export function installUploadProgress(): void {
-  if (typeof XMLHttpRequest === 'undefined') return;
+  // TauriTavern（TT）把酒馆的请求从 fetch 转给 App 自己处理，XMLHttpRequest 会绕过它、拿回一张网页，导入就失败了。
+  // TT 的卡也不走网络上传，不需要进度
+  if (typeof XMLHttpRequest === 'undefined' || (window as { __TAURI_RUNNING__?: boolean }).__TAURI_RUNNING__) return;
   const orig = window.fetch;
   window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : '';

@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.29",
+  "version": "0.6.30",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "导入角色卡更快了，和酒馆自己导入一样。卡里的世界书在第一次打开卡时导入。手机上全局正则的编辑按钮更好点了。"
+  "rbt_whats_new": "修好了 TauriTavern 上导入角色卡失败的问题。"
 }
