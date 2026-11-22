@@ -5,6 +5,7 @@
  * large overlays when the three-column shell is active, and as dock tabs otherwise.
  */
 import { installChatGuard } from './st/chatGuard';
+import { installUploadProgress } from './st/upload';
 import { installSlowLoadNotice } from './tools/diag';
 import { render } from 'preact';
 import './style.css';
@@ -331,6 +332,8 @@ async function init(): Promise<void> {
 
 // 最先装上：酒馆一启动就可能读上次的聊天，读失败时会把存档覆盖成只剩开场白（见 st/chatGuard.ts）
 installChatGuard();
+// 导入角色卡时显示上传了多少（手机远程连接时一张大卡要传十几秒）
+installUploadProgress();
 // 浏览器默认只记前 250 个请求，酒馆加载到这里时早就满了；调大后，接下来下载角色卡列表的大小才记得下（导出诊断里用）
 try { performance.setResourceTimingBufferSize(1000); } catch { /* 老浏览器没有 */ }
 // 酒馆加载完（APP_READY）时看角色卡下载了多大，手机上太大就提醒一次；要在 init 之前挂上，免得错过

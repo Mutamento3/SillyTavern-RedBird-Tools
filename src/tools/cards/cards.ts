@@ -7,6 +7,7 @@
  * preset is the `preset` of the 换卡体检 profile, so switching cards can restore it.
  */
 import { signal } from '@preact/signals';
+import { track } from '../../st/busy';
 import {
   autoSourceUrl,
   backupFileName,
@@ -307,7 +308,7 @@ export async function switchPreset(name: string): Promise<boolean> {
     toast('error', `找不到预设「${name}」，可能已经被删除或改名，没有切换。`, '预设');
     return false;
   }
-  await runSlash(`/preset ${slashQuote(name)}`);
+  await track('preset', () => runSlash(`/preset ${slashQuote(name)}`));
   refreshEnv();
   bump();
   return true;

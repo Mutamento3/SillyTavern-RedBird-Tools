@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.27",
+  "version": "0.6.28",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "手机上打开酒馆很慢时，工具箱会提醒一次原因和改法。"
+  "rbt_whats_new": "导入大卡有上传进度，换预设和模型时会转圈，手机首页的筛选、排序、管理写上了字。"
 }

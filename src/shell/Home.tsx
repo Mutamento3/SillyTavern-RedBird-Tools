@@ -369,16 +369,16 @@ export function HomeGallery() {
     <button type="button" class={filter === v ? 'active' : ''} onClick={() => setFilter(v)}>{dot && <span class="rbt-home-pill-dot" />}{label}</button>
   );
 
-  // 筛选 / 排序 / 管理：电脑上在第二行右边；手机上放到搜索框右边（第二行留给「全部 / 置顶…」，小屏不挤）
+  // 筛选 / 排序 / 管理：电脑上在第二行右边；手机上在搜索框下面单独一行（只放图标时大家看不懂是什么）
   const phone = compact.value;
   const tools = (
           <div class="rbt-home-tools">
             {tags.length > 0 && (
-              <IconPicker icon="fa-filter" name="标签" label={tagValue ? (tags.find((t) => 'tag:' + t.tag.id === tagValue)?.tag.name ?? '标签') : '按标签筛选'} title="只看带某个标签的角色" active={!!tagValue}
+              <IconPicker icon="fa-filter" name="标签" label={tagValue ? (tags.find((t) => 'tag:' + t.tag.id === tagValue)?.tag.name ?? '标签') : '筛选'} title="只看带某个标签的角色" active={!!tagValue}
                 value={tagValue} onChange={(v) => setFilter((v || 'all') as Filter)}
                 options={[{ value: '', text: '全部标签' }, ...tags.map(({ tag, count }) => ({ value: 'tag:' + tag.id, text: `${tag.name}（${count}）` }))]} />
             )}
-            <IconPicker icon="fa-arrow-down-wide-short" name="排序" label={phone ? SORT_TEXT[sort] : `排序：${SORT_TEXT[sort]}`} title="排序方式" active={phone && sort !== 'recent'} value={sort} onChange={(v) => setSort(v as CharSort)}
+            <IconPicker icon="fa-arrow-down-wide-short" name="排序" label={`排序：${SORT_TEXT[sort]}`} title="排序方式" value={sort} onChange={(v) => setSort(v as CharSort)}
               options={(Object.keys(SORT_TEXT) as CharSort[]).map((k) => ({ value: k, text: SORT_TEXT[k] }))} />
             <button type="button" class={'rbt-home-select rbt-home-manage' + (managing ? ' active' : '')} title="多选：批量置顶、加减标签、导出、删除" onClick={() => (managing ? stopManaging() : setManaging(true))}>
               <i class="fa-solid fa-list-check fa-fw" /> <span class="rbt-home-picker-text">{managing ? '完成' : '管理'}</span>
@@ -395,8 +395,8 @@ export function HomeGallery() {
             <i class="fa-solid fa-magnifying-glass" />
             <input type="search" placeholder="搜索角色、备注、标签" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
           </label>
-          {phone && tools}
         </div>
+        {phone && tools}
         <div class="rbt-home-actions">
           {/* 手机上左栏收在 ☰ 里，导入放到这里（电脑上隐藏，用左栏那个） */}
           <button type="button" class="rbt-home-btn accent rbt-home-import" onClick={() => { void openImport(); }}><i class="fa-solid fa-file-import" /> 导入文件</button>

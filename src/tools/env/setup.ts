@@ -9,10 +9,11 @@
  * 项的键：preset（预设名）/ model / w:书名（开 / 关）/ r:正则 id（开 / 关）。
  * 美化（cardLook.ts 自己换、自己换回）和人设（酒馆自己的「连接到角色」）不走这里。
  */
-import { charaFileName, ctx, currentCharacter, loaded, reloadChatSafe, runSlash, saveSettings, settings, slashQuote, type Any, type Baseline, type EnvProfile } from '../../st/st';
+import { charaFileName, ctx, currentCharacter, loaded, reloadChatSafe, runSlash, saveSettings, settings, slashQuote, toast, type Any, type Baseline, type EnvProfile } from '../../st/st';
 import { markDeleted } from '../../st/store';
 import { leavePlan, migrateProfile, migrateWorlds, unnamedRegex, worldDefault, type WorldFacts } from '../../core/setup';
-import { currentModel, sameModel, setModel, withoutModelGuard, type ModelChoice } from '../model';
+import { currentModel, modelLabel, sameModel, setModel, withoutModelGuard, type ModelChoice } from '../model';
+import { openDrawer } from '../../shell/drawers';
 import { archiveVersion, currentPresetName, presetApi, presetNames, switchPreset, worldNames } from '../cards/cards';
 
 const GLOBAL = 0; // ST regex SCRIPT_TYPES.GLOBAL
@@ -234,7 +235,9 @@ export async function setCardItem(avatar: string, cardName: string, key: string,
       saveSettings();
       // 预设回到全局时，这张卡专用的模型还是它（换预设可能把模型带走）
       const m = key === 'preset' ? profileOf(avatar)?.model : undefined;
-      await applyLive(m ? { [key]: before, model: m } : { [key]: before }, { quiet: true });
+      const changes = m ? { [key]: before, model: m } : { [key]: before };
+      await applyLive(changes, { quiet: true });
+      warnIfModelMissed(changes.model as ModelChoice | null | undefined);
     }
     return;
   }
@@ -247,6 +250,13 @@ export async function setCardItem(avatar: string, cardName: string, key: string,
     if (m) changes.model = m;
   }
   settleBaseline(avatar, [key], await applyLive(changes, { quiet: true }));
+  warnIfModelMissed(changes.model as ModelChoice | undefined);
+}
+
+/** 在角色档案里换模型没换成（多半是那个 API 还没填密钥）：要说出来，不然看着像换好了 */
+function warnIfModelMissed(m: ModelChoice | null | undefined): void {
+  if (!m || sameModel(currentModel(), m)) return;
+  toast('warning', `没能换成 ${modelLabel(m)}。这个 API 可能还没填密钥。点这里打开「API 设置」。`, '模型', { onclick: () => openDrawer('api') });
 }
 
 /**

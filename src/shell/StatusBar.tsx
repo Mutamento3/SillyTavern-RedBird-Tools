@@ -8,6 +8,7 @@ import { currentPresetName, cardInfo } from '../tools/cards/cards';
 import { currentBookScopes } from '../tools/flow/capture';
 import { activeConnection, currentModel, modelLabel, modelsApply, sameModel } from '../tools/model';
 import { sourcesTick } from '../tools/sources';
+import { working } from '../st/busy';
 import { openDrawer, openDrawers, type DrawerKey } from './drawers';
 import { planForView, statusTick } from './EnvStatus';
 import { apiOnline, chatTick, personaTick } from './Shell';
@@ -21,18 +22,22 @@ interface ItemProps {
   warn?: string;
   badge?: string;
   drawer: DrawerKey;
+  /** 正在换：图标换成转圈 */
+  busy?: boolean;
 }
 
-function Item({ kind, icon, img, text, title, warn, badge, drawer }: ItemProps) {
+function Item({ kind, icon, img, text, title, warn, badge, drawer, busy }: ItemProps) {
   const active = openDrawers.value.includes(drawer);
   return (
     <button
       type="button"
       class={`rbt-stat rbt-stat-${kind} ${warn ? 'warn' : ''} ${active ? 'active' : ''}`}
       title={warn ? `${title}\n${warn}` : title}
+      aria-busy={busy || undefined}
       onClick={() => openDrawer(drawer)}
     >
-      {img ? <img class="rbt-stat-img" src={img} alt="" /> : <i class={`fa-solid ${icon} fa-fw`} />}
+      {busy ? <span class="rbt-spin rbt-stat-spin" role="status" aria-label="正在换" />
+        : img ? <img class="rbt-stat-img" src={img} alt="" /> : <i class={`fa-solid ${icon} fa-fw`} />}
       <span class="rbt-stat-text">{text}</span>
       {badge && <i class={`fa-solid ${badge} rbt-stat-badge`} />}
       {warn && <span class="rbt-stat-dot" />}
@@ -99,8 +104,8 @@ export function StatusBar() {
 
   return (
     <div class="rbt-statusbar" aria-label="现在用的预设、模型、世界书和人设">
-      <Item kind="preset" drawer="preset" icon="fa-sliders" text={preset || '无'} title={`预设：${preset || '（没有）'}`} warn={presetWarn} />
-      <Item kind="model" drawer="api" icon="fa-plug" text={shortModel} title={`API：${conn.api}\n模型：${conn.model || '（没选）'}`} warn={modelWarn} />
+      <Item kind="preset" drawer="preset" icon="fa-sliders" text={preset || '无'} title={`预设：${preset || '（没有）'}`} warn={presetWarn} busy={working.value.has('preset')} />
+      <Item kind="model" drawer="api" icon="fa-plug" text={shortModel} title={`API：${conn.api}\n模型：${conn.model || '（没选）'}`} warn={modelWarn} busy={working.value.has('model')} />
       <Item kind="world" drawer="worldinfo" icon="fa-book-atlas" text={w.count ? String(w.count) : '无'} title={w.title} warn={w.warn} />
       {p.avatar && (
         <Item

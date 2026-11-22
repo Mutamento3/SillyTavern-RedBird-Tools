@@ -1032,6 +1032,7 @@ body.rbt-shell #top-settings-holder .menu_button { white-space: nowrap; }
 .rbt-stat.warn { color: var(--SmartThemeBodyColor); }
 .rbt-stat > i:first-child { flex: none; width: 14px; font-size: 12px; text-align: center; }
 .rbt-stat-img { flex: none; width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
+.rbt-stat-spin { width: 12px; height: 12px; margin: 0 1px; } /* 占的宽和图标一样，转圈时字不挪 */
 .rbt-stat-text { min-width: 0; max-width: 6em; overflow: hidden; text-overflow: ellipsis; }
 .rbt-stat-badge { flex: none; font-size: 9px; opacity: 0.7; }
 .rbt-stat-dot { position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: #e0a040; }
@@ -1727,20 +1728,20 @@ body:not(.rbt-shell) :is(.rbt-chat-more, .rbt-chat-meta) { display: none; }
 .rbt-pick.rbt-home-pop .rbt-menu { left: auto; right: 0; width: 240px; }
 .rbt-home-picker-chev { font-size: 9px; opacity: 0.7; }
 .rbt-home-manage { display: inline-flex; align-items: center; gap: 6px; }
-/* 搜索框这一行：电脑上和「新建」一起靠右；手机上占满一行，右边接筛选 / 排序 / 管理三个图标 */
+/* 搜索框这一行：电脑上和「新建」一起靠右；手机上占满一行 */
 .rbt-home-searchrow { display: flex; align-items: center; gap: 4px; margin-left: auto; min-width: 0; }
 .rbt-home-head .rbt-home-searchrow .rbt-home-search { margin-left: 0; }
 @media (max-width: 1000px) {
   .rbt-home-searchrow { order: 3; width: 100%; margin-left: 0; }
   .rbt-home-searchrow .rbt-home-search { order: 0; flex: 1 1 auto; width: auto; min-width: 0; }
-  .rbt-home-tools { flex: none; justify-content: flex-end; flex-wrap: nowrap; gap: 0; }
-  .rbt-home-tools :is(.rbt-home-picker-text, .rbt-home-picker-chev) { display: none; }
-  .rbt-home-tools :is(.rbt-home-picker, .rbt-home-manage) { justify-content: center; width: 36px; min-width: 36px; flex: none; min-height: 40px !important; padding: 0 !important; font-size: 16px; }
-  .rbt-home-tools .rbt-home-manage.active { width: auto; padding: 0 12px !important; }
-  .rbt-home-tools .rbt-home-manage.active .rbt-home-picker-text { display: inline; }
-  /* 选了标签、换了排序：图标后面写出现在的值 */
-  .rbt-home-tools .rbt-home-picker.active { width: auto; max-width: 128px; padding: 0 10px !important; gap: 4px; }
-  .rbt-home-tools .rbt-home-picker.active .rbt-home-picker-text { display: inline; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+  /* 筛选 / 排序 / 管理：搜索框下面单独一行，图标加字；选了标签时「筛选」换成标签名，太长就截断 */
+  .rbt-home-head .rbt-home-tools { order: 4; width: 100%; justify-content: flex-start; flex-wrap: nowrap; gap: 4px; }
+  .rbt-home-tools :is(.rbt-home-picker, .rbt-home-manage) { min-height: 40px !important; min-width: 0; }
+  .rbt-home-tools .rbt-home-picker { flex: 0 1 auto; }
+  .rbt-home-tools .rbt-home-picker-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* 「管理」靠右，和电脑上一样；筛选、排序在左边 */
+  .rbt-home-tools .rbt-home-manage { flex: none; margin-left: auto !important; }
+}
 }
 
 /* 编辑角色：酒馆顶上那行 token 数 + 奖杯 + 眼睛藏起来，token 数挪到标题栏（drawers.ts） */

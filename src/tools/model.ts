@@ -7,6 +7,7 @@
  */
 import type { ModelChoice } from '../core/cards';
 import { ctx, loaded, runSlash, slashQuote, toast, type Any } from '../st/st';
+import { track } from '../st/busy';
 
 export type { ModelChoice };
 
@@ -101,7 +102,11 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * Switch to an API + model with ST's own controls. Changing the API first needs that API's
  * key to be set already (ST keeps keys per API). Returns whether it ended up on that model.
  */
-export async function setModel(m: ModelChoice): Promise<boolean> {
+export function setModel(m: ModelChoice): Promise<boolean> {
+  return track('model', () => switchModel(m));
+}
+
+async function switchModel(m: ModelChoice): Promise<boolean> {
   if (!modelsApply()) return false;
   const $ = window.jQuery;
   const before = currentModel();

@@ -1632,6 +1632,8 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-pick-box:hover { background: color-mix(in srgb, var(--g3) 100%, var(--t1) 4%); }
 .rbt-pick-box.open { box-shadow: 0 0 0 2px var(--accent); }
 .rbt-pick-box:disabled { cursor: default; opacity: .6; }
+/* 正在换：不变淡，框里已经是刚选的值，箭头换成转圈 */
+.rbt-pick-box[aria-busy="true"] { opacity: 1; }
 .rbt-pick-v { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .rbt-pick-v small { display: block; font-size: 11.5px; color: var(--t3); }
 .rbt-pick-lead { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex: none; }
@@ -1764,3 +1766,24 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-help-list li { display: flex; align-items: flex-start; gap: 10px; }
 .rbt-help-list .rbt-pill { margin-top: 1px; }
 .rbt-help-list .rbt-pill { min-width: 6.6em; justify-content: center; }
+
+/* 工具箱界面里的转圈（换模型、换预设时），和「思考中」是同一个圈。
+   只转（transform），页面忙的时候浏览器也能照样转 */
+.rbt-spin {
+  display: inline-block; box-sizing: border-box; width: 14px; height: 14px; flex: none;
+  border: 2px solid color-mix(in srgb, currentColor 25%, transparent); border-top-color: currentColor; border-radius: 50%;
+  animation: rbt-think-spin 0.9s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) { .rbt-spin { animation-duration: 3s; } }
+
+/* 按下的那一刻就要看得出点上了：手机上没有悬停，酒馆又关掉了系统的点按高亮。
+   只变淡，不改大小和颜色，不影响布局和各种按钮的样式 */
+:is(#rbt-root, #rbt-shell-root, .rbt-scope) :is(button, [role="button"], [role="option"], [role="menuitem"], [role="tab"], label.rbt-check-row, label.rbt-switch, label.rbt-allow):active:not(:disabled):not([aria-disabled="true"]),
+:is(button, [role="button"])[class*="rbt-"]:active:not(:disabled):not([aria-disabled="true"]) {
+  opacity: 0.55; transition: none;
+}
+
+/* 导入角色卡的上传进度（通知里的一条细进度条） */
+#toast-container .rbt-up-text { display: block; }
+#toast-container .rbt-up-bar { display: block; height: 4px; margin-top: 8px; border-radius: 2px; background: color-mix(in srgb, currentColor 18%, transparent); overflow: hidden; }
+#toast-container .rbt-up-fill { display: block; height: 100%; width: 0; border-radius: 2px; background: var(--rbd-accent, #0a84ff); transition: width 0.2s linear; }

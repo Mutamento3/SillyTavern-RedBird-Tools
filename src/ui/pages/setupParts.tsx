@@ -13,6 +13,7 @@ import { attachBook, attachedBooks, bookOwners, cardUses, detachBook, globalRege
 import { unnamedRegex } from '../../core/setup';
 import { buildEnvReport } from '../../tools/env/env';
 import { openDrawer } from '../../shell/drawers';
+import { working } from '../../st/busy';
 import { bindPersona, boundPersonas, personaTick, unbindPersona, watchPersonas } from './parts';
 import { editRegex } from './GlobalPage';
 
@@ -39,8 +40,10 @@ export interface Opt { key: string; title: string; sub?: string; /** 分组：�
  * 电脑上盖在下面的内容上；手机上从底部弹出（点外面关掉）。选项多（超过 8 个）时上面有搜索框。
  * 选择框里：top（「全局」和「让所有卡都用」，都是关于全局的，放最上面不用往下翻）→ head（「卡名专用」小标题）+ options → bottom（去面板的按钮）。
  */
-export function PickRow({ k, title, placeholder, value, sub, lead, pill, thumb, disabled, open, onToggle, onClose, top, head, options, bottom }: {
+export function PickRow({ k, title, placeholder, value, sub, lead, pill, thumb, disabled, busy, open, onToggle, onClose, top, head, options, bottom }: {
   k: string; title?: string; placeholder?: string; value: ComponentChildren; sub?: string; lead?: string; pill?: ComponentChildren; thumb?: string; disabled?: boolean;
+  /** 正在换：箭头换成转圈，框不变淡（变淡 + 还是旧的值，看着像卡住了） */
+  busy?: boolean;
   open: boolean; onToggle: () => void; onClose: () => void;
   top?: ComponentChildren; head?: string; options?: Opt[]; bottom?: ComponentChildren;
 }) {
@@ -48,12 +51,13 @@ export function PickRow({ k, title, placeholder, value, sub, lead, pill, thumb, 
     <Popup title={title ?? k} placeholder={placeholder} open={open} onClose={onClose} top={top} head={head} options={options} bottom={bottom}>
       <div class="rbt-pick-row">
         <span class="rbt-pick-k">{k}</span>
-        <button type="button" class={`rbt-pick-box ${open ? 'open' : ''}`} disabled={disabled} aria-expanded={open} aria-haspopup="listbox" onClick={onToggle}>
+        <button type="button" class={`rbt-pick-box ${open ? 'open' : ''}`} disabled={disabled || busy} aria-busy={busy || undefined} aria-expanded={open} aria-haspopup="listbox" onClick={onToggle}>
           {lead && <img class="rbt-pick-lead" src={lead} alt="" />}
           <span class="rbt-pick-v">{value}{sub && <small>{sub}</small>}</span>
           {pill}
           {thumb && <img class="rbt-pick-thumb" src={thumb} alt="" />}
-          {!disabled && <i class={`fa-solid ${open ? 'fa-chevron-up' : 'fa-chevron-down'} rbt-pick-ar`} aria-hidden="true" />}
+          {busy ? <span class="rbt-spin rbt-pick-ar" role="status" aria-label="正在换" />
+            : !disabled && <i class={`fa-solid ${open ? 'fa-chevron-up' : 'fa-chevron-down'} rbt-pick-ar`} aria-hidden="true" />}
         </button>
       </div>
     </Popup>
@@ -204,15 +208,21 @@ function allCards(info: CardInfo, key: string, label: string): void {
 export function PresetModelSection({ info }: { info: CardInfo }) {
   void archiveVersion.value;
   const [open, toggle, close] = useOpen();
-  const [busy, setBusy] = useState(false);
+  // 刚选的值：换好之前就显示它（框里还写着旧的，看着像没点上）
+  const [pending, setPending] = useState<{ k: 'preset' | 'model'; value: string; sub?: string } | null>(null);
   const p = profileOf(info.avatar);
   const live = info.isCurrent;
+  // 换卡时自动换、提示里点「换回」也算：正在聊的这张卡，那一行一样转圈
+  const presetBusy = pending?.k === 'preset' || (live && working.value.has('preset'));
+  const modelBusy = pending?.k === 'model' || (live && working.value.has('model'));
+  const busy = presetBusy || modelBusy;
   const api = presetApi();
   const names = presetNames();
   const own = p?.preset && p.preset.api === api ? p.preset.name : undefined;
   const preset = live ? currentPresetName() : own ?? String(globalValue('preset') ?? '');
   const globalPreset = String(globalValue('preset') ?? '');
-  const run = async (f: () => Promise<void>) => { close(); setBusy(true); try { await f(); } finally { setBusy(false); } };
+  const run = async (next: NonNullable<typeof pending>, f: () => Promise<void>) => { close(); setPending(next); try { await f(); } finally { setPending(null); } };
+  const pickModel = (m: ModelChoice) => run({ k: 'model', value: m.model, sub: SOURCE_LABEL[m.source] ?? m.source }, () => setCardItem(info.avatar, info.name, 'model', m));
 
   // 模型：本卡专用 > 本预设专用（预设推荐的） > 全局
   const presetModel: ModelChoice | undefined = settings().presetInfo?.[preset]?.model;
@@ -226,30 +236,31 @@ export function PresetModelSection({ info }: { info: CardInfo }) {
       <PanelBtn label="预设设置" onClick={() => openDrawer('preset')} />
       <PanelBtn label="API 设置" onClick={() => openDrawer('api')} />
     </>}>
-      <PickRow k="预设" value={preset || '没有预设'} pill={<Pill kind={own ? 'card' : 'global'} img={cardImg} />} disabled={busy} open={open === 'preset'} onToggle={() => toggle('preset')} onClose={close}
+      <PickRow k="预设" value={pending?.k === 'preset' ? pending.value : preset || '没有预设'} pill={<Pill kind={own ? 'card' : 'global'} img={cardImg} />} disabled={busy} busy={presetBusy} open={open === 'preset'} onToggle={() => toggle('preset')} onClose={close}
         top={<>
-          <MenuOpt title="全局" sub={`和其他卡一样：${globalPreset || '—'}`} selected={!own} onPick={() => run(() => setCardItem(info.avatar, info.name, 'preset', null))} />
+          <MenuOpt title="全局" sub={`和其他卡一样：${globalPreset || '—'}`} selected={!own} onPick={() => run({ k: 'preset', value: globalPreset }, () => setCardItem(info.avatar, info.name, 'preset', null))} />
           {live && own && own === currentPresetName() && <MenuAll name={own} onPick={() => { close(); allCards(info, 'preset', own); }} />}
         </>}
         head={`${info.name}专用`}
-        options={names.map((n) => ({ key: n, title: n, selected: own === n, onPick: () => run(() => setCardItem(info.avatar, info.name, 'preset', n)) }))}
+        options={names.map((n) => ({ key: n, title: n, selected: own === n, onPick: () => run({ k: 'preset', value: n }, () => setCardItem(info.avatar, info.name, 'preset', n)) }))}
         bottom={<MenuFoot label="预设设置" onClick={() => { close(); openDrawer('preset'); }} />} />
       {p?.preset && p.preset.api === api && !names.includes(p.preset.name) && <div class="rbt-pick-hint warn">这张卡专用的「{p.preset.name}」已经删掉了，现在用全局的。</div>}
       {p?.preset && p.preset.api !== api && <div class="rbt-pick-hint warn">这张卡专用的「{p.preset.name}」是「{apiLabel(p.preset.api)}」的预设，现在用的是「{apiLabel(api)}」，所以没换。</div>}
 
       {modelsApply() && (
-        <PickRow k="模型" value={model ? model.model : 'API 没连上'} sub={model ? (SOURCE_LABEL[model.source] ?? model.source) : undefined}
-          pill={model ? <Pill kind={modelKind} img={cardImg} /> : undefined} disabled={busy || (live && !model)} open={open === 'model'} onToggle={() => toggle('model')} onClose={close}
+        <PickRow k="模型" value={pending?.k === 'model' ? pending.value : model ? model.model : 'API 没连上'}
+          sub={pending?.k === 'model' ? pending.sub : model ? (SOURCE_LABEL[model.source] ?? model.source) : undefined}
+          pill={model ? <Pill kind={modelKind} img={cardImg} /> : undefined} disabled={busy || (live && !model)} busy={modelBusy} open={open === 'model'} onToggle={() => toggle('model')} onClose={close}
           top={<>
-            <MenuOpt title="全局" sub={`和其他卡一样：${globalModel ? modelLabel(globalModel) : '—'}`} selected={!p?.model} onPick={() => run(() => setCardItem(info.avatar, info.name, 'model', null))} />
+            <MenuOpt title="全局" sub={`和其他卡一样：${globalModel ? modelLabel(globalModel) : '—'}`} selected={!p?.model} onPick={() => run({ k: 'model', value: globalModel?.model ?? '', sub: globalModel ? SOURCE_LABEL[globalModel.source] ?? globalModel.source : undefined }, () => setCardItem(info.avatar, info.name, 'model', null))} />
             {live && p?.model && sameModel(p.model, currentModel()) && <MenuAll name={modelLabel(p.model)} onPick={() => { close(); allCards(info, 'model', modelLabel(p.model!)); }} />}
           </>}
           head={`${info.name}专用`}
           options={stModelList(model?.source ?? '').map((o) => ({ key: o.id, title: o.label, selected: !!p?.model && p.model.source === model?.source && p.model.model === o.id,
-            onPick: () => run(() => setCardItem(info.avatar, info.name, 'model', { source: model!.source, model: o.id })) }))}
+            onPick: () => pickModel({ source: model!.source, model: o.id }) }))}
           bottom={<>
             <MenuHead>列表里没有，手动填写</MenuHead>
-            <ModelForm initial={p?.model ?? model ?? undefined} onUse={(m) => run(() => setCardItem(info.avatar, info.name, 'model', m))} />
+            <ModelForm initial={p?.model ?? model ?? undefined} onUse={pickModel} />
             <MenuFoot label="API 设置" onClick={() => { close(); openDrawer('api'); }} />
           </>} />
       )}
