@@ -926,14 +926,13 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
   -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
   color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* 名字下面：标签，和上面的提醒一样是毛玻璃，图再花也看得清。放不下的截掉，不换行 */
-.rbt-hcard-tags { display: flex; justify-content: center; gap: 4px; max-width: 100%; margin-top: 3px; overflow: hidden; }
-.rbt-hcard-tag {
-  flex: none; max-width: 120px; padding: 1px 8px; border-radius: 999px;
-  background: rgba(20, 20, 24, 0.42);
-  -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
-  color: #fff; font-size: 12px; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+/* 名字下面：标签是一行字，用「 · 」隔开，放不下在末尾写「…」。手机卡片窄，做成小块的话长标签会被截得认不出 */
+.rbt-hcard-tags {
+  max-width: 100%; font-size: 12px; color: rgba(255, 255, 255, 0.88); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.rbt-hcard-tag + .rbt-hcard-tag::before { content: ' · '; }
+.rbt-hcard-tag.more { display: none; }
 .rbt-home-grid:not(.list) .rbt-hcard-meta.time { display: none; }
 .rbt-hcard-pill.warn > i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #f0a43a; }
 .rbt-hcard-pill > i.fa-solid { font-size: 11px; opacity: 0.9; }
@@ -1012,12 +1011,14 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
   display: block; grid-area: note; min-width: 0;
   font-size: 12px; color: var(--rbd-text2, #9ca1aa); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.rbt-home-grid.list .rbt-hcard-tags { grid-area: tags; justify-content: flex-start; min-width: 0; margin: 0; }
+.rbt-home-grid.list .rbt-hcard-tags { display: flex; grid-area: tags; gap: 4px; min-width: 0; text-shadow: none; }
 .rbt-home-grid.list .rbt-hcard-tag {
+  flex: none; max-width: 120px; padding: 1px 8px; border-radius: 999px;
   background: var(--tag-bg, var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1, #fff) 10%, transparent))); color: var(--tag-fg, var(--rbd-text2, #9ca1aa));
-  -webkit-backdrop-filter: none; backdrop-filter: none;
+  line-height: 18px; overflow: hidden; text-overflow: ellipsis;
 }
-.rbt-home-grid.list .rbt-hcard-tag.more { background: none; padding: 1px 2px; }
+.rbt-home-grid.list .rbt-hcard-tag + .rbt-hcard-tag::before { content: none; }
+.rbt-home-grid.list .rbt-hcard-tag.more { display: block; background: none; padding: 1px 2px; color: var(--rbd-text2, #9ca1aa); }
 .rbt-home-grid.list .rbt-hcard-pill {
   grid-area: pill; justify-self: end; max-width: 120px; margin: 0; padding: 0;
   background: none; -webkit-backdrop-filter: none; backdrop-filter: none;

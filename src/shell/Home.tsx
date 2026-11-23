@@ -217,7 +217,7 @@ function Card({ it, managing, selected, onSelect }: { it: CharItem; managing?: b
           <span class="rbt-hcard-name">{it.fav && <i class="fa-solid fa-thumbtack rbt-hcard-namefav" aria-label="已置顶" />}{it.name}{it.aux && <small class="rbt-hcard-aux">{it.aux}</small>}</span>
           {/* 聊天时间只在列表里显示：大图按最近聊过排，左栏也按时间排，不用再写一遍 */}
           <span class={'rbt-hcard-meta' + (it.kind === 'group' ? '' : ' time')}>{it.kind === 'group' ? it.note : lastChatText(it.lastChat)}</span>
-          {/* 简介只在列表里显示（和酒馆角色列表一样）；标签在列表里用酒馆设的颜色，在大图上是毛玻璃 */}
+          {/* 简介只在列表里显示（和酒馆角色列表一样）；标签在列表里是带酒馆颜色的小块，在大图上是一行字 */}
           {it.kind === 'character' && it.note && <span class="rbt-hcard-note">{it.note.slice(0, 160)}</span>}
           {it.tags.length > 0 && (
             <span class="rbt-hcard-tags">
