@@ -27,6 +27,7 @@ import {
   tagState,
   sortCharacters,
   toggleFavorite,
+  lastChatText,
   type CharItem,
   type CharSort,
 } from './characters';
@@ -120,18 +121,6 @@ function useCardImage(it: CharItem): { src: string; ref: (el: HTMLElement | null
   return { src, ref: setEl };
 }
 
-function lastChatText(t: number, now = Date.now()): string {
-  if (!t) return '还没聊过';
-  const day = 86400000;
-  const start = new Date(now).setHours(0, 0, 0, 0);
-  if (t >= start) return '今天聊过';
-  if (t >= start - day) return '昨天聊过';
-  const days = Math.floor((start - t) / day) + 1;
-  if (days < 7) return `${days} 天前聊过`;
-  const d = new Date(t);
-  return d.getFullYear() === new Date(now).getFullYear() ? `${d.getMonth() + 1} 月 ${d.getDate()} 日聊过` : `${d.getFullYear()} 年 ${d.getMonth() + 1} 月聊过`;
-}
-
 /** 「＋ 新建」：新建角色、新建群组收在一个次要按钮里。 */
 function NewMenu() {
   const [open, setOpen] = useState(false);
@@ -217,6 +206,8 @@ function Card({ it, managing, selected, onSelect }: { it: CharItem; managing?: b
           <span class="rbt-hcard-name">{it.fav && <i class="fa-solid fa-thumbtack rbt-hcard-namefav" aria-label="已置顶" />}{it.name}{it.aux && <small class="rbt-hcard-aux">{it.aux}</small>}</span>
           {/* 聊天时间只在列表里显示：大图按最近聊过排，左栏也按时间排，不用再写一遍 */}
           <span class={'rbt-hcard-meta' + (it.kind === 'group' ? '' : ' time')}>{it.kind === 'group' ? it.note : lastChatText(it.lastChat)}</span>
+          {/* 有同名的卡时，大图里写添加日期，好分清是哪一份（版本号常常一样或没写） */}
+          {it.addedLabel && <span class="rbt-hcard-meta added">{it.addedLabel}</span>}
           {/* 简介只在列表里显示（和酒馆角色列表一样）；标签在列表里是带酒馆颜色的小块，在大图上是一行字 */}
           {it.kind === 'character' && it.note && <span class="rbt-hcard-note">{it.note.slice(0, 160)}</span>}
           {it.tags.length > 0 && (

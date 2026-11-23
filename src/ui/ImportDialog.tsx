@@ -12,12 +12,12 @@ import { LOOK_COPY } from './copy';
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { normalizeUrl } from '../core/cards';
-import { charaFileName, ctx, loaded, runSlash, settings, slashQuote, toast } from '../st/st';
+import { charaFileName, ctx, loaded, runSlash, settings, slashQuote, stModule, toast } from '../st/st';
 import { presetNames, skipWorldPrompt, setCardTheme, setRecommendedPreset, switchPreset, updateRecord, worldNames, archiveVersion } from '../tools/cards/cards';
-import { KIND_LABEL, KIND_TAB, prepareImport, runImport, type ImportItem } from '../tools/importer';
+import { KIND_LABEL, KIND_TAB, markSameName, prepareImport, runImport, type ImportItem } from '../tools/importer';
 import { updateSource } from '../tools/sources';
 import { refreshStatus } from '../shell/EnvStatus';
-import { importCharacterUrl } from '../shell/characters';
+import { importCharacterUrl, lastChatText, listCharacters } from '../shell/characters';
 import { CheckRow } from './common';
 import { TitleBar } from './TitleBar';
 import { loadThemes, useStTheme } from '../look/look';
@@ -30,10 +30,18 @@ const picking = signal(false);
 /** Files are being dragged over the first step's drop area. */
 const over = signal(false);
 
+/** 酒馆里已有的卡，最近聊过的在前。同名的几张用「11/18 添加 · 3 天前聊过」分清。 */
+function existingCards(): { avatar: string; name: string; label: string }[] {
+  return listCharacters().filter((c) => c.kind === 'character').sort((a, b) => b.lastChat - a.lastChat)
+    .map((c) => ({ avatar: c.key.slice(2), name: c.name, label: [c.addedLabel, lastChatText(c.lastChat)].filter(Boolean).join(' · ') }));
+}
+
+const prepare = async (files: File[]) => markSameName(await prepareImport(files), existingCards());
+
 /** Open the import window. With no files it starts on the drop area / file picker. */
 export async function openImport(files: File[] = []): Promise<void> {
   if (!files.length) { picking.value = true; return; }
-  draft.value = await prepareImport(files);
+  draft.value = await prepare(files);
   picking.value = false;
 }
 
@@ -47,7 +55,7 @@ async function addFiles(files: File[]): Promise<void> {
   const fresh = files.filter((f) => !old.some((it) => same(it.file, f)));
   if (!fresh.length) return;
   const prev = new Map(old.map((it) => [it.file, it]));
-  draft.value = (await prepareImport([...old.map((it) => it.file), ...fresh])).map((it) => {
+  draft.value = (await prepare([...old.map((it) => it.file), ...fresh])).map((it) => {
     const p = prev.get(it.file);
     if (!p) return it;
     return {
@@ -55,6 +63,7 @@ async function addFiles(files: File[]): Promise<void> {
       ...(p.forTheme === it.forTheme ? { activate: p.activate } : {}),
       ...(p.dupOf === it.dupOf ? { skip: p.skip } : {}),
       ...(p.toCard !== undefined && it.toCard !== undefined ? { toCard: p.toCard } : {}),
+      ...(p.sameName ? { replace: p.replace } : {}),
     };
   });
 }
@@ -242,6 +251,8 @@ function Item({ it, onChange, cardName, nested, children }: {
         </div>
       )}
 
+      {!it.skip && it.sameName && <SameName it={it} onChange={onChange} />}
+
       {(bindWorld || bindPreset || bindTheme || act) && (
         <div class="rbt-imp-actions">
           {bindWorld && <CheckRow label={`绑到「${cardName}」上`} detail={it.note || undefined} checked={!!it.toCard} onChange={(v) => onChange({ toCard: v })} />}
@@ -251,6 +262,26 @@ function Item({ it, onChange, cardName, nested, children }: {
         </div>
       )}
       {children}
+    </div>
+  );
+}
+
+/** 酒馆里已经有同名的卡：默认更新它（聊天记录都保留），不勾就另存一张。有好几张同名的，选更新哪一张。 */
+function SameName({ it, onChange }: { it: ImportItem; onChange: (patch: Partial<ImportItem>) => void }) {
+  const list = it.sameName!;
+  return (
+    <div class="rbt-imp-alert">
+      <i class="fa-solid fa-circle-exclamation" />
+      <div>
+        <p>酒馆里已经有「{it.card?.name}」了</p>
+        <CheckRow label="更新原来那张卡" detail="聊天记录都保留。你在酒馆里改过的卡内容会被新卡盖掉。不勾就另存一张。"
+          checked={!!it.replace} onChange={(v) => onChange({ replace: v ? list[0].avatar : '' })} />
+        {it.replace && list.length > 1 && (
+          <select class="text_pole rbt-input rbt-imp-which" aria-label="更新哪一张" value={it.replace} onChange={(e) => onChange({ replace: (e.currentTarget as HTMLSelectElement).value })}>
+            {list.map((c) => <option key={c.avatar} value={c.avatar}>{c.label || c.avatar}</option>)}
+          </select>
+        )}
+      </div>
     </div>
   );
 }
@@ -307,6 +338,7 @@ export function ImportDialog() {
   const go = async () => {
     setBusy(true);
     try {
+      const script = usable.some((i) => i.replace) ? await stModule('/script.js') : null;
       const done = await runImport(usable.map((it) => ({ ...it, ...src })), {
         presetNames, worldNames,
         characterAvatars: () => (ctx().characters ?? []).map((c: { avatar: string }) => c.avatar),
@@ -336,6 +368,24 @@ export function ImportDialog() {
         },
         useTheme: useStTheme,
         importScript: importThScripts,
+        // 不能先 await：酒馆要在这一步里马上发出导入请求，工具箱才拿得到它的回复
+        replaceCharacter: (file, avatar) => {
+          if (typeof script?.processDroppedFiles !== 'function') return Promise.reject(new Error('没找到酒馆的替换角色卡功能'));
+          const c = ctx();
+          const old = (c.characters ?? []).find((x: { avatar: string }) => x.avatar === avatar);
+          // 新卡文件会把「上次打开的聊天」换成一段不存在的新聊天、把置顶换成卡作者的，这两样是玩家自己的，换完写回去
+          const keep = { chat: old?.chat, fav: old?.fav, data: { extensions: { fav: old?.data?.extensions?.fav ?? old?.fav } } };
+          // 正在聊的就是这张卡：和酒馆自己替换卡一样，换完重新打开这段聊天
+          const open = c.characters?.[c.characterId]?.avatar === avatar ? c.characters[c.characterId].chat : null;
+          return script.processDroppedFiles([file], new Map([[file, avatar]])).then(async () => {
+            if (keep.chat) {
+              const res = await fetch('/api/characters/merge-attributes', { method: 'POST', headers: c.getRequestHeaders(), body: JSON.stringify({ avatar, ...keep }) });
+              const now = (ctx().characters ?? []).find((x: { avatar: string }) => x.avatar === avatar);
+              if (res.ok && now) { now.chat = keep.chat; now.fav = keep.fav; now.data ??= {}; now.data.extensions = { ...now.data.extensions, fav: keep.data.extensions.fav }; }
+            }
+            if (open && typeof script.openCharacterChat === 'function') await script.openCharacterChat(open);
+          });
+        },
         skipWorldPrompt: settings().autoImportWorld ? skipWorldPrompt : undefined,
         setCardTheme: (avatar, theme) => {
           const ch = (ctx().characters ?? []).find((c: { avatar: string }) => c.avatar === avatar);

@@ -80,6 +80,22 @@ export interface ImportItem {
   forTheme?: string;
   /** Worldbook: bind to the card imported in the same batch. Preset: make it that card's recommended preset. Theme: that card's 美化. */
   toCard?: boolean;
+  /** Character cards: cards already in ST with the same name, most recently chatted first. `label` tells them apart. */
+  sameName?: { avatar: string; label: string }[];
+  /** Character cards: update this card in ST with the file (ST's own Replace: chats stay). Empty: add a new card. */
+  replace?: string;
+}
+
+/** 酒馆里已经有同名的卡：默认更新最近聊过的那张（聊天记录都在它上面）。`existing` 要按最近聊天排好。 */
+export function markSameName(items: ImportItem[], existing: { avatar: string; name: string; label: string }[]): ImportItem[] {
+  for (const it of items) {
+    if (it.kind !== 'character' || !it.card) continue;
+    const same = existing.filter((e) => e.name === it.card!.name).map(({ avatar, label }) => ({ avatar, label }));
+    if (!same.length) continue;
+    it.sameName = same;
+    it.replace = same[0].avatar;
+  }
+  return items;
 }
 
 export async function prepareImport(files: File[]): Promise<ImportItem[]> {
@@ -227,6 +243,8 @@ export async function runImport(items: ImportItem[], hooks: {
   normalizeUrl: (s: string) => string;
   /** Switch ST's UI theme to this one (and turn the toolbox's own look off). */
   useTheme: (name: string) => Promise<void>;
+  /** 用这个文件更新酒馆里已有的卡 `avatar`（酒馆的替换角色卡）。等酒馆把角色列表也刷新完才返回。 */
+  replaceCharacter: (file: File, avatar: string) => Promise<void>;
   /** 酒馆助手脚本：放进全局脚本。`run`：导入后马上运行。返回脚本名，没导进去返回 null。 */
   importScript: (data: unknown, run: boolean) => Promise<string | null>;
 }): Promise<ImportDone[]> {
@@ -280,7 +298,15 @@ export async function runImport(items: ImportItem[], hooks: {
   let lastCard: string | null = null;
   for (const it of items.filter((i) => i.kind === 'character')) {
     const before = new Set(hooks.characterAvatars());
-    const reply = await importReply(/\/api\/characters\/import(?:[?#]|$)/, () => feed('character_import_file', [it.file], 'change'));
+    // 更新已有的卡：用酒馆自己的「替换角色卡」，文件名不变，聊天记录还在
+    let replacing: Promise<unknown> | undefined;
+    const reply = await importReply(/\/api\/characters\/import(?:[?#]|$)/, () => {
+      if (it.replace) replacing = hooks.replaceCharacter(it.file, it.replace);
+      else feed('character_import_file', [it.file], 'change');
+    });
+    if (replacing) {
+      try { await replacing; } catch (e) { toast('error', `更新「${it.title}」没成功：${(e as Error).message}`, '导入'); done.push({ item: it, name: null, failed: true }); continue; }
+    }
     const file = (reply as { file_name?: unknown } | undefined)?.file_name;
     // 酒馆说没导入成功：它已经提示过了，接着导下一个
     if (reply !== undefined && typeof file !== 'string') { done.push({ item: it, name: null, failed: true }); continue; }

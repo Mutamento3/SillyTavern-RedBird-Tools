@@ -934,6 +934,7 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
 .rbt-hcard-tag + .rbt-hcard-tag::before { content: ' · '; }
 .rbt-hcard-tag.more { display: none; }
 .rbt-home-grid:not(.list) .rbt-hcard-meta.time { display: none; }
+.rbt-home-grid.list .rbt-hcard-meta.added { display: none; }
 .rbt-hcard-pill.warn > i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #f0a43a; }
 .rbt-hcard-pill > i.fa-solid { font-size: 11px; opacity: 0.9; }
 /* 右上角：收藏标记；悬停时换成收藏 / 编辑按钮 */
@@ -982,7 +983,7 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
 }
 .rbt-hcard.selected .rbt-hcard-check { border-color: var(--rbd-accent, #0a84ff); background: var(--rbd-accent, #0a84ff); }
 /* ---- 列表：一行一张卡，放认卡用的信息（和酒馆角色列表一样：版本号或作者、作者简介、带颜色的标签），一屏看到更多，找卡快。
-   和大图是同一个卡片，只换样式（Home.tsx 的「显示」）。大图里不显示版本号和简介 ---- */
+   和大图是同一个卡片，只换样式（Home.tsx 的「显示」）。大图里不显示版本号和简介；列表里不显示同名卡的添加日期 ---- */
 .rbt-hcard-aux, .rbt-hcard-note { display: none; }
 .rbt-home-grid.list { grid-template-columns: minmax(0, 1fr); gap: var(--rbd-s-2); }
 .rbt-home-grid.list .rbt-hcard {

@@ -27,6 +27,8 @@ export interface CharItem {
   note: string;
   /** 名字后面的小灰字：和酒馆角色列表一样，按酒馆设置显示版本号或作者名 */
   aux: string;
+  /** 有别的卡和它同名时，大图里写的添加日期（「11/18 添加」，同一天添加的再加时间），好分清是哪一份；不同名是空的 */
+  addedLabel: string;
   /** 聊天记录一共多大（酒馆「聊得最多」排序用的就是它） */
   chatSize: number;
   tags: TagInfo[];
@@ -35,6 +37,19 @@ export interface CharItem {
   /** 打开卡也补不上的问题（缺插件、世界书缺文件），见 listCharacters */
   problems: string[];
   hasLinks: boolean;
+}
+
+/** 「3 天前聊过」：首页列表和导入时选同名卡都用它。 */
+export function lastChatText(t: number, now = Date.now()): string {
+  if (!t) return '还没聊过';
+  const day = 86400000;
+  const start = new Date(now).setHours(0, 0, 0, 0);
+  if (t >= start) return '今天聊过';
+  if (t >= start - day) return '昨天聊过';
+  const days = Math.floor((start - t) / day) + 1;
+  if (days < 7) return `${days} 天前聊过`;
+  const d = new Date(t);
+  return d.getFullYear() === new Date(now).getFullYear() ? `${d.getMonth() + 1} 月 ${d.getDate()} 日聊过` : `${d.getFullYear()} 年 ${d.getMonth() + 1} 月聊过`;
 }
 
 export type CharSort = 'recent' | 'name' | 'added' | 'chats';
@@ -82,6 +97,7 @@ export function listCharacters(): CharItem[] {
       fav: isFav(ch),
       note: notes,
       aux: String(ch.data?.[auxField] ?? ''),
+      addedLabel: '',
       chatSize: Number(ch.chat_size) || 0,
       tags: tagsFor(ch.avatar),
       lastChat: toTime(ch.date_last_chat),
@@ -99,6 +115,7 @@ export function listCharacters(): CharItem[] {
     fav: g.fav === true || g.fav === 'true',
     note: `群组 · ${(g.members ?? []).length} 个角色`,
     aux: '',
+    addedLabel: '',
     chatSize: Number(g.chat_size) || 0,
     tags: tagsFor(g.id),
     lastChat: toTime(g.date_last_chat),
@@ -106,6 +123,18 @@ export function listCharacters(): CharItem[] {
     problems: [],
     hasLinks: false,
   }));
+  // 同名的卡写添加日期（和排序「最近添加」、左栏「11/12」同一种写法）。同名里有两张同一天添加的，就都加上时间
+  const byName = new Map<string, CharItem[]>();
+  for (const it of chars) byName.set(it.name, [...(byName.get(it.name) ?? []), it]);
+  const thisYear = new Date().getFullYear();
+  const day = (t: number) => { const d = new Date(t); return d.getFullYear() === thisYear ? `${d.getMonth() + 1}/${d.getDate()}` : `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`; };
+  const time = (t: number) => { const d = new Date(t); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  for (const same of byName.values()) {
+    if (same.length < 2) continue;
+    const days = same.map((it) => day(it.added));
+    const clash = new Set(days).size < days.length;
+    same.forEach((it, i) => { if (it.added) it.addedLabel = `${days[i]}${clash ? ' ' + time(it.added) : ''} 添加`; });
+  }
   return [...chars, ...groups];
 }
 

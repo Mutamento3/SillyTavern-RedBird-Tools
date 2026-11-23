@@ -1012,6 +1012,7 @@ input.rbt-cb.rbt-cb[type='checkbox']:focus-visible { outline: 2px solid var(--rb
 .rbt-imp-alert .rbt-check-row { margin: 4px -8px -4px; font-size: 13px; }
 .rbt-imp-alert.resolved { background: color-mix(in srgb, var(--rbd-text1) 4%, transparent); }
 .rbt-imp-alert.resolved > i { color: var(--t3); }
+.rbt-imp-which { margin: 6px 0 2px; max-width: 100%; }
 
 /* 一起发布的文件：挂在卡下面 */
 .rbt-imp-group { padding-top: 10px; border-top: 1px solid var(--hair, color-mix(in srgb, var(--rbd-text1) 7%, transparent)); }
