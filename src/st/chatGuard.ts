@@ -99,7 +99,7 @@ async function checkChatSave(orig: typeof fetch, init?: RequestInit): Promise<Re
   // 聊天好好的（读失败的是别的地方对这个存档的读取）：不用再核对了
   if (sameChat(body.chat, disk)) { failedChats.delete(name); failedCards.delete(avatar); }
   if (!shouldBlockSave(check, disk)) return null;
-  return blocked(name, messagesIn(disk), describeSave(body.chat).messages);
+  return blocked(name, String(body?.ch_name ?? ''), messagesIn(disk), describeSave(body.chat).messages);
 }
 
 async function checkGroupSave(orig: typeof fetch, init?: RequestInit): Promise<Response | null> {
@@ -111,19 +111,22 @@ async function checkGroupSave(orig: typeof fetch, init?: RequestInit): Promise<R
   const disk = await readDisk(orig, '/api/chats/group/get', { id });
   if (sameChat(body.chat, disk)) failedGroups.delete(id);
   if (!shouldBlockGroupSave(true, body.chat, disk)) return null;
-  return blocked(id, messagesIn(disk), describeSave(body.chat).messages);
+  const group = (ctx().groups ?? []).find((g: { chats?: string[] }) => g.chats?.includes(id));
+  return blocked(id, String(group?.name ?? ''), messagesIn(disk), describeSave(body.chat).messages);
 }
 
 /**
  * 拦下这次保存：磁盘上的存档保持原样，告诉酒馆「存好了」（免得它反复报错），
  * 并提示玩家刷新（同一个存档 15 秒内只提示一次；之后每次被拦都会再提示，直到刷新）。
+ * 提示可能在首页、别的卡上弹出，所以写明是哪张卡（群聊写群名）的聊天，先说原来的记录还在。
  */
-function blocked(name: string, onDisk: number | null, saving: number): Response {
+function blocked(name: string, who: string, onDisk: number | null, saving: number): Response {
   console.warn(`[RedBird] 拦下了一次会覆盖存档的保存：「${name}」磁盘上有 ${onDisk ?? '?'} 条，要存的有 ${saving} 条（这个存档没有正常读出来）`);
   const now = Date.now();
   if (now - (lastWarned.get(name) ?? 0) > 15000) {
     lastWarned.set(name, now);
-    toast('error', '这个聊天没有读出来，现在的内容不会保存，以免覆盖原来的存档。请刷新页面，再打开这个聊天。', 'RedBird 工具箱', { timeOut: 0, extendedTimeOut: 0 });
+    toast('error', '原来的聊天记录还在，没有被覆盖。请刷新页面，再打开这个聊天。刷新之前发的消息不会保存。',
+      who ? `「${who}」的聊天没有读出来` : '有一个聊天没有读出来', { timeOut: 0, extendedTimeOut: 0 });
   }
   return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 }
