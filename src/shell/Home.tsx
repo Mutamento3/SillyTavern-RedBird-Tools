@@ -215,14 +215,14 @@ function Card({ it, managing, selected, onSelect }: { it: CharItem; managing?: b
             ? <span class="rbt-hcard-pill warn" title={it.problems.join('、')}><i /><span class="rbt-hcard-pill-text">{it.problems.length > 1 ? `${it.problems.length} 个问题` : it.problems[0]}</span></span>
             : it.kind === 'group' && <span class="rbt-hcard-pill"><i class="fa-solid fa-users" /> 群组</span>}
           <span class="rbt-hcard-name">{it.fav && <i class="fa-solid fa-thumbtack rbt-hcard-namefav" aria-label="已置顶" />}{it.name}{it.aux && <small class="rbt-hcard-aux">{it.aux}</small>}</span>
-          <span class="rbt-hcard-meta">{it.kind === 'group' ? it.note : lastChatText(it.lastChat)}</span>
-          {it.tags.length > 0 && <span class="rbt-hcard-meta">{it.tags.slice(0, 3).map((t) => t.name).join(' · ')}</span>}
-          {/* 下面两项只在列表里显示（和酒馆角色列表一样：作者简介一行、标签带颜色） */}
+          {/* 聊天时间只在列表里显示：大图按最近聊过排，左栏也按时间排，不用再写一遍 */}
+          <span class={'rbt-hcard-meta' + (it.kind === 'group' ? '' : ' time')}>{it.kind === 'group' ? it.note : lastChatText(it.lastChat)}</span>
+          {/* 简介只在列表里显示（和酒馆角色列表一样）；标签在列表里用酒馆设的颜色，在大图上是毛玻璃 */}
           {it.kind === 'character' && it.note && <span class="rbt-hcard-note">{it.note.slice(0, 160)}</span>}
           {it.tags.length > 0 && (
             <span class="rbt-hcard-tags">
-              {it.tags.slice(0, 4).map((t) => <span key={t.id} class="rbt-hcard-tag" style={t.color ? { background: t.color, color: t.color2 || undefined } : undefined}>{t.name}</span>)}
-              {it.tags.length > 4 && <span class="rbt-hcard-tag more">+{it.tags.length - 4}</span>}
+              {it.tags.slice(0, 3).map((t) => <span key={t.id} class="rbt-hcard-tag" style={{ '--tag-bg': t.color || undefined, '--tag-fg': t.color2 || undefined }}>{t.name}</span>)}
+              {it.tags.length > 3 && <span class="rbt-hcard-tag more">+{it.tags.length - 3}</span>}
             </span>
           )}
         </span>

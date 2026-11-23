@@ -926,6 +926,15 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
   -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
   color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* 名字下面：标签，和上面的提醒一样是毛玻璃，图再花也看得清。放不下的截掉，不换行 */
+.rbt-hcard-tags { display: flex; justify-content: center; gap: 4px; max-width: 100%; margin-top: 3px; overflow: hidden; }
+.rbt-hcard-tag {
+  flex: none; max-width: 120px; padding: 1px 8px; border-radius: 999px;
+  background: rgba(20, 20, 24, 0.42);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
+  color: #fff; font-size: 12px; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rbt-home-grid:not(.list) .rbt-hcard-meta.time { display: none; }
 .rbt-hcard-pill.warn > i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #f0a43a; }
 .rbt-hcard-pill > i.fa-solid { font-size: 11px; opacity: 0.9; }
 /* 右上角：收藏标记；悬停时换成收藏 / 编辑按钮 */
@@ -974,8 +983,8 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
 }
 .rbt-hcard.selected .rbt-hcard-check { border-color: var(--rbd-accent, #0a84ff); background: var(--rbd-accent, #0a84ff); }
 /* ---- 列表：一行一张卡，放认卡用的信息（和酒馆角色列表一样：版本号或作者、作者简介、带颜色的标签），一屏看到更多，找卡快。
-   和大图是同一个卡片，只换样式（Home.tsx 的「显示」）。大图里不显示版本号、简介和标签小块 ---- */
-.rbt-hcard-aux, .rbt-hcard-note, .rbt-hcard-tags { display: none; }
+   和大图是同一个卡片，只换样式（Home.tsx 的「显示」）。大图里不显示版本号和简介 ---- */
+.rbt-hcard-aux, .rbt-hcard-note { display: none; }
 .rbt-home-grid.list { grid-template-columns: minmax(0, 1fr); gap: var(--rbd-s-2); }
 .rbt-home-grid.list .rbt-hcard {
   aspect-ratio: auto; overflow: visible;
@@ -999,18 +1008,16 @@ body.rbt-shell.rbt-home #sheld { visibility: hidden; }
 .rbt-home-grid.list .rbt-hcard-name { grid-area: name; max-width: 100%; font-size: 15px; -webkit-line-clamp: 1; color: var(--rbd-text1, inherit); }
 .rbt-home-grid.list .rbt-hcard-aux { display: inline; margin-left: 6px; font-size: 12px; font-weight: 400; letter-spacing: 0; color: var(--rbd-text3, #6b707a); }
 .rbt-home-grid.list .rbt-hcard-meta { grid-area: time; justify-self: end; color: var(--rbd-text2, #9ca1aa); }
-.rbt-home-grid.list .rbt-hcard-meta + .rbt-hcard-meta { display: none; }
 .rbt-home-grid.list .rbt-hcard-note {
   display: block; grid-area: note; min-width: 0;
   font-size: 12px; color: var(--rbd-text2, #9ca1aa); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.rbt-home-grid.list .rbt-hcard-tags { display: flex; grid-area: tags; gap: 4px; min-width: 0; overflow: hidden; }
-.rbt-hcard-tag {
-  flex: none; max-width: 120px; padding: 1px 8px; border-radius: 999px;
-  background: var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1, #fff) 10%, transparent)); color: var(--rbd-text2, #9ca1aa);
-  font-size: 12px; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.rbt-home-grid.list .rbt-hcard-tags { grid-area: tags; justify-content: flex-start; min-width: 0; margin: 0; }
+.rbt-home-grid.list .rbt-hcard-tag {
+  background: var(--tag-bg, var(--rbd-bg2-hover, color-mix(in srgb, var(--rbd-text1, #fff) 10%, transparent))); color: var(--tag-fg, var(--rbd-text2, #9ca1aa));
+  -webkit-backdrop-filter: none; backdrop-filter: none;
 }
-.rbt-hcard-tag.more { background: none; padding: 1px 2px; }
+.rbt-home-grid.list .rbt-hcard-tag.more { background: none; padding: 1px 2px; }
 .rbt-home-grid.list .rbt-hcard-pill {
   grid-area: pill; justify-self: end; max-width: 120px; margin: 0; padding: 0;
   background: none; -webkit-backdrop-filter: none; backdrop-filter: none;
