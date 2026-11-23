@@ -16,6 +16,7 @@ import { openDrawer } from '../../shell/drawers';
 import { working } from '../../st/busy';
 import { bindPersona, boundPersonas, personaTick, unbindPersona, watchPersonas } from './parts';
 import { editRegex } from './GlobalPage';
+import { Toggle } from '../common';
 
 // --------------------------------------------------------------- bits ---
 
@@ -164,19 +165,22 @@ export function FoldSection({ title, summary, tone, action, defaultOpen = false,
 }
 
 /**
- * 列表里的一条：圆点（绿 = 启用，灰 = 停用）、名字（全名）、原因小字；右边动作按钮（停用 / 启用 / 移除）、编辑。
+ * 列表里的一条：名字（全名）、原因小字；右边按钮（移除）、开关（开 = 启用），最右边是编辑（各行的笔对齐）。
+ * 能开关的用开关表示状态，和全局工具箱的列表一样。以前用「停用 / 启用」按钮，按钮上写的是点了会怎样，
+ * 玩家会把它当成现在的状态看反。不能开关的（不在这里管的）停用时名字是灰的。
  */
-export function UseRow({ name, on, sub, action, onEdit }: {
+export function UseRow({ name, on, sub, action, onToggle, onEdit }: {
   name: string; on: boolean; sub?: string;
-  /** tone：quiet = 淡的文字按钮（停用），go = 绿色（启用），不写 = 普通按钮（移除） */
-  action?: { label: string; onClick: () => void; tone?: 'quiet' | 'go' };
+  /** 普通按钮，比如「移除」 */
+  action?: { label: string; onClick: () => void };
+  onToggle?: (on: boolean) => void;
   onEdit?: () => void;
 }) {
   return (
     <div class={`rbt-use ${on ? 'on' : ''}`}>
-      <span class="rbt-use-dot" role="img" aria-label={on ? '启用' : '停用'} />
       <span class="rbt-use-n">{name}{sub && <small>{sub}</small>}</span>
-      {action && <button type="button" class={`rbt-btn rbt-btn-small rbt-use-act ${action.tone ?? ''}`} onClick={action.onClick}>{action.label}</button>}
+      {action && <button type="button" class="rbt-btn rbt-btn-small rbt-use-act" onClick={action.onClick}>{action.label}</button>}
+      {onToggle && <Toggle checked={on} onChange={onToggle} title={`${on ? '停用' : '启用'}「${name}」`} />}
       {onEdit && <button type="button" class="rbt-iconbtn rbt-use-edit" title={`编辑「${name}」`} aria-label={`编辑「${name}」`} onClick={onEdit}><i class="fa-solid fa-pen" /></button>}
     </div>
   );
@@ -392,7 +396,7 @@ export function WorldSetupSection({ info, openWorld, cardBook }: { info: CardInf
           const owner = owners.get(w);
           const sub = owner ? (on ? `角色卡「${owner}」的书，这张卡也启用` : `角色卡「${owner}」的书，进别的卡自动停用`)
             : w in set ? (set[w] ? '只在这张卡启用' : '只在这张卡停用') : undefined;
-          return <UseRow key={`g${w}`} name={w} on={on} sub={sub} action={{ label: on ? '停用' : '启用', tone: on ? 'quiet' : 'go', onClick: () => { void setCardUse(avatar, info.name, key, !on); } }} onEdit={() => openWorld(w)} />;
+          return <UseRow key={`g${w}`} name={w} on={on} sub={sub} onToggle={(v) => { void setCardUse(avatar, info.name, key, v); }} onEdit={() => openWorld(w)} />;
         })}
       </div>}
       {chat.length > 0 && <div class="rbt-use-group"><GroupHead title="这个存档的" />{chat.map((w) => <UseRow key={`c${w}`} name={w} on onEdit={() => openWorld(w)} />)}</div>}
@@ -440,7 +444,7 @@ export function RegexSetupSection({ info, openScoped }: { info: CardInfo; openSc
   const total = cardRows.filter((r) => r.on && allowed).length + globRows.filter((r) => r.on).length + presetRows.filter((r) => r.on && presetAllowed).length;
   const count = cardRows.length + globRows.length + presetRows.length;
   // 卡和预设里的正则：开关改在卡 / 预设里（和酒馆一样）；没允许运行时不能开关
-  const flip = (r: { on: boolean; toggle?: (v: boolean) => unknown }, ok: boolean) => (r.toggle && ok ? { label: r.on ? '停用' : '启用', tone: r.on ? 'quiet' as const : 'go' as const, onClick: () => { void r.toggle!(!r.on); } } : undefined);
+  const flip = (r: { toggle?: (v: boolean) => unknown }, ok: boolean) => (r.toggle && ok ? (v: boolean) => { void r.toggle!(v); } : undefined);
   return (
     <FoldSection title="正则" summary={count ? `${total} 条启用` : '没有'} tone={count ? undefined : 'dim'} action={<PanelBtn label="正则面板" onClick={openScoped} />}>
       {count > 0 && <>
@@ -449,21 +453,21 @@ export function RegexSetupSection({ info, openScoped }: { info: CardInfo; openSc
           <GroupHead title="角色卡里的" count={cardRows.length} />
           {!allowed && <GroupIssue text="酒馆还没允许这张卡的正则运行" button={live ? '允许运行' : undefined} onClick={() => { void cardItem?.toggle?.(true); }} />}
           {cardRows.filter((r) => match(r.name)).map((r) => (
-            <UseRow key={`c${r.key}`} name={r.name} on={r.on && allowed} action={flip(r, allowed)} onEdit={live ? () => editRegex(r.key) : undefined} />
+            <UseRow key={`c${r.key}`} name={r.name} on={r.on && allowed} onToggle={flip(r, allowed)} onEdit={live ? () => editRegex(r.key) : undefined} />
           ))}
         </div>}
         {globRows.length > 0 && <div class="rbt-use-group">
           <GroupHead title="全局" count={globRows.length} note="所有卡共用" />
           {globRows.filter((r) => match(r.name)).map((r) => (
             <UseRow key={`g${r.id}`} name={r.name} on={r.on} sub={r.sub} onEdit={() => editRegex(r.id)}
-              action={{ label: r.on ? '停用' : '启用', tone: r.on ? 'quiet' : 'go', onClick: () => { void setCardUse(avatar, info.name, r.key, !r.on); } }} />
+              onToggle={(v) => { void setCardUse(avatar, info.name, r.key, v); }} />
           ))}
         </div>}
         {presetRows.length > 0 && <div class="rbt-use-group">
           <GroupHead title={`预设「${preset}」里的`} count={presetRows.length} note="改了会存进预设" />
           {!presetAllowed && <GroupIssue text={`酒馆还没允许预设「${preset}」的正则运行`} button="允许运行" onClick={() => { void presetItem?.toggle?.(true); }} />}
           {presetRows.filter((r) => match(r.name)).map((r) => (
-            <UseRow key={`p${r.key}`} name={r.name} on={r.on && presetAllowed} action={flip(r, presetAllowed)} onEdit={() => editRegex(r.key)} />
+            <UseRow key={`p${r.key}`} name={r.name} on={r.on && presetAllowed} onToggle={flip(r, presetAllowed)} onEdit={() => editRegex(r.key)} />
           ))}
         </div>}
       </>}

@@ -1683,16 +1683,13 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-use-group { display: flex; flex-direction: column; }
 .rbt-use-group + .rbt-use-group, .rbt-use-group + .rbt-pick { padding-top: var(--rbd-s-2); border-top: 1px solid var(--hair); }
 .rbt-use { display: flex; align-items: center; gap: 8px; padding: 5px 0; min-height: 36px; }
-.rbt-use-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--t3); opacity: .6; }
-.rbt-use.on .rbt-use-dot { background: var(--ok, #4cb782); opacity: 1; }
 .rbt-use-n { flex: 1; min-width: 0; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
 .rbt-use:not(.on) .rbt-use-n { color: var(--t2); }
 .rbt-use-n small { display: block; margin-top: 1px; font-size: 12px; color: var(--t3); }
 .rbt-use-act, .rbt-use-edit { flex: none; }
-/* 停用：淡的文字按钮；启用：绿色。两个一眼分得开 */
-.rbt-use-act.quiet { background: none; border-color: transparent; color: var(--t2); }
-.rbt-use-act.quiet:hover { color: var(--t1); background: var(--g2); }
-.rbt-use-act.go { background: color-mix(in srgb, var(--ok, #4cb782) 16%, transparent); border-color: color-mix(in srgb, var(--ok, #4cb782) 45%, transparent); color: var(--ok, #4cb782); }
+/* 开关本身只有 36×20：上下各加 8px、左右各加 4px 能点的地方（手机上好点），不改它看起来的大小 */
+.rbt-use .rbt-switch { box-sizing: content-box; padding: 8px 4px; margin: -8px 0; }
+.rbt-use .rbt-switch span { inset: 8px 4px; }
 .rbt-use-add { padding-top: 2px; }
 .rbt-pick.wide .rbt-menu { left: 0; right: auto; width: min(360px, 100%); }
 .rbt-group-issue { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 2px 0 4px; font-size: 13px; color: var(--warnc, #e0a040); }
