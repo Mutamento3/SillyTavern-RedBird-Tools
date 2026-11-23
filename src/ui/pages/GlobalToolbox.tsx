@@ -9,7 +9,8 @@
  */
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { confirmText, ctx, currentCharacter, loaded, saveSettings, settings } from '../../st/st';
+import { confirmText, ctx, currentCharacter, loaded, saveSettings, settings, toast } from '../../st/st';
+import { createPersona, currentPersona, deletePersona, personaCards, personaDesc, personaIds, personaName, personaThumb, pickAvatar, renamePersona, setPersonaAvatar, setPersonaDesc, type PickedAvatar } from '../../st/personas';
 import {
   allCharacters,
   archiveVersion,
@@ -46,9 +47,8 @@ import { CardPage } from './CardPage';
 import { AddGlobalWorld, GlobalRegexList, GlobalWorldList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
 import { trash, TRASH_LABEL, type TrashKind } from '../../tools/trash';
 import { charsTick } from '../../shell/characters';
-import { personaTick, Section, watchPersonas } from './parts';
+import { bindPersona, personaTick, Section, watchPersonas } from './parts';
 import { QUOTE_COLORS, type LookKind } from '../../core/quote';
-import { personaThumb } from './setupParts';
 import { personaStatus } from '../../shell/StatusBar';
 import { BindingsDetail, CardsTablePage } from './CardsTable';
 import { ScopePage } from './scope';
@@ -357,7 +357,7 @@ function SourceSection({ kind, id }: { kind: SourceKind; id: string }) {
 }
 
 /** Up to three overlapping card avatars, then +N. */
-function AvatarStack({ cards }: { cards: CardInfo[] }) {
+function AvatarStack({ cards }: { cards: { avatar: string; name: string }[] }) {
   if (!cards.length) return null;
   return (
     <span class="rbt-avstack" title={cards.map((c) => c.name).join('、')}>
@@ -367,7 +367,7 @@ function AvatarStack({ cards }: { cards: CardInfo[] }) {
   );
 }
 
-function CardRows({ cards, back, empty }: { cards: CardInfo[]; back: string; empty: string }) {
+function CardRows({ cards, back, empty }: { cards: { avatar: string; name: string }[]; back: string; empty: string }) {
   if (!cards.length) return <small class="rbt-muted">{empty}</small>;
   return <>{cards.map((c) => <NavRow key={c.avatar} img={thumbnailUrl(c.avatar)} title={c.name} onClick={() => openDetail({ kind: 'card', avatar: c.avatar }, back)} />)}</>;
 }
@@ -425,61 +425,197 @@ function PresetsPage() {
 /**
  * 全局人设 = 酒馆的默认人设：没设专用人设（没绑定、存档没锁定）的卡都用它。
  * 正在聊的卡用自己的人设时，换全局不动现在的人设，离开这张卡后生效。
+ * 下面是全部人设：头像、名字、描述，点进去改（PersonaDetail），不用先换成正在用的。
  */
 function PersonasPage() {
   void personaTick.value;
   useEffect(watchPersonas, []);
-  const c = ctx();
-  const pu = c.powerUserSettings ?? {};
-  const all = Object.keys(pu.personas ?? {}).sort((a, b) => personaLabel(a).localeCompare(personaLabel(b), 'zh'));
+  const pu = ctx().powerUserSettings ?? {};
+  const all = personaIds();
   const def = String(pu.default_persona ?? '');
   const now = personaStatus();
   const held = !!currentCharacter() && (now.source === 'chat' || now.source === 'character' || now.source === 'group');
-  const cards = (id: string) => ((pu.persona_descriptions?.[id]?.connections ?? []) as { type: string }[]).filter((x) => x.type === 'character').length;
   const [busy, setBusy] = useState(false);
+  const back = GLOBAL_TAB_LABELS.personas;
   const pick = async (id: string) => {
     if (!id || id === def) return;
     setBusy(true);
-    try {
-      pu.default_persona = id;
-      c.saveSettingsDebounced();
-      // 正在聊的卡用的就是全局人设：马上换上
-      if (currentCharacter() && !held && now.avatar !== id) await loaded.personas?.setUserAvatar?.(id);
-      personaTick.value++;
-    } finally { setBusy(false); }
+    try { await setGlobalPersona(id); } finally { setBusy(false); }
   };
   return (
     <div class="rbt-page">
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
           <Section title="全局人设" hint="没设专用人设的卡都用它">
-            <div class="rbt-form-row">
-              <select class="text_pole rbt-select" value={def} disabled={busy} onChange={(e) => { void pick((e.currentTarget as HTMLSelectElement).value); }}>
-                {!def && <option value="">还没设</option>}
-                {all.map((id) => <option key={id} value={id}>{personaLabel(id)}</option>)}
-              </select>
-              <button class="rbt-btn" onClick={() => openDrawer('persona')}>编辑人设 <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" /></button>
-            </div>
+            <select class="text_pole rbt-select" value={def} disabled={busy} onChange={(e) => { void pick((e.currentTarget as HTMLSelectElement).value); }}>
+              {!def && <option value="">还没设</option>}
+              {all.map((id) => <option key={id} value={id}>{personaName(id)}</option>)}
+            </select>
             {held && now.avatar !== def && <small class="rbt-muted">「{currentCharacter()?.name}」用自己的「{now.name}」。在这里换的全局人设，离开这张卡后生效。</small>}
           </Section>
         </div>
         <div class="rbt-page-group">
-          <h2 class="rbt-page-group-title">全部人设</h2>
-          {all.map((id) => {
-            const n = cards(id);
-            return (
-              <NavRow key={id} img={personaThumb(id)} title={personaLabel(id)} sub={n ? `${n} 张卡专用` : undefined} external
-                trailing={id === now.avatar ? <Tag tone="accent">正在用</Tag> : id === def ? <Tag>全局</Tag> : undefined}
-                hint="在酒馆的人设面板里编辑" onClick={() => openDrawer('persona')} />
-            );
-          })}
+          <div class="rbt-page-group-head">
+            <h2 class="rbt-page-group-title">全部人设</h2>
+            <button type="button" class="rbt-btn rbt-btn-small" onClick={() => openDetail({ kind: 'persona-new' }, back)}><i class="fa-solid fa-plus" aria-hidden="true" /> 新建人设</button>
+          </div>
+          <div>
+            {all.map((id) => (
+              <NavRow key={id} img={personaThumb(id)} onClick={() => openDetail({ kind: 'persona', id }, back)}
+                title={<span class="rbt-persona-title">{personaName(id)}{id === now.avatar && <Tag tone="accent">正在用</Tag>}{id === def && <Tag>全局</Tag>}</span>}
+                sub={personaDesc(id) ? <span class="rbt-clamp2">{personaDesc(id)}</span> : undefined}
+                trailing={<AvatarStack cards={personaCards(id)} />} />
+            ))}
+          </div>
           {!all.length && <small class="rbt-muted">还没有人设。</small>}
         </div>
       </div>
     </div>
   );
 }
-const personaLabel = (id: string): string => (ctx().powerUserSettings?.personas ?? {})[id] || id;
+
+/** 设成全局人设。正在聊的卡用的就是全局人设时，马上换上。 */
+async function setGlobalPersona(id: string): Promise<void> {
+  const c = ctx();
+  const now = personaStatus();
+  const held = !!currentCharacter() && (now.source === 'chat' || now.source === 'character' || now.source === 'group');
+  c.powerUserSettings.default_persona = id;
+  c.saveSettingsDebounced();
+  if (currentCharacter() && !held && now.avatar !== id) await loaded.personas?.setUserAvatar?.(id);
+  personaTick.value++;
+}
+
+/** 一个人设自己的页面：头像、名字、描述，改完自动保存；下面是专用它的卡。 */
+function PersonaDetail({ id }: { id: string }) {
+  void personaTick.value;
+  useEffect(watchPersonas, []);
+  const pu = ctx().powerUserSettings ?? {};
+  const [name, setName] = useState(personaName(id));
+  const [desc, setDesc] = useState(personaDesc(id));
+  const [busy, setBusy] = useState(false);
+  if (pu.personas?.[id] === undefined) return <div class="rbt-warn">找不到这个人设，可能被删除了。</div>;
+  const cards = personaCards(id);
+  const isDef = String(pu.default_persona ?? '') === id;
+  const isNow = currentPersona() === id;
+  const run = async (f: () => Promise<void>) => {
+    setBusy(true);
+    try { await f(); } catch (e) { toast('error', `没能保存。请再试一次。（${(e as Error).message}）`); } finally { setBusy(false); personaTick.value++; }
+  };
+  const copy = () => run(async () => {
+    const to = `${personaName(id)} 副本`;
+    const nid = await createPersona({ name: to, description: personaDesc(id), from: id });
+    toast('success', `已复制成「${to}」。`);
+    openDetail({ kind: 'persona', id: nid }, personaName(id));
+  });
+  // 酒馆的人设面板只能改正在用的人设：不是正在用的，先问要不要换过去
+  const more = async () => {
+    if (!isNow) {
+      if (!(await confirmText(`「${personaName(id)}」不是正在用的人设`, `酒馆的人设面板只能改正在用的人设。要换成「${personaName(id)}」再打开吗？`, '换成它'))) return;
+      await loaded.personas?.setUserAvatar?.(id);
+      personaTick.value++;
+    }
+    openDrawer('persona');
+  };
+  return (
+    <div class="rbt-page">
+      <div class="rbt-detail-head">
+        <h2>{personaName(id)}</h2>
+        {isNow && <Tag tone="accent">正在用</Tag>}
+        {isDef && <Tag>全局</Tag>}
+        {cards.length > 0 && <Tag>{cards.length === 1 ? `「${cards[0].name}」专用` : `${cards.length} 张卡专用`}</Tag>}
+        {!isDef && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={() => void run(() => setGlobalPersona(id))}>设为全局人设</button>}
+      </div>
+      <div class="rbt-page-cols">
+        <div class="rbt-page-group">
+          <section class="rbt-card-section">
+            <div class="rbt-persona-av">
+              <img src={personaThumb(id)} alt="" />
+              <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={async () => { const p = await pickAvatar(); if (p) await run(() => setPersonaAvatar(id, p)); }}>换头像</button>
+            </div>
+            <label class="rbt-field">
+              <span class="rbt-field-label">名字</span>
+              <input class="text_pole" value={name} onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }}
+                onBlur={(e) => { const v = (e.currentTarget as HTMLInputElement).value.trim(); if (v) void run(() => renamePersona(id, v)); else setName(personaName(id)); }} />
+            </label>
+            <label class="rbt-field">
+              <span class="rbt-field-label">描述</span>
+              <textarea class="text_pole" rows={6} placeholder="你在故事里是谁。" value={desc} onInput={(e) => { const v = (e.currentTarget as HTMLTextAreaElement).value; setDesc(v); setPersonaDesc(id, v); }} />
+              <small class="rbt-muted">这段会发给 AI。改完自动保存。</small>
+            </label>
+          </section>
+        </div>
+        <div class="rbt-page-group">
+          <Section title="专用它的卡" hint="进这些卡时会换上这个人设">
+            <CardRows cards={cards} back={personaName(id)} empty="还没有卡专用它。在角色档案的「user 人设」里选。" />
+          </Section>
+          <div class="rbt-form-row rbt-wrap">
+            <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => void copy()}><i class="fa-regular fa-copy" aria-hidden="true" /> 复制一份</button>
+            <button type="button" class="rbt-btn rbt-btn-small" onClick={() => void more()}>更多设置 <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" /></button>
+            <button type="button" class="rbt-btn rbt-btn-small rbt-btn-danger" disabled={busy} onClick={async () => { if (await deletePersona(id, () => { personaTick.value++; })) { personaTick.value++; goBack(); } }}>删除</button>
+          </div>
+          <small class="rbt-muted">插入位置、绑定世界书在「更多设置」里改。</small>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 新建人设：头像、名字、描述。从某张卡点进来的（forCard），建好就给这张卡用。 */
+function PersonaNew({ forCard }: { forCard?: string }) {
+  const card = forCard ? (ctx().characters ?? []).find((x: { avatar: string }) => x.avatar === forCard) : null;
+  const [avatar, setAvatar] = useState<PickedAvatar | null>(null);
+  const [name, setName] = useState('');
+  const [desc, setDesc] = useState('');
+  const [busy, setBusy] = useState(false);
+  const create = async () => {
+    const n = name.trim();
+    if (!n) return;
+    setBusy(true);
+    try {
+      const id = await createPersona({ name: n, description: desc, avatar });
+      if (card) {
+        bindPersona(id, card.avatar);
+        if (currentCharacter()?.avatar === card.avatar) await loaded.personas?.setUserAvatar?.(id);
+        toast('success', `已创建「${n}」，「${card.name}」现在用它。`);
+      } else toast('success', `已创建「${n}」。`);
+      personaTick.value++;
+      goBack();
+      openDetail({ kind: 'persona', id }, GLOBAL_TAB_LABELS.personas);
+    } catch (e) {
+      toast('error', `没能创建人设。请再试一次。（${(e as Error).message}）`);
+    } finally { setBusy(false); }
+  };
+  return (
+    <div class="rbt-page">
+      <div class="rbt-detail-head"><h2>新建人设</h2></div>
+      {card && <small class="rbt-muted">建好后「{card.name}」就用这个人设。</small>}
+      <div class="rbt-page-cols">
+        <div class="rbt-page-group">
+          <section class="rbt-card-section">
+            <div class="rbt-persona-av">
+              <img src={avatar?.url ?? 'img/user-default.png'} alt="" />
+              <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={async () => { const p = await pickAvatar(); if (p) { if (avatar) URL.revokeObjectURL(avatar.url); setAvatar(p); } }}>选图片</button>
+            </div>
+            <label class="rbt-field">
+              <span class="rbt-field-label">名字</span>
+              <input class="text_pole" placeholder="比如：旅人" value={name} onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)} />
+            </label>
+            <label class="rbt-field">
+              <span class="rbt-field-label">描述</span>
+              <textarea class="text_pole" rows={6} placeholder="你在故事里是谁。" value={desc} onInput={(e) => setDesc((e.currentTarget as HTMLTextAreaElement).value)} />
+              <small class="rbt-muted">这段会发给 AI。可以先空着，以后再写。</small>
+            </label>
+            <div class="rbt-form-row">
+              <button type="button" class="rbt-btn rbt-btn-primary" disabled={busy || !name.trim()} onClick={() => void create()}>创建</button>
+              <button type="button" class="rbt-btn" disabled={busy} onClick={goBack}>取消</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function PresetDetail({ name }: { name: string }) {
   void archiveVersion.value;
@@ -937,6 +1073,8 @@ function DetailBody() {
       {e.d.kind === 'world' && <WorldDetail name={e.d.name} />}
       {e.d.kind === 'theme' && <ThemeDetail name={e.d.name} />}
       {e.d.kind === 'bindings' && <BindingsDetail avatar={e.d.avatar} />}
+      {e.d.kind === 'persona' && <PersonaDetail key={e.d.id} id={e.d.id} />}
+      {e.d.kind === 'persona-new' && <PersonaNew forCard={e.d.forCard} />}
     </>
   );
 }

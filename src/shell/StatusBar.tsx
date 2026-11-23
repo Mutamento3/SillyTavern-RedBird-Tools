@@ -12,6 +12,7 @@ import { working } from '../st/busy';
 import { openDrawer, openDrawers, type DrawerKey } from './drawers';
 import { planForView, statusTick } from './EnvStatus';
 import { apiOnline, chatTick, personaTick } from './Shell';
+import { personaThumb } from '../st/personas';
 
 interface ItemProps {
   kind: string;
@@ -110,7 +111,7 @@ export function StatusBar() {
       {p.avatar && (
         <Item
           kind="persona" drawer="persona"
-          img={c.getThumbnailUrl?.('persona', p.avatar)}
+          img={personaThumb(p.avatar)}
           text={p.name || '人设'}
           badge={src?.icon}
           title={`人设：${p.name}\n${src ? src.label : '手动选的，没有绑定'}`}

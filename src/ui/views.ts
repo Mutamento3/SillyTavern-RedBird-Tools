@@ -104,7 +104,8 @@ export function setGlobalTab(tab: GlobalTab): void {
 
 // ------------------------------------------------------------ detail ---
 
-export type Detail = { kind: 'card'; avatar: string } | { kind: 'preset'; name: string } | { kind: 'world'; name: string } | { kind: 'theme'; name: string } | { kind: 'bindings'; avatar: string };
+export type Detail = { kind: 'card'; avatar: string } | { kind: 'preset'; name: string } | { kind: 'world'; name: string } | { kind: 'theme'; name: string } | { kind: 'bindings'; avatar: string }
+  | { kind: 'persona'; id: string } | { kind: 'persona-new'; forCard?: string };
 interface DetailEntry { d: Detail; back: string }
 
 /** A stack, so card → preset → card can go back step by step. Cleared when switching tabs. */

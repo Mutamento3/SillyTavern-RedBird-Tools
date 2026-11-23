@@ -5,7 +5,8 @@ import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useState } from 'preact/hooks';
 import { normalizeUrl, splitLinks } from '../../core/cards';
-import { canSwitchChat, ctx, currentCharacter, loaded, toast } from '../../st/st';
+import { canSwitchChat, ctx, currentCharacter, toast } from '../../st/st';
+import { ensureDescriptor } from '../../st/personas';
 import { openFloatMenu } from '../floatMenu';
 import {
   archiveTarget,
@@ -299,14 +300,8 @@ export function boundPersonas(avatar: string): string[] {
 /** 把人设绑到这张卡。酒馆没开「允许一张卡连多个人设」时，先解开别的人设和这张卡的绑定（和酒馆自己一样）。 */
 export function bindPersona(id: string, avatar: string): void {
   const pu = ctx().powerUserSettings;
-  // 只填了名字和头像、没写过描述的人设还没有这一条：和酒馆一样先建一条空的
-  if (id === String(loaded.personas?.user_avatar ?? '')) loaded.personas?.getOrCreatePersonaDescriptor?.();
-  const all = pu?.persona_descriptions ?? {};
-  // 不是现在用的人设、又从没写过描述：酒馆里还没有它这一条，建一条空的（和酒馆建的一样，只是描述留空，不抄现在人设的）
-  if (!all[id] && pu?.personas?.[id] !== undefined) {
-    all[id] = { description: '', position: pu.persona_description_position ?? 0, depth: pu.persona_description_depth ?? 2, role: pu.persona_description_role ?? 0, lorebook: '', connections: [], title: '' };
-  }
-  if (!all[id]) return;
+  if (!ensureDescriptor(id)) return;
+  const all = pu.persona_descriptions;
   if (!pu.persona_allow_multi_connections) {
     for (const k of Object.keys(all)) if (k !== id && all[k].connections) all[k].connections = all[k].connections.filter((x: Conn) => !isCardConn(avatar)(x));
   }

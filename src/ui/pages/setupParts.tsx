@@ -15,6 +15,7 @@ import { buildEnvReport } from '../../tools/env/env';
 import { openDrawer } from '../../shell/drawers';
 import { working } from '../../st/busy';
 import { bindPersona, boundPersonas, personaTick, unbindPersona, watchPersonas } from './parts';
+import { createPersona, personaDesc, personaIds, personaName, personaThumb } from '../../st/personas';
 import { editRegex } from './GlobalPage';
 import { GLOBAL_TAB_LABELS, openDetail, openGlobal } from '../views';
 import { Toggle } from '../common';
@@ -32,8 +33,6 @@ export function Pill({ kind, img }: { kind: PillKind; img?: string }) {
   return <span class={`rbt-pill ${kind === 'global' ? 'rbt-pill-g' : 'rbt-pill-c'}`}>{icon}{PILL_TEXT[kind]}</span>;
 }
 
-export const personaThumb = (id: string): string => ctx().getThumbnailUrl?.('persona', id) ?? `User Avatars/${id}`;
-const personaName = (id: string): string => (ctx().powerUserSettings?.personas ?? {})[id] || id;
 
 export interface Opt { key: string; title: string; sub?: string; /** 分组：和上一个不同时，前面加一个小标题 */ group?: string; lead?: string; selected?: boolean; disabled?: boolean; onPick: () => void }
 
@@ -125,14 +124,16 @@ export function MenuOpt({ title, sub, lead, selected, disabled, onPick }: { titl
 }
 const MenuHead = ({ children }: { children: ComponentChildren }) => <div class="rbt-menu-head">{children}</div>;
 const MenuLine = () => <div class="rbt-menu-line" />;
-function MenuAll({ name, onPick }: { name: string; onPick: () => void }) {
+/** 菜单里的一个动作（不是选项）：左边灰色图标。 */
+function MenuAct({ icon, title, sub, onPick }: { icon: string; title: string; sub?: string; onPick: () => void }) {
   return (
     <button type="button" class="rbt-menu-opt rbt-menu-all" onClick={onPick}>
-      <span class="rbt-menu-tick"><i class="fa-solid fa-arrow-right" aria-hidden="true" /></span>
-      <span class="rbt-menu-t">让所有卡都用「{name}」<small>没设本卡专用的卡也会换成它</small></span>
+      <span class="rbt-menu-tick"><i class={`fa-solid ${icon}`} aria-hidden="true" /></span>
+      <span class="rbt-menu-t">{title}{sub && <small>{sub}</small>}</span>
     </button>
   );
 }
+const MenuAll = ({ name, onPick }: { name: string; onPick: () => void }) => <MenuAct icon="fa-arrow-right" title={`让所有卡都用「${name}」`} sub="没设本卡专用的卡也会换成它" onPick={onPick} />;
 /** 菜单底部的按钮。`inside`：在工具箱里打开详情（结尾 ›），否则去酒馆面板（结尾 ↗）。 */
 export function MenuFoot({ label, onClick, inside }: { label: string; onClick: () => void; inside?: boolean }) {
   return <div class="rbt-menu-foot"><button type="button" class="rbt-btn rbt-btn-small" onClick={onClick}><span class="rbt-menu-foot-t">{label}</span> <i class={`fa-solid ${inside ? 'fa-chevron-right' : 'fa-arrow-up-right-from-square'}`} aria-hidden="true" /></button></div>;
@@ -305,7 +306,7 @@ export function PersonaSetupSection({ info }: { info: CardInfo }) {
   const [open, toggle, close] = useOpen();
   const c = ctx();
   const pu = c.powerUserSettings ?? {};
-  const all = Object.keys(pu.personas ?? {}).sort((a, b) => personaName(a).localeCompare(personaName(b), 'zh'));
+  const all = personaIds();
   const bound = boundPersonas(info.avatar);
   const def = String(pu.default_persona ?? '');
   const live = info.isCurrent;
@@ -327,6 +328,20 @@ export function PersonaSetupSection({ info }: { info: CardInfo }) {
         onclick: async () => { if (id) unbindPersona(id, info.avatar); for (const b of before) bindPersona(b, info.avatar); if (live && was) await loaded.personas?.setUserAvatar?.(was); personaTick.value++; },
       });
     }
+  };
+  // 复制现在这个人设给这张卡用：建好、绑上，然后打开新人设的页面改
+  const copyForCard = async (src: string) => {
+    close();
+    const to = `${personaName(src)} · ${info.name}`;
+    try {
+      const id = await createPersona({ name: to, description: personaDesc(src), from: src });
+      bindPersona(id, info.avatar);
+      if (live) await loaded.personas?.setUserAvatar?.(id);
+      personaTick.value++;
+      toast('success', `已复制成「${to}」，「${info.name}」现在用它。`);
+      openGlobal('personas');
+      openDetail({ kind: 'persona', id }, GLOBAL_TAB_LABELS.personas);
+    } catch (e) { toast('error', `没能复制人设。请再试一次。（${(e as Error).message}）`); }
   };
   const makeDefault = (id: string) => {
     close();
@@ -350,7 +365,12 @@ export function PersonaSetupSection({ info }: { info: CardInfo }) {
         </>}
         head={`${info.name}专用`}
         options={all.map((id) => ({ key: id, title: personaName(id), lead: personaThumb(id), selected: bound.includes(id), onPick: () => { void use(id); } }))}
-        bottom={<MenuFoot label="人设设置" onClick={() => { close(); openDrawer('persona'); }} />} />
+        bottom={<>
+          <MenuLine />
+          <MenuAct icon="fa-plus" title={`给「${info.name}」新建人设`} onPick={() => { close(); openGlobal('personas'); openDetail({ kind: 'persona-new', forCard: info.avatar }, GLOBAL_TAB_LABELS.personas); }} />
+          {cur && <MenuAct icon="fa-copy" title={`复制「${personaName(cur)}」给「${info.name}」用`} sub={`在原来的基础上改，不影响「${personaName(cur)}」`} onPick={() => { void copyForCard(cur); }} />}
+          <MenuFoot label="人设设置" onClick={() => { close(); openDrawer('persona'); }} />
+        </>} />
       {locked && <div class="rbt-pick-hint">这个存档锁定了人设「{personaName(locked)}」，只对这个存档。{bound.length ? `换到这张卡的其他存档，用「${personaName(bound[0])}」。` : ''}</div>}
     </FoldSection>
   );

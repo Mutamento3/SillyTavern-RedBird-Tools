@@ -1800,3 +1800,13 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 #toast-container .rbt-up-text { display: block; }
 #toast-container .rbt-up-bar { display: block; height: 4px; margin-top: 8px; border-radius: 2px; background: color-mix(in srgb, currentColor 18%, transparent); overflow: hidden; }
 #toast-container .rbt-up-fill { display: block; height: 100%; width: 0; border-radius: 2px; background: var(--rbd-accent, #0a84ff); transition: width 0.2s linear; }
+
+/* ===== 人设：列表一行写名字、标签和两行描述；人设自己的页面上头像大一点 ===== */
+.rbt-page-group-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rbt-page-group > .rbt-page-group-head { margin-bottom: calc(var(--rbd-s-2) - var(--rbd-s-4)); }
+.rbt-scope .rbt-page-group-head h2.rbt-page-group-title, .rbt-panel .rbt-page-group-head h2.rbt-page-group-title { margin: 0 2px; }
+.rbt-navrow-title .rbt-persona-title { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; }
+.rbt-navrow-sub:has(> .rbt-clamp2) { white-space: normal; }
+.rbt-persona-av { display: flex; align-items: center; gap: var(--rbd-s-3); }
+.rbt-persona-av img { width: 72px; height: 72px; border-radius: var(--rbd-r-m); object-fit: cover; object-position: 50% 20%; flex: none; }
+.rbt-form-row.rbt-wrap { flex-wrap: wrap; }
