@@ -683,6 +683,30 @@ body.rbt-shell #qr--bar #qr--popoutTrigger {
   white-space: nowrap;
 }
 
+/* ============================ 快速回复的「弹出窗口」：手机上收成顶栏下面一条 ===
+   酒馆的弹出窗口是给电脑做的（手机上酒馆不显示打开它的按钮），可设置是电脑手机共用的：在电脑上打开后，
+   手机上它会盖住大半个屏幕，按钮还一个字一行。三栏界面的手机上把它收成顶栏下面一条：
+   高度跟着按钮走，按钮横着排，右上角的 ✕ 一直看得见（点了变回输入框上方那一排）。
+   酒馆会记住拖过的位置和大小（写在元素上），所以手机上要用 !important 盖掉。 */
+/* 电脑上酒馆把它放在左下角，层级比左栏低，整个被左栏盖住（按钮和 ✕ 都点不到）。抬到左栏上面，还能拖走 */
+body.rbt-shell #qr--popout { z-index: 41; }
+@media screen and (max-width: 1000px) {
+  body.rbt-shell #qr--popout {
+    position: fixed !important;
+    top: calc(var(--rbt-nav-h) + 6px) !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: auto !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: 30vh !important;
+  }
+  body.rbt-shell #qr--popout .qr--button { flex: 0 0 auto; white-space: nowrap; }
+}
+
 /* ============================ 状态点（例如 API 没连上） === */
 .rbt-gbtn { position: relative; }
 .rbt-dot {
