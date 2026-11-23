@@ -430,7 +430,7 @@ export function ImportDialog() {
           {withSource > 0 && <SourceFields src={src} set={setSrc} count={withSource} />}
         </div>
         <footer class="rbt-imp-foot">
-          <small class="rbt-muted">用的是酒馆自己的导入，重名时酒馆会问要不要覆盖。</small>
+          <small class="rbt-muted">用的是酒馆自己的导入。预设、世界书重名时，酒馆会问要不要覆盖。</small>
           <button type="button" class="rbt-btn" disabled={busy} onClick={closeImport}>取消</button>
           <button type="button" class="rbt-btn rbt-btn-primary" disabled={busy || !usable.length} onClick={go}>{busy ? '正在导入…' : `导入 ${usable.length} 个`}</button>
         </footer>
