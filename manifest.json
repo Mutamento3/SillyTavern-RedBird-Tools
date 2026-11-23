@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.34",
+  "version": "0.6.35",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "聊天工具箱里的世界书和正则改成开关，开着就是启用。刷新页面后会回到刚才在聊的卡或群聊，首页的群聊也能打开了。"
+  "rbt_whats_new": "在角色档案的预设、美化菜单里就能看作者和链接。回复生成时换聊天不会再多出空存档。快速回复的弹出窗口在手机上不再挡住聊天。"
 }
