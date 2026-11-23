@@ -41,6 +41,21 @@ export async function stModule(url: string): Promise<Any | null> {
   return moduleCache.get(url)!;
 }
 
+/**
+ * 打开群聊（`chatId`：这个群的哪段聊天，不给就是它上次那段）。
+ * 酒馆的 openGroupChat 只在已经选中这个群时换聊天，不会选中群，所以先用 openGroupById 选中群。
+ */
+export async function openGroup(groupId: string, chatId?: string): Promise<void> {
+  const c = ctx();
+  if (String(c.groupId ?? '') !== groupId) {
+    const gc = await stModule('/scripts/group-chats.js');
+    if (typeof gc?.openGroupById !== 'function') throw new Error('没找到酒馆打开群聊的功能');
+    await gc.openGroupById(groupId);
+  }
+  const g = ctx().groups?.find((x: Any) => String(x.id) === groupId);
+  if (chatId && g && g.chat_id !== chatId) await ctx().openGroupChat(groupId, chatId);
+}
+
 export const ST_MODULES = {
   openai: '/scripts/openai.js',
   worldInfo: '/scripts/world-info.js',

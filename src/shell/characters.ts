@@ -4,7 +4,7 @@
  */
 import { signal } from '@preact/signals';
 import { cleanPreview } from './recent';
-import { charaFileName, ctx, escHtml, loaded, stModule, toast, type Any } from '../st/st';
+import { charaFileName, ctx, escHtml, loaded, openGroup, stModule, toast, type Any } from '../st/st';
 import { openDrawer } from './drawers';
 import { cardFacts, cardInfo, extStatus, installedExtensions, requiredExtensions, worldNames } from '../tools/cards/cards';
 import { trash } from '../tools/trash';
@@ -169,8 +169,7 @@ export async function openCharacter(it: CharItem): Promise<void> {
   const c = ctx();
   try {
     if (it.kind === 'group') {
-      const g = c.groups?.find((x: Any) => String(x.id) === it.ref);
-      await c.openGroupChat(it.ref, g?.chat_id);
+      await openGroup(it.ref);
     } else if (String(c.characterId) !== it.ref || c.groupId) {
       await c.selectCharacterById(Number(it.ref));
     }
@@ -383,4 +382,28 @@ export function installCharactersWatch(): void {
     c.eventTypes.CHARACTER_RENAMED, c.eventTypes.CHAT_CHANGED, c.eventTypes.GROUP_UPDATED, c.eventTypes.APP_READY]) {
     if (ev) c.eventSource.on(ev, bump);
   }
+  c.eventSource.on(c.eventTypes.CHAT_CHANGED, () => { void rememberOpenChat(); });
+}
+
+/**
+ * 刷新页面后酒馆打开的卡（「自动加载上次的聊天」），酒馆只在点它自己的角色列表时记下。
+ * 从工具箱的首页、最近聊过换卡时也要记，不然刷新后会回到很早以前在酒馆列表里点过的那张。
+ * 所以每次换聊天都记下现在开着的卡或群聊，和酒馆点列表时做的一样。
+ */
+async function rememberOpenChat(): Promise<void> {
+  const c = ctx();
+  const script = await stModule('/script.js');
+  if (typeof script?.setActiveCharacter !== 'function' || typeof script.setActiveGroup !== 'function') return;
+  if (c.groupId) {
+    if (String(script.active_group) === String(c.groupId)) return;
+    // 酒馆只认标签表里有的群（在酒馆里建的群都有）；没有就补一个空的，和酒馆给角色补的一样
+    const tags = await stModule('/scripts/tags.js');
+    if (tags?.tag_map && !(c.groupId in tags.tag_map)) tags.tag_map[c.groupId] = [];
+    script.setActiveGroup(c.groupId);
+  } else {
+    const ch = c.characters?.[Number(c.characterId)];
+    if (!ch || script.active_character === ch.avatar) return;
+    script.setActiveCharacter(ch.avatar);
+  }
+  c.saveSettingsDebounced();
 }

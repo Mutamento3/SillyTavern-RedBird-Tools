@@ -4,7 +4,7 @@
  * 酒馆首页在页面加载时把它缓存一次，所以在这里改了置顶、不刷新就去酒馆首页再改，会盖掉这里的改动。
  */
 import { signal } from '@preact/signals';
-import { confirmText, ctx, currentCharacter, stModule, toast, type Any } from '../st/st';
+import { confirmText, ctx, currentCharacter, openGroup, stModule, toast, type Any } from '../st/st';
 
 export interface RecentChat {
   key: string;
@@ -152,7 +152,7 @@ export async function openRecentChat(r: RecentChat): Promise<void> {
   const c = ctx();
   try {
     if (r.group) {
-      await c.openGroupChat(r.group, r.chatId);
+      await openGroup(r.group, r.chatId);
       return;
     }
     const idx = c.characters.findIndex((x: Any) => x.avatar === r.avatar);
