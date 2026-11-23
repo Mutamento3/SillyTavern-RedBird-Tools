@@ -268,7 +268,8 @@ function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filter
       {groups.map((g) => (
         <SeriesGroup key={g.series || '_'} kind={kind} series={g.series} bare={groups.length === 1 && !g.series} title={g.series ? `${g.series} 系列` : (groups.length > 1 ? `其他${restTitle}` : `全部${restTitle}`)} count={g.names.length}>
           {g.names.map((n) => {
-            if (!selecting) return <NavRow key={n} title={n} sub={sub(n) || undefined} trailing={trail?.(n)} onClick={() => openItem(kind, n, back)} />;
+            // 记了链接的，名字后面有个链接图标：一眼看出点进去有发布帖、教程
+            if (!selecting) return <NavRow key={n} title={sourceFor(kind, n).links.length ? <>{n}<i class="fa-solid fa-link rbt-navrow-link" role="img" aria-label="有链接" /></> : n} sub={sub(n) || undefined} trailing={trail?.(n)} onClick={() => openItem(kind, n, back)} />;
             const why = locked?.(n);
             return (
               <label key={n} class={`rbt-pickrow ${picked.includes(n) ? 'on' : ''} ${why ? 'locked' : ''}`} title={why ?? undefined}>
@@ -407,7 +408,7 @@ function PresetsPage() {
               const rec = ov.byPreset.get(n);
               const rx = presetRegexCount(n);
               const m = settings().presetInfo[n]?.model;
-              return [v.version && `版本 ${v.version}`, m && `模型 ${m.model}`, v.author && `作者 ${v.author}`, rec?.length && `${rec.length} 张卡专用`, rx && `${rx} 条正则`].filter(Boolean).join(' · ');
+              return [v.author && `作者 ${v.author}`, v.version && `版本 ${v.version}`, m && `模型 ${m.model}`, rec?.length && `${rec.length} 张卡专用`, rx && `${rx} 条正则`].filter(Boolean).join(' · ');
             }}
             trail={(n) => (n === cur ? <Tag tone="accent">正在用</Tag> : n === global ? <Tag>全局</Tag> : null)}
             locked={(n) => (n === cur ? '正在用' : n === global ? '全局预设' : null)}
@@ -560,7 +561,7 @@ function WorldsPage() {
             names={names}
             back={back}
             restTitle="世界书"
-            sub={(n) => { const v = sourceFor('world', n); const cs = cardsOf(ov.byWorld.get(n)); return [cs ? `绑定：${cs}` : '未绑定角色', v.version && `版本 ${v.version}`, v.author && `作者 ${v.author}`].filter(Boolean).join(' · '); }}
+            sub={(n) => { const v = sourceFor('world', n); const cs = cardsOf(ov.byWorld.get(n)); return [v.author && `作者 ${v.author}`, cs ? `绑定：${cs}` : '未绑定角色', v.version && `版本 ${v.version}`].filter(Boolean).join(' · '); }}
             filters={[
               { label: '全部', test: () => true },
               { label: '已绑定角色', test: (n) => ov.byWorld.has(n) },
@@ -864,7 +865,7 @@ function LooksPage() {
                 const t = list.find((x) => x.name === n);
                 const v = sourceFor('theme', n);
                 const used = ov.byTheme.get(n)?.length;
-                return [themeHasCss(t) ? '带自定义样式' : '只换颜色', v.version && `版本 ${v.version}`, v.author && `作者 ${v.author}`, used && `${used} 张卡在用`].filter(Boolean).join(' · ');
+                return [v.author && `作者 ${v.author}`, themeHasCss(t) ? '带自定义样式' : '只换颜色', v.version && `版本 ${v.version}`, used && `${used} 张卡在用`].filter(Boolean).join(' · ');
               }}
               trail={(n) => {
                 const t = list.find((x) => x.name === n);

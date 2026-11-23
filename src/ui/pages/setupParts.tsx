@@ -16,6 +16,7 @@ import { openDrawer } from '../../shell/drawers';
 import { working } from '../../st/busy';
 import { bindPersona, boundPersonas, personaTick, unbindPersona, watchPersonas } from './parts';
 import { editRegex } from './GlobalPage';
+import { GLOBAL_TAB_LABELS, openDetail, openGlobal } from '../views';
 import { Toggle } from '../common';
 
 // --------------------------------------------------------------- bits ---
@@ -132,8 +133,9 @@ function MenuAll({ name, onPick }: { name: string; onPick: () => void }) {
     </button>
   );
 }
-export function MenuFoot({ label, onClick }: { label: string; onClick: () => void }) {
-  return <div class="rbt-menu-foot"><button type="button" class="rbt-btn rbt-btn-small" onClick={onClick}>{label} <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" /></button></div>;
+/** 菜单底部的按钮。`inside`：在工具箱里打开详情（结尾 ›），否则去酒馆面板（结尾 ↗）。 */
+export function MenuFoot({ label, onClick, inside }: { label: string; onClick: () => void; inside?: boolean }) {
+  return <div class="rbt-menu-foot"><button type="button" class="rbt-btn rbt-btn-small" onClick={onClick}><span class="rbt-menu-foot-t">{label}</span> <i class={`fa-solid ${inside ? 'fa-chevron-right' : 'fa-arrow-up-right-from-square'}`} aria-hidden="true" /></button></div>;
 }
 
 /** 去酒馆面板的入口（分区右上角）。 */
@@ -247,7 +249,10 @@ export function PresetModelSection({ info }: { info: CardInfo }) {
         </>}
         head={`${info.name}专用`}
         options={names.map((n) => ({ key: n, title: n, selected: own === n, onPick: () => run({ k: 'preset', value: n }, () => setCardItem(info.avatar, info.name, 'preset', n)) }))}
-        bottom={<MenuFoot label="预设设置" onClick={() => { close(); openDrawer('preset'); }} />} />
+        bottom={<>
+          {preset && names.includes(preset) && <MenuFoot inside label={`「${preset}」的作者和链接`} onClick={() => { close(); openGlobal('presets'); openDetail({ kind: 'preset', name: preset }, GLOBAL_TAB_LABELS.presets); }} />}
+          <MenuFoot label="预设设置" onClick={() => { close(); openDrawer('preset'); }} />
+        </>} />
       {p?.preset && p.preset.api === api && !names.includes(p.preset.name) && <div class="rbt-pick-hint warn">这张卡专用的「{p.preset.name}」已经删掉了，现在用全局的。</div>}
       {p?.preset && p.preset.api !== api && <div class="rbt-pick-hint warn">这张卡专用的「{p.preset.name}」是「{apiLabel(p.preset.api)}」的预设，现在用的是「{apiLabel(api)}」，所以没换。</div>}
 

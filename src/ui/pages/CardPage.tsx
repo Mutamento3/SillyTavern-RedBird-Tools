@@ -18,7 +18,7 @@ import { NodeRows } from './ScriptsPage';
 import { EditButton, openRegexManager, openScriptManager } from './GlobalPage';
 import { bindPersona, boundPersonas, CardHeader, DiffList, ExtSection, openWorldInST, personaTick, SourceSection, unbindPersona, withCardOpen } from './parts';
 import { FoldSection, UseRow, MenuFoot, MenuOpt, PanelBtn, PickRow, Pill, PersonaSetupSection, PresetModelSection, RegexSetupSection, WorldSetupSection, type Opt } from './setupParts';
-import { loadThemes, LOOKS, stThemes, themesLoading } from '../../look/look';
+import { currentStTheme, loadThemes, lookOn, LOOKS, stThemes, themesLoading } from '../../look/look';
 import { appliedCardTheme, cardLookTick, cardThemeOf, globalLookLabel, lookLabel, RBT_LOOK } from '../../look/cardLook';
 import { GLOBAL_TAB_LABELS, openDetail, openGlobal } from '../views';
 import { extStatus, installedExtensions, requiredExtensions } from '../../tools/cards/cards';
@@ -197,6 +197,9 @@ function LookSetupSection({ info }: { info: CardInfo }) {
   const own = cardThemeOf(info.avatar);
   const global = globalLookLabel();
   const shown = info.isCurrent && appliedCardTheme.value ? lookLabel(appliedCardTheme.value) : own ? lookLabel(own) : global;
+  // 现在显示的这套是酒馆里的美化（不是红鸟自带的）：菜单里给一个去它详情的入口，看作者和链接
+  const shownRaw = info.isCurrent && appliedCardTheme.value ? appliedCardTheme.value : own ?? (lookOn.value ? RBT_LOOK : currentStTheme());
+  const shownTheme = shownRaw && !shownRaw.startsWith(RBT_LOOK) && names.includes(shownRaw) ? shownRaw : '';
   const pick = (v: string | null) => { setOpen(false); setCardTheme(info.avatar, info.name, v); };
   const goAll = () => { openGlobal('looks'); if (own && names.includes(own)) openDetail({ kind: 'theme', name: own }, GLOBAL_TAB_LABELS.looks); };
   const gone = own && !own.startsWith(RBT_LOOK) && names.length > 0 && !names.includes(own);
@@ -210,7 +213,10 @@ function LookSetupSection({ info }: { info: CardInfo }) {
       <PickRow k="美化" value={shown} pill={<Pill kind={own ? 'card' : 'global'} img={thumbnailUrl(info.avatar)} />} open={open} onToggle={() => setOpen(!open)} onClose={() => setOpen(false)}
         top={<MenuOpt title="全局" sub={`和其他卡一样：${global}`} selected={!own} onPick={() => pick(null)} />}
         head={`${info.name}专用`} options={options}
-        bottom={<MenuFoot label="查看全部美化" onClick={() => { setOpen(false); goAll(); }} />} />
+        bottom={<>
+          {shownTheme && <MenuFoot inside label={`「${shownTheme}」的作者和链接`} onClick={() => { setOpen(false); openGlobal('looks'); openDetail({ kind: 'theme', name: shownTheme }, GLOBAL_TAB_LABELS.looks); }} />}
+          <MenuFoot label="查看全部美化" onClick={() => { setOpen(false); goAll(); }} />
+        </>} />
       {info.isCurrent && ctx().getCurrentChatId?.() && <ChatBgRow />}
     </FoldSection>
   );

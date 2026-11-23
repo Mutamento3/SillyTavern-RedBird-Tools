@@ -1664,6 +1664,11 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-menu-all .rbt-menu-tick { color: var(--t2); }
 .rbt-menu-foot { padding: 6px 8px 4px; }
 .rbt-menu-foot .rbt-btn { width: 100%; justify-content: center; }
+.rbt-menu-foot + .rbt-menu-foot { padding-top: 0; }
+/* 长名字的预设、美化：按钮里一行放不下就省略，不撑宽菜单 */
+.rbt-menu-foot-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 列表里记了链接的：名字后面一个淡淡的链接图标 */
+.rbt-navrow-link { margin-left: 6px; font-size: 0.8em; color: var(--t3); }
 .rbt-menu-form { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 12px 8px 32px; }
 .rbt-menu-form .rbt-select { flex: 0 0 auto; width: auto; }
 .rbt-menu-form .rbt-input { flex: 1 1 160px; }
