@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.32",
+  "version": "0.6.33",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "导入同名的卡时，默认更新原来那张，聊天记录都保留。删卡时可以一起删它的世界书。首页大图改成显示标签，同名的卡会写添加日期。"
+  "rbt_whats_new": "提示和确认框写得更清楚了：按钮直接写要做的事，出错时会说怎么办。聊天没读出来时，提示会写明是哪张卡，并告诉你原来的记录还在。"
 }
