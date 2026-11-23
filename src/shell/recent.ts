@@ -4,7 +4,7 @@
  * 酒馆首页在页面加载时把它缓存一次，所以在这里改了置顶、不刷新就去酒馆首页再改，会盖掉这里的改动。
  */
 import { signal } from '@preact/signals';
-import { confirmText, ctx, currentCharacter, openGroup, stModule, toast, type Any } from '../st/st';
+import { canSwitchChat, confirmText, ctx, currentCharacter, openGroup, stModule, toast, type Any } from '../st/st';
 
 export interface RecentChat {
   key: string;
@@ -157,7 +157,10 @@ export async function openRecentChat(r: RecentChat): Promise<void> {
     }
     const idx = c.characters.findIndex((x: Any) => x.avatar === r.avatar);
     if (idx < 0) throw new Error('角色不存在');
+    if (!canSwitchChat()) return;
     if (String(c.characterId) !== String(idx)) await c.selectCharacterById(idx);
+    // 酒馆没换到这张卡（正在存档等）：不能接着开这段聊天，不然会在原来那张卡下面新建一个同名的空存档
+    if (String(ctx().characterId) !== String(idx)) return;
     if (String(ctx().getCurrentChatId?.() ?? '') !== r.chatId) await ctx().openCharacterChat(r.chatId);
   } catch (e) {
     console.error('[RedBird] open chat failed', e);

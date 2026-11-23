@@ -5,7 +5,7 @@ import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useState } from 'preact/hooks';
 import { normalizeUrl, splitLinks } from '../../core/cards';
-import { ctx, currentCharacter, loaded, toast } from '../../st/st';
+import { canSwitchChat, ctx, currentCharacter, loaded, toast } from '../../st/st';
 import { openFloatMenu } from '../floatMenu';
 import {
   archiveTarget,
@@ -91,9 +91,11 @@ export async function withCardOpen(info: CardInfo, then: () => void): Promise<vo
   if (!info.isCurrent) {
     const c = ctx();
     const idx = (c.characters ?? []).findIndex((x: { avatar?: string }) => x.avatar === info.avatar);
-    if (idx < 0) return;
+    if (idx < 0 || !canSwitchChat()) return;
     closeSheet();
     await c.selectCharacterById(idx);
+    // 酒馆没换到这张卡：不打开面板，不然改的是正在聊的那张
+    if (String(ctx().characterId) !== String(idx)) return;
     // 换卡时会关掉开着的面板，等它关完再打开
     await new Promise((r) => setTimeout(r, 400));
   }

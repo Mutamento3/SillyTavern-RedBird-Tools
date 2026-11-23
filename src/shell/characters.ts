@@ -4,7 +4,7 @@
  */
 import { signal } from '@preact/signals';
 import { cleanPreview } from './recent';
-import { charaFileName, ctx, escHtml, loaded, openGroup, stModule, toast, type Any } from '../st/st';
+import { canSwitchChat, charaFileName, ctx, escHtml, loaded, openGroup, stModule, toast, type Any } from '../st/st';
 import { openDrawer } from './drawers';
 import { cardFacts, cardInfo, extStatus, installedExtensions, requiredExtensions, worldNames } from '../tools/cards/cards';
 import { trash } from '../tools/trash';
@@ -170,7 +170,7 @@ export async function openCharacter(it: CharItem): Promise<void> {
   try {
     if (it.kind === 'group') {
       await openGroup(it.ref);
-    } else if (String(c.characterId) !== it.ref || c.groupId) {
+    } else if ((String(c.characterId) !== it.ref || c.groupId) && canSwitchChat()) {
       await c.selectCharacterById(Number(it.ref));
     }
   } catch (e) {
