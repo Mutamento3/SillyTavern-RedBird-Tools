@@ -258,7 +258,7 @@ export async function runImport(items: ImportItem[], hooks: {
 
   for (const it of items.filter((i) => i.kind === 'world')) {
     const before = new Set(hooks.worldNames());
-    try { await loaded.worldInfo?.importWorldInfo?.(it.file); } catch (e) { toast('error', `导入世界书「${it.file.name}」失败：${(e as Error).message}`, '导入'); }
+    try { await loaded.worldInfo?.importWorldInfo?.(it.file); } catch (e) { toast('error', `没能导入世界书「${it.file.name}」。这个文件可能坏了，或者不是酒馆的世界书。（${(e as Error).message}）`, '导入'); }
     const name = await waitForNew(hooks.worldNames, before, baseName(it.file), 3000);
     if (name && hasExtra(it)) hooks.saveSource('world', name, { author: it.author.trim(), links: linksOf(it), notes: it.notes.trim() });
     if (name && it.activate) await hooks.setWorldGlobal(name);
@@ -267,7 +267,7 @@ export async function runImport(items: ImportItem[], hooks: {
   }
   for (const it of items.filter((i) => i.kind === 'preset')) {
     const before = new Set(hooks.presetNames());
-    if (!feed('openai_preset_import_file', [it.file], 'input')) { toast('error', '找不到酒馆的预设导入入口（需要 Chat Completion 模式）。', '导入'); break; }
+    if (!feed('openai_preset_import_file', [it.file], 'input')) { toast('error', '预设没有导入。导入预设要先在「API 设置」里选 Chat Completion。', '导入'); break; }
     const name = await waitForNew(hooks.presetNames, before, baseName(it.file));
     if (name && hasExtra(it)) hooks.saveSource('preset', name, { author: it.author.trim(), links: linksOf(it), notes: it.notes.trim() });
     if (name && it.activate) await hooks.switchPreset(name);
@@ -279,7 +279,7 @@ export async function runImport(items: ImportItem[], hooks: {
     try { name = String(JSON.parse(await it.file.text()).name ?? ''); } catch { /* unreadable */ }
     const has = () => !!name && [...document.querySelectorAll<HTMLOptionElement>('#themes option')].some((o) => o.value === name);
     if (has()) { toast('warning', `已经有叫「${name}」的美化了，酒馆不会覆盖。要更新的话，先在「用户设置 › 界面主题」里删掉旧的。`, '导入'); done.push({ item: it, name: null }); continue; }
-    if (!feed('ui_preset_import_file', [it.file], 'change')) { toast('error', '找不到酒馆的美化导入入口。', '导入'); break; }
+    if (!feed('ui_preset_import_file', [it.file], 'change')) { toast('error', `美化「${name || it.file.name}」没有导入。请切回原版界面，在「用户设置 › 界面主题」里导入。`, '导入'); break; }
     const t0 = Date.now();
     while (!has() && Date.now() - t0 < 15000) await wait(300);
     if (has() && hasExtra(it)) hooks.saveSource('theme', name, { author: it.author.trim(), links: linksOf(it), notes: it.notes.trim() });
@@ -289,7 +289,7 @@ export async function runImport(items: ImportItem[], hooks: {
   }
   for (const it of items.filter((i) => i.kind === 'script')) {
     let name: string | null = null;
-    try { name = await hooks.importScript(JSON.parse(await it.file.text()), it.activate); } catch (e) { toast('error', `导入脚本「${it.file.name}」失败：${(e as Error).message}`, '导入'); }
+    try { name = await hooks.importScript(JSON.parse(await it.file.text()), it.activate); } catch (e) { toast('error', `没能导入脚本「${it.file.name}」。这个文件可能坏了，或者不是酒馆助手的脚本。（${(e as Error).message}）`, '导入'); }
     done.push({ item: it, name });
   }
   const rx = items.filter((i) => i.kind === 'regex');
@@ -305,7 +305,7 @@ export async function runImport(items: ImportItem[], hooks: {
       else feed('character_import_file', [it.file], 'change');
     });
     if (replacing) {
-      try { await replacing; } catch (e) { toast('error', `更新「${it.title}」没成功：${(e as Error).message}`, '导入'); done.push({ item: it, name: null, failed: true }); continue; }
+      try { await replacing; } catch (e) { toast('error', `没能更新「${it.title}」。请刷新页面再试一次。（${(e as Error).message}）`, '导入'); done.push({ item: it, name: null, failed: true }); continue; }
     }
     const file = (reply as { file_name?: unknown } | undefined)?.file_name;
     // 酒馆说没导入成功：它已经提示过了，接着导下一个

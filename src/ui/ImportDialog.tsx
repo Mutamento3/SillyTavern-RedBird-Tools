@@ -397,7 +397,7 @@ export function ImportDialog() {
         },
       });
       const missed = done.filter((d) => !d.name && !d.failed && d.item.kind !== 'regex');
-      if (missed.length) toast('warning', `这些没能确认导入成功（可能在酒馆的提示里取消了）：${missed.map((d) => d.item.file.name).join('、')}`, '导入');
+      if (missed.length) toast('warning', `这些文件可能没有导入：${missed.map((d) => d.item.file.name).join('、')}。要是在酒馆的提示里点了取消，就是这个原因。`, '导入');
       const tabs = [...new Set(usable.map((i) => KIND_TAB[i.kind]).filter(Boolean))];
       if (tabs.length === 1 && sheetOpen.value) setGlobalTab(tabs[0]!);
       archiveVersion.value++;

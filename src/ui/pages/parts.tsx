@@ -170,7 +170,7 @@ export function SourceSection({ info, bare }: { info: CardInfo; bare?: boolean }
     const l = links[i];
     openFloatMenu(anchor, l.label, [
       { label: '编辑', icon: 'fa-pen', run: () => { setEditLabel(l.label); setEditUrl(l.url); setEditIdx(i); } },
-      { label: '复制链接', icon: 'fa-copy', run: async () => { try { await navigator.clipboard.writeText(l.url); toast('success', '已复制链接。'); } catch { toast('error', '没能复制，请长按链接复制。'); } } },
+      { label: '复制链接', icon: 'fa-copy', run: async () => { try { await navigator.clipboard.writeText(l.url); toast('success', '已复制链接。'); } catch { toast('error', '没能复制。请手动选中链接复制。'); } } },
       { label: '删除', icon: 'fa-trash-can', danger: true, run: () => removeLink(i) },
     ]);
   };

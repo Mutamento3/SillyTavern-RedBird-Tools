@@ -276,7 +276,7 @@ function RevertRow({ info }: { info: CardInfo }) {
   if (!lines.length) return null;
   const go = async () => {
     const text = `${lines.map(([, n, a, b]) => `${n}：${a}（${b}）`).join('\n')}\n\n角色卡里的世界书、正则、脚本不变；这个存档的背景不变。`;
-    if (!await confirmText('这张卡改用全局设置？', text)) return;
+    if (!await confirmText('这张卡改用全局设置？', text, '改用全局')) return;
     setBusy(true);
     try {
       const persona = boundPersonas(info.avatar);

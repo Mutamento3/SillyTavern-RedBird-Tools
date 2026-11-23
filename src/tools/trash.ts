@@ -40,7 +40,7 @@ async function backup(kind: TrashKind, items: Removed[]): Promise<string> {
   const file = `rbt-deleted-${kind}-${stamp}.json`;
   const body = JSON.stringify({ rbtDeleted: kind, at: new Date().toISOString(), items: items.map(({ name, data, wasGlobal, index }) => ({ name, data, wasGlobal, index })) }, null, 2);
   const res = await fetch('/api/files/upload', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({ name: file, data: toBase64(body) }) });
-  if (!res.ok) throw new Error(`备份失败：${res.status}`);
+  if (!res.ok) throw new Error(`错误 ${res.status}`);
   return file;
 }
 
@@ -146,16 +146,16 @@ export async function trash(kind: TrashKind, ids: string[]): Promise<number> {
   try {
     file = await backup(kind, items);
   } catch (e) {
-    toast('error', `${(e as Error).message}，没有删除。`, '删除');
+    toast('error', `没能先备份，所以没有删除。请再试一次。（${(e as Error).message}）`, '删除');
     return 0;
   }
   const done = await remove(items);
   after(kind);
-  if (!done.length) { toast('error', `没能删除${label}。`, '删除'); return 0; }
+  if (!done.length) { toast('error', `没能删除${label}。请刷新页面再试一次。`, '删除'); return 0; }
   const failed = items.length - done.length;
   const what = done.length === 1 ? `「${done[0].name}」` : `${done.length} 个${label}`;
   let undone = false;
-  toast('success', `已删除${what}${failed ? `，另有 ${failed} 个没删掉` : ''}。点这里撤销。备份在 user/files/${file}`, '删除', {
+  toast('success', `已删除${what}${failed ? `，另有 ${failed} 个没删掉` : ''}。点这里撤销。备份在 data/你的用户名/user/files 里`, '删除', {
     timeOut: 15000,
     extendedTimeOut: 8000,
     onclick: async () => {

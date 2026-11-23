@@ -80,7 +80,7 @@ export async function updateExtension(id: string): Promise<{ ok: true; upToDate:
 
 /** 刷新页面后新版本才生效：问一句要不要现在刷新。 */
 export async function askReload(): Promise<void> {
-  if (await confirmText('已经更新好了', '刷新页面后新版本才会生效。现在刷新吗？')) location.reload();
+  if (await confirmText('已经更新好了', '刷新页面后新版本才会生效。现在刷新吗？', '刷新页面', '稍后')) location.reload();
   else toast('info', '下次刷新页面时会换成新版本。', 'RedBird 工具箱');
 }
 
@@ -95,7 +95,7 @@ export async function updateNow(): Promise<void> {
   toast('info', '正在更新…', 'RedBird 工具箱', { timeOut: 4000 });
   try {
     const r = await updateExtension(id.replace(/^third-party\//, ''));
-    if (!r.ok) { toast('error', `没能更新：${r.why} 点这里打开「管理扩展程序」手动更新。`, 'RedBird 工具箱', { onclick: openManager, timeOut: 12000 }); return; }
+    if (!r.ok) { toast('error', `没能更新工具箱。点这里打开「管理扩展程序」手动更新。（${r.why}）`, 'RedBird 工具箱', { onclick: openManager, timeOut: 12000 }); return; }
     if (r.upToDate) { toast('success', '已经是最新版本。', 'RedBird 工具箱'); return; }
     await askReload();
   } finally {
@@ -136,14 +136,14 @@ export async function updatePlugins(list: { id: string; name: string }[]): Promi
   for (const { id, name } of list) {
     set(id, 'updating');
     const r = await updateExtension(id);
-    if (r.ok) { set(id, 'updated'); done++; } else { set(id, 'new'); toast('error', `没能更新「${name}」：${r.why}`, 'RedBird 工具箱', { timeOut: 12000 }); }
+    if (r.ok) { set(id, 'updated'); done++; } else { set(id, 'new'); toast('error', `没能更新「${name}」。请在「管理扩展程序」里手动更新。（${r.why}）`, 'RedBird 工具箱', { timeOut: 12000 }); }
   }
   if (done) await askReload();
 }
 
-/** 问一句要不要更新到这个版本，点「是」就更新。 */
+/** 问一句要不要更新到这个版本，点「更新」就更新。 */
 export async function askUpdate(latest: Latest): Promise<void> {
-  if (await confirmText(`有新版本 ${latest.version}`, `你装的是 ${installedVersion()}。${latest.whatsNew ? `${latest.whatsNew}　` : ''}现在更新吗？`)) await updateNow();
+  if (await confirmText(`有新版本 ${latest.version}`, `你装的是 ${installedVersion()}。${latest.whatsNew ? `${latest.whatsNew}　` : ''}现在更新吗？`, '更新', '以后再说')) await updateNow();
 }
 
 /** `force`: the 「检查更新」 button — always says something. Otherwise the startup check: the toast shows at most once a day. */

@@ -162,7 +162,7 @@ export function GlobalRegexList({ items }: { items: EnvItem[] }) {
     const list = scripts.filter((r) => picked.includes(r.id));
     if (!list.length) return;
     const shown = list.length <= 6 ? list.map((r) => `「${r.scriptName}」`).join('') : `${list.slice(0, 6).map((r) => `「${r.scriptName}」`).join('')} 等 ${list.length} 条`;
-    if (!(await confirmText(`删除 ${list.length} 条全局正则？`, `${shown}　删除前会先备份，删完 15 秒内可以撤销。`))) return;
+    if (!(await confirmText(`删除 ${list.length} 条全局正则？`, `${shown}　删除前会先备份，删完 15 秒内可以撤销。`, '删除'))) return;
     setBusy(true);
     try { if (await trash('regex', list.map((r) => r.id))) setPicked([]); } finally { setBusy(false); }
   };

@@ -353,7 +353,7 @@ function openTemporaryChat(): void {
 
 /** Leaving the shell is easy to click by accident, so confirm and say how to come back. */
 async function leaveShell(): Promise<void> {
-  const ok = await confirmText('切回原版界面？', '想回来时，点输入框旁边的魔法棒 › 三栏界面。');
+  const ok = await confirmText('切回原版界面？', '想回来时，点输入框旁边的魔法棒 › 三栏界面。', '切回原版');
   if (ok) setShellEnabled(false);
 }
 

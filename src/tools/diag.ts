@@ -122,7 +122,7 @@ export async function exportDiagnostics(): Promise<string | null> {
     return path;
   } catch (e) {
     console.error('[RedBird] export failed', e);
-    toast('error', `导出失败：${String(e)}`);
+    toast('error', `没能导出诊断数据。请再试一次。（${String(e)}）`);
     return null;
   }
 }

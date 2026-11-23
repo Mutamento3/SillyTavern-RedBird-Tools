@@ -161,7 +161,7 @@ export async function openRecentChat(r: RecentChat): Promise<void> {
     if (String(ctx().getCurrentChatId?.() ?? '') !== r.chatId) await ctx().openCharacterChat(r.chatId);
   } catch (e) {
     console.error('[RedBird] open chat failed', e);
-    toast('error', `打开聊天失败：${String(e)}`);
+    toast('error', `没能打开「${r.name}」的这段聊天。请刷新页面再试一次。`);
   }
 }
 
@@ -171,7 +171,7 @@ export async function openRecentChat(r: RecentChat): Promise<void> {
  */
 export async function deleteRecentChat(r: RecentChat): Promise<void> {
   const save = prettyChatName(r.chatId, r.name);
-  const ok = await confirmText(`删除「${r.name}」的存档「${save}」？`, '这个存档里的聊天记录会被删掉，不能恢复。');
+  const ok = await confirmText(`删除「${r.name}」的存档「${save}」？`, '这个存档里的聊天记录会被删掉，不能恢复。', '删除');
   if (!ok) return;
   const c = ctx();
   const wasCurrent = isCurrentChat(r);
@@ -194,7 +194,7 @@ export async function deleteRecentChat(r: RecentChat): Promise<void> {
     refreshRecentSoon(600);
     toast('success', `已删除存档「${save}」。`);
   } catch (e) {
-    toast('error', `没能删除：${String((e as Error)?.message ?? e)}`);
+    toast('error', `没能删除存档「${save}」。请刷新页面再试一次。（${String((e as Error)?.message ?? e)}）`);
   }
 }
 

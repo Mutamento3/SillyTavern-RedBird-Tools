@@ -114,7 +114,7 @@ export async function reloadChatSafe(): Promise<void> {
   if (!chatBusy()) { await redrawChat(); return; }
   if (reloadWaiting) return;
   reloadWaiting = true;
-  toast('info', '等这条回复生成完、或编辑保存后，聊天会自动刷新。');
+  toast('info', '刚才的改动要刷新聊天才能看到。等这条回复生成完或编辑保存后，会自动刷新。');
   try {
     while (chatBusy()) await new Promise((r) => setTimeout(r, 1000));
     if (ctx().getCurrentChatId?.() === id) await redrawChat();
@@ -163,8 +163,9 @@ export async function confirmBox(title: string, text: string, note: string, ok: 
   return !!(await ctx().Popup?.show?.confirm?.(escHtml(title), html, { okButton: ok, cancelButton: true, leftAlign: true }));
 }
 
-export async function confirmText(title: string, text: string): Promise<boolean> {
-  return !!(await ctx().Popup?.show?.confirm?.(escHtml(title), escHtml(text)));
+/** 按钮写会发生什么（「删除」「更新」），不用酒馆默认的「是 / 否」。 */
+export async function confirmText(title: string, text: string, ok: string, cancel = '取消'): Promise<boolean> {
+  return !!(await ctx().Popup?.show?.confirm?.(escHtml(title), escHtml(text), { okButton: ok, cancelButton: cancel }));
 }
 
 /**

@@ -176,7 +176,7 @@ export async function openCharacter(it: CharItem): Promise<void> {
     }
   } catch (e) {
     console.error('[RedBird] open character failed', e);
-    toast('error', `打开失败：${String(e)}`);
+    toast('error', `没能打开「${it.name}」。请刷新页面再试一次。`);
   }
 }
 
@@ -208,7 +208,7 @@ export async function toggleFavorite(it: CharItem): Promise<void> {
     body: JSON.stringify({ avatar: ch.avatar, fav: next, data: { extensions: { fav: next } } }),
   });
   if (!res.ok) {
-    toast('error', `置顶没保存上：${res.status}`);
+    toast('error', `没能${next ? '置顶' : '取消置顶'}「${ch.name}」。请刷新页面再试一次。（错误 ${res.status}）`);
     return;
   }
   ch.fav = next;
@@ -249,7 +249,7 @@ export async function exportCharacter(it: CharItem, format: 'png' | 'json' = 'pn
   const ch = charOf(it);
   if (!ch) return;
   const res = await fetch('/api/characters/export', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({ format, avatar_url: ch.avatar }) });
-  if (!res.ok) { toast('error', `导出「${ch.name}」失败：${res.status}`); return; }
+  if (!res.ok) { toast('error', `没能导出「${ch.name}」。请再试一次。（错误 ${res.status}）`); return; }
   const blob = await res.blob();
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -266,7 +266,7 @@ export async function duplicateCharacter(it: CharItem): Promise<void> {
   const ch = charOf(it);
   if (!ch) return;
   const res = await fetch('/api/characters/duplicate', { method: 'POST', headers: c.getRequestHeaders(), body: JSON.stringify({ avatar_url: ch.avatar }) });
-  if (!res.ok) { toast('error', `复制「${ch.name}」失败：${res.status}`); return; }
+  if (!res.ok) { toast('error', `没能复制「${ch.name}」。请再试一次。（错误 ${res.status}）`); return; }
   const data = await res.json();
   await c.eventSource.emit(c.eventTypes.CHARACTER_DUPLICATED, { oldAvatar: ch.avatar, newAvatar: data.path });
   await c.getCharacters();
@@ -354,7 +354,7 @@ export async function deleteCharacters(items: CharItem[]): Promise<boolean> {
   const worlds = ownWorlds(chars);
   const worldLabel = `同时删除${them}的世界书${worlds.slice(0, 3).map((w) => `「${w}」`).join('')}${worlds.length > 3 ? ` 等 ${worlds.length} 本` : ''}`;
   const popup = new c.Popup(
-    `<h3>删除 ${escHtml(names)}？</h3><p>角色卡文件会被删掉，不能撤销。想留一份的话，先「导出」。</p>`,
+    `<h3>删除${escHtml(names)}？</h3><p>角色卡文件会被删掉，不能撤销。想留一份的话，先「导出」。</p>`,
     c.POPUP_TYPE.CONFIRM, '',
     { okButton: '删除', cancelButton: '取消', customInputs: [
       { id: 'rbt_del_chats', label: `同时删除${them}的聊天记录`, defaultState: false },

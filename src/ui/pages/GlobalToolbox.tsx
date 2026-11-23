@@ -241,7 +241,7 @@ function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filter
     const label = TRASH_LABEL[kind];
     const shown = list.length <= 6 ? list.map((n) => `「${n}」`).join('') : `${list.slice(0, 6).map((n) => `「${n}」`).join('')} 等 ${list.length} 个`;
     const note = deleteNote?.(list);
-    const ok = await confirmText(`删除 ${list.length} 个${label}？`, `${shown}\n\n${note ? `${note}\n\n` : ''}删除前会先备份，删完 15 秒内可以撤销。`);
+    const ok = await confirmText(`删除 ${list.length} 个${label}？`, `${shown}\n\n${note ? `${note}\n\n` : ''}删除前会先备份，删完 15 秒内可以撤销。`, '删除');
     if (!ok) return;
     setBusy(true);
     try { if (await trash(kind, list)) { for (const n of list) updateSource(kind, n, { author: '', links: [], series: '', version: '', notes: '' }); setPicked([]); } } finally { setBusy(false); }
@@ -308,7 +308,7 @@ function DeleteOne({ kind, name, locked, note }: { kind: TrashKind; name: string
   if (locked) return <small class="rbt-muted rbt-delete-one">{locked}，不能删除。</small>;
   return (
     <button type="button" class="rbt-btn rbt-btn-small rbt-btn-danger rbt-delete-one" disabled={busy} onClick={async () => {
-      const ok = await confirmText(`删除${label}「${name}」？`, `${note ? `${note}\n\n` : ''}删除前会先备份，删完 15 秒内可以撤销。`);
+      const ok = await confirmText(`删除${label}「${name}」？`, `${note ? `${note}\n\n` : ''}删除前会先备份，删完 15 秒内可以撤销。`, '删除');
       if (!ok) return;
       setBusy(true);
       try { if (await trash(kind, [name])) { if (kind !== 'regex') updateSource(kind as SourceKind, name, { author: '', links: [], series: '', version: '', notes: '' }); goBack(); } } finally { setBusy(false); }
@@ -709,7 +709,7 @@ function BackupPage() {
                 <div key={o.avatar} class="rbt-link-row">
                   <span>「{o.cardName}」</span>
                   {o.candidates.map((c) => <button key={c} type="button" class="rbt-btn rbt-btn-small" onClick={() => relink(o.avatar, c)}>转给「{c}」</button>)}
-                  <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={async () => { if (await confirmText('删除这份档案？', `「${o.cardName}」的来源、说明和本卡专用的设置都会删除。`)) dropRecord(o.avatar); }}>删除</button>
+                  <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={async () => { if (await confirmText(`删除「${o.cardName}」的档案？`, '这张卡的来源、说明和本卡专用的设置都会删除。', '删除')) dropRecord(o.avatar); }}>删除</button>
                 </div>
               ))}
             </Section>

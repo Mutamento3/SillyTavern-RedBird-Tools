@@ -4,7 +4,7 @@
  * 工具箱、三栏界面和美化后的酒馆界面都用它。
  */
 import { signal } from '@preact/signals';
-import { ctx, saveSettings, settings, toast, confirmText, escHtml } from '../st/st';
+import { ctx, saveSettings, settings, toast, escHtml } from '../st/st';
 import { LOOK_COPY, LOOK_NAME } from '../ui/copy';
 import { quoteColor, type LookKind } from '../core/quote';
 import { refreshShade } from './bgShade';
@@ -377,25 +377,6 @@ function toBase64(text: string): string {
   let bin = '';
   for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(bin);
-}
-
-/** Delete a theme file after saving a copy to data/<user>/user/files. Returns the backup file name. */
-export async function deleteStTheme(name: string): Promise<string | null> {
-  const t = stThemes.value.find((x) => x.name === name);
-  if (!t || name === currentStTheme()) return null;
-  const ok = await confirmText(`删除美化「${name}」？`, '会先把它备份到「data/你的用户名/user/files」里，想要回来可以从那里重新导入。');
-  if (!ok) return null;
-  const ascii = name.normalize('NFKD').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
-  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+$/, '').replace('T', '-');
-  const file = `rbt-theme-backup-${stamp}${ascii ? `-${ascii}` : ''}.json`;
-  const up = await fetch('/api/files/upload', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({ name: file, data: toBase64(JSON.stringify(t, null, 2)) }) });
-  if (!up.ok) { toast('error', `备份失败，没有删除：${up.status}`, '美化'); return null; }
-  const res = await fetch('/api/themes/delete', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({ name }) });
-  if (!res.ok) { toast('error', `删除失败：${res.status}`, '美化'); return null; }
-  document.querySelectorAll<HTMLOptionElement>('#themes option').forEach((o) => { if (o.value === name) o.remove(); });
-  stThemes.value = stThemes.value.filter((x) => x.name !== name);
-  toast('success', `已删除「${name}」，备份在 user/files/${file}`, '美化');
-  return file;
 }
 
 /**

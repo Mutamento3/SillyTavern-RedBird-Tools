@@ -377,7 +377,7 @@ export async function updateCardBook(avatar: string): Promise<boolean> {
   const f = findChar(avatar);
   const name: string = f?.char?.data?.extensions?.world ?? '';
   const data = name ? await loaded.worldInfo?.loadWorldInfo?.(name) : null;
-  if (!f || !data?.entries) { toast('error', '读不到这本世界书，没有更新。'); return false; }
+  if (!f || !data?.entries) { toast('error', name ? `读不到世界书「${name}」，卡里的世界书没有更新。` : '这张卡没有绑世界书，卡里的世界书没有更新。'); return false; }
   try {
     const old = f.char.data?.character_book;
     if (old) {
@@ -395,7 +395,7 @@ export async function updateCardBook(avatar: string): Promise<boolean> {
     bump();
     return true;
   } catch (e) {
-    toast('error', `没能更新卡里的世界书：${String((e as Error)?.message ?? e)}`);
+    toast('error', `没能更新「${f.char.name}」卡里的世界书。请再试一次。（${String((e as Error)?.message ?? e)}）`);
     return false;
   }
 }
@@ -439,7 +439,7 @@ export async function importCardWorld(avatar: string, { overwrite = false, quiet
     return exists ? 'overwritten' : 'imported';
   } catch (e) {
     console.error('[RedBird] world import failed', e);
-    toast('error', `导入世界书「${name}」失败：${(e as Error).message}`, '角色档案');
+    toast('error', `没能导入世界书「${name}」。请再试一次。（${(e as Error).message}）`, '角色档案');
     return 'failed';
   }
 }
@@ -560,7 +560,7 @@ export async function importArchive(text: string, mode: 'merge' | 'overwrite'): 
   const inc = parseArchive(text);
   const s = settings();
   if (mode === 'overwrite') {
-    const ok = await confirmText('覆盖导入', '现在所有的角色档案、记住的配套、正则归属，以及预设、世界书、插件和美化的来源，都会换成文件里的。');
+    const ok = await confirmText('用文件里的档案替换现在的？', '现在所有的角色档案、记住的配套、正则归属，以及预设、世界书、插件和美化的来源，都会换成文件里的。现在的会被替换，不能撤销。想留一份的话，先点「导出」。', '覆盖');
     if (!ok) return;
   }
   s.cards = mergeRecords(s.cards, inc.cards, mode, (v) => v.updatedAt ?? '');
