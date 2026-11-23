@@ -4,9 +4,10 @@
  */
 import { signal } from '@preact/signals';
 import { cleanPreview } from './recent';
-import { ctx, escHtml, stModule, toast, type Any } from '../st/st';
+import { charaFileName, ctx, escHtml, loaded, stModule, toast, type Any } from '../st/st';
 import { openDrawer } from './drawers';
-import { cardFacts, cardInfo, extStatus, installedExtensions, requiredExtensions } from '../tools/cards/cards';
+import { cardFacts, cardInfo, extStatus, installedExtensions, requiredExtensions, worldNames } from '../tools/cards/cards';
+import { trash } from '../tools/trash';
 
 export interface TagInfo {
   id: string;
@@ -322,6 +323,22 @@ export async function setFavorite(items: CharItem[], fav: boolean): Promise<void
 }
 
 /**
+ * 删卡时可以一起删的世界书：这些卡绑的世界书里，没全局开着、别的卡和 user 人设也没在用的（别的卡绑的、附加的都算）。
+ * 单独绑在某段聊天上的查不到，删了也能从通知里撤销。
+ */
+function ownWorlds(chars: Any[]): string[] {
+  const gone = new Set(chars.map((x) => charaFileName(x.avatar)));
+  const used = new Set<string>(loaded.worldInfo?.selected_world_info ?? []);
+  for (const ch of ctx().characters ?? []) if (!gone.has(charaFileName(ch.avatar)) && ch.data?.extensions?.world) used.add(ch.data.extensions.world);
+  for (const e of loaded.worldInfo?.world_info?.charLore ?? []) if (!gone.has(e.name)) for (const b of e.extraBooks ?? []) used.add(b);
+  // user 人设上绑的世界书
+  const pu = ctx().powerUserSettings ?? {};
+  for (const d of [pu, ...Object.values(pu.persona_descriptions ?? {})] as Any[]) if (d?.persona_description_lorebook || d?.lorebook) used.add(d.persona_description_lorebook || d.lorebook);
+  const have = new Set(worldNames());
+  return [...new Set(chars.map((x) => String(x.data?.extensions?.world ?? '')))].filter((w) => w && have.has(w) && !used.has(w));
+}
+
+/**
  * Delete characters after one confirm. Uses ST's own deleteCharacter (it also cleans up ST's
  * per-character settings); chats are kept unless the box is ticked.
  */
@@ -333,17 +350,28 @@ export async function deleteCharacters(items: CharItem[]): Promise<boolean> {
   const all: Any[] = c.characters ?? [];
   const label = (x: Any) => (all.filter((y) => y.name === x.name).length > 1 ? `「${x.name}」(${x.avatar})` : `「${x.name}」`);
   const names = chars.slice(0, 5).map(label).join('、') + (chars.length > 5 ? ` 等 ${chars.length} 张` : '');
+  const them = chars.length > 1 ? '它们' : '它';
+  const worlds = ownWorlds(chars);
+  const worldLabel = `同时删除${them}的世界书${worlds.slice(0, 3).map((w) => `「${w}」`).join('')}${worlds.length > 3 ? ` 等 ${worlds.length} 本` : ''}`;
   const popup = new c.Popup(
     `<h3>删除 ${escHtml(names)}？</h3><p>角色卡文件会被删掉，不能撤销。想留一份的话，先「导出」。</p>`,
     c.POPUP_TYPE.CONFIRM, '',
-    { okButton: '删除', cancelButton: '取消', customInputs: [{ id: 'rbt_del_chats', label: chars.length > 1 ? '同时删除它们的聊天记录' : '同时删除它的聊天记录', defaultState: false }] },
+    { okButton: '删除', cancelButton: '取消', customInputs: [
+      { id: 'rbt_del_chats', label: `同时删除${them}的聊天记录`, defaultState: false },
+      ...(worlds.length ? [{ id: 'rbt_del_worlds', label: worldLabel, defaultState: false }] : []),
+    ] },
   );
+  // 两个勾选项左边对齐（酒馆默认每行各自居中，长短不一时勾选框对不齐）
+  popup.dlg?.classList.add('rbt-del-popup');
   if (!(await popup.show())) return false;
   const deleteChats = !!popup.inputResults?.get('rbt_del_chats');
+  const deleteWorlds = !!popup.inputResults?.get('rbt_del_worlds');
   const script = await stModule('/script.js');
   if (typeof script?.deleteCharacter !== 'function') { toast('error', '没找到酒馆的删除功能，没有删除'); return false; }
   // 酒馆自己会提示「角色已删除」，这里不再重复
   const ok = await script.deleteCharacter(chars.map((x) => x.avatar), { deleteChats });
+  // 世界书先备份再删，删完的通知里可以撤销
+  if (ok && deleteWorlds) await trash('world', worlds);
   charsTick.value++;
   return !!ok;
 }
