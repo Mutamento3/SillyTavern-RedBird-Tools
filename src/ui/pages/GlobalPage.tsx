@@ -4,11 +4,11 @@
 import { trash } from '../../tools/trash';
 import { useEffect, useState } from 'preact/hooks';
 import type { RegexOwner } from '../../core/cards';
-import { confirmText, loaded, settings, toast } from '../../st/st';
-import { allCharacters, archiveVersion, currentPresetName, findChar, globalRegexScripts, guessRegexOwner, installedExtensions, presetNames, setRegexOwner, worldNames } from '../../tools/cards/cards';
+import { APP_NAME, confirmText, loaded, settings, toast } from '../../st/st';
+import { allCharacters, archiveVersion, currentPresetName, findChar, globalRegexScripts, guessRegexOwner, installedExtensions, loose, presetNames, setRegexOwner, worldNames } from '../../tools/cards/cards';
 import { bookOwners, globalValue, heldByCard, keepForOwner, setGlobal, trueGlobalWorlds } from '../../tools/env/setup';
 import { currentBookScopes } from '../../tools/flow/capture';
-import { openDrawer } from '../../shell/drawers';
+import { extButtonHandlers, extDrawers, openDrawer } from '../../shell/drawers';
 import { envReport, refreshEnv, type EnvItem, type EnvSubItem } from '../../tools/env/env';
 import { Chip, CheckMark, Toggle } from '../common';
 import { SourceEditor } from '../SourceEditor';
@@ -215,13 +215,16 @@ export function GlobalRegexList({ items }: { items: EnvItem[] }) {
 
 /** Open ST's own regex manager (create / edit / import) inside the 扩展·正则 panel. */
 /** Open an extension's section in 扩展 (expand it and scroll to it). */
-function openExtensionSection(selector: string, then?: (box: HTMLElement) => void): void {
+function openExtensionSection(selector: string | HTMLElement, then?: (box: HTMLElement) => void): void {
   openDrawer('extensions');
   setTimeout(() => {
-    const box = document.querySelector<HTMLElement>(selector);
+    const box = typeof selector === 'string' ? document.querySelector<HTMLElement>(selector) : selector;
     if (!box) return;
     const content = box.querySelector<HTMLElement>('.inline-drawer-content');
     if (content && getComputedStyle(content).display === 'none') box.querySelector<HTMLElement>('.inline-drawer-toggle')?.click();
+    // 面板的标题栏钉在顶上：滚到它下面，不然这块的标题被挡住
+    const head = document.querySelector<HTMLElement>('#rm_extensions_block > .rbt-sheet-head');
+    box.style.scrollMarginTop = `${(head?.offsetHeight ?? 0) + 8}px`;
     box.scrollIntoView({ block: 'start' });
     then?.(box);
   }, 350);
@@ -268,7 +271,7 @@ export function GlobalWorldList() {
   const run = async (f: () => Promise<unknown>) => { setBusy(true); try { await f(); } finally { setBusy(false); refreshEnv(); } };
   const keep = (w: string, owner: string) => run(async () => {
     const undo = await keepForOwner(w);
-    toast('success', `「${w}」不再是全局的，只在「${owner}」里启用。点这里撤销。`, 'RedBird 工具箱', { onclick: () => { void run(undo); }, timeOut: 8000 });
+    toast('success', `「${w}」不再是全局的，只在「${owner}」里启用。点这里撤销。`, APP_NAME, { onclick: () => { void run(undo); }, timeOut: 8000 });
   });
   if (!books.length) return <small class="rbt-muted">没有开着的全局世界书。</small>;
   return (
@@ -339,6 +342,25 @@ export function PresetPicker() {
 }
 
 /** Plugins: switch each one; ST needs a page reload to apply, so changes are staged. */
+/**
+ * 打开一个插件自己的设置：酒馆「扩展」面板里标题对得上名字的那块，或者插件自己的面板按钮。
+ * 酒馆没规定插件的设置叫什么，只能按名字找；找不到（停用了、没有设置）就是 null，不显示「设置」。
+ */
+function pluginSettings(name: string, id: string): (() => void) | null {
+  const keys = [loose(name), loose(id)].filter(Boolean);
+  // 标题和名字一样，或标题里含着名字（「酒馆助手 v3」）；名字里含着标题只认够长的标题，免得「正则」对上「正则助手」
+  const hit = (text: string | null | undefined): boolean => {
+    const t = loose(text ?? '');
+    return !!t && keys.some((k) => t === k || t.includes(k) || (t.length >= 4 && k.includes(t)));
+  };
+  const head = [...document.querySelectorAll<HTMLElement>('#extensions_settings .inline-drawer-header, #extensions_settings2 .inline-drawer-header')].find((h) => hit(h.textContent));
+  const box = head?.closest<HTMLElement>('.inline-drawer');
+  if (box) return () => openExtensionSection(box);
+  const own = extDrawers.value.find((x) => hit(x.label));
+  if (own) return () => extButtonHandlers(own).onClick();
+  return null;
+}
+
 export function PluginList() {
   const list = installedExtensions().sort((x, y) => Number(y.enabled) - Number(x.enabled) || x.name.localeCompare(y.name));
   const [want, setWant] = useState<Record<string, boolean>>({});
@@ -371,6 +393,7 @@ export function PluginList() {
       {list.map((e) => {
         const on = e.id in want ? want[e.id] : e.enabled;
         const st = states[e.id];
+        const openSettings = e.enabled ? pluginSettings(e.name, e.id) : null;
         return (
           <div key={e.id} class="rbt-plugin">
           <div class={`rbt-env-item ${on ? '' : 'off'}`}>
@@ -382,6 +405,9 @@ export function PluginList() {
             {((e.id in want && want[e.id] !== e.enabled) || st === 'updated') && <Chip color="#f0a43a">刷新后生效</Chip>}
             {(st === 'new' || st === 'updating') && (
               <button type="button" class="rbt-btn rbt-btn-small rbt-plugin-up" disabled={st === 'updating'} onClick={() => { void updatePlugins([e]); }}>{st === 'updating' ? '正在更新…' : '更新'}</button>
+            )}
+            {openSettings && (
+              <button type="button" class="rbt-btn rbt-btn-small rbt-plugin-set" title={`打开「${e.name}」的设置`} onClick={openSettings}>设置 <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" /></button>
             )}
             <span class="rbt-env-toggle">
               <Toggle checked={on} onChange={(v) => setWant({ ...want, [e.id]: v })} title="启用 / 停用这个插件" />

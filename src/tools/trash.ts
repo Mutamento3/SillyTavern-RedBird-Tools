@@ -155,7 +155,7 @@ export async function trash(kind: TrashKind, ids: string[]): Promise<number> {
   const failed = items.length - done.length;
   const what = done.length === 1 ? `「${done[0].name}」` : `${done.length} 个${label}`;
   let undone = false;
-  toast('success', `已删除${what}${failed ? `，另有 ${failed} 个没删掉` : ''}。点这里撤销。备份在 data/你的用户名/user/files 里`, '删除', {
+  toast('success', `已删除${what}${failed ? `，另有 ${failed} 个没删掉` : ''}。备份在 data/你的用户名/user/files 里。点这里撤销。`, '删除', {
     timeOut: 15000,
     extendedTimeOut: 8000,
     onclick: async () => {

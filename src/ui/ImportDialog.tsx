@@ -397,7 +397,14 @@ export function ImportDialog() {
         },
       });
       const missed = done.filter((d) => !d.name && !d.failed && d.item.kind !== 'regex');
-      if (missed.length) toast('warning', `这些文件可能没有导入：${missed.map((d) => d.item.file.name).join('、')}。要是在酒馆的提示里点了取消，就是这个原因。`, '导入');
+      // 导卡时酒馆不问玩家，等不到多半是列表刷新慢或正在回复；导预设时酒馆会问，可能点了取消
+      const names = (kind: (k: string) => boolean) => missed.filter((d) => kind(d.item.kind)).map((d) => `「${d.item.title}」`).join('、');
+      const cards = names((k) => k === 'character');
+      const presets = names((k) => k === 'preset');
+      const others = names((k) => k !== 'character' && k !== 'preset');
+      if (cards) toast('warning', `角色列表里还没有${cards}。请刷新页面再找。还是没有的话，等 AI 回复完，再导入一次。`, '卡可能没导进来');
+      if (presets) toast('warning', `${presets}没有导入。你可能在酒馆的提示里点了取消。要用这个预设，请再导入一次。`, '预设没导进来');
+      if (others) toast('warning', `列表里还没有${others}。请刷新页面再找。还是没有的话，再导入一次。`, '可能没导进来');
       const tabs = [...new Set(usable.map((i) => KIND_TAB[i.kind]).filter(Boolean))];
       if (tabs.length === 1 && sheetOpen.value) setGlobalTab(tabs[0]!);
       archiveVersion.value++;

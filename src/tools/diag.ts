@@ -2,7 +2,7 @@
  * 导出诊断数据：把最近捕获的提示词归因、变量楼层、换卡体检结果存成一个 JSON 文件，
  * 写进酒馆的 data/<用户>/user/files/，方便排查问题（也方便把文件发给别人看）。
  */
-import { ctx, currentCharacter, settings, toast } from '../st/st';
+import { APP_NAME, ctx, currentCharacter, settings, toast } from '../st/st';
 import { planFor } from './env/autoapply';
 import { installedVersion } from './update';
 import { buildEnvReport } from './env/env';
@@ -58,7 +58,7 @@ export function installSlowLoadNotice(): void {
       if (localStorage.getItem(SLOW_KEY)) return;
       localStorage.setItem(SLOW_KEY, '1');
     } catch { return; /* 记不住就不提醒，免得每次都弹 */ }
-    toast('info', `打开酒馆要先下载 ${mb} MB 的角色卡，所以手机上打开可能会卡顿。点这里看怎么改。`, 'RedBird 工具箱', {
+    toast('info', `打开酒馆要先下载 ${mb} MB 的角色卡，所以手机上打开可能会卡顿。点这里看怎么改。`, APP_NAME, {
       onclick: () => window.open(SLOW_HELP, '_blank', 'noopener'),
       timeOut: 15000,
     });
@@ -96,7 +96,7 @@ export function buildDiagnostics(): unknown {
   }
   return {
     exportedAt: new Date().toISOString(),
-    tool: 'RedBird 工具箱',
+    tool: APP_NAME,
     version: installedVersion(),
     chatId: c.getCurrentChatId?.() ?? null,
     card: char?.name ?? null,
@@ -118,7 +118,7 @@ export async function exportDiagnostics(): Promise<string | null> {
     const res = await fetch('/api/files/upload', { method: 'POST', headers: ctx().getRequestHeaders(), body });
     if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
     const { path } = await res.json();
-    toast('success', `诊断数据已保存：${path}`);
+    toast('success', `已保存诊断数据：${path}`);
     return path;
   } catch (e) {
     console.error('[RedBird] export failed', e);

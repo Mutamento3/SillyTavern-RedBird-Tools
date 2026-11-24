@@ -264,7 +264,7 @@ export async function setNodeEnabled(g: ThGroup, id: string, on: boolean): Promi
         // 酒馆先改了内存再存文件；没存上就把内存改回去，免得看着改了、刷新又变回来
         console.error('[RedBird] saving preset scripts failed', e);
         try { pm.writePresetExtensionField({ name: g.key, path: 'tavern_helper.scripts', value: raw }).catch(() => {}); } catch { /* ignore */ }
-        toast('error', `没能保存到预设「${g.key}」，请再试一次。`);
+        toast('error', `没能保存到预设「${g.key}」。请再试一次。`);
       }
     }
   }
@@ -292,7 +292,7 @@ function fileScript(x: Any, run: boolean): Any {
 export async function importThScripts(raw: unknown, run: boolean): Promise<string | null> {
   const th = TH();
   if (!th?.updateScriptTreesWith) {
-    toast('error', '要先装上酒馆助手，才能导入它的脚本。', '导入');
+    toast('error', '脚本没有导入。请先安装酒馆助手插件。', '导入');
     return null;
   }
   const list: Any[] = Array.isArray(raw) ? raw : [raw];
@@ -301,7 +301,7 @@ export async function importThScripts(raw: unknown, run: boolean): Promise<strin
     : fileScript(x, run)));
   if (!nodes.length) return null;
   await th.updateScriptTreesWith((trees: Any[]) => [...trees, ...nodes], { type: 'global' });
-  if (run && store('global_scripts')?.enabled === false) toast('warning', '脚本已导入，但酒馆助手的全局脚本没有允许运行，所以还不会运行。到「全局工具箱 › 脚本」里打开。', '导入', { timeOut: 10000 });
+  if (run && store('global_scripts')?.enabled === false) toast('warning', '脚本已导入，但还不会运行，因为酒馆助手的全局脚本没有打开。请到「全局工具箱 › 脚本」里打开。', '导入', { timeOut: 10000 });
   bump();
   return nodes.map((n) => n.name).join('、');
 }

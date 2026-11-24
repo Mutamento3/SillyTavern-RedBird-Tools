@@ -1,5 +1,6 @@
 import { signal } from '@preact/signals';
 import { TitleBar } from './TitleBar';
+import { APP_NAME } from '../core/name';
 import { useEffect } from 'preact/hooks';
 import { exportDiagnostics } from '../tools/diag';
 import { FlowView } from './FlowView';
@@ -96,7 +97,7 @@ export function Panel() {
     <aside class="rbt-panel rbt-dock">
       <div class="rbt-resize-handle" title="拖动调整宽度" onPointerDown={onResizeStart} />
       {/* 第一行：这是哪里（标题）和怎么离开（✕）；第二行：标签 */}
-      <TitleBar class="rbt-dock-titlebar" icon={shellActive.value ? 'fa-toolbox' : 'fa-feather-pointed'} title={shellActive.value ? '聊天工具箱' : 'RedBird 工具箱'} onClose={() => { panelOpen.value = false; }}>
+      <TitleBar class="rbt-dock-titlebar" icon={shellActive.value ? 'fa-toolbox' : 'fa-feather-pointed'} title={shellActive.value ? '聊天工具箱' : APP_NAME} onClose={() => { panelOpen.value = false; }}>
         <button type="button" class="rbt-titlebar-btn" title="导出诊断文件，用来排查问题" aria-label="导出诊断文件" onClick={() => { void exportDiagnostics(); }}><i class="fa-solid fa-file-arrow-down" /></button>
       </TitleBar>
       <div class="rbt-header-tabs">

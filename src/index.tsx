@@ -1,5 +1,5 @@
 /**
- * RedBird 工具箱 — SillyTavern extension entry.
+ * RedBird 红鸟工具箱 — SillyTavern extension entry.
  *
  * Views (see ui/views.ts): 信息流 / 变量 live in the right-side dock; 这张卡 / 全局 / 维护 open as
  * large overlays when the three-column shell is active, and as dock tabs otherwise.
@@ -16,7 +16,7 @@ import { installLongTaskLog, slow, withTimeout } from './st/perf';
 import { applyLook, lookOn, retireOldTheme, setLook, useBuiltInLook, watchStThemeSwitch, watchSurface } from './look/look';
 import { watchBackground } from './look/bgShade';
 import { installCardLook } from './look/cardLook';
-import { ctx, preloadModules, reloadChatSafe, saveSettings, settings, toast } from './st/st';
+import { APP_NAME, ctx, preloadModules, reloadChatSafe, saveSettings, settings, toast } from './st/st';
 import { DEFAULT_THINK_TAGS, parseThinkTags, prefixTag } from './core/think';
 import { installThinkFold, refreshThinkFold, thinkFoldSupported, thinkTags } from './tools/thinkFold';
 import { installStore } from './st/store';
@@ -55,7 +55,7 @@ function addMenuButton(): void {
   item.id = 'rbt_menu_button';
   item.className = 'list-group-item flex-container flexGap5 interactable';
   item.tabIndex = 0;
-  item.innerHTML = '<div class="fa-solid fa-feather-pointed extensionsMenuExtensionButton"></div><span>RedBird 工具箱</span>';
+  item.innerHTML = '<div class="fa-solid fa-feather-pointed extensionsMenuExtensionButton"></div><span>' + APP_NAME + '</span>';
   item.addEventListener('click', () => { panelOpen.value = !panelOpen.value; });
   // 原版界面里一下切到三栏界面（三栏界面里藏起来，那里左栏底部有「原版界面」）
   const shell = document.createElement('div');
@@ -78,7 +78,7 @@ function addSettingsDrawer(): void {
   wrap.innerHTML = `
     <div class="inline-drawer">
       <div class="inline-drawer-toggle inline-drawer-header">
-        <b>RedBird 工具箱</b>
+        <b>${APP_NAME}</b>
         <div class="inline-drawer-icon fa-solid fa-circle-chevron-up up"></div>
       </div>
       <div class="inline-drawer-content rbt-set">
@@ -230,7 +230,7 @@ function addSlashCommand(): void {
         else panelOpen.value = !panelOpen.value;
         return '';
       },
-      helpString: '打开/关闭 RedBird 工具箱。参数：card（角色档案）/ flow（信息流）/ vars（变量）/ table（角色配套总表）/ presets、worlds、regex、scripts、plugins、backup（全局工具箱的各标签）；/rbt shell 开关三栏界面。',
+      helpString: `打开/关闭${APP_NAME}。参数：card（角色档案）/ flow（信息流）/ vars（变量）/ table（角色配套总表）/ presets、worlds、regex、scripts、plugins、backup（全局工具箱的各标签）；/rbt shell 开关三栏界面。`,
     }));
   } catch (e) {
     console.warn('[RedBird] slash command registration failed', e);

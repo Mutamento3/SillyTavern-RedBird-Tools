@@ -4,7 +4,7 @@
  * - 描述等：power_user.persona_descriptions[头像文件名]（正在用的那个人设，酒馆另外把描述抄在 power_user.persona_description）
  * - 头像：User Avatars/ 下的图片，文件名就是人设的 id
  */
-import { confirmText, ctx, loaded, stModule, toast, type Any } from './st';
+import { APP_NAME, confirmText, ctx, currentCharacter, loaded, stModule, toast, type Any } from './st';
 
 const pu = (): Any => ctx().powerUserSettings ?? {};
 export const currentPersona = (): string => String(loaded.personas?.user_avatar ?? '');
@@ -18,10 +18,10 @@ export function personaDesc(id: string): string {
 
 /** 换过头像的人设：图片地址后面加上时间，不然浏览器还显示缓存里的旧图。 */
 const stamp: Record<string, number> = {};
-export function personaThumb(id: string): string {
-  const url = ctx().getThumbnailUrl?.('persona', id) ?? `User Avatars/${id}`;
-  return stamp[id] ? `${url}${url.includes('?') ? '&' : '?'}t=${stamp[id]}` : url;
-}
+const stamped = (id: string, url: string): string => (stamp[id] ? `${url}${url.includes('?') ? '&' : '?'}t=${stamp[id]}` : url);
+export const personaThumb = (id: string): string => stamped(id, ctx().getThumbnailUrl?.('persona', id) ?? `User Avatars/${id}`);
+/** 原图：详情页的大图用，缩略图放大了会糊。 */
+export const personaImage = (id: string): string => stamped(id, `User Avatars/${id}`);
 
 /** 专用这个人设的卡（酒馆的「连接」里绑了的角色卡）。 */
 export function personaCards(id: string): { avatar: string; name: string }[] {
@@ -148,6 +148,34 @@ export function setPersonaDesc(id: string, description: string): void {
   ctx().saveSettingsDebounced();
 }
 
+/**
+ * 这段聊天锁定的人设（酒馆的「锁定到这个聊天」，记在存档里，比本卡专用、全局都优先）。
+ * id = null 是解开，换回 follow（本卡的人设）。
+ */
+export async function lockChatPersona(id: string | null, follow = ''): Promise<void> {
+  const c = ctx();
+  const meta = c.chatMetadata;
+  if (!meta) return;
+  if (id) meta.persona = id; else delete meta.persona;
+  const to = id ?? follow;
+  // 解开时不要酒馆的提示：开了「自动锁定」它会说「已自动锁定到当前聊天」，可下面马上就解开了
+  if (to && to !== currentPersona()) await loaded.personas?.setUserAvatar?.(to, id ? undefined : { toastPersonaNameChange: false });
+  // 酒馆开了「自动锁定」时，上面换人设会顺手再锁上：玩家选的是「跟着本卡」，去掉
+  if (!id) delete meta.persona;
+  await c.saveMetadata?.();
+  // 人设没换时酒馆不会发事件：让顶栏和酒馆人设面板里的锁也跟着变
+  loaded.personas?.setPersonaDescription?.();
+  emit('PERSONA_UPDATED', currentPersona());
+}
+
+/** 正在聊的卡自己的人设（酒馆「连接到角色」绑的第一个），没有是 ''。 */
+function cardPersona(): string {
+  const avatar = currentCharacter()?.avatar;
+  const all = pu().persona_descriptions ?? {};
+  if (!avatar) return '';
+  return Object.keys(all).find((k) => pu().personas?.[k] !== undefined && ((all[k].connections ?? []) as { type: string; id: string }[]).some((x) => x.type === 'character' && x.id === avatar)) ?? '';
+}
+
 // ------------------------------------------------------------ 删 ---
 
 /** 问一下再删。删完可以在通知里撤销（头像图片先留在内存里）。返回删了没有。 */
@@ -160,22 +188,25 @@ export async function deletePersona(id: string, onUndo: () => void): Promise<boo
   const image = await imageOf(`User Avatars/${encodeURIComponent(id)}`).catch(() => null);
   const desc = p.persona_descriptions?.[id] ? structuredClone(p.persona_descriptions[id]) : null;
   const wasDefault = p.default_persona === id;
+  const c = ctx();
+  const chatAt = String(c.getCurrentChatId?.() ?? '');
+  const wasCurrent = id === currentPersona();
+  const wasLocked = c.chatMetadata?.persona === id;
   const r = await fetch('/api/avatars/delete', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({ avatar: id }) });
   if (!r.ok) { toast('error', `没能删除人设「${name}」。请再试一次。（错误 ${r.status}）`); return false; }
   delete p.personas[id];
   delete p.persona_descriptions?.[id];
   if (wasDefault) p.default_persona = null;
-  const c = ctx();
-  if (c.chatMetadata?.persona === id) { delete c.chatMetadata.persona; await c.saveMetadata?.(); }
+  if (wasLocked) { delete c.chatMetadata.persona; await c.saveMetadata?.(); }
   c.saveSettingsDebounced();
   emit('PERSONA_DELETED', { avatarId: id, name });
-  // 删的是正在用的：换成全局人设（没有就换成剩下的第一个）
-  if (id === currentPersona()) {
-    const next = p.default_persona || personaIds()[0];
+  // 删的是正在用的：和酒馆打开聊天时一样，先用这张卡自己的人设，再用全局人设，都没有就用剩下的第一个
+  if (wasCurrent) {
+    const next = cardPersona() || p.default_persona || personaIds()[0];
     if (next) await loaded.personas?.setUserAvatar?.(next);
   }
   await refreshPanel();
-  toast('success', `已删除人设「${name}」。点这里撤销。`, 'RedBird 工具箱', {
+  toast('success', `已删除人设「${name}」。点这里撤销。`, APP_NAME, {
     timeOut: 8000,
     onclick: async () => {
       try {
@@ -185,9 +216,14 @@ export async function deletePersona(id: string, onUndo: () => void): Promise<boo
         if (wasDefault) p.default_persona = id;
         ctx().saveSettingsDebounced();
         emit('PERSONA_CREATED', { avatarId: id, name });
+        // 还在原来那段聊天里：锁定和正在用的人设也换回来
+        if (String(ctx().getCurrentChatId?.() ?? '') === chatAt) {
+          if (wasLocked) { ctx().chatMetadata.persona = id; await ctx().saveMetadata?.(); }
+          if (wasCurrent && currentPersona() !== id) await loaded.personas?.setUserAvatar?.(id);
+        }
         await refreshPanel(id);
         onUndo();
-      } catch (e) { toast('error', `没能撤销。（${(e as Error).message}）`); }
+      } catch (e) { toast('error', `没能恢复人设「${name}」。（${(e as Error).message}）`); }
     },
   });
   return true;

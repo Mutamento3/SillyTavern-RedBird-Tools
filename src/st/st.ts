@@ -11,6 +11,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { SIDE_EFFECT_MACRO } from '../core/macros';
 import type { CardRecord, ModelChoice, RegexOwner, SourceRecord } from '../core/cards';
+import { APP_NAME } from '../core/name';
 
 export type Any = any;
 
@@ -175,7 +176,9 @@ export function slashQuote(v: string): string {
   return `"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
-export function toast(kind: 'info' | 'success' | 'warning' | 'error', msg: string, title = 'RedBird 工具箱', opts: Any = {}): void {
+export { APP_NAME };
+
+export function toast(kind: 'info' | 'success' | 'warning' | 'error', msg: string, title = APP_NAME, opts: Any = {}): void {
   window.toastr?.[kind]?.(msg, title, { closeButton: true, ...opts });
 }
 

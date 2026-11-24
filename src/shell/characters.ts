@@ -270,7 +270,7 @@ export async function duplicateCharacter(it: CharItem): Promise<void> {
   await c.eventSource.emit(c.eventTypes.CHARACTER_DUPLICATED, { oldAvatar: ch.avatar, newAvatar: data.path });
   await c.getCharacters();
   charsTick.value++;
-  toast('success', `已复制一份「${ch.name}」`);
+  toast('success', `已复制一份「${ch.name}」。`);
 }
 
 // ------------------------------------------------------------- 批量标签 ---
@@ -366,7 +366,7 @@ export async function deleteCharacters(items: CharItem[]): Promise<boolean> {
   const deleteChats = !!popup.inputResults?.get('rbt_del_chats');
   const deleteWorlds = !!popup.inputResults?.get('rbt_del_worlds');
   const script = await stModule('/script.js');
-  if (typeof script?.deleteCharacter !== 'function') { toast('error', '没找到酒馆的删除功能，没有删除'); return false; }
+  if (typeof script?.deleteCharacter !== 'function') { toast('error', `没有删除${items.map((i) => `「${i.name}」`).join('、')}。请在酒馆原版的角色面板里删除。`); return false; }
   // 酒馆自己会提示「角色已删除」，这里不再重复
   const ok = await script.deleteCharacter(chars.map((x) => x.avatar), { deleteChats });
   // 世界书先备份再删，删完的通知里可以撤销

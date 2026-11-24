@@ -1,4 +1,4 @@
-/* RedBird 工具箱 — every selector is prefixed with .rbt- to avoid clashing with ST themes. */
+/* RedBird 红鸟工具箱 — every selector is prefixed with .rbt- to avoid clashing with ST themes. */
 
 /* 系统自带的等宽字体：不用酒馆的 Noto Sans Mono（打开「变量」页时要下载 273 KB） */
 :root { --rbd-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif; }
@@ -948,7 +948,7 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-imp-pick .rbt-imp-foot .rbt-linkbtn { font-size: 13px; }
 
 
-/* 扩展设置里的「RedBird 工具箱」：两个打开按钮 + 分组的开关（整行都能点，开关在右边） */
+/* 扩展设置里的「RedBird 红鸟工具箱」：两个打开按钮 + 分组的开关（整行都能点，开关在右边） */
 
 
 
@@ -1125,6 +1125,9 @@ input.rbt-cb.rbt-cb[type='checkbox']:focus-visible { outline: 2px solid var(--rb
 /* 插件有新版本：「更新」靠右，挨着开关 */
 .rbt-env-item .rbt-plugin-up { margin-left: auto; flex: none; }
 .rbt-plugin-up + .rbt-env-toggle { margin-left: 8px; }
+.rbt-env-item .rbt-plugin-set { margin-left: auto; flex: none; }
+.rbt-plugin-up + .rbt-plugin-set { margin-left: 8px; }
+.rbt-plugin-set + .rbt-env-toggle { margin-left: 8px; }
 /* 插件一行不折行：名字和作者让出位置，「更新」和开关总在同一行最右边 */
 .rbt-plugin .rbt-env-item { flex-wrap: nowrap; }
 .rbt-plugin .rbt-env-item > small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1343,7 +1346,7 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 /* 操作栏在卡片里时（全局正则），底色和卡片一样，不出现一条深色带 */
 .rbt-card-section .rbt-selbar { background: var(--g2); margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
 
-/* ================================================== 扩展设置里的「RedBird 工具箱」 ===
+/* ================================================== 扩展设置里的「RedBird 红鸟工具箱」 ===
    像系统设置一样的分组列表：每组一块圆角底，组名小字在上；行与行之间一条细线。
    入口行 = 图标 + 名字 + 一句短说明 + ›，整行能点；开关行 = 勾选框 + 名字 + 一句短说明。 */
 #rbt_settings .rbt-set { display: flex; flex-direction: column; gap: 14px; padding: var(--rbd-s-3) 0; max-width: 560px; }
@@ -1807,6 +1810,19 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-scope .rbt-page-group-head h2.rbt-page-group-title, .rbt-panel .rbt-page-group-head h2.rbt-page-group-title { margin: 0 2px; }
 .rbt-navrow-title .rbt-persona-title { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; }
 .rbt-navrow-sub:has(> .rbt-clamp2) { white-space: normal; }
-.rbt-persona-av { display: flex; align-items: center; gap: var(--rbd-s-3); }
-.rbt-persona-av img { width: 72px; height: 72px; border-radius: var(--rbd-r-m); object-fit: cover; object-position: 50% 20%; flex: none; }
+.rbt-persona-av { display: flex; align-items: flex-end; gap: var(--rbd-s-3); }
+.rbt-persona-av img { width: 120px; height: 180px; border-radius: var(--rbd-r-l, 12px); object-fit: cover; object-position: 50% 15%; flex: none; }
 .rbt-form-row.rbt-wrap { flex-wrap: wrap; }
+/* 人设菜单顶上的「本卡 | 本存档」和下面一句说明（不跟着列表滚动） */
+.rbt-menu-scope { flex: none; display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 6px; border-bottom: 1px solid var(--hair); }
+.rbt-menu-scope .rbt-tabs { display: flex; width: 100%; }
+.rbt-menu-scope .rbt-tabs button { flex: 1; min-height: 32px; font-size: 13px; }
+.rbt-menu-scope small { font-size: 12px; line-height: 1.5; color: var(--t3); }
+@media (max-width: 999px) { .rbt-menu-scope .rbt-tabs button { min-height: 38px; } }
+/* 全局美化：用着别人的美化时的推荐块。用强调色的淡底和细边，比旁边的设置显眼，但不是警告 */
+.rbt-look-rec { display: flex; flex-direction: column; gap: var(--rbd-s-2); padding: var(--rbd-s-3); border-radius: var(--rbd-r-m); background: color-mix(in srgb, var(--accent) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
+.rbt-look-rec-head { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--t1); }
+.rbt-look-rec p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--t2); }
+/* 「推荐」不是状态，不要状态标签的小圆点 */
+.rbt-tag.rbt-tag-rec { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.rbt-menu-opt > .rbt-swatches { flex: none; margin-left: auto; padding-left: 8px; }

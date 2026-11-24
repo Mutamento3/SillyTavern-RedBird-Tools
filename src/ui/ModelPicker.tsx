@@ -37,7 +37,7 @@ export function ModelPicker({ value, onChange, fallback, offerSwitch, compact }:
           <input class="text_pole rbt-input" placeholder="模型名，比如 anthropic/claude-opus-4.6" value={model} onInput={(e) => setModelText((e.currentTarget as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter' && model.trim()) { onChange({ source, model: model.trim() }); setEditing(false); } }} />
         </div>
         <div class="rbt-row-between">
-          <small class="rbt-muted">模型名要和酒馆 API 面板里的一样。</small>
+          <small class="rbt-muted">模型名要和酒馆「API 设置」里的一样。</small>
           <span class="rbt-row">
             {compact && value && <button type="button" class="rbt-btn rbt-btn-small" onClick={() => { onChange(null); setEditing(false); }}>清除</button>}
             <button type="button" class="rbt-btn rbt-btn-small" onClick={() => setEditing(false)}>取消</button>

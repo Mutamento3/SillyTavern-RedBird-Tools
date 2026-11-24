@@ -5,7 +5,7 @@ import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useState } from 'preact/hooks';
 import { normalizeUrl, splitLinks } from '../../core/cards';
-import { canSwitchChat, ctx, currentCharacter, toast } from '../../st/st';
+import { APP_NAME, canSwitchChat, ctx, currentCharacter, toast } from '../../st/st';
 import { ensureDescriptor } from '../../st/personas';
 import { openFloatMenu } from '../floatMenu';
 import {
@@ -167,7 +167,7 @@ export function SourceSection({ info, bare }: { info: CardInfo; bare?: boolean }
     const before = links;
     const gone = links[i];
     updateRecord(info.avatar, info.name, { links: links.filter((_, j) => j !== i) });
-    toast('success', `已删除链接「${gone.label}」。点这里撤销。`, 'RedBird 工具箱', { onclick: () => updateRecord(info.avatar, info.name, { links: before }), timeOut: 8000 });
+    toast('success', `已删除链接「${gone.label}」。点这里撤销。`, APP_NAME, { onclick: () => updateRecord(info.avatar, info.name, { links: before }), timeOut: 8000 });
   };
   const linkMenu = (i: number, anchor: HTMLElement) => {
     const l = links[i];

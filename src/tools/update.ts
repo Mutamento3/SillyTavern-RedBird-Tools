@@ -6,7 +6,7 @@
  */
 import { signal } from '@preact/signals';
 import { compareVersion } from '../core/version';
-import { confirmText, ctx, loaded, toast } from '../st/st';
+import { APP_NAME, confirmText, ctx, loaded, toast } from '../st/st';
 
 const REMOTE = 'https://raw.githubusercontent.com/RebBirdTD/SillyTavern-RedBird-Tools/main/manifest.json';
 const DAY_KEY = 'rbt-update-checked';
@@ -19,7 +19,7 @@ function installedId(): string | null {
     if (!n.startsWith('third-party/')) continue;
     try {
       const m = loaded.extensions?.getExtensionManifest?.(n);
-      if (m && (m.display_name === 'RedBird 工具箱' || String(m.homePage ?? '').includes('SillyTavern-RedBird-Tools'))) return n;
+      if (m && (m.display_name === APP_NAME || String(m.homePage ?? '').includes('SillyTavern-RedBird-Tools'))) return n;
     } catch { /* ignore */ }
   }
   return null;
@@ -81,7 +81,7 @@ export async function updateExtension(id: string): Promise<{ ok: true; upToDate:
 /** 刷新页面后新版本才生效：问一句要不要现在刷新。 */
 export async function askReload(): Promise<void> {
   if (await confirmText('已经更新好了', '刷新页面后新版本才会生效。现在刷新吗？', '刷新页面', '稍后')) location.reload();
-  else toast('info', '下次刷新页面时会换成新版本。', 'RedBird 工具箱');
+  else toast('info', '下次刷新页面时会换成新版本。', APP_NAME);
 }
 
 let updating = false;
@@ -92,11 +92,11 @@ export async function updateNow(): Promise<void> {
   const id = installedId();
   if (!id) { openManager(); return; }
   updating = true;
-  toast('info', '正在更新…', 'RedBird 工具箱', { timeOut: 4000 });
+  toast('info', '正在更新…', APP_NAME, { timeOut: 4000 });
   try {
     const r = await updateExtension(id.replace(/^third-party\//, ''));
-    if (!r.ok) { toast('error', `没能更新工具箱。点这里打开「管理扩展程序」手动更新。（${r.why}）`, 'RedBird 工具箱', { onclick: openManager, timeOut: 12000 }); return; }
-    if (r.upToDate) { toast('success', '已经是最新版本。', 'RedBird 工具箱'); return; }
+    if (!r.ok) { toast('error', `没能更新工具箱。点这里打开「管理扩展程序」手动更新。（${r.why}）`, APP_NAME, { onclick: openManager, timeOut: 12000 }); return; }
+    if (r.upToDate) { toast('success', '已经是最新版本。', APP_NAME); return; }
     await askReload();
   } finally {
     updating = false;
@@ -136,7 +136,7 @@ export async function updatePlugins(list: { id: string; name: string }[]): Promi
   for (const { id, name } of list) {
     set(id, 'updating');
     const r = await updateExtension(id);
-    if (r.ok) { set(id, 'updated'); done++; } else { set(id, 'new'); toast('error', `没能更新「${name}」。请在「管理扩展程序」里手动更新。（${r.why}）`, 'RedBird 工具箱', { timeOut: 12000 }); }
+    if (r.ok) { set(id, 'updated'); done++; } else { set(id, 'new'); toast('error', `没能更新「${name}」。请在「管理扩展程序」里手动更新。（${r.why}）`, APP_NAME, { timeOut: 12000 }); }
   }
   if (done) await askReload();
 }
@@ -152,13 +152,13 @@ export async function checkForUpdate(force = false): Promise<UpdateInfo | null> 
   if (!current) return null;
   const latest = await fetchLatest();
   if (!latest) {
-    if (force) toast('warning', '连不上 GitHub，没法检查更新。', 'RedBird 工具箱');
+    if (force) toast('warning', '连不上 GitHub，没法检查更新。', APP_NAME);
     return null;
   }
   const newer = compareVersion(latest.version, current) > 0;
   newVersion.value = newer ? latest : null;
   if (!newer) {
-    if (force) toast('success', `已经是最新版本（${current}）。`, 'RedBird 工具箱');
+    if (force) toast('success', `已经是最新版本（${current}）。`, APP_NAME);
     return null;
   }
   const info = { current, latest: latest.version, whatsNew: latest.whatsNew };
@@ -169,7 +169,7 @@ export async function checkForUpdate(force = false): Promise<UpdateInfo | null> 
     if (localStorage.getItem(DAY_KEY) === today || localStorage.getItem(SKIP_KEY) === latest.version) return info;
     localStorage.setItem(DAY_KEY, today);
   } catch { /* private mode: just show it */ }
-  toast('info', `新版 ${latest.version}，当前 ${current}。${latest.whatsNew}点这里更新。`, 'RedBird 工具箱有更新', {
+  toast('info', `新版 ${latest.version}，当前 ${current}。${latest.whatsNew}点这里更新。`, `${APP_NAME}有更新`, {
     onclick: () => { void updateNow(); },
     timeOut: 15000,
     extendedTimeOut: 8000,

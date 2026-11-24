@@ -325,7 +325,7 @@ export function FlowView() {
         <StackBar totals={result.totals} total={result.totalTokens} />
         <Legend totals={result.totals} total={result.totalTokens} />
         {globalWI > 0 && (
-          <div class="rbt-warn">约 {globalWI} tokens 来自全局世界书「{globalBooks.join('、')}」。如果它不属于这张卡，别的设定就混进来了。</div>
+          <div class="rbt-warn">全局世界书「{globalBooks.join('、')}」也发给了 AI，约 {globalWI} tokens。不是这张卡用的话，请把它关掉。</div>
         )}
       </div>
       <div class="rbt-subtabs">

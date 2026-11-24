@@ -43,7 +43,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** Install a plugin from its Git link through ST's own installer. */
 export async function installPlugin(url: string): Promise<boolean> {
   const fn = loaded.extensions?.installExtension;
-  if (!fn) { toast('error', '这个版本的酒馆不支持从这里安装插件，请在「扩展 › 安装扩展程序」里装。', '安装插件'); return false; }
+  if (!fn) { toast('error', '插件没有安装。这个版本的酒馆不支持从这里装，请在「扩展 › 安装扩展程序」里装。', '安装插件'); return false; }
   const ok = await fn(url.trim(), false);
   return ok !== false;
 }
@@ -156,7 +156,7 @@ export function relate(items: ImportItem[]): ImportItem[] {
   for (const [name, group] of byName) {
     if (group.length < 2) continue;
     const keep = group.find((g) => /.png$/i.test(g.file.name)) ?? group[0];
-    for (const g of group) if (g !== keep) { g.skip = true; g.dupOf = keep.file.name; g.note = `和「${keep.file.name}」是同一张卡（${name}），只导入 PNG 就够了，它带头像。`; }
+    for (const g of group) if (g !== keep) { g.skip = true; g.dupOf = keep.file.name; g.note = `这和「${keep.file.name}」是同一张卡（${name}）。导入 PNG 就够了，它带头像。`; }
   }
   const cards = items.filter((i) => i.kind === 'character' && !i.skip);
   if (cards.length !== 1 || !cards[0].card) return items;
@@ -166,10 +166,10 @@ export function relate(items: ImportItem[]): ImportItem[] {
       if (looksLikeCardBook(card, baseName(it.file), it.entries ?? 0, it.prints)) {
         it.skip = true;
         it.dupOf = card.name;
-        it.note = `就是「${card.name}」卡里自带的那本（卡里 ${card.bookEntries} 条，这个文件 ${it.entries ?? '?'} 条），导入这张卡时会自动一起导入。`;
+        it.note = `这就是「${card.name}」自带的那本世界书，导入卡时会一起导入（卡里 ${card.bookEntries} 条，这个文件 ${it.entries ?? '?'} 条）。`;
       } else {
         it.toCard = true;
-        it.note = card.bookEntries ? '卡里已经自带一本世界书，这本作为附加世界书绑上' : '';
+        it.note = card.bookEntries ? '这张卡已经自带一本世界书，这本会作为附加世界书绑上。' : '';
       }
     }
     if (it.kind === 'preset') it.toCard = true;
@@ -278,7 +278,7 @@ export async function runImport(items: ImportItem[], hooks: {
     let name = '';
     try { name = String(JSON.parse(await it.file.text()).name ?? ''); } catch { /* unreadable */ }
     const has = () => !!name && [...document.querySelectorAll<HTMLOptionElement>('#themes option')].some((o) => o.value === name);
-    if (has()) { toast('warning', `已经有叫「${name}」的美化了，酒馆不会覆盖。要更新的话，先在「用户设置 › 界面主题」里删掉旧的。`, '导入'); done.push({ item: it, name: null }); continue; }
+    if (has()) { toast('warning', `美化「${name}」没有导入，因为已经有一个同名的。要更新的话，先在「用户设置 › 界面主题」里删掉旧的。`, '导入'); done.push({ item: it, name: null }); continue; }
     if (!feed('ui_preset_import_file', [it.file], 'change')) { toast('error', `美化「${name || it.file.name}」没有导入。请切回原版界面，在「用户设置 › 界面主题」里导入。`, '导入'); break; }
     const t0 = Date.now();
     while (!has() && Date.now() - t0 < 15000) await wait(300);

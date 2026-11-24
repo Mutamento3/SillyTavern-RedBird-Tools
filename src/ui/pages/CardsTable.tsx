@@ -16,7 +16,7 @@ import { loadThemes, stThemes, themesLoading } from '../../look/look';
 import { cardLookTick, lookLabel, RBT_LOOK } from '../../look/cardLook';
 import { envReport } from '../../tools/env/env';
 import { modelLabel, type ModelChoice } from '../../tools/model';
-import { ctx, currentCharacter, settings, toast, type Any, type EnvProfile } from '../../st/st';
+import { APP_NAME, ctx, currentCharacter, settings, toast, type Any, type EnvProfile } from '../../st/st';
 import { undoable } from '../undo';
 import { Empty, NavRow, Tag } from '../common';
 import { isPhone, Menu } from '../Menu';
@@ -128,7 +128,7 @@ async function unbindAll(r: Row): Promise<void> {
   const personas = r.personas.map((p) => p.id);
   const undo = await revertCard(r.avatar);
   for (const id of personas) unbindPersona(id, r.avatar);
-  toast('success', `已把「${r.name}」改回全局。点这里撤销。`, 'RedBird 工具箱', {
+  toast('success', `已把「${r.name}」改回全局。点这里撤销。`, APP_NAME, {
     timeOut: 8000,
     onclick: async () => { await undo(); for (const id of personas) bindPersona(id, r.avatar); },
   });

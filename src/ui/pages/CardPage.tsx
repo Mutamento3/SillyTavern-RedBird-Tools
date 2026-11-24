@@ -3,8 +3,9 @@
  * 顺序：卡面 → 需要注意 → 世界书 → 预设和模型 → 人设 → 正则 → 脚本 → 插件 → 美化 → 改回全局。
  * 规则见 dev/角色档案重做-spec.md；本卡专用的读写在 tools/env/setup.ts。
  */
+import { LOOK_NAME } from '../copy';
 import { useEffect, useState } from 'preact/hooks';
-import { confirmBox, confirmText, ctx, currentCharacter, loaded, toast } from '../../st/st';
+import { APP_NAME, confirmBox, confirmText, ctx, currentCharacter, loaded, toast } from '../../st/st';
 import { panelOpen } from '../Panel';
 import { bgFiles, currentChatBg, CUSTOM_BG, AVATAR_BG, loadBgFiles, lockedFile, setChatBg } from '../../look/chatBg';
 import { apiLabel, archiveTarget, archiveVersion, cardInfo, checkWorld, ensureFullCharacter, findChar, importCardWorld, presetApi, setCardTheme, thumbnailUrl, updateCardBook, worldNames, type CardInfo } from '../../tools/cards/cards';
@@ -204,7 +205,7 @@ function LookSetupSection({ info }: { info: CardInfo }) {
   const goAll = () => { openGlobal('looks'); if (own && names.includes(own)) openDetail({ kind: 'theme', name: own }, GLOBAL_TAB_LABELS.looks); };
   const gone = own && !own.startsWith(RBT_LOOK) && names.length > 0 && !names.includes(own);
   const options: Opt[] = [
-    ...LOOKS.map((l) => ({ key: `${RBT_LOOK}${l.id}`, title: `红鸟自带美化 · ${l.label}`, sub: l.desc, selected: own === `${RBT_LOOK}${l.id}`, onPick: () => pick(`${RBT_LOOK}${l.id}`) })),
+    ...LOOKS.map((l) => ({ key: `${RBT_LOOK}${l.id}`, title: `${LOOK_NAME} · ${l.label}`, sub: l.desc, selected: own === `${RBT_LOOK}${l.id}`, onPick: () => pick(`${RBT_LOOK}${l.id}`) })),
     ...(gone ? [{ key: own!, title: own!, sub: '已经删掉了，现在用全局的', selected: true, onPick: () => setOpen(false) }] : []),
     ...names.map((n) => ({ key: n, title: n, selected: own === n, onPick: () => pick(n) })),
   ];
@@ -292,7 +293,7 @@ function RevertRow({ info }: { info: CardInfo }) {
       const def = String(ctx().powerUserSettings?.default_persona ?? '');
       if (info.isCurrent && persona.length && def && def !== loaded.personas?.user_avatar) await loaded.personas?.setUserAvatar?.(def);
       if (theme) setCardTheme(info.avatar, info.name, null);
-      toast('success', `已改回全局：${lines.map(([, n]) => n).join('、')}。点这里撤销。`, 'RedBird 工具箱', {
+      toast('success', `已改回全局：${lines.map(([, n]) => n).join('、')}。点这里撤销。`, APP_NAME, {
         timeOut: 9000,
         onclick: async () => {
           await undo();
@@ -329,7 +330,7 @@ function TagHelp({ info }: { info: CardInfo }) {
         <ul class="rbt-help-list">
           <li><Pill kind="global" /><span>所有卡都用。在酒馆自己的面板（预设设置、API 设置等）里改的，改的就是全局。</span></li>
           <li><Pill kind="card" img={thumbnailUrl(info.avatar)} /><span>只这张卡用。在这一页里改的，会自动记成本卡专用，以后进这张卡都用它。</span></li>
-          <li><Pill kind="chat" /><span>只这个存档用，比如锁在这个存档上的背景、人设。</span></li>
+          <li><Pill kind="chat" /><span>只有现在这段聊天用，比如锁在这段聊天上的背景、人设。</span></li>
           <li><Pill kind="preset" /><span>用这个预设时才用，比如预设推荐的模型。</span></li>
           <li><span>想让这张卡全部回到全局，点「改回全局」。想让所有卡都用这张卡的某一项，在那一项的选择框里点「让所有卡都用」。</span></li>
         </ul>

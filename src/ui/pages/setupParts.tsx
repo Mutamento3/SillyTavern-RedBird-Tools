@@ -6,7 +6,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { isPhone } from '../Menu';
-import { ctx, loaded, settings, toast, type Any } from '../../st/st';
+import { APP_NAME, ctx, loaded, settings, toast, type Any } from '../../st/st';
 import { apiLabel, archiveVersion, currentPresetName, presetApi, presetNames, thumbnailUrl, worldNames, type CardInfo } from '../../tools/cards/cards';
 import { currentModel, modelLabel, modelsApply, sameModel, SOURCE_LABEL, stModelList, type ModelChoice } from '../../tools/model';
 import { attachBook, attachedBooks, bookOwners, cardUses, detachBook, globalRegex, globalValue, makeGlobal, profileOf, setCardItem, setCardUse, worldFacts } from '../../tools/env/setup';
@@ -15,9 +15,10 @@ import { buildEnvReport } from '../../tools/env/env';
 import { openDrawer } from '../../shell/drawers';
 import { working } from '../../st/busy';
 import { bindPersona, boundPersonas, personaTick, unbindPersona, watchPersonas } from './parts';
-import { createPersona, personaDesc, personaIds, personaName, personaThumb } from '../../st/personas';
+import { createPersona, lockChatPersona, personaDesc, personaIds, personaName, personaThumb } from '../../st/personas';
+import { shortSaveName } from '../../shell/recent';
 import { editRegex } from './GlobalPage';
-import { GLOBAL_TAB_LABELS, openDetail, openGlobal } from '../views';
+import { GLOBAL_TAB_LABELS, openDetail, openGlobal, type Detail } from '../views';
 import { Toggle } from '../common';
 
 // --------------------------------------------------------------- bits ---
@@ -34,22 +35,22 @@ export function Pill({ kind, img }: { kind: PillKind; img?: string }) {
 }
 
 
-export interface Opt { key: string; title: string; sub?: string; /** 分组：和上一个不同时，前面加一个小标题 */ group?: string; lead?: string; selected?: boolean; disabled?: boolean; onPick: () => void }
+export interface Opt { key: string; title: string; sub?: string; /** 选项右边的小东西（比如美化的色块） */ trail?: ComponentChildren; /** 分组：和上一个不同时，前面加一个小标题 */ group?: string; lead?: string; selected?: boolean; disabled?: boolean; onPick: () => void }
 
 /**
  * 一行：左边小字名字，右边整行是框（全名换行、标签在右、箭头图标）。点框弹出选择框：
  * 电脑上盖在下面的内容上；手机上从底部弹出（点外面关掉）。选项多（超过 8 个）时上面有搜索框。
  * 选择框里：top（「全局」和「让所有卡都用」，都是关于全局的，放最上面不用往下翻）→ head（「卡名专用」小标题）+ options → bottom（去面板的按钮）。
  */
-export function PickRow({ k, title, placeholder, value, sub, lead, pill, thumb, disabled, busy, open, onToggle, onClose, top, head, options, bottom }: {
+export function PickRow({ k, title, placeholder, value, sub, lead, pill, thumb, disabled, busy, open, onToggle, onClose, above, top, head, options, bottom }: {
   k: string; title?: string; placeholder?: string; value: ComponentChildren; sub?: string; lead?: string; pill?: ComponentChildren; thumb?: string; disabled?: boolean;
   /** 正在换：箭头换成转圈，框不变淡（变淡 + 还是旧的值，看着像卡住了） */
   busy?: boolean;
   open: boolean; onToggle: () => void; onClose: () => void;
-  top?: ComponentChildren; head?: string; options?: Opt[]; bottom?: ComponentChildren;
+  above?: ComponentChildren; top?: ComponentChildren; head?: string; options?: Opt[]; bottom?: ComponentChildren;
 }) {
   return (
-    <Popup title={title ?? k} placeholder={placeholder} open={open} onClose={onClose} top={top} head={head} options={options} bottom={bottom}>
+    <Popup title={title ?? k} placeholder={placeholder} open={open} onClose={onClose} above={above} top={top} head={head} options={options} bottom={bottom}>
       <div class="rbt-pick-row">
         <span class="rbt-pick-k">{k}</span>
         <button type="button" class={`rbt-pick-box ${open ? 'open' : ''}`} disabled={disabled || busy} aria-busy={busy || undefined} aria-expanded={open} aria-haspopup="listbox" onClick={onToggle}>
@@ -66,8 +67,11 @@ export function PickRow({ k, title, placeholder, value, sub, lead, pill, thumb, 
 }
 
 /** 点一个按钮（children）弹出的选择框，PickRow、「＋ 附加世界书」、首页的排序和筛选共用。 */
-export function Popup({ title, placeholder, open, onClose, top, head, options, bottom, wide, cls, children }: {
-  title: string; placeholder?: string; open: boolean; onClose: () => void; top?: ComponentChildren; head?: string; options?: Opt[]; bottom?: ComponentChildren;
+export function Popup({ title, placeholder, open, onClose, above, top, head, options, bottom, wide, cls, children }: {
+  title: string; placeholder?: string; open: boolean; onClose: () => void;
+  /** 标题下面、不跟着列表滚动的一块（比如人设的「本卡 | 本存档」） */
+  above?: ComponentChildren;
+  top?: ComponentChildren; head?: string; options?: Opt[]; bottom?: ComponentChildren;
   /** 选择框和按钮左边对齐（PickRow 里是和框对齐） */
   wide?: boolean;
   /** 外层再加的 class（各处自己定选择框在电脑上的位置和宽度） */
@@ -99,11 +103,12 @@ export function Popup({ title, placeholder, open, onClose, top, head, options, b
         <div class="rbt-menu-scrim" onClick={onClose} />
         <div class="rbt-menu" role="listbox" aria-label={title} ref={sheetRef}>
           <div class="rbt-menu-title">{title}<button type="button" class="rbt-iconbtn" aria-label="关闭" onClick={onClose}><i class="fa-solid fa-xmark" /></button></div>
+          {above}
           {(options?.length ?? 0) > 8 && <input class="text_pole rbt-input rbt-menu-search" placeholder={placeholder ?? `搜${title}名字`} value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />}
           <div class="rbt-menu-scroll">
             {!q.trim() && top}
             {head && <>{!q.trim() && top && <MenuLine />}<MenuHead>{head}</MenuHead></>}
-            {list.map((o, i) => [o.group && o.group !== list[i - 1]?.group && <MenuHead key={`g:${o.group}`}>{o.group}</MenuHead>, <MenuOpt key={o.key} title={o.title} sub={o.sub} lead={o.lead} selected={o.selected} disabled={o.disabled} onPick={o.onPick} />])}
+            {list.map((o, i) => [o.group && o.group !== list[i - 1]?.group && <MenuHead key={`g:${o.group}`}>{o.group}</MenuHead>, <MenuOpt key={o.key} title={o.title} sub={o.sub} lead={o.lead} trail={o.trail} selected={o.selected} disabled={o.disabled} onPick={o.onPick} />])}
             {q.trim() && !list.length && <div class="rbt-menu-empty">没有找到「{q.trim()}」</div>}
             {!q.trim() && bottom}
           </div>
@@ -113,12 +118,13 @@ export function Popup({ title, placeholder, open, onClose, top, head, options, b
   );
 }
 
-export function MenuOpt({ title, sub, lead, selected, disabled, onPick }: { title: ComponentChildren; sub?: string; lead?: string; selected?: boolean; disabled?: boolean; onPick: () => void }) {
+export function MenuOpt({ title, sub, lead, trail, selected, disabled, onPick }: { title: ComponentChildren; sub?: string; lead?: string; trail?: ComponentChildren; selected?: boolean; disabled?: boolean; onPick: () => void }) {
   return (
     <button type="button" role="option" aria-selected={!!selected} aria-disabled={disabled || undefined} disabled={disabled} class={`rbt-menu-opt ${selected ? 'cur' : ''}`} onClick={onPick}>
       <span class="rbt-menu-tick">{selected && <i class="fa-solid fa-check" aria-hidden="true" />}</span>
       {lead && <img class="rbt-pick-lead" src={lead} alt="" />}
       <span class="rbt-menu-t">{title}{sub && <small>{sub}</small>}</span>
+      {trail}
     </button>
   );
 }
@@ -207,7 +213,7 @@ function useOpen(): [string | null, (k: string) => void, () => void] {
 /** 「让所有卡都用」：改完弹提示，能撤销。 */
 function allCards(info: CardInfo, key: string, label: string): void {
   const undo = makeGlobal(info.avatar, info.name, key);
-  toast('success', `所有卡都用「${label}」了。点这里撤销。`, 'RedBird 工具箱', { onclick: () => { void undo(); }, timeOut: 8000 });
+  toast('success', `所有卡都用「${label}」了。点这里撤销。`, APP_NAME, { onclick: () => { void undo(); }, timeOut: 8000 });
 }
 
 // ------------------------------------------------------ 预设和模型 ---
@@ -291,7 +297,7 @@ function ModelForm({ initial, onUse }: { initial?: ModelChoice; onUse: (m: Model
         {!sources.includes(source) && <option value={source}>{source}</option>}
         {sources.map((s) => <option key={s} value={s}>{SOURCE_LABEL[s]}</option>)}
       </select>
-      <input class="text_pole rbt-input" placeholder="模型名，和 API 面板里的一样" value={name} onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
+      <input class="text_pole rbt-input" placeholder="模型名，和「API 设置」里的一样" value={name} onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && ok) onUse({ source, model: name.trim() }); }} />
       <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={!ok} onClick={() => onUse({ source, model: name.trim() })}>用这个</button>
     </div>
@@ -311,8 +317,16 @@ export function PersonaSetupSection({ info }: { info: CardInfo }) {
   const def = String(pu.default_persona ?? '');
   const live = info.isCurrent;
   const cur = live ? String(loaded.personas?.user_avatar ?? '') : bound[0] ?? def;
+  // 这段聊天锁定的人设（酒馆的「锁定到这个聊天」）：比本卡专用、全局都优先
   const locked = live ? String(c.chatMetadata?.persona ?? '') : '';
   const kind: PillKind = locked && locked === cur ? 'chat' : bound.length ? 'card' : 'global';
+  // 本卡的人设：这张卡没锁定的聊天用它
+  const cardLevel = bound[0] ?? def;
+  const chatId = live ? String(c.getCurrentChatId?.() ?? '') : '';
+  const chatName = chatId ? shortSaveName(chatId, info.name) : '';
+  // 菜单改的是哪一层：打开时这段聊天锁定了就先显示「本存档」
+  const [scope, setScope] = useState<'card' | 'chat'>('card');
+  const openMenu = () => { if (open !== 'p') setScope(locked ? 'chat' : 'card'); toggle('p'); };
   const use = async (id: string | null) => {
     close();
     const before = bound.slice();
@@ -320,29 +334,42 @@ export function PersonaSetupSection({ info }: { info: CardInfo }) {
     // 选「全局」= 解开这张卡绑的人设；选一个 = 绑上它（酒馆没开「一张卡连多个人设」时会换掉原来的）
     if (id) bindPersona(id, info.avatar); else for (const b of before) unbindPersona(b, info.avatar);
     const to = id ?? def;
-    if (live && to && to !== was) await loaded.personas?.setUserAvatar?.(to);
+    // 这段聊天锁定了人设：只改本卡，眼前这段聊天不换
+    if (live && !locked && to && to !== was) await loaded.personas?.setUserAvatar?.(to);
     personaTick.value++;
     if (before.length && !before.includes(id ?? '')) {
-      toast('success', id ? `已把「${info.name}」的人设换成「${personaName(id)}」。点这里撤销。` : `「${info.name}」的人设改回全局了。点这里撤销。`, 'RedBird 工具箱', {
+      toast('success', id ? `已把「${info.name}」的人设换成「${personaName(id)}」。点这里撤销。` : `「${info.name}」的人设改回全局了。点这里撤销。`, APP_NAME, {
         timeOut: 8000,
-        onclick: async () => { if (id) unbindPersona(id, info.avatar); for (const b of before) bindPersona(b, info.avatar); if (live && was) await loaded.personas?.setUserAvatar?.(was); personaTick.value++; },
+        onclick: async () => { if (id) unbindPersona(id, info.avatar); for (const b of before) bindPersona(b, info.avatar); if (live && !locked && was) await loaded.personas?.setUserAvatar?.(was); personaTick.value++; },
       });
     }
   };
-  // 复制现在这个人设给这张卡用：建好、绑上，然后打开新人设的页面改
-  const copyForCard = async (src: string) => {
+  const lock = async (id: string | null) => {
     close();
-    const to = `${personaName(src)} · ${info.name}`;
+    try { await lockChatPersona(id, cardLevel); } catch (e) { toast('error', `没能换人设。请再试一次。（${(e as Error).message}）`); }
+    personaTick.value++;
+  };
+  // 复制现在这个人设：给这张卡用（绑上）或只给这段聊天用（锁定），然后打开新人设的页面改
+  const copyFor = async (src: string, where: 'card' | 'chat') => {
+    close();
+    const to = where === 'card' ? `${personaName(src)} · ${info.name}` : `${personaName(src)} 副本`;
     try {
       const id = await createPersona({ name: to, description: personaDesc(src), from: src });
-      bindPersona(id, info.avatar);
-      if (live) await loaded.personas?.setUserAvatar?.(id);
+      if (where === 'card') {
+        bindPersona(id, info.avatar);
+        if (live && !locked) await loaded.personas?.setUserAvatar?.(id);
+        toast('success', locked ? `已复制成「${to}」，这张卡的其他聊天用它。` : `已复制成「${to}」，「${info.name}」现在用它。`);
+      } else {
+        await lockChatPersona(id);
+        toast('success', `已复制成「${to}」，这段聊天现在用它。`);
+      }
       personaTick.value++;
-      toast('success', `已复制成「${to}」，「${info.name}」现在用它。`);
       openGlobal('personas');
       openDetail({ kind: 'persona', id }, GLOBAL_TAB_LABELS.personas);
     } catch (e) { toast('error', `没能复制人设。请再试一次。（${(e as Error).message}）`); }
   };
+  const newFor = (d: Detail) => { close(); openGlobal('personas'); openDetail(d, GLOBAL_TAB_LABELS.personas); };
+  const chatScope = live && scope === 'chat';
   const makeDefault = (id: string) => {
     close();
     const prevDef = def;
@@ -351,27 +378,40 @@ export function PersonaSetupSection({ info }: { info: CardInfo }) {
     for (const b of before) unbindPersona(b, info.avatar);
     c.saveSettingsDebounced();
     personaTick.value++;
-    toast('success', `所有卡都用「${personaName(id)}」了。点这里撤销。`, 'RedBird 工具箱', {
+    toast('success', `所有卡都用「${personaName(id)}」了。点这里撤销。`, APP_NAME, {
       onclick: () => { pu.default_persona = prevDef; for (const b of before) bindPersona(b, info.avatar); c.saveSettingsDebounced(); personaTick.value++; }, timeOut: 8000,
     });
   };
   return (
     <FoldSection title="user 人设" summary={cur ? personaName(cur) : '没有人设'} defaultOpen action={<PanelBtn label="人设设置" onClick={() => openDrawer('persona')} />}>
       <PickRow k="人设" value={cur ? personaName(cur) : '没有人设'} lead={cur ? personaThumb(cur) : undefined}
-        pill={<Pill kind={kind} img={thumbnailUrl(info.avatar)} />} open={open === 'p'} onToggle={() => toggle('p')} onClose={close}
-        top={<>
-          <MenuOpt title="全局" lead={def ? personaThumb(def) : undefined} sub={def ? `和其他卡一样：${personaName(def)}` : '酒馆里还没设默认人设，会沿用上次用的'} selected={!bound.length} onPick={() => { void use(null); }} />
-          {bound.length === 1 && <MenuAll name={personaName(bound[0])} onPick={() => makeDefault(bound[0])} />}
-        </>}
-        head={`${info.name}专用`}
-        options={all.map((id) => ({ key: id, title: personaName(id), lead: personaThumb(id), selected: bound.includes(id), onPick: () => { void use(id); } }))}
+        pill={<Pill kind={kind} img={thumbnailUrl(info.avatar)} />} open={open === 'p'} onToggle={openMenu} onClose={close}
+        above={live && <div class="rbt-menu-scope">
+          <div class="rbt-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={!chatScope} class={chatScope ? '' : 'active'} onClick={() => setScope('card')}>本卡</button>
+            <button type="button" role="tab" aria-selected={chatScope} class={chatScope ? 'active' : ''} onClick={() => setScope('chat')}>本存档</button>
+          </div>
+          <small>{chatScope ? `只改现在这段聊天「${chatName}」。这张卡的其他聊天和新聊天，还用本卡的人设。` : locked ? '这张卡的其他聊天都用它，以后新开的也是。' : '这张卡的所有聊天都用它，以后新开的也是。'}</small>
+        </div>}
+        top={chatScope
+          ? <MenuOpt title="跟着本卡" sub={cardLevel ? `现在是：${personaName(cardLevel)}` : undefined} selected={!locked} onPick={() => { void lock(null); }} />
+          : <>
+            <MenuOpt title="全局" lead={def ? personaThumb(def) : undefined} sub={def ? `和其他卡一样：${personaName(def)}` : '酒馆里还没设默认人设，会沿用上次用的'} selected={!bound.length} onPick={() => { void use(null); }} />
+            {bound.length === 1 && <MenuAll name={personaName(bound[0])} onPick={() => makeDefault(bound[0])} />}
+          </>}
+        head={chatScope ? '本存档专用' : `${info.name}专用`}
+        options={all.map((id) => chatScope
+          ? { key: id, title: personaName(id), lead: personaThumb(id), selected: locked === id, onPick: () => { void lock(id); } }
+          : { key: id, title: personaName(id), lead: personaThumb(id), selected: bound.includes(id), onPick: () => { void use(id); } })}
         bottom={<>
           <MenuLine />
-          <MenuAct icon="fa-plus" title={`给「${info.name}」新建人设`} onPick={() => { close(); openGlobal('personas'); openDetail({ kind: 'persona-new', forCard: info.avatar }, GLOBAL_TAB_LABELS.personas); }} />
-          {cur && <MenuAct icon="fa-copy" title={`复制「${personaName(cur)}」给「${info.name}」用`} sub={`在原来的基础上改，不影响「${personaName(cur)}」`} onPick={() => { void copyForCard(cur); }} />}
+          {chatScope
+            ? <MenuAct icon="fa-plus" title="给本存档新建人设" onPick={() => newFor({ kind: 'persona-new', forChat: chatId })} />
+            : <MenuAct icon="fa-plus" title={`给「${info.name}」新建人设`} onPick={() => newFor({ kind: 'persona-new', forCard: info.avatar })} />}
+          {cur && <MenuAct icon="fa-copy" title={chatScope ? `复制「${personaName(cur)}」给本存档用` : `复制「${personaName(cur)}」给「${info.name}」用`} sub={`在原来的基础上改，不影响「${personaName(cur)}」`} onPick={() => { void copyFor(cur, chatScope ? 'chat' : 'card'); }} />}
           <MenuFoot label="人设设置" onClick={() => { close(); openDrawer('persona'); }} />
         </>} />
-      {locked && <div class="rbt-pick-hint">这个存档锁定了人设「{personaName(locked)}」，只对这个存档。{bound.length ? `换到这张卡的其他存档，用「${personaName(bound[0])}」。` : ''}</div>}
+      {locked && <div class="rbt-pick-hint">只有这段聊天用「{personaName(locked)}」。{cardLevel ? `这张卡的其他聊天用「${personaName(cardLevel)}」。` : ''}</div>}
     </FoldSection>
   );
 }
@@ -397,7 +437,7 @@ export function WorldSetupSection({ info, openWorld, cardBook }: { info: CardInf
   const persona = report ? report.items.filter((i) => i.scope === 'persona' && i.kind === 'worldbook').map((i) => i.name) : [];
   const detach = (w: string) => {
     detachBook(avatar, w);
-    toast('success', `已从「${info.name}」移除附加世界书「${w}」。点这里撤销。`, 'RedBird 工具箱', { onclick: () => attachBook(avatar, w), timeOut: 8000 });
+    toast('success', `已从「${info.name}」移除附加世界书「${w}」。点这里撤销。`, APP_NAME, { onclick: () => attachBook(avatar, w), timeOut: 8000 });
   };
   // 所有书都列出来，不能附加的灰掉、写原因（不然看着像列表不全）
   const whyNot = (w: string) => (attached.includes(w) ? '已附加' : facts.mine.has(w) ? '这张卡自带' : facts.global.has(w) ? '已是全局' : '');

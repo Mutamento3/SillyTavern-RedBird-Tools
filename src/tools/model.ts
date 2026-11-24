@@ -195,19 +195,17 @@ export function installModelGuard(): void {
       // 预设里没存模型 → 模型被清空，没法聊天，没人想要这个结果：直接换回原来的，说一声
       if (!now?.model) {
         void withoutModelGuard(() => setModel(prev)).then((ok) => {
-          if (ok) toast('info', `这个预设里没存模型，换预设时模型被清空了，已经帮你换回 ${modelLabel(prev)}。`, '模型');
-          else toast('warning', `换预设时模型被清空了，没能自动换回 ${modelLabel(prev)}，请在 API 面板里选一下模型。`, '模型变了', { timeOut: 15000 });
+          if (ok) toast('info', `已换回 ${modelLabel(prev)}。这个预设里没存模型，换预设时模型被清空了。`, '模型');
+          else toast('warning', `模型被清空了，没能自动换回 ${modelLabel(prev)}。请在「API 设置」里选一个模型。`, '模型变了', { timeOut: 15000 });
         });
         return;
       }
-      const what = !now?.model ? `模型被清空了（原来是 ${modelLabel(prev)}）` : `模型从 ${modelLabel(prev)} 换成了 ${modelLabel(now)}`;
-      toast('warning', `换预设时${what}。这个预设里存着自己的 API 和模型，酒馆的「将预设与 API 配置绑定」开着时会跟着换。
-点这里换回 ${modelLabel(prev)}。`, '模型变了', {
+      toast('warning', `换预设时，模型从 ${modelLabel(prev)} 换成了 ${modelLabel(now)}，因为这个预设自己带着模型。点这里换回 ${modelLabel(prev)}。`, '模型变了', {
         timeOut: 15000,
         extendedTimeOut: 8000,
         onclick: () => {
           void withoutModelGuard(() => setModel(prev)).then((ok) => {
-            toast(ok ? 'success' : 'error', ok ? `已换回 ${modelLabel(prev)}` : '没能换回去，请在 API 面板里手动选一下模型。', '模型');
+            toast(ok ? 'success' : 'error', ok ? `已换回 ${modelLabel(prev)}。` : `没能换回 ${modelLabel(prev)}。请在「API 设置」里选一个模型。`, '模型');
           });
         },
       });

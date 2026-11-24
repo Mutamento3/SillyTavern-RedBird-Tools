@@ -228,7 +228,7 @@ async function applyForCard(char: Any, openStatus: () => void): Promise<void> {
   if (planHasChanges(plan) || imported.length) {
     const tell = (changes: string[]) => {
       if (String(currentCharacter()?.avatar ?? '') !== char.avatar) return;
-      if (changes.length) toast('success', `进「${char.name}」时换了：${changes.join('；')}。点这里查看`, '换卡', { onclick: openStatus, timeOut: 9000 });
+      if (changes.length) toast('success', `进「${char.name}」时换了：${changes.join('；')}。点这里查看。`, '换卡', { onclick: openStatus, timeOut: 9000 });
     };
     if (!planHasChanges(plan)) tell(imported);
     else {

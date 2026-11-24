@@ -96,7 +96,7 @@ function buildSectionsNow(char: Any): { sections: Section[]; issues: number } {
   if (info.regex.total) {
     rx.push(info.regex.allowed
       ? { level: 'ok', text: `卡里的 ${info.regex.total} 条正则已允许运行` }
-      : { level: 'warn', text: `卡里的 ${info.regex.total} 条正则未允许运行`, detail: '状态栏、界面美化这类效果不会出现',
+      : { level: 'warn', text: `卡里的 ${info.regex.total} 条正则还没允许运行`, detail: '状态栏、界面美化这类效果不会出现',
         action: { label: '允许运行', run: async () => {
           loaded.regexEngine?.allowScopedScripts?.(char);
           saveSettings();
@@ -112,7 +112,7 @@ function buildSectionsNow(char: Any): { sections: Section[]; issues: number } {
     sc.push(info.scripts.enabled
       ? { level: 'ok', text: `酒馆助手角色脚本 ${info.scripts.total} 个已启用`, detail: info.scripts.names.slice(0, 4).join('、') }
       : { level: 'warn', text: '这张卡的脚本还没允许运行', detail: `${info.scripts.total} 个`,
-        action: { label: '允许', run: async () => { const g = cardGroup(info.avatar); if (g) await setGroupAllowed(g, true); bump(); } } });
+        action: { label: '允许运行', run: async () => { const g = cardGroup(info.avatar); if (g) await setGroupAllowed(g, true); bump(); } } });
     if (hasMvu(char)) sc.push({ level: info.scripts.enabled ? 'ok' : 'warn', text: info.scripts.enabled ? 'MVU 变量正常更新' : 'MVU 变量不会更新', detail: info.scripts.enabled ? '随角色脚本一起运行' : '因为角色脚本未启用' });
   } else sc.push({ level: 'info', text: '这张卡没有酒馆助手脚本' });
   sections.push({ title: '脚本', lines: sc });

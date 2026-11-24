@@ -13,6 +13,7 @@ import { effect, signal } from '@preact/signals';
 import { ctx, currentCharacter, saveSettings, settings, toast } from '../st/st';
 import { openDrawers } from '../shell/drawers';
 import { archiveVersion, setCardTheme } from '../tools/cards/cards';
+import { LOOK_NAME } from '../ui/copy';
 import { applyLook, loadThemes, LOOKS, lookOn, lookId, lookOverride, lookSuspended, refreshSurface, stThemes, currentStTheme, type StTheme } from './look';
 
 /** 换卡、改绑定、改开关时加一，重新套一次。 */
@@ -25,10 +26,10 @@ const store = (): Store => settings() as unknown as Store;
 
 /** 卡专用的美化是红鸟自带美化的某一套时，存成「rbt:深浅色的 id」。 */
 export const RBT_LOOK = 'rbt:';
-/** 美化给人看的名字：红鸟自带美化写成「红鸟自带美化 · 深色」。 */
+/** 美化给人看的名字：红鸟适配美化写成「红鸟适配美化 · 深色」。 */
 export function lookLabel(name: string): string {
   if (!name.startsWith(RBT_LOOK)) return name;
-  return `红鸟自带美化 · ${LOOKS.find((l) => l.id === name.slice(RBT_LOOK.length))?.label ?? name.slice(RBT_LOOK.length)}`;
+  return `${LOOK_NAME} · ${LOOKS.find((l) => l.id === name.slice(RBT_LOOK.length))?.label ?? name.slice(RBT_LOOK.length)}`;
 }
 /** 全局美化现在是什么（给「全局 · 和其他卡一样：X」）。 */
 export function globalLookLabel(): string {
@@ -233,7 +234,7 @@ export function installCardLook(): void {
     const name = appliedCardTheme.value;
     if (!name || !openDrawers.value.includes('settings') || told.has(name)) return;
     told.add(name);
-    toast('info', `现在用着这张卡的美化「${lookLabel(name)}」，在这里改的全局美化暂时看不到。回首页就能看到。`, '美化');
+    toast('info', `全局美化已改好。这张卡用的是自己的美化「${lookLabel(name)}」，回首页才看得到。`, '美化');
   });
   // 在酒馆里保存了美化：重新读一遍，卡的美化用的也是新的
   window.jQuery?.(document).on('click', '#ui-preset-save-button, #ui-preset-update-button', () => { setTimeout(() => { void loadThemes(); }, 1500); });

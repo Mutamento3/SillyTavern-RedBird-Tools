@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "RedBird 工具箱：SillyTavern 扩展，边玩边看提示词信息流、变量变化和换卡环境体检。",
+  "description": "RedBird 红鸟工具箱：SillyTavern 扩展，边玩边看提示词信息流、变量变化和换卡环境体检。",
   "scripts": {
-    "build": "vite build",
+    "build": "tsc --noEmit && vite build --outDir dist-new && node scripts/swap-dist.mjs",
     "watch": "vite build --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

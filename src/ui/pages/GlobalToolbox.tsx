@@ -10,7 +10,7 @@
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { confirmText, ctx, currentCharacter, loaded, saveSettings, settings, toast } from '../../st/st';
-import { createPersona, currentPersona, deletePersona, personaCards, personaDesc, personaIds, personaName, personaThumb, pickAvatar, renamePersona, setPersonaAvatar, setPersonaDesc, type PickedAvatar } from '../../st/personas';
+import { createPersona, currentPersona, deletePersona, lockChatPersona, personaCards, personaDesc, personaIds, personaImage, personaName, personaThumb, pickAvatar, renamePersona, setPersonaAvatar, setPersonaDesc, type PickedAvatar } from '../../st/personas';
 import {
   allCharacters,
   archiveVersion,
@@ -34,6 +34,7 @@ import { envReport, refreshEnv, type EnvItem } from '../../tools/env/env';
 import { currentBookScopes } from '../../tools/flow/capture';
 import { allSeries, compareVersions, renameSeries, setSeries, sourceFor, sourcesTick, suggestSeries, updateSource, type SourceKind } from '../../tools/sources';
 import { openDrawer } from '../../shell/drawers';
+import { shortSaveName } from '../../shell/recent';
 import { openBookInEditor } from '../../shell/worldNote';
 import { Empty, NavRow, CheckRow, Tag, Toggle } from '../common';
 import { globalValue, heldByCard, setGlobal, trueGlobalWorlds } from '../../tools/env/setup';
@@ -56,6 +57,7 @@ import { LOOK_COPY, LOOK_NAME } from '../copy';
 import { mesLayoutOn, setMesLayout } from '../../shell/mesActions';
 import { compact, shellOn } from '../../shell/Shell';
 import { PresetScriptsSection, ScriptsPage } from './ScriptsPage';
+import { PickRow, type Opt } from './setupParts';
 import {
   ACCENTS, accentId, currentStTheme, loadThemes, LOOKS, lookId, lookOn, quoteId, READ_WIDTHS, readWidth, setAccent, setQuoteColor, setReadWidth, setStChatWidth, stChatWidth, stThemes, themeHasCss, themesLoading,
   useBuiltInLook, useStTheme, type StTheme,
@@ -499,7 +501,7 @@ function PersonaDetail({ id }: { id: string }) {
   const isNow = currentPersona() === id;
   const run = async (f: () => Promise<void>) => {
     setBusy(true);
-    try { await f(); } catch (e) { toast('error', `没能保存。请再试一次。（${(e as Error).message}）`); } finally { setBusy(false); personaTick.value++; }
+    try { await f(); } catch (e) { toast('error', `没能保存人设「${personaName(id)}」。请再试一次。（${(e as Error).message}）`); } finally { setBusy(false); personaTick.value++; }
   };
   const copy = () => run(async () => {
     const to = `${personaName(id)} 副本`;
@@ -529,7 +531,7 @@ function PersonaDetail({ id }: { id: string }) {
         <div class="rbt-page-group">
           <section class="rbt-card-section">
             <div class="rbt-persona-av">
-              <img src={personaThumb(id)} alt="" />
+              <img src={personaImage(id)} alt="" />
               <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={async () => { const p = await pickAvatar(); if (p) await run(() => setPersonaAvatar(id, p)); }}>换头像</button>
             </div>
             <label class="rbt-field">
@@ -561,9 +563,10 @@ function PersonaDetail({ id }: { id: string }) {
   );
 }
 
-/** 新建人设：头像、名字、描述。从某张卡点进来的（forCard），建好就给这张卡用。 */
-function PersonaNew({ forCard }: { forCard?: string }) {
+/** 新建人设：头像、名字、描述。从某张卡点进来的（forCard），建好就给这张卡用；从某段聊天点进来的（forChat），建好就锁定在这段聊天上。 */
+function PersonaNew({ forCard, forChat }: { forCard?: string; forChat?: string }) {
   const card = forCard ? (ctx().characters ?? []).find((x: { avatar: string }) => x.avatar === forCard) : null;
+  const chatName = forChat ? shortSaveName(forChat, currentCharacter()?.name) : '';
   const [avatar, setAvatar] = useState<PickedAvatar | null>(null);
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
@@ -574,7 +577,11 @@ function PersonaNew({ forCard }: { forCard?: string }) {
     setBusy(true);
     try {
       const id = await createPersona({ name: n, description: desc, avatar });
-      if (card) {
+      // 还在那段聊天里才锁定（建的时候换了聊天，就只建不锁）
+      if (forChat && ctx().getCurrentChatId?.() === forChat) {
+        await lockChatPersona(id);
+        toast('success', `已创建「${n}」，这段聊天现在用它。`);
+      } else if (card) {
         bindPersona(id, card.avatar);
         if (currentCharacter()?.avatar === card.avatar) await loaded.personas?.setUserAvatar?.(id);
         toast('success', `已创建「${n}」，「${card.name}」现在用它。`);
@@ -589,7 +596,8 @@ function PersonaNew({ forCard }: { forCard?: string }) {
   return (
     <div class="rbt-page">
       <div class="rbt-detail-head"><h2>新建人设</h2></div>
-      {card && <small class="rbt-muted">建好后「{card.name}」就用这个人设。</small>}
+      {forChat ? <small class="rbt-muted">建好后只有这段聊天「{chatName}」用这个人设。</small>
+        : card && <small class="rbt-muted">建好后「{card.name}」就用这个人设。</small>}
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
           <section class="rbt-card-section">
@@ -877,11 +885,11 @@ function useThemes(): void {
   useEffect(() => { if (!stThemes.value.length && !themesLoading.value) void loadThemes(); }, []);
 }
 
-/** 工具箱自带的一套：一张小样（纸色、卡片、两行字、强调色点）+ 名字 + 一句话。点了就换上。 */
-function LookCard({ l, on }: { l: (typeof LOOKS)[number]; on: boolean }) {
+/** 红鸟适配美化的一套：小样（纸色、卡片、两行字、强调色点）+ 名字 + 一句话。点了就换上。 */
+function LookCard({ l }: { l: (typeof LOOKS)[number] }) {
   const p = l.preview;
   return (
-    <button type="button" class={`rbt-lookcard ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => { void useBuiltInLook(l.id); }}>
+    <button type="button" class="rbt-lookcard" onClick={() => { void useBuiltInLook(l.id); }}>
       <span class="rbt-lookcard-art" style={{ background: p.canvas }}>
         <span class="rbt-lookcard-panel" style={{ background: p.panel }}>
           <i style={{ background: p.text }} />
@@ -889,7 +897,7 @@ function LookCard({ l, on }: { l: (typeof LOOKS)[number]; on: boolean }) {
           <b style={{ background: 'var(--rbd-accent)' }} />
         </span>
       </span>
-      <span class="rbt-lookcard-name">{l.label}{on && <i class="fa-solid fa-circle-check" />}</span>
+      <span class="rbt-lookcard-name">{l.label}</span>
       <span class="rbt-lookcard-desc">{l.desc}</span>
     </button>
   );
@@ -939,58 +947,63 @@ function LooksPage() {
   const curTheme = list.find((t) => t.name === cur);
   const builtIn = lookOn.value;
   const back = GLOBAL_TAB_LABELS.looks;
+  const [open, setOpen] = useState(false);
+  const curLook = LOOKS.find((l) => l.id === lookId.value) ?? LOOKS[0];
+  // 所有美化都在这一个选择框里换：红鸟适配美化的三套在前（推荐），别人做的美化在后
+  const options: Opt[] = [
+    ...LOOKS.map((l) => ({ key: `rbt:${l.id}`, title: l.label, sub: l.desc, group: `${LOOK_NAME}（推荐）`, selected: builtIn && lookId.value === l.id, onPick: () => { setOpen(false); void useBuiltInLook(l.id); } })),
+    ...list.map((t) => ({ key: t.name, title: t.name, sub: themeHasCss(t) ? '带自定义样式' : '只换颜色', group: '别人做的美化', trail: <Swatches t={t} />, selected: !builtIn && cur === t.name, onPick: () => { setOpen(false); void useStTheme(t.name); } })),
+  ];
   return (
     <div class="rbt-page">
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
-          {/* 全局美化只有一个：红鸟适配美化的三套之一，或者别的美化。四个选项里正好一个打勾 */}
-          {/* 「红鸟适配美化」「别的美化」两个小标题前面故意空得宽一点，分开两组 */}
-          <Section title="全局美化" hint="没设美化的卡都用它" lintSpacing="ok">
-            <div class="rbt-look-sub">{LOOK_NAME}<small>{LOOK_COPY.builtInHint}</small></div>
-            <div class="rbt-lookcards">
-              {LOOKS.map((l) => <LookCard key={l.id} l={l} on={builtIn && lookId.value === l.id} />)}
-            </div>
-            {builtIn && (
-              <div class="rbt-look-accents">
-                <small>强调色</small>
-                {ACCENTS.map((a) => (
-                  <button key={a.id} type="button" class={`rbt-accent-dot ${accentId.value === a.id ? 'on' : ''}`} title={a.label} aria-label={a.label} style={{ '--c': a.color }} onClick={() => setAccent(a.id)} />
-                ))}
-              </div>
+          {/* 左边选和调：选择框里平时显示的就是现在用的那套；下面只调这一套。右边「全部美化」只管理（作者、链接、删除） */}
+          <Section title="全局美化" hint="没设美化的卡都用它">
+            <PickRow k="美化" value={builtIn ? curLook.label : (cur || '酒馆默认')} sub={builtIn ? LOOK_NAME : '别人做的美化'}
+              pill={!builtIn && curTheme ? <Swatches t={curTheme} /> : undefined}
+              open={open} onToggle={() => setOpen(!open)} onClose={() => setOpen(false)} options={options} />
+            {builtIn ? (
+              <>
+                <div class="rbt-look-accents">
+                  <small>强调色</small>
+                  {ACCENTS.map((a) => (
+                    <button key={a.id} type="button" class={`rbt-accent-dot ${accentId.value === a.id ? 'on' : ''}`} title={a.label} aria-label={a.label} style={{ '--c': a.color }} onClick={() => setAccent(a.id)} />
+                  ))}
+                </div>
+                <QuoteColorRow />
+                {/* 手机屏幕本来就窄，正文总是铺满，这一项只在电脑上有用 */}
+                {!compact.value && (
+                  <div class="rbt-frow">
+                    <span class="rbt-frow-k">阅读宽度</span>
+                    <select class="text_pole rbt-select" value={readWidth.value} onChange={(e) => setReadWidth((e.currentTarget as HTMLSelectElement).value as 'normal' | 'wide' | 'full')}>
+                      {READ_WIDTHS.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}
+                    </select>
+                    <span />
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {shellOn.value && !compact.value && <ChatWidthRow />}
+                {/* 用着别人的美化：推荐换成红鸟适配美化，讲它的好处，三套小样点一下就换 */}
+                <div class="rbt-look-rec">
+                  <div class="rbt-look-rec-head"><span class="rbt-tag rbt-tag-rec">推荐</span><b>{LOOK_NAME}</b></div>
+                  <p>{LOOK_COPY.recPitch}</p>
+                  <div class="rbt-lookcards">{LOOKS.map((l) => <LookCard key={l.id} l={l} />)}</div>
+                </div>
+                <small class="rbt-muted">{LOOK_COPY.othersRisk}{LOOK_COPY.noAdapt}</small>
+              </>
             )}
-            {builtIn && <QuoteColorRow />}
-            {/* 手机屏幕本来就窄，正文总是铺满，这一项只在电脑上有用 */}
-            {builtIn && !compact.value && (
-              <div class="rbt-frow">
-                <span class="rbt-frow-k">阅读宽度</span>
-                <select class="text_pole rbt-select" value={readWidth.value} onChange={(e) => setReadWidth((e.currentTarget as HTMLSelectElement).value as 'normal' | 'wide' | 'full')}>
-                  {READ_WIDTHS.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}
-                </select>
-                <span />
-              </div>
-            )}
-            <div class="rbt-look-sub">别的美化</div>
-            <button
-              type="button"
-              class={`rbt-lookrow ${builtIn ? '' : 'on'}`}
-              aria-pressed={!builtIn}
-              title={builtIn ? `换成「${cur || '酒馆默认'}」` : '查看这套美化'}
-              onClick={() => (builtIn ? void useStTheme(cur || 'Default') : cur && openDetail({ kind: 'theme', name: cur }, back))}
-            >
-              <span class="rbt-lookrow-main">
-                <span class="rbt-lookcard-name">{cur || '酒馆默认'}{!builtIn && <i class="fa-solid fa-circle-check" />}</span>
-                <span class="rbt-lookcard-desc">{themeHasCss(curTheme) ? '带自定义样式' : '只换颜色'}</span>
-              </span>
-              {curTheme && <Swatches t={curTheme} />}
-              {builtIn ? <span class="rbt-lookrow-go">换上</span> : <i class="fa-solid fa-chevron-right rbt-lookrow-go" aria-hidden="true" />}
-            </button>
-            {!builtIn && shellOn.value && !compact.value && <ChatWidthRow />}
-            {!builtIn && <p class="rbt-looks-info-text"><i class="fa-solid fa-circle-info" aria-hidden="true" />{LOOK_COPY.othersRisk}{LOOK_COPY.recommend}{LOOK_COPY.noAdapt}</p>}
-            {shellOn.value && <CheckRow label={LOOK_COPY.mesLayoutLabel} detail={LOOK_COPY.mesLayoutDesc} checked={mesLayoutOn.value} onChange={setMesLayout} />}
           </Section>
+          {shellOn.value && (
+            <Section title="手机">
+              <CheckRow label={LOOK_COPY.mesLayoutLabel} detail={LOOK_COPY.mesLayoutDesc} checked={mesLayoutOn.value} onChange={setMesLayout} />
+            </Section>
+          )}
         </div>
         <div class="rbt-page-group">
-          <h2 class="rbt-page-group-title">全部美化</h2>
+          <h2 class="rbt-page-group-title">别人做的美化</h2>
           {themesLoading.value && !list.length ? <small class="rbt-muted">读取中…</small> : (
             <SeriesList
               kind="theme"
@@ -1074,7 +1087,7 @@ function DetailBody() {
       {e.d.kind === 'theme' && <ThemeDetail name={e.d.name} />}
       {e.d.kind === 'bindings' && <BindingsDetail avatar={e.d.avatar} />}
       {e.d.kind === 'persona' && <PersonaDetail key={e.d.id} id={e.d.id} />}
-      {e.d.kind === 'persona-new' && <PersonaNew forCard={e.d.forCard} />}
+      {e.d.kind === 'persona-new' && <PersonaNew forCard={e.d.forCard} forChat={e.d.forChat} />}
     </>
   );
 }
@@ -1251,8 +1264,8 @@ function PresetModelSection({ name, isCurrent }: { name: string; isCurrent: bool
         <div class={bound && cur && own.source !== cur.source ? 'rbt-warn' : 'rbt-hint'}>
           这个预设文件自己带着连接：{own.model ? modelLabel(own) : SOURCE_LABEL[own.source] ?? own.source}。
           {bound
-            ? own.source !== cur?.source ? ' 酒馆开着「预设绑定连接」，换到这个预设时 API 也会跟着换过去。' : ' 酒馆开着「预设绑定连接」，换到这个预设时会用它带的模型（设了推荐模型的话，会再换成推荐的）。'
-            : ' 酒馆没开「预设绑定连接」，所以换预设不会改 API 和模型。'}
+            ? own.source !== cur?.source ? ' 酒馆开着「将预设与 API 配置绑定」，换到这个预设时 API 也会跟着换。' : ' 酒馆开着「将预设与 API 配置绑定」，换到这个预设时会用它带的模型（设了推荐模型的话，会再换成推荐的）。'
+            : ' 酒馆没开「将预设与 API 配置绑定」，所以换预设不会改 API 和模型。'}
         </div>
       )}
     </Section>

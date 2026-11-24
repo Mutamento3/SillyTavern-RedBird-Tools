@@ -125,7 +125,7 @@ function blocked(name: string, who: string, onDisk: number | null, saving: numbe
   const now = Date.now();
   if (now - (lastWarned.get(name) ?? 0) > 15000) {
     lastWarned.set(name, now);
-    toast('error', '原来的聊天记录还在，没有被覆盖。请刷新页面，再打开这个聊天。刷新之前发的消息不会保存。',
+    toast('error', '原来的聊天记录还在。现在发的消息不会保存，请先刷新页面，再打开这个聊天。',
       who ? `「${who}」的聊天没有读出来` : '有一个聊天没有读出来', { timeOut: 0, extendedTimeOut: 0 });
   }
   return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });

@@ -88,7 +88,7 @@ export function installedExtensions(): ExtInfo[] {
   return list;
 }
 
-const loose = (s: string) => s.toLowerCase().replace(/[^a-z0-9一-鿿]+/g, '');
+export const loose = (s: string) => s.toLowerCase().replace(/[^a-z0-9一-鿿]+/g, '');
 
 /**
  * ST loads one copy per folder name (the per-user copy wins over a global one with the same name),
@@ -305,7 +305,7 @@ export function setRecommendedPreset(avatar: string, cardName: string, name: str
 /** Switch to a preset by its exact name. /preset falls back to the closest-named preset, so check first. */
 export async function switchPreset(name: string): Promise<boolean> {
   if (!presetNames().includes(name)) {
-    toast('error', `找不到预设「${name}」，可能已经被删除或改名，没有切换。`, '预设');
+    toast('error', `没有换预设。找不到「${name}」，可能已经删除或改名了。`, '预设');
     return false;
   }
   await track('preset', () => runSlash(`/preset ${slashQuote(name)}`));
@@ -377,7 +377,7 @@ export async function updateCardBook(avatar: string): Promise<boolean> {
   const f = findChar(avatar);
   const name: string = f?.char?.data?.extensions?.world ?? '';
   const data = name ? await loaded.worldInfo?.loadWorldInfo?.(name) : null;
-  if (!f || !data?.entries) { toast('error', name ? `读不到世界书「${name}」，卡里的世界书没有更新。` : '这张卡没有绑世界书，卡里的世界书没有更新。'); return false; }
+  if (!f || !data?.entries) { toast('error', name ? `卡里的世界书没有更新，因为读不到世界书「${name}」。` : '卡里的世界书没有更新，因为这张卡没有绑世界书。'); return false; }
   try {
     const old = f.char.data?.character_book;
     if (old) {
@@ -391,7 +391,7 @@ export async function updateCardBook(avatar: string): Promise<boolean> {
     const res = await fetch('/api/characters/merge-attributes', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({ avatar, data: { character_book: book } }) });
     if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
     if (f.char.data) f.char.data.character_book = book;
-    toast('success', '已更新角色卡中的世界书，原版本已备份');
+    toast('success', '已更新卡里的世界书。原来的版本已备份。');
     bump();
     return true;
   } catch (e) {
@@ -431,8 +431,8 @@ export async function importCardWorld(avatar: string, { overwrite = false, quiet
     skipWorldPrompt(avatar);
     if (!quiet) {
       toast('success', exists
-        ? '已替换当前世界书，原版本已备份'
-        : `已从卡里导入世界书「${name}」并绑定到「${f.char.name}」`, '角色档案');
+        ? `已用卡里的世界书替换「${name}」。原来的版本已备份。`
+        : `已从卡里导入世界书「${name}」，并绑定到「${f.char.name}」。`, '角色档案');
     }
     refreshEnv();
     bump();
@@ -453,7 +453,7 @@ export function cardsMissingWorld(): CardInfo[] {
 export async function importAllMissingWorlds(): Promise<number> {
   let n = 0;
   for (const i of cardsMissingWorld()) if ((await importCardWorld(i.avatar, { quiet: true })) === 'imported') n++;
-  toast('success', `已从卡里导入 ${n} 本世界书`, '角色档案');
+  toast('success', `已从卡里导入 ${n} 本世界书。`, '角色档案');
   return n;
 }
 
@@ -575,7 +575,7 @@ export async function importArchive(text: string, mode: 'merge' | 'overwrite'): 
   if (mode === 'overwrite') { s.deleted = {}; void syncStore(true); }
   refreshEnv();
   bump();
-  toast('success', `已导入 ${Object.keys(inc.cards).length} 张卡的档案（${mode === 'merge' ? '合并' : '覆盖'}）`, '角色档案');
+  toast('success', `已导入 ${Object.keys(inc.cards).length} 张卡的档案（${mode === 'merge' ? '合并' : '覆盖'}）。`, '角色档案');
 }
 
 // ---------------------------------------------------------------- watch ---
