@@ -29,8 +29,6 @@ export interface EnvItem {
   enabled: boolean;
   /** Leaks into every card → worth a look when switching cards. */
   leaks: boolean;
-  /** Tagged (in 全局 → 全局正则) as belonging to another card / preset, but still on. */
-  misplaced?: string;
   toggle?: (on: boolean) => Promise<void>;
   children?: string[];
   /** Individually switchable children (e.g. each regex script of a preset). */
@@ -168,7 +166,6 @@ export function buildEnvReport(): EnvReport {
   const scopes = currentBookScopes();
   const items: EnvItem[] = [];
   const preset = presetInfo();
-  const owners = settings().regexOwners;
 
   // --- global lorebooks
   for (const name of scopes.global) {
@@ -181,14 +178,10 @@ export function buildEnvReport(): EnvReport {
   }
   // --- global regex
   for (const r of (es.regex ?? []) as Any[]) {
-    const owner = owners[r.id];
-    const ownerText = owner ? `属于${owner.kind === 'extension' ? '插件' : owner.kind === 'card' ? '角色卡' : '预设'}「${owner.label}」` : '';
-    const elsewhere = owner && ((owner.kind === 'card' && owner.key !== avatar) || (owner.kind === 'preset' && owner.key !== preset.name));
     items.push({
       id: `rx:g:${r.id ?? r.scriptName}`, scope: 'global', kind: 'regex', name: regexKey(r),
       enabled: !r.disabled, leaks: !r.disabled,
-      misplaced: elsewhere && !r.disabled ? ownerText : undefined,
-      detail: [regexEffectLabel(r), ownerText].filter(Boolean).join(' · '),
+      detail: regexEffectLabel(r),
       toggle: (on) => setRegexEnabled(RX.GLOBAL, r.id, on),
     });
   }

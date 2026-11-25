@@ -5,7 +5,7 @@ import { trash } from '../../tools/trash';
 import { useEffect, useState } from 'preact/hooks';
 import type { RegexOwner } from '../../core/cards';
 import { APP_NAME, confirmText, loaded, settings, toast } from '../../st/st';
-import { allCharacters, archiveVersion, currentPresetName, findChar, globalRegexScripts, guessRegexOwner, installedExtensions, loose, presetNames, setRegexOwner, worldNames } from '../../tools/cards/cards';
+import { allCharacters, archiveVersion, currentPresetName, globalRegexScripts, installedExtensions, loose, moveRegex, presetNames, thumbnailUrl, worldNames } from '../../tools/cards/cards';
 import { bookOwners, globalValue, heldByCard, keepForOwner, setGlobal, trueGlobalWorlds } from '../../tools/env/setup';
 import { currentBookScopes } from '../../tools/flow/capture';
 import { extButtonHandlers, extDrawers, openDrawer } from '../../shell/drawers';
@@ -15,7 +15,8 @@ import { SourceEditor } from '../SourceEditor';
 import { sourceFor } from '../../tools/sources';
 import { OK, Section } from './parts';
 import { checkPluginUpdates, pluginStates, updatePlugins } from '../../tools/update';
-import { MenuOpt, PickRow, type Opt } from './setupParts';
+import { Popup, type Opt } from './setupParts';
+import type { ComponentChildren } from 'preact';
 
 const KIND_LABEL: Record<EnvItem['kind'], string> = {
   worldbook: '世界书', regex: '正则', script: '脚本', extension: '插件', preset: '预设',
@@ -30,7 +31,7 @@ function editFor(item: EnvItem) {
   return null;
 }
 
-export function ItemRow({ item }: { item: EnvItem }) {
+export function ItemRow({ item, action }: { item: EnvItem; action?: ComponentChildren }) {
   const [busy, setBusy] = useState(false);
   const onToggle = async (on: boolean) => {
     if (!item.toggle) return;
@@ -41,8 +42,8 @@ export function ItemRow({ item }: { item: EnvItem }) {
     <div class={`rbt-env-item ${item.enabled ? '' : 'off'}`}>
       <Chip>{KIND_LABEL[item.kind]}</Chip>
       <span class="rbt-env-name">{item.name}</span>
-      {item.misplaced && <Chip color="#f0a43a" title={`标为${item.misplaced}`}>不属于这张卡</Chip>}
       {item.detail && <small class="rbt-muted">{item.detail}</small>}
+      {action}
       {editFor(item)}
       {item.toggle && (
         <span class="rbt-env-toggle">
@@ -107,51 +108,30 @@ function SubItemList({ items, groupOff }: { items: EnvSubItem[]; groupOff: boole
   );
 }
 
-function ownerValue(o: RegexOwner | undefined): string {
-  return o ? `${o.kind}:${o.key}` : '';
-}
-
 /**
- * 一条正则的「属于」。点开才列出插件、预设和角色卡：以前每条正则下面一个原生下拉框，
- * 卡多时整页上万个选项，手机上地址栏一收一放就要重排整页，滑动很卡。
+ * 一条全局正则的「移到…」：点开才列出角色卡和预设（卡多时整页上万个选项，手机上滑动很卡）。
  */
-function OwnerPick({ owner, exts, presets, chars, onPick }: {
-  owner: RegexOwner | undefined; exts: { id: string; name: string }[]; presets: string[]; chars: { avatar: string; name: string }[]; onPick: (v: string) => void;
-}) {
+function MoveRegex({ id, name, busy, onMove }: { id: string; name: string; busy: boolean; onMove: (id: string, to: RegexOwner & { kind: 'card' | 'preset' }) => void }) {
   const [open, setOpen] = useState(false);
-  const cur = ownerValue(owner);
-  const pick = (v: string) => { setOpen(false); onPick(v); };
-  const opt = (v: string, title: string, group: string): Opt => ({ key: v, title, group, selected: v === cur, onPick: () => pick(v) });
-  const options = open ? [
-    ...exts.map((e) => opt(`extension:${e.id}`, e.name, '插件')),
-    ...presets.map((p) => opt(`preset:${p}`, p, '预设')),
-    ...chars.map((c) => opt(`card:${c.avatar}`, c.name, '角色卡')),
+  const pick = (to: RegexOwner & { kind: 'card' | 'preset' }) => { setOpen(false); onMove(id, to); };
+  const options: Opt[] = open ? [
+    ...allCharacters().map((c) => ({ key: `card:${c.avatar}`, title: c.name, group: '角色卡', lead: thumbnailUrl(c.avatar), onPick: () => pick({ kind: 'card', key: c.avatar, label: c.name }) })),
+    ...presetNames().map((p) => ({ key: `preset:${p}`, title: p, group: '预设', onPick: () => pick({ kind: 'preset', key: p, label: p }) })),
   ] : [];
   return (
-    <PickRow k="属于" title="这条正则属于" placeholder="搜插件、预设或角色卡" value={owner?.label ?? NO_OWNER} open={open} onToggle={() => setOpen(!open)} onClose={() => setOpen(false)}
-      top={<MenuOpt title={NO_OWNER} selected={!cur} onPick={() => pick('')} />} options={options} />
+    <Popup title={`把「${name}」移到`} placeholder="搜角色卡或预设" open={open} onClose={() => setOpen(false)} options={options} cls="rbt-move">
+      <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} aria-expanded={open} aria-haspopup="listbox" onClick={() => setOpen(!open)}>移到…</button>
+    </Popup>
   );
 }
-const NO_OWNER = '没选（换卡时不动它）';
 
-/** One global regex: on/off and "belongs to" on the same row. */
+/** 全局正则：一行一条，开关、编辑、「移到…」。 */
 export function GlobalRegexList({ items }: { items: EnvItem[] }) {
   void archiveVersion.value;
   const scripts = globalRegexScripts();
-  const owners = settings().regexOwners;
-  const exts = installedExtensions();
-  const presets = presetNames();
-  const chars = allCharacters();
   const byId = new Map(items.map((i) => [i.id, i]));
-  const guesses = scripts.map((r) => ({ r, g: owners[r.id] ? null : guessRegexOwner(r) })).filter((x) => x.g);
-  const onPick = (id: string, v: string) => {
-    if (!v) return setRegexOwner(id, null);
-    const i = v.indexOf(':');
-    const kind = v.slice(0, i) as RegexOwner['kind'];
-    const key = v.slice(i + 1);
-    const label = kind === 'extension' ? exts.find((e) => e.id === key)?.name ?? key : kind === 'card' ? findChar(key)?.char?.name ?? key : key;
-    setRegexOwner(id, { kind, key, label });
-  };
+  const [moving, setMoving] = useState(false);
+  const move = async (list: Parameters<typeof moveRegex>[0]) => { setMoving(true); try { await moveRegex(list); } finally { setMoving(false); } };
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -178,7 +158,7 @@ export function GlobalRegexList({ items }: { items: EnvItem[] }) {
         {scripts.map((r) => (
           <label key={r.id} class={`rbt-pickrow ${picked.includes(r.id) ? 'on' : ''}`}>
             <input type="checkbox" checked={picked.includes(r.id)} onChange={() => setPicked((cur) => (cur.includes(r.id) ? cur.filter((x) => x !== r.id) : [...cur, r.id]))} />
-            <span class="rbt-navrow-main"><span class="rbt-navrow-title">{r.scriptName || '(未命名正则)'}</span><span class="rbt-navrow-sub">{r.disabled ? '关着' : '开着'}{owners[r.id] ? ` · 属于 ${owners[r.id].label}` : ''}</span></span>
+            <span class="rbt-navrow-main"><span class="rbt-navrow-title">{r.scriptName || '(未命名正则)'}</span><span class="rbt-navrow-sub">{r.disabled ? '关着' : '开着'}</span></span>
           </label>
         ))}
         <div class="rbt-selbar" role="toolbar" aria-label="对选中的正则">
@@ -190,22 +170,15 @@ export function GlobalRegexList({ items }: { items: EnvItem[] }) {
   return (
     <>
       <div class="rbt-org-bar"><button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={() => setSelecting(true)}>选择</button></div>
-      <small class="rbt-muted">给正则选好「属于」，换卡时就会自动开关：属于当前的卡或预设就打开，属于别的就关掉。</small>
-      {guesses.length > 1 && (
-        <div class="rbt-row"><button class="rbt-btn rbt-btn-small" onClick={() => { for (const { r, g } of guesses) setRegexOwner(r.id, g!); }}>按名字自动选好 {guesses.length} 条</button></div>
-      )}
       {scripts.map((r) => {
         const live = byId.get(`rx:g:${r.id ?? r.scriptName}`);
         // 显示、修改真正的全局：正在聊的卡单独停用 / 启用的，按进卡前的算，改了等离开这张卡再换上
-        const item = live && { ...live, misplaced: undefined, enabled: !!globalValue(`r:${r.id}`), toggle: (on: boolean) => setGlobal(`r:${r.id}`, on) };
-        const g = owners[r.id] ? null : guessRegexOwner(r);
+        const item = live && { ...live, enabled: !!globalValue(`r:${r.id}`), toggle: (on: boolean) => setGlobal(`r:${r.id}`, on) };
+        const name = r.scriptName || '(未命名正则)';
+        const action = <MoveRegex id={String(r.id)} name={name} busy={moving} onMove={(id, to) => { void move([{ id, to }]); }} />;
         return (
           <div key={r.id} class="rbt-owner-row">
-            {item ? <ItemRow item={item} /> : <div class="rbt-env-item"><span class="rbt-env-name">{r.scriptName}</span></div>}
-            <div class="rbt-form-row rbt-owner-pick">
-              <OwnerPick owner={owners[r.id]} exts={exts} presets={presets} chars={chars} onPick={(v) => onPick(r.id, v)} />
-              {g && <div class="rbt-owner-guess"><button class="rbt-btn rbt-btn-small" title="按名字猜的，点一下就选上" onClick={() => setRegexOwner(r.id, g)}>可能是 {g.label}</button></div>}
-            </div>
+            {item ? <ItemRow item={item} action={action} /> : <div class="rbt-env-item"><span class="rbt-env-name">{name}</span>{action}</div>}
           </div>
         );
       })}

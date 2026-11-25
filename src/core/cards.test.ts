@@ -6,7 +6,6 @@ import {
   detectContacts,
   diffBooks,
   findOrphans,
-  guessRegexExtension,
   mergeRecords,
   parseArchive,
   splitLinks,
@@ -53,20 +52,6 @@ describe('diffBooks', () => {
     expect(d).toMatchObject({ card: 2, world: 3, same: 1 });
     expect(d.onlyCard.map((e) => e.content)).toEqual(['B']);
     expect(d.onlyWorld.map((e) => e.content)).toEqual(['C', 'C']);
-  });
-});
-
-describe('guessRegexExtension', () => {
-  const exts = ['JS-Slash-Runner', 'VisualNoval', 'st-chatu8', 'ST-Prompt-Template'];
-  it('uses the longest extension-name prefix', () => {
-    expect(guessRegexExtension('st-chatu8-隐藏imgthink', exts)).toBe('st-chatu8');
-  });
-  it('matches capital-letter acronyms', () => {
-    expect(guessRegexExtension('VN注入折叠(显示)', exts)).toBe('VisualNoval');
-  });
-  it('returns null when unsure', () => {
-    expect(guessRegexExtension('去除思维链', exts)).toBeNull();
-    expect(guessRegexExtension('ST美化', exts)).toBeNull();
   });
 });
 

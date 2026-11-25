@@ -16,7 +16,6 @@ import {
   diffBooks,
   emptyRecord,
   findOrphans,
-  guessRegexExtension,
   isRecordEmpty,
   mergeRecords,
   parseArchive,
@@ -31,7 +30,7 @@ import {
   type RegexOwner,
   type RequiredExt,
 } from '../../core/cards';
-import { charaFileName, ctx, currentCharacter, loaded, runSlash, saveSettings, settings, slashQuote, thCharacterScriptsEnabled, toast, type Any, type CardFacts, type EnvProfile, confirmText } from '../../st/st';
+import { APP_NAME, charaFileName, ctx, currentCharacter, loaded, reloadChatSafe, runSlash, saveSettings, settings, slashQuote, thCharacterScriptsEnabled, toast, type Any, type CardFacts, type EnvProfile, confirmText } from '../../st/st';
 import { refreshEnv, thScripts } from '../env/env';
 import { profileEmpty } from '../env/setup';
 import { markDeleted, syncStore } from '../../st/store';
@@ -463,20 +462,118 @@ export function globalRegexScripts(): Any[] {
   return ctx().extensionSettings?.regex ?? [];
 }
 
-export function setRegexOwner(id: string, owner: RegexOwner | null): void {
-  const s = settings();
-  if (owner) s.regexOwners[id] = { ...owner, at: new Date().toISOString() };
-  else { delete s.regexOwners[id]; markDeleted('regexOwners', id); }
-  saveSettings();
-  refreshEnv();
-  bump();
+/**
+ * 把全局正则移进一张卡或一个预设（酒馆自己的「卡里的正则」「预设里的正则」，只在那张卡 / 那个预设里运行）。
+ * 酒馆自带的「移动」只能移到正在聊的卡和正在用的预设，这里哪个都行。移过去的正则打开，
+ * 顺手允许那张卡 / 那个预设的正则运行，再从全局删掉。弹一条通知，点一下全部移回全局。
+ */
+type MoveTo = RegexOwner & { kind: 'card' | 'preset' };
+
+/** 那张卡 / 那个预设现在的正则；卡或预设找不到时是 null。 */
+async function targetRegex(to: MoveTo): Promise<Any[] | null> {
+  if (to.kind === 'card') {
+    await ensureFullCharacter(to.key);
+    const f = findChar(to.key);
+    return f && !f.char.shallow ? [...(f.char.data?.extensions?.regex_scripts ?? [])] : null;
+  }
+  if (!presetNames().includes(to.key)) return null;
+  const v = ctx().getPresetManager()?.readPresetExtensionField?.({ name: to.key, path: 'regex_scripts' });
+  return Array.isArray(v) ? [...v] : [];
 }
 
-export function guessRegexOwner(script: Any): RegexOwner | null {
-  const exts = installedExtensions();
-  const id = guessRegexExtension(script.scriptName ?? '', exts.map((e) => e.id));
-  if (!id) return null;
-  return { kind: 'extension', key: id, label: exts.find((e) => e.id === id)?.name ?? id };
+async function writeTargetRegex(to: MoveTo, list: Any[]): Promise<void> {
+  if (to.kind === 'card') await ctx().writeExtensionField(findChar(to.key)!.chid, 'regex_scripts', list);
+  else await ctx().getPresetManager().writePresetExtensionField({ name: to.key, path: 'regex_scripts', value: list });
+}
+
+function targetAllowed(to: MoveTo): boolean {
+  const es = ctx().extensionSettings ?? {};
+  return to.kind === 'card' ? (es.character_allowed_regex ?? []).includes(to.key) : (es.preset_allowed_regex?.[presetApi()] ?? []).includes(to.key);
+}
+
+function allowTarget(to: MoveTo, on: boolean): void {
+  const re = loaded.regexEngine;
+  if (to.kind === 'card') { const c = findChar(to.key)?.char; if (on) re.allowScopedScripts(c); else re.disallowScopedScripts(c); }
+  else if (on) re.allowPresetScripts(presetApi(), to.key);
+  else re.disallowPresetScripts(presetApi(), to.key);
+}
+
+/**
+ * 以前的版本可以给全局正则选「属于」哪张卡 / 哪个预设，换卡时自动开关。现在去掉了：
+ * 刷新页面后把它们移进选好的卡 / 预设（卡、预设或正则不在了的只删记录），记录都删掉。
+ * 要在角色列表载入后调用（不然卡都找不到，记录会被当成没用的删掉）。
+ */
+export async function migrateRegexOwners(): Promise<void> {
+  const s = settings();
+  const ids = Object.keys(s.regexOwners);
+  if (!ids.length) return;
+  const presets = presetNames();
+  const global = new Set(globalRegexScripts().map((r) => String(r.id)));
+  const moves: { id: string; to: MoveTo }[] = [];
+  for (const id of ids) {
+    const o = s.regexOwners[id];
+    if (global.has(id) && ((o.kind === 'card' && findChar(o.key)) || (o.kind === 'preset' && presets.includes(o.key)))) moves.push({ id, to: o as MoveTo });
+    else { delete s.regexOwners[id]; markDeleted('regexOwners', id); }
+  }
+  saveSettings();
+  if (moves.length) await moveRegex(moves, (n) => `以前选了「属于」的 ${n} 条正则，已移进选好的卡和预设里。`);
+}
+
+export async function moveRegex(moves: { id: string; to: MoveTo }[], message?: (n: number) => string): Promise<void> {
+  const GLOBAL = 0;
+  const re = loaded.regexEngine;
+  const global: Any[] = re?.getScriptsByType?.(GLOBAL) ?? [];
+  const groups = new Map<string, { to: MoveTo; scripts: Any[] }>();
+  for (const m of moves) {
+    const s = global.find((x) => x.id === m.id);
+    if (!s) continue;
+    const k = `${m.to.kind}:${m.to.key}`;
+    if (!groups.has(k)) groups.set(k, { to: m.to, scripts: [] });
+    groups.get(k)!.scripts.push({ ...structuredClone(s), disabled: false });
+  }
+  const done: { to: MoveTo; ids: string[]; wasAllowed: boolean }[] = [];
+  for (const { to, scripts } of groups.values()) {
+    try {
+      const cur = await targetRegex(to);
+      if (!cur) continue;
+      const ids = scripts.map((s) => s.id);
+      await writeTargetRegex(to, [...cur.filter((s) => !ids.includes(s.id)), ...scripts]);
+      const wasAllowed = targetAllowed(to);
+      if (!wasAllowed) allowTarget(to, true);
+      done.push({ to, ids, wasAllowed });
+    } catch (e) {
+      console.error('[RedBird] regex move failed', to, e);
+    }
+  }
+  const moved = new Set(done.flatMap((d) => d.ids));
+  if (!moved.size) { toast('error', '没能移过去。请刷新页面再试一次。'); return; }
+  const removed = global.map((s, index) => ({ s, index })).filter((x) => moved.has(x.s.id));
+  await re.saveScriptsByType(global.filter((s) => !moved.has(s.id)), GLOBAL);
+  const s = settings();
+  for (const id of moved) if (s.regexOwners[id]) { delete s.regexOwners[id]; markDeleted('regexOwners', id); }
+  const after = () => { saveSettings(); refreshEnv(); bump(); void reloadChatSafe(); };
+  after();
+
+  const undo = async () => {
+    for (const d of done) {
+      const cur = await targetRegex(d.to);
+      if (cur) await writeTargetRegex(d.to, cur.filter((x) => !d.ids.includes(x.id)));
+      if (!d.wasAllowed) allowTarget(d.to, false);
+    }
+    const list: Any[] = [...(re.getScriptsByType(GLOBAL) ?? [])];
+    for (const r of removed) if (!list.some((x) => x.id === r.s.id)) list.splice(Math.min(r.index, list.length), 0, r.s);
+    await re.saveScriptsByType(list, GLOBAL);
+    after();
+    toast('success', '已移回全局。');
+  };
+  const failed = moves.length - moved.size;
+  const what = message ? message(removed.length) : removed.length === 1 ? `已把「${removed[0].s.scriptName || '(未命名正则)'}」移到「${done[0].to.label}」里。` : `已把 ${removed.length} 条正则移到各自的卡和预设里。`;
+  let undone = false;
+  toast(failed ? 'warning' : 'success', `${what}${failed ? `另有 ${failed} 条没移成，请再试一次。` : ''}点这里撤销。`, APP_NAME, {
+    timeOut: 15000,
+    extendedTimeOut: 8000,
+    onclick: () => { if (!undone) { undone = true; void undo(); } },
+  });
 }
 
 // --------------------------------------------------------------- overview ---
@@ -514,13 +611,12 @@ export function buildOverview(): Overview {
   return { cards, byPreset, byWorld, byTheme, unusedWorlds, orphans };
 }
 
-/** Move a record (and profile, and card-owned regex tags) from an old avatar to a new one. */
+/** Move a record (and profile) from an old avatar to a new one. */
 export function relink(oldAvatar: string, newAvatar: string): void {
   const s = settings();
   const f = findChar(newAvatar);
   if (s.cards[oldAvatar]) { s.cards[newAvatar] = { ...s.cards[oldAvatar], cardName: f?.char?.name ?? s.cards[oldAvatar].cardName }; delete s.cards[oldAvatar]; markDeleted('cards', oldAvatar); s.cards[newAvatar].updatedAt = new Date().toISOString(); }
   if (s.profiles[oldAvatar]) { s.profiles[newAvatar] = { ...s.profiles[oldAvatar], updatedAt: new Date().toISOString() }; delete s.profiles[oldAvatar]; markDeleted('profiles', oldAvatar); }
-  for (const o of Object.values(s.regexOwners)) if (o.kind === 'card' && o.key === oldAvatar) { o.key = newAvatar; o.at = new Date().toISOString(); }
   saveSettings();
   refreshEnv();
   bump();

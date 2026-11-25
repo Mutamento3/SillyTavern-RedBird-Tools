@@ -483,7 +483,6 @@ export function RegexSetupSection({ info, openScoped }: { info: CardInfo; openSc
   const avatar = info.avatar;
   const p = profileOf(avatar);
   const live = info.isCurrent;
-  const owners = settings().regexOwners ?? {};
   const report = live ? buildEnvReport() : null;
   const cardItem = report?.items.find((i) => i.id === 'rx:c');
   const presetItem = report?.items.find((i) => i.id === 'rx:p');
@@ -499,11 +498,7 @@ export function RegexSetupSection({ info, openScoped }: { info: CardInfo; openSc
     const id = String(r.id);
     const key = `r:${id}`;
     const on = !!cardUses(avatar, key);
-    const o = owners[id];
-    const sub = p?.regex && id in p.regex ? (on ? '只在这张卡启用' : '只在这张卡停用')
-      : o?.kind === 'card' ? (o.key === avatar ? '属于这张卡，进这张卡自动启用' : `属于角色卡「${o.label}」，进别的卡自动停用`)
-        : o?.kind === 'preset' && !on ? `属于预设「${o.label}」，用这个预设时才启用`
-          : !on ? '所有卡都停用' : undefined;
+    const sub = p?.regex && id in p.regex ? (on ? '只在这张卡启用' : '只在这张卡停用') : !on ? '所有卡都停用' : undefined;
     return { id, key, name: unnamedRegex(r.scriptName), on, sub };
   });
   const total = cardRows.filter((r) => r.on && allowed).length + globRows.filter((r) => r.on).length + presetRows.filter((r) => r.on && presetAllowed).length;

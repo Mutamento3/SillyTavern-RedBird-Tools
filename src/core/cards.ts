@@ -189,34 +189,6 @@ export function backupFileName(world: string, at: Date): string {
   return `rbt-world-backup-${stamp}-${ascii ? `${ascii}-` : ''}${h.toString(36)}.json`;
 }
 
-// --------------------------------------------------------- regex owner ---
-
-function acronym(name: string): string {
-  return (name.match(/[A-Z]/g) ?? []).join('');
-}
-
-/**
- * Guess which extension a global regex script came from, by its name.
- * "st-chatu8-隐藏imgthink" → "st-chatu8"; "VN注入折叠" → "VisualNoval" (capital-letter acronym).
- */
-export function guessRegexExtension(scriptName: string, extensions: string[]): string | null {
-  const name = scriptName.trim();
-  const lower = name.toLowerCase();
-  let best: string | null = null;
-  for (const ext of extensions) {
-    const e = ext.toLowerCase();
-    if (e.length >= 3 && lower.startsWith(e) && (!best || e.length > best.length)) best = ext;
-  }
-  if (best) return best;
-  const head = name.match(/^[A-Za-z][A-Za-z0-9]*/)?.[0];
-  if (!head) return null;
-  const hits = extensions.filter((ext) => {
-    const a = acronym(ext);
-    return (a.length >= 2 && a === head.toUpperCase() && head === head.toUpperCase()) || (head.length >= 3 && ext.toLowerCase().startsWith(head.toLowerCase()));
-  });
-  return hits.length === 1 ? hits[0] : null;
-}
-
 // ------------------------------------------------------------- relink ---
 
 export interface OrphanRecord { avatar: string; cardName: string; candidates: string[] }

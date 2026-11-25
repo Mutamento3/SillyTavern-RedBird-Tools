@@ -55,12 +55,12 @@ export function LongText({ text, limit = 400 }: { text: string; limit?: number }
  * 分区：标题在左上，打开酒馆对应编辑面板的按钮（「编辑」「预设设置」…）统一放在右上，
  * 和卡面的「编辑角色」同一个位置（DESIGN.md「按钮」）。
  */
-export function Section({ title, hint, actions, children, lintSpacing }: { title: string; hint?: string; actions?: ComponentChildren; children: ComponentChildren; /** 里面有小标题、故意留不一样的间距（ui-audit 不查） */ lintSpacing?: 'ok' }) {
+export function Section({ title, tag, hint, actions, children, lintSpacing }: { title: string; /** 标题右边紧跟的小标签，比如「推荐」 */ tag?: ComponentChildren; hint?: string; actions?: ComponentChildren; children: ComponentChildren; /** 里面有小标题、故意留不一样的间距（ui-audit 不查） */ lintSpacing?: 'ok' }) {
   return (
     <section class="rbt-card-section" data-lint-spacing={lintSpacing}>
       <div class="rbt-card-section-head">
         <div class="rbt-card-section-top">
-          <h3 class="rbt-card-section-title">{title}</h3>
+          <h3 class="rbt-card-section-title">{title}{tag}</h3>
           {actions && <div class="rbt-card-section-actions">{actions}</div>}
         </div>
         {hint && <p class="rbt-card-section-hint">{hint}</p>}

@@ -888,8 +888,9 @@ function useThemes(): void {
 /** 红鸟适配美化的一套：小样（纸色、卡片、两行字、强调色点）+ 名字 + 一句话。点了就换上。 */
 function LookCard({ l }: { l: (typeof LOOKS)[number] }) {
   const p = l.preview;
+  const on = lookOn.value && lookId.value === l.id;
   return (
-    <button type="button" class="rbt-lookcard" onClick={() => { void useBuiltInLook(l.id); }}>
+    <button type="button" class={`rbt-lookcard ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => { void useBuiltInLook(l.id); }}>
       <span class="rbt-lookcard-art" style={{ background: p.canvas }}>
         <span class="rbt-lookcard-panel" style={{ background: p.panel }}>
           <i style={{ background: p.text }} />
@@ -897,7 +898,7 @@ function LookCard({ l }: { l: (typeof LOOKS)[number] }) {
           <b style={{ background: 'var(--rbd-accent)' }} />
         </span>
       </span>
-      <span class="rbt-lookcard-name">{l.label}</span>
+      <span class="rbt-lookcard-name">{l.label}{on && <i class="fa-solid fa-check" aria-label="正在用" />}</span>
       <span class="rbt-lookcard-desc">{l.desc}</span>
     </button>
   );
@@ -958,7 +959,7 @@ function LooksPage() {
     <div class="rbt-page">
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
-          {/* 左边选和调：选择框里平时显示的就是现在用的那套；下面只调这一套。右边「全部美化」只管理（作者、链接、删除） */}
+          {/* 左边是全局：现在用哪套（选择框）和这一套能调的。右边是美化库：红鸟适配美化一块、别人做的美化一块 */}
           <Section title="全局美化" hint="没设美化的卡都用它">
             <PickRow k="美化" value={builtIn ? curLook.label : (cur || '酒馆默认')} sub={builtIn ? LOOK_NAME : '别人做的美化'}
               pill={!builtIn && curTheme ? <Swatches t={curTheme} /> : undefined}
@@ -986,12 +987,6 @@ function LooksPage() {
             ) : (
               <>
                 {shellOn.value && !compact.value && <ChatWidthRow />}
-                {/* 用着别人的美化：推荐换成红鸟适配美化，讲它的好处，三套小样点一下就换 */}
-                <div class="rbt-look-rec">
-                  <div class="rbt-look-rec-head"><span class="rbt-tag rbt-tag-rec">推荐</span><b>{LOOK_NAME}</b></div>
-                  <p>{LOOK_COPY.recPitch}</p>
-                  <div class="rbt-lookcards">{LOOKS.map((l) => <LookCard key={l.id} l={l} />)}</div>
-                </div>
                 <small class="rbt-muted">{LOOK_COPY.othersRisk}{LOOK_COPY.noAdapt}</small>
               </>
             )}
@@ -1003,7 +998,11 @@ function LooksPage() {
           )}
         </div>
         <div class="rbt-page-group">
-          <h2 class="rbt-page-group-title">别人做的美化</h2>
+          <h2 class="rbt-page-group-title">美化库</h2>
+          <Section title={LOOK_NAME} tag={<span class="rbt-tag rbt-tag-rec">推荐</span>} hint={LOOK_COPY.libPitch}>
+            <div class="rbt-lookcards">{LOOKS.map((l) => <LookCard key={l.id} l={l} />)}</div>
+          </Section>
+          <Section title="别人做的美化" hint={LOOK_COPY.libOthers}>
           {themesLoading.value && !list.length ? <small class="rbt-muted">读取中…</small> : (
             <SeriesList
               kind="theme"
@@ -1023,6 +1022,7 @@ function LooksPage() {
               locked={(n) => (n === cur ? '正在用这套美化' : null)}
             />
           )}
+          </Section>
         </div>
       </div>
     </div>

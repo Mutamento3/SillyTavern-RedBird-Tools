@@ -416,23 +416,14 @@ export function worldFacts(avatar: string): WorldFacts {
   return { global: new Set(trueGlobalWorlds()), others: new Set(bookOwners(avatar).keys()), mine: ownBooks(avatar) };
 }
 
-/** 这张卡要用的预设（没专用的用全局）。 */
-function cardPreset(avatar: string): string {
-  const p = settings().profiles[avatar]?.preset;
-  return p && p.api === presetApi() ? p.name : String(globalValue('preset') ?? '');
-}
 
 /**
  * 这张卡没单独设时，全局书 / 全局正则开不开（undefined = 正则不在了）。
- * 世界书：全局的开，别的卡的书停用。正则：标了属于哪张卡 / 哪个预设的按归属，其余跟全局。
+ * 世界书：全局的开，别的卡的书停用。正则：跟全局。
  */
 export function cardDefault(avatar: string, key: string): boolean | undefined {
   if (key.startsWith('w:')) return worldDefault(key.slice(2), worldFacts(avatar));
   if (key.startsWith('r:')) {
-    const id = key.slice(2);
-    const o = settings().regexOwners?.[id];
-    if (o?.kind === 'card') return o.key === avatar;
-    if (o?.kind === 'preset') return o.key === cardPreset(avatar);
     const g = globalValue(key);
     return g === undefined ? undefined : !!g;
   }

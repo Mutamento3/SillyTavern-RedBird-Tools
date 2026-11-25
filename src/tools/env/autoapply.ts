@@ -5,8 +5,7 @@
  * 1. 这张卡的本卡专用：预设、模型、全局世界书 / 全局正则在这张卡停用或启用（只给这张卡用的书是附加世界书，酒馆自己加载）；
  * 2. 没设专用的项只做确定该做的事：
  *    - 预设推荐的模型（本预设专用）；
- *    - 别的卡绑定的世界书被开成了全局 → 关掉；
- *    - 在「正则归属」里标成属于别的卡 / 别的预设的全局正则 → 关掉，属于这张卡 / 当前预设的 → 打开。
+ *    - 别的卡绑定的世界书被开成了全局 → 关掉。
  * 换之前记下原值（baseline），离卡时换回去。插件（酒馆不能在运行中开关）提示一键启用并刷新。
  */
 import { signal } from '@preact/signals';
@@ -48,7 +47,6 @@ export function planFor(char: Any): ApplyPlan {
   const avatar: string = char.avatar;
   const s = settings();
   const profile = profileOf(avatar);
-  const owners = s.regexOwners ?? {};
   const api = presetApi();
   const cur = currentPresetName();
 
@@ -76,15 +74,10 @@ export function planFor(char: Any): ApplyPlan {
   const mine = ownBooks(avatar);
   for (const w of now) if (!(w in set) && others.has(w) && !mine.has(w)) plan.worldsOff.push(w);
 
-  // --- global regex: 本卡专用的照它；其余按归属
+  // --- global regex: 本卡专用的照它
   for (const r of globalRegex()) {
     const id = String(r.id);
-    let want: boolean | undefined = profile?.regex?.[id];
-    if (want === undefined) {
-      const o = owners[r.id];
-      if (o?.kind === 'card') want = o.key === avatar;
-      else if (o?.kind === 'preset') want = o.key === targetPreset;
-    }
+    const want: boolean | undefined = profile?.regex?.[id];
     if (want === undefined) continue;
     const on = !r.disabled;
     if (want && !on) plan.regexOn.push({ id, name: unnamedRegex(r.scriptName) });

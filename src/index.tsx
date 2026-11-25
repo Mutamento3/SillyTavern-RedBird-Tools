@@ -34,7 +34,7 @@ import { installRecentWatch } from './shell/recent';
 import { SheetHost } from './shell/Sheet';
 import { ImportDialog } from './ui/ImportDialog';
 import { Shell, initShellState, setShellEnabled, shellOn } from './shell/Shell';
-import { installCardsWatch } from './tools/cards/cards';
+import { installCardsWatch, migrateRegexOwners } from './tools/cards/cards';
 import { autoApplyOnSwitch } from './tools/env/autoapply';
 import { installEnvWatch, refreshEnv } from './tools/env/env';
 import { migrateAll } from './tools/env/setup';
@@ -257,6 +257,8 @@ async function init(): Promise<void> {
   migrateAll();
   // 世界书的迁移要知道哪本书是哪张卡的：角色列表读完（酒馆准备好）再转一遍。已经准备好时酒馆会马上调用
   ctx().eventSource.on(ctx().eventTypes.APP_READY, migrateAll);
+  // 以前给全局正则选的「属于」：移进选好的卡和预设（要等角色列表和预设读完）
+  ctx().eventSource.on(ctx().eventTypes.APP_READY, () => { void migrateRegexOwners().catch((e) => console.error('[RedBird] regex owner migration failed', e)); });
 
   configureViews({
     openInDock: (v) => openPanel(v),

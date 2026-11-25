@@ -322,7 +322,7 @@ body.rbt-resizing #sheld { transition: none !important; }
   border-radius: var(--rbd-r-s);
   margin-bottom: 3px;
 }
-.rbt-env-item.off > :not(.rbt-env-toggle) { opacity: 0.5; }
+.rbt-env-item.off > :not(.rbt-env-toggle, .rbt-pick) { opacity: 0.5; } /* 选择框不能半透明（半透明还会被下面的行盖住） */
 .rbt-env-name { font-weight: 600; word-break: break-all; }
 .rbt-env-toggle { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
 .rbt-env-details > summary { list-style: none; cursor: pointer; }
@@ -467,11 +467,9 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-attn-text { flex: 1; min-width: 0; }
 .rbt-attn-text > small:first-child { color: var(--rbt-muted); margin-right: 4px; }
 
-/* 全局正则：开关一行，"属于谁"紧跟在下面 */
+/* 全局正则：一行一条 */
 .rbt-owner-row { margin-bottom: 6px; }
 .rbt-owner-row .rbt-env-item { margin-bottom: 2px; }
-.rbt-owner-pick { padding-left: 8px; align-items: center; }
-.rbt-owner-pick .rbt-pick { flex: 1; min-width: 0; }
 /* 名字和说明在这一行里折行，✎ 和开关一直在第一行右边（手机上以前开关被挤到下一行） */
 .rbt-owner-row .rbt-env-item { flex-wrap: nowrap; }
 .rbt-owner-row .rbt-env-item > :is(.rbt-env-name, small) { min-width: 0; }
@@ -1700,6 +1698,10 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-use .rbt-switch span { inset: 8px 4px; }
 .rbt-use-add { padding-top: 2px; }
 .rbt-pick.wide .rbt-menu { left: 0; right: auto; width: min(360px, 100%); }
+/* 全局正则一行里的「移到…」：选择框靠按钮右边对齐 */
+.rbt-pick.rbt-move .rbt-menu { left: auto; right: 0; width: 300px; }
+.rbt-env-item > .rbt-move { margin-left: auto; }
+.rbt-env-item > .rbt-move + .rbt-row-edit { margin-left: 4px; }
 .rbt-group-issue { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 2px 0 4px; font-size: 13px; color: var(--warnc, #e0a040); }
 .rbt-group-issue span { flex: 1; min-width: 0; }
 .rbt-allow { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; font-size: 14px; cursor: pointer; }
@@ -1735,11 +1737,11 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
   .rbt-pick-box { min-height: 44px; }
   .rbt-menu-opt { min-height: 44px; }
   .rbt-fold-head { min-height: 44px; }
-  /* 正则的「属于」：手机上「可能是 …」放到框下面，和框左对齐（不然框被挤窄，字折成好几行） */
+  /* 全局正则：一行放不下名字、说明、「移到…」、✎ 和开关，说明换到第二行 */
+  .rbt-owner-row .rbt-env-item { flex-wrap: wrap; }
+  .rbt-owner-row .rbt-env-item > small { order: 9; flex-basis: 100%; }
+  .rbt-owner-row .rbt-env-item > .rbt-env-name { flex: 1; }
   .rbt-plugin-name { min-height: 36px; margin: -8px 0; } /* 点名字展开作者和链接：点击区域放大，行高不变 */
-  .rbt-owner-pick { flex-wrap: wrap; }
-  .rbt-owner-pick .rbt-pick { flex-basis: 100%; }
-  .rbt-owner-guess { flex-basis: 100%; padding-left: calc(2.6em + 8px); } /* 和「属于」那一行的框（左边一列 2.6em + 8px 间距）对齐 */
 }
 .rbt-allow .rbt-cb { width: 22px; height: 22px; flex: none; }
 
@@ -1819,10 +1821,8 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-menu-scope .rbt-tabs button { flex: 1; min-height: 32px; font-size: 13px; }
 .rbt-menu-scope small { font-size: 12px; line-height: 1.5; color: var(--t3); }
 @media (max-width: 999px) { .rbt-menu-scope .rbt-tabs button { min-height: 38px; } }
-/* 全局美化：用着别人的美化时的推荐块。用强调色的淡底和细边，比旁边的设置显眼，但不是警告 */
-.rbt-look-rec { display: flex; flex-direction: column; gap: var(--rbd-s-2); padding: var(--rbd-s-3); border-radius: var(--rbd-r-m); background: color-mix(in srgb, var(--accent) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
-.rbt-look-rec-head { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--t1); }
-.rbt-look-rec p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--t2); }
+/* 分区标题后面紧跟的小标签（美化库的「推荐」） */
+.rbt-card-section-title > .rbt-tag { margin-left: 8px; vertical-align: 2px; }
 /* 「推荐」不是状态，不要状态标签的小圆点 */
 .rbt-tag.rbt-tag-rec { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
 .rbt-menu-opt > .rbt-swatches { flex: none; margin-left: auto; padding-left: 8px; }
