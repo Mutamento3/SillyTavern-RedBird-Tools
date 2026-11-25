@@ -33,7 +33,7 @@ import { installChatSaves } from './shell/chatSaves';
 import { installRecentWatch } from './shell/recent';
 import { SheetHost } from './shell/Sheet';
 import { ImportDialog } from './ui/ImportDialog';
-import { Shell, initShellState, setShellEnabled, shellOn } from './shell/Shell';
+import { Shell, initShellState, leaveShell, setShellEnabled, shellOn } from './shell/Shell';
 import { installCardsWatch, migrateRegexOwners } from './tools/cards/cards';
 import { autoApplyOnSwitch } from './tools/env/autoapply';
 import { installEnvWatch, refreshEnv } from './tools/env/env';
@@ -55,15 +55,15 @@ function addMenuButton(): void {
   item.id = 'rbt_menu_button';
   item.className = 'list-group-item flex-container flexGap5 interactable';
   item.tabIndex = 0;
-  item.innerHTML = '<div class="fa-solid fa-feather-pointed extensionsMenuExtensionButton"></div><span>' + APP_NAME + '</span>';
+  item.innerHTML = '<div class="fa-solid fa-feather-pointed extensionsMenuExtensionButton"></div><span>红鸟工具箱</span>';
   item.addEventListener('click', () => { panelOpen.value = !panelOpen.value; });
-  // 原版界面里一下切到三栏界面（三栏界面里藏起来，那里左栏底部有「原版界面」）
+  // 三栏界面的开关：从哪进就从哪出，三栏界面出问题时这里（酒馆自己的输入框旁边）也一定能退出去
   const shell = document.createElement('div');
   shell.id = 'rbt_shell_button';
   shell.className = item.className;
   shell.tabIndex = 0;
-  shell.innerHTML = '<div class="fa-solid fa-table-columns extensionsMenuExtensionButton"></div><span>三栏界面</span>';
-  shell.addEventListener('click', () => setShellEnabled(true));
+  shell.innerHTML = '<div class="fa-solid fa-table-columns extensionsMenuExtensionButton"></div><span class="rbt-wand-open">打开红鸟三栏界面</span><span class="rbt-wand-close">关闭红鸟三栏界面</span>';
+  shell.addEventListener('click', () => { if (shellOn.value) void leaveShell(); else setShellEnabled(true); });
   menu.append(item, shell);
 }
 

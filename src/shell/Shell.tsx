@@ -352,8 +352,8 @@ function openTemporaryChat(): void {
 }
 
 /** Leaving the shell is easy to click by accident, so confirm and say how to come back. */
-async function leaveShell(): Promise<void> {
-  const ok = await confirmText('切回原版界面？', '想回来时，点输入框旁边的魔法棒 › 三栏界面。', '切回原版');
+export async function leaveShell(): Promise<void> {
+  const ok = await confirmText('切回原版界面？', '想回来时，点输入框旁边的魔法棒 › 打开红鸟三栏界面。', '切回原版');
   if (ok) setShellEnabled(false);
 }
 
@@ -604,8 +604,30 @@ export function Shell() {
   );
 }
 
+/**
+ * 三栏界面里整个页面应该一直待在原位。卡的前端或插件用代码跳到伸出屏幕外的元素时（scrollIntoView），
+ * 浏览器会把最外层推上去，CSS 挡不住；推上去后用户也滚不回来。这里一被推动就拉回去。
+ * 触屏上正在打字时不管：iPhone 弹出键盘时会自己推页面，好让输入框露出来；打完字（焦点离开）再拉回去。
+ * （电脑上酒馆一直把焦点放在输入框里，所以只在触屏上这样做。）
+ */
+function keepPageInPlace(): void {
+  const touch = window.matchMedia?.('(pointer: coarse)');
+  const reset = () => {
+    if (!shellActive.value) return;
+    const b = document.body;
+    if (scrollX || scrollY) scrollTo(0, 0);
+    if (b.scrollTop || b.scrollLeft) { b.scrollTop = 0; b.scrollLeft = 0; }
+  };
+  const editing = () => !!touch?.matches && !!document.activeElement?.matches('input, textarea, select, [contenteditable=""], [contenteditable="true"]');
+  document.addEventListener('scroll', (e) => {
+    if ((e.target === document || e.target === document.body) && !editing()) reset();
+  }, { capture: true, passive: true });
+  document.addEventListener('focusout', () => setTimeout(() => { if (!editing()) reset(); }, 300));
+}
+
 export function initShellState(): void {
   shellOn.value = settings().shellEnabled;
+  keepPageInPlace();
   try {
     leftCollapsed.value = localStorage.getItem(COLLAPSE_KEY) === '1';
   } catch { /* ignore */ }
