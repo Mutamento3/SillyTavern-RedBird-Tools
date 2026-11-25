@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.36",
+  "version": "0.6.37",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "人设有了自己的页面，可以新建、换头像、复制，也可以只给一段聊天用。美化页右边多了美化库，红鸟适配美化点一下就换上。全局正则可以移进一张卡或一个预设，以前选了「属于」的会自动移过去。"
+  "rbt_whats_new": "魔法棒菜单里一直有三栏界面的开关：「打开红鸟三栏界面」和「关闭红鸟三栏界面」。三栏界面里，整个页面不会再被推上去、底下空出一大块了。"
 }
