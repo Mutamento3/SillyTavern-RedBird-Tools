@@ -10,6 +10,7 @@
  * 「—」= 不换（保持换卡前的）。例外直接写出来：模型用预设推荐的、人设用酒馆的默认人设、美化用全局美化。
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { matchSearch } from '../../core/text';
 import { allCharacters, apiLabel, archiveVersion, presetApi, presetNames, setCardTheme, thumbnailUrl } from '../../tools/cards/cards';
 import { profileOf, regexName, revertCard, setCardItem } from '../../tools/env/setup';
 import { loadThemes, stThemes, themesLoading } from '../../look/look';
@@ -18,6 +19,7 @@ import { envReport } from '../../tools/env/env';
 import { modelLabel, type ModelChoice } from '../../tools/model';
 import { APP_NAME, ctx, currentCharacter, settings, toast, type Any, type EnvProfile } from '../../st/st';
 import { undoable } from '../undo';
+import { personaLabel } from '../../st/personas';
 import { Empty, NavRow, Tag } from '../common';
 import { isPhone, Menu } from '../Menu';
 import { GLOBAL_TAB_LABELS, openDetail } from '../views';
@@ -42,13 +44,8 @@ interface Row {
   has: boolean;
 }
 
-function personaNames(): Record<string, string> {
-  return ctx().powerUserSettings?.personas ?? {};
-}
-
 function buildRows(): Row[] {
   const s = settings();
-  const names = personaNames();
   const def = String(ctx().powerUserSettings?.default_persona ?? '');
   const presets = new Set(presetNames());
   const api = presetApi();
@@ -57,7 +54,7 @@ function buildRows(): Row[] {
   return allCharacters().map((ch: Any) => {
     const avatar = String(ch.avatar);
     const p = profileOf(avatar);
-    const personas = boundPersonas(avatar).map((id) => ({ id, name: names[id] || id }));
+    const personas = boundPersonas(avatar).map((id) => ({ id, name: personaLabel(id) }));
     const rec = p?.preset;
     return {
       avatar,
@@ -69,7 +66,7 @@ function buildRows(): Row[] {
       themeMissing: !!p?.theme && !p.theme.startsWith(RBT_LOOK) && themes.size > 0 && !themes.has(p.theme),
       modelFromPreset: !p?.model && rec ? s.presetInfo[rec.name]?.model : undefined,
       personas,
-      defaultPersona: !personas.length && def && names[def] ? names[def] : undefined,
+      defaultPersona: !personas.length && def && ctx().powerUserSettings?.personas?.[def] ? personaLabel(def) : undefined,
       has: !!p || personas.length > 0,
     };
   }).sort((a, b) => Number(b.isCurrent) - Number(a.isCurrent) || a.name.localeCompare(b.name, 'zh'));
@@ -276,7 +273,7 @@ export function CardsTablePage() {
   const [q, setQ] = useState('');
   const [all, setAll] = useState(false);
   const phone = isPhone();
-  const shown = rows.filter((r) => (all || r.has) && (!q.trim() || r.name.toLowerCase().includes(q.trim().toLowerCase())));
+  const shown = rows.filter((r) => (all || r.has) && matchSearch(q, r.name));
   return (
     <div class="rbt-page rbt-ct">
       <Toolbar q={q} setQ={setQ} all={all} setAll={setAll} count={shown.length} />

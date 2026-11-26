@@ -40,6 +40,7 @@ import { installEnvWatch, refreshEnv } from './tools/env/env';
 import { migrateAll } from './tools/env/setup';
 import { refreshStatus } from './shell/EnvStatus';
 import { captures, installFlowCapture } from './tools/flow/capture';
+import { installUsage } from './tools/flow/usage';
 import { installVarsWatch } from './tools/vars/vars';
 import { Panel, openPanel, panelOpen } from './ui/Panel';
 import { closeSheet, configureViews, GLOBAL_TAB_LABELS, GLOBAL_TABS, openGlobal, openView, resolveView, sheetOpen, shellActive, VIEW_LABELS, type GlobalTab, type ViewId } from './ui/views';
@@ -230,7 +231,7 @@ function addSlashCommand(): void {
         else panelOpen.value = !panelOpen.value;
         return '';
       },
-      helpString: `打开/关闭${APP_NAME}。参数：card（角色档案）/ flow（信息流）/ vars（变量）/ table（角色配套总表）/ presets、worlds、regex、scripts、plugins、backup（全局工具箱的各标签）；/rbt shell 开关三栏界面。`,
+      helpString: `打开/关闭${APP_NAME}。参数：card（角色档案）/ flow（花费明细）/ vars（变量）/ table（角色配套总表）/ presets、worlds、regex、scripts、plugins、backup（全局工具箱的各标签）；/rbt shell 开关三栏界面。`,
     }));
   } catch (e) {
     console.warn('[RedBird] slash command registration failed', e);
@@ -268,6 +269,7 @@ async function init(): Promise<void> {
   const legacy = (tab: string) => { const r = resolveView(tab); if (r?.view === 'global') openGlobal(r.tab); else if (r) openView(r.view); };
 
   installFlowCapture();
+  installUsage();
   installVarsWatch();
   installEnvWatch();
   installCardsWatch();

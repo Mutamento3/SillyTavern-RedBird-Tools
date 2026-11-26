@@ -9,6 +9,10 @@ import { APP_NAME, confirmText, ctx, currentCharacter, loaded, stModule, toast, 
 const pu = (): Any => ctx().powerUserSettings ?? {};
 export const currentPersona = (): string => String(loaded.personas?.user_avatar ?? '');
 export const personaName = (id: string): string => pu().personas?.[id] || id;
+/** 用户设定名称（酒馆人设的 title，选填，只用来区分同名人设）。 */
+export const personaTitle = (id: string): string => String(pu().persona_descriptions?.[id]?.title ?? '').trim();
+/** 只能写一行的地方：「名字 · 用户设定名称」 */
+export const personaLabel = (id: string): string => [personaName(id), personaTitle(id)].filter(Boolean).join(' · ');
 export const personaIds = (): string[] => Object.keys(pu().personas ?? {}).sort((a, b) => personaName(a).localeCompare(personaName(b), 'zh'));
 export function personaDesc(id: string): string {
   const d = pu().persona_descriptions?.[id];
@@ -133,6 +137,15 @@ export async function renamePersona(id: string, name: string): Promise<void> {
   if (id === currentPersona()) (await stModule('/script.js'))?.setUserName?.(name, { toastPersonaNameChange: false });
   ctx().saveSettingsDebounced();
   emit('PERSONA_RENAMED', { avatarId: id, oldName, newName: name });
+  await refreshPanel(id);
+}
+
+/** 改用户设定名称。和酒馆一样：空的就删掉这一项。 */
+export async function setPersonaTitle(id: string, title: string): Promise<void> {
+  const d = ensureDescriptor(id);
+  if (!d || String(d.title ?? '') === title) return;
+  if (title) d.title = title; else delete d.title;
+  ctx().saveSettingsDebounced();
   await refreshPanel(id);
 }
 

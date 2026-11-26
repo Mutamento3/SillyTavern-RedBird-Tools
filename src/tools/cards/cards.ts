@@ -399,6 +399,32 @@ export async function updateCardBook(avatar: string): Promise<boolean> {
   }
 }
 
+/**
+ * 把一本世界书设成这张卡自己的（酒馆的「主要世界书」），并写进卡里，之后导出、分享这张卡会带上它。
+ * 和在酒馆角色编辑里「链接到世界书」选「主要世界书」一样。只在这张卡还没有自己的世界书时用。
+ */
+export async function bindCardWorld(avatar: string, name: string): Promise<boolean> {
+  await ensureFullCharacter(avatar);
+  const f = findChar(avatar);
+  const data = await loaded.worldInfo?.loadWorldInfo?.(name);
+  if (!f || !data?.entries) { toast('error', `没能绑定世界书「${name}」，因为读不到它。请刷新后再试。`, '角色档案'); return false; }
+  try {
+    await ctx().writeExtensionField(f.chid, 'world', name);
+    const book = worldToCharacterBook(name, data.entries);
+    const res = await fetch('/api/characters/merge-attributes', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({ avatar, data: { character_book: book } }) });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    if (f.char.data) f.char.data.character_book = book;
+    skipWorldPrompt(avatar);
+    toast('success', `已把世界书「${name}」绑定给「${f.char.name}」。`, '角色档案');
+    refreshEnv();
+    bump();
+    return true;
+  } catch (e) {
+    toast('error', `没能把世界书「${name}」绑定给「${f.char.name}」。请再试一次。（${String((e as Error)?.message ?? e)}）`, '角色档案');
+    return false;
+  }
+}
+
 /** 酒馆打开带世界书的卡时，每张卡会弹一次英文的「要不要导入」。工具箱自己导入时，让它别再问。 */
 export function skipWorldPrompt(avatar: string): void {
   try { ctx().accountStorage?.setItem(`AlertWI_${avatar}`, 'true'); } catch { /* ignore */ }

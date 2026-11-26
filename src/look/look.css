@@ -345,6 +345,8 @@ html.rbt-look #chat .mes .mes_timer {
   font-size: 11.5px;
   color: var(--rbd-text3);
 }
+/* 电脑上楼层号、用时、token 数排在头像下面：和头像隔开一点，不贴着 */
+html.rbt-look #chat .mes > .mesAvatarWrapper > .avatar { margin-bottom: 6px; }
 /* 消息操作按钮是次要的：平时淡，移到消息上才清楚 */
 html.rbt-look #chat .mes .mes_buttons,
 html.rbt-look #chat .mes .extraMesButtonsHint { opacity: 0.4; transition: opacity 0.15s; }

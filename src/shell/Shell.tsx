@@ -4,6 +4,7 @@
  * 导航条只留 ☰、角色名（点了切换存档）、新聊天和聊天工具箱；状态栏不显示。
  */
 import { signal } from '@preact/signals';
+import { matchSearch } from '../core/text';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Menu } from '../ui/Menu';
 import { askUpdate, installedVersion, newVersion } from '../tools/update';
@@ -248,10 +249,7 @@ function ChatList({ q }: { q: string }) {
   const [limit, setLimit] = useState(RECENT_PAGE);
   useEffect(() => { if (!recentChats.value.length) refreshRecentSoon(200); }, []);
   const query = q.trim().toLowerCase();
-  const matched = useMemo(() => recentChats.value.filter((r) => !query
-    || r.name.toLowerCase().includes(query)
-    || r.preview.toLowerCase().includes(query)
-    || r.chatId.toLowerCase().includes(query)), [recentChats.value, query]);
+  const matched = useMemo(() => recentChats.value.filter((r) => matchSearch(query, r.name, r.preview, r.chatId)), [recentChats.value, query]);
   const more = query ? 0 : Math.max(0, matched.length - limit);
   const groups = useMemo(() => {
     const out: { label: string; items: RecentChat[] }[] = [];
@@ -311,7 +309,7 @@ function AddedList({ q }: { q: string }) {
   const groups = useMemo(() => {
     const query = q.trim().toLowerCase();
     const items = sortCharacters(listCharacters().filter((i) => i.kind === 'character'), 'added')
-      .filter((i) => !query || i.name.toLowerCase().includes(query) || i.note.toLowerCase().includes(query));
+      .filter((i) => matchSearch(query, i.name, i.note));
     const out: { label: string; items: CharItem[] }[] = [];
     for (const it of items) {
       const label = it.added ? timeGroup({ time: it.added } as RecentChat) : '更早';

@@ -10,7 +10,7 @@
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { confirmText, ctx, currentCharacter, loaded, saveSettings, settings, toast } from '../../st/st';
-import { createPersona, currentPersona, deletePersona, lockChatPersona, personaCards, personaDesc, personaIds, personaImage, personaName, personaThumb, pickAvatar, renamePersona, setPersonaAvatar, setPersonaDesc, type PickedAvatar } from '../../st/personas';
+import { createPersona, currentPersona, deletePersona, lockChatPersona, personaCards, personaDesc, personaIds, personaImage, personaLabel, personaName, personaThumb, personaTitle, pickAvatar, renamePersona, setPersonaAvatar, setPersonaDesc, setPersonaTitle, type PickedAvatar } from '../../st/personas';
 import {
   allCharacters,
   archiveVersion,
@@ -451,7 +451,7 @@ function PersonasPage() {
           <Section title="全局人设" hint="没设专用人设的卡都用它">
             <select class="text_pole rbt-select" value={def} disabled={busy} onChange={(e) => { void pick((e.currentTarget as HTMLSelectElement).value); }}>
               {!def && <option value="">还没设</option>}
-              {all.map((id) => <option key={id} value={id}>{personaName(id)}</option>)}
+              {all.map((id) => <option key={id} value={id}>{personaLabel(id)}</option>)}
             </select>
             {held && now.avatar !== def && <small class="rbt-muted">「{currentCharacter()?.name}」用自己的「{now.name}」。在这里换的全局人设，离开这张卡后生效。</small>}
           </Section>
@@ -465,7 +465,7 @@ function PersonasPage() {
             {all.map((id) => (
               <NavRow key={id} img={personaThumb(id)} onClick={() => openDetail({ kind: 'persona', id }, back)}
                 title={<span class="rbt-persona-title">{personaName(id)}{id === now.avatar && <Tag tone="accent">正在用</Tag>}{id === def && <Tag>全局</Tag>}</span>}
-                sub={personaDesc(id) ? <span class="rbt-clamp2">{personaDesc(id)}</span> : undefined}
+                sub={personaTitle(id) || personaDesc(id) ? <>{personaTitle(id) && <span class="rbt-persona-note">{personaTitle(id)}</span>}{personaDesc(id) && <span class="rbt-clamp2">{personaDesc(id)}</span>}</> : undefined}
                 trailing={<AvatarStack cards={personaCards(id)} />} />
             ))}
           </div>
@@ -494,6 +494,7 @@ function PersonaDetail({ id }: { id: string }) {
   const pu = ctx().powerUserSettings ?? {};
   const [name, setName] = useState(personaName(id));
   const [desc, setDesc] = useState(personaDesc(id));
+  const [title, setTitle] = useState(personaTitle(id));
   const [busy, setBusy] = useState(false);
   if (pu.personas?.[id] === undefined) return <div class="rbt-warn">找不到这个人设，可能被删除了。</div>;
   const cards = personaCards(id);
@@ -522,6 +523,7 @@ function PersonaDetail({ id }: { id: string }) {
     <div class="rbt-page">
       <div class="rbt-detail-head">
         <h2>{personaName(id)}</h2>
+        {personaTitle(id) && <span class="rbt-muted">{personaTitle(id)}</span>}
         {isNow && <Tag tone="accent">正在用</Tag>}
         {isDef && <Tag>全局</Tag>}
         {cards.length > 0 && <Tag>{cards.length === 1 ? `「${cards[0].name}」专用` : `${cards.length} 张卡专用`}</Tag>}
@@ -539,6 +541,12 @@ function PersonaDetail({ id }: { id: string }) {
               <input class="text_pole" value={name} onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }}
                 onBlur={(e) => { const v = (e.currentTarget as HTMLInputElement).value.trim(); if (v) void run(() => renamePersona(id, v)); else setName(personaName(id)); }} />
+            </label>
+            <label class="rbt-field">
+              <span class="rbt-field-label">用户设定名称</span>
+              <input class="text_pole" value={title} placeholder="选填，只用来区分同名人设" onInput={(e) => setTitle((e.currentTarget as HTMLInputElement).value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }}
+                onBlur={(e) => { const v = (e.currentTarget as HTMLInputElement).value.trim(); setTitle(v); void run(() => setPersonaTitle(id, v)); }} />
             </label>
             <label class="rbt-field">
               <span class="rbt-field-label">描述</span>

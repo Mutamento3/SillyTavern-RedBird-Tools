@@ -36,6 +36,20 @@ export function looseNormalize(text: string): string {
     .toLowerCase();
 }
 
+/**
+ * 搜索框用的比较：不分大小写和全角半角，忽略空格、分隔号。
+ * 手机拼音键盘打英文字母时，字还没上屏，框里是「n'b't」「n b t」这样的，也要能搜到「NBT」。
+ */
+export function searchKey(text: string): string {
+  return text.normalize('NFKC').toLowerCase().replace(/[\s'‘’·・]+/g, '');
+}
+
+/** q 是搜索框里的字；texts 里有一个包含它就算搜到。q 是空的算全部搜到。 */
+export function matchSearch(q: string, ...texts: (string | undefined)[]): boolean {
+  const k = searchKey(q);
+  return !k || texts.some((t) => !!t && searchKey(t).includes(k));
+}
+
 export function nonSpaceLength(text: string): number {
   let n = 0;
   for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) > 32) n++;

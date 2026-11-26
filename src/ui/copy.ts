@@ -36,3 +36,35 @@ export const LOOK_COPY = {
   willTurnOff: `现在用的是${LOOK_NAME}。换成这个会把它关掉。`,
   importTurnsOff: `会关掉${LOOK_NAME}`,
 } as const;
+
+/** 信息流 › 用量、花费、用时（生成中的小红鸟、聊天里那一行、信息流里的开关和花费）。按 DESIGN.md「文案」写。 */
+export const USAGE_COPY = {
+  liveWait: '等待回复',
+  liveThink: '正在思考',
+  liveWrite: '正在写正文',
+  liveDone: '写完了',
+  liveStopped: '已停止',
+  liveTokens: (n: number) => `${n.toLocaleString('zh-CN')} tokens`,
+  liveAbout: (m: string) => `约 ${m}`,
+  liveStalled: (d: string) => `已经 ${d}没收到新内容`,
+  /** 生成时写了多少字（字数是准的；tokens 要写完接口才给，生成时不估） */
+  liveChars: (n: number) => `${n.toLocaleString('zh-CN')} 字`,
+  /** 聊天里那一行：总花费后面括号里，其他插件在后台找 AI 花的那部分 */
+  sideCost: (m: string) => `（含插件 ${m}）`,
+  showTitle: '在聊天里显示',
+  showTimer: '用时',
+  showTokens: 'tokens',
+  showCost: '花费',
+  showBird: '小红鸟',
+  /** 两组开关的小标题：手机上那一行在名字下面，电脑上在头像下面 */
+  showUnderAvatar: (phone: boolean) => (phone ? '每一楼名字下面' : '每一楼头像下面'),
+  showBottom: '最新一楼底下',
+  /** 收起时右边：开着的那几项；都没开 */
+  showNone: '都关了',
+  chatTotalSub: (n: number) => `${n} 次回复，重新生成和插件花的都算上了`,
+  chatTokensSub: (n: number) => `${n} 次回复 · 接口没给金额，只能看 tokens`,
+  noMoney: '接口没给金额，只能看 tokens。',
+  balanceFail: '查不到 OpenRouter 余额。',
+  bill: '打开 OpenRouter 账单 ↗',
+  since: (d: string) => `从 ${d}开始记花费。`,
+} as const;

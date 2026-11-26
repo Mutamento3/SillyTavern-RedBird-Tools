@@ -16,6 +16,7 @@ import {
 import { contentToText } from '../../core/text';
 import { charaFileName, ctx, currentCharacter, loaded, substitute, type Any } from '../../st/st';
 import { slow } from '../../st/perf';
+import type { ReplyUsage } from '../../core/usage';
 
 export interface ActivatedWI extends WIEntryInfo {
   uid: string;
@@ -39,6 +40,8 @@ export interface Capture {
   rawChat: { role: string; content: string }[];
   /** The API's limits when this turn was sent (Chat Completion settings). */
   budget?: Budget;
+  /** 这一轮的用量和用时（回复写完后由 usage.ts 挂上；接口不给用量时只有用时） */
+  usage?: ReplyUsage;
 }
 
 /** 上下文上限（这一轮能发多少 + 回复）和回复上限，以及当时聊天记录有几楼。 */
@@ -69,6 +72,15 @@ let nextId = 1;
 
 let pendingWI: Any[] = [];
 let lastGen: { type: string; quiet: boolean } = { type: 'normal', quiet: false };
+/**
+ * 一次生成只拼一次提示词。生成开始之后的第一次算这一轮；之外拼出来的（插件直接找 AI 发请求，比如配图提示词）
+ * 不发「生成开始」，算后台请求，不然会被当成「这一轮」、还标成下一楼。
+ */
+let genOpen = false;
+/** 这一轮正文的提示词拼好的时间（用量那边靠它认出哪个请求是正文：拼好之前插件发的请求不算） */
+export let mainPromptAt = 0;
+/** 在聊天里点了某一楼的用量那一行：花费明细打开这一楼那一轮（看完就清掉） */
+export const flowFocus = signal<number | null>(null);
 
 const GEN_LABELS: Record<string, string> = {
   normal: '正常发送',
@@ -296,8 +308,10 @@ export function installFlowCapture(): void {
   es.on(et.GENERATION_STARTED, (type: string, params: Any, dryRun: boolean) => {
     if (dryRun) return;
     lastGen = { type: type || 'normal', quiet: !!params?.quiet_prompt };
+    genOpen = true;
     pendingWI = [];
   });
+  for (const ev of [et.GENERATION_ENDED, et.GENERATION_STOPPED]) es.on(ev, () => { genOpen = false; });
 
   es.on(et.WORLD_INFO_ACTIVATED, (entries: Any[]) => {
     pendingWI = Array.isArray(entries) ? [...entries] : [];
@@ -310,7 +324,9 @@ export function installFlowCapture(): void {
     const chatOut = data.chat.map((m: Any) => ({ role: m.role, content: m.content }));
     const structured = flattenCollection(loaded.openai?.promptManager?.messages);
     const wiRaw = pendingWI;
-    const gen = data.dryRun ? { type: 'preview', quiet: false } : lastGen;
+    const gen = data.dryRun ? { type: 'preview', quiet: false } : genOpen ? lastGen : { type: 'quiet', quiet: true };
+    if (!data.dryRun && genOpen && !lastGen.quiet) mainPromptAt = Date.now();
+    if (!data.dryRun) genOpen = false;
     const budget = readBudget();
     // 酒馆刚用模型的分词器把这一轮算过一遍（在发这个事件之前），总数以它为准
     const stTokens = Number(loaded.openai?.promptManager?.tokenUsage) || 0;

@@ -12,7 +12,7 @@ export type GlobalTab = 'cards' | 'presets' | 'personas' | 'worlds' | 'regex' | 
 
 export const VIEW_LABELS: Record<ViewId, string> = {
   card: '角色档案',
-  flow: '信息流',
+  flow: '花费明细',
   vars: '变量',
   global: '全局工具箱',
 };

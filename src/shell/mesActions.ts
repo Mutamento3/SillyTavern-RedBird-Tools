@@ -51,7 +51,7 @@ function avatarToHeader(mes: Element, on: boolean): void {
 // ------------------------------- 时间、楼层、计时、token：名字下面一行 ---
 
 const META = 'rbt-mes-meta';
-const STATS = ['.mesIDDisplay', '.mes_timer', '.tokenCounterDisplay'];
+const STATS = ['.mesIDDisplay', '.mes_timer', '.rbt-mes-usage', '.tokenCounterDisplay'];
 
 function metaLine(mes: Element, on: boolean): void {
   const line = mes.querySelector(':scope > .mes_block > .ch_name .alignItemsBaseline');

@@ -254,6 +254,10 @@ export interface RbtSettings {
   seriesNoSuggest?: Record<string, string[]>;
   /** 收起回复开头的思考过程：只改显示和发给 AI 的那份，消息原文和酒馆设置都不动（见 tools/thinkFold.ts）。 */
   thinkFold: boolean;
+  /** 聊天里显示每条回复的花费（信息流 › 在聊天里显示）。没设过 = 开；没有花费数据时开着也什么都不显示。 */
+  showCost?: boolean;
+  /** 最新一楼底下的小红鸟那一行（生成进度和写完的结果）。没设过 = 开。 */
+  showBird?: boolean;
   /** 当作思考的标签名；没有就用默认名单（core/think.ts）。 */
   thinkTags?: string[];
   /** Lorebook backups written to data/<user>/user/files before overwriting. */

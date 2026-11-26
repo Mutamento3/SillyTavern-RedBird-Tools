@@ -8,6 +8,8 @@ import { CardPage } from './pages/CardPage';
 import { DropHint, GlobalTabs, GlobalToolbox, ImportButton, useDropImport } from './pages/GlobalToolbox';
 import { VarsView } from './VarsView';
 import { shellActive, VIEW_LABELS, type ViewId } from './views';
+import { charsTick } from '../shell/characters';
+import { ctx, currentCharacter } from '../st/st';
 
 export type TabId = ViewId;
 
@@ -56,6 +58,19 @@ export function openPanel(tab?: TabId): void {
   panelOpen.value = true;
 }
 
+/** 「聊天工具箱 [头像]」：一眼看出这里的东西是这段聊天、这张卡的。只放头像不写名字；群聊和没打开聊天时不放。 */
+function ToolboxTitle() {
+  void charsTick.value;
+  const c = ctx();
+  const char = currentCharacter();
+  return (
+    <>
+      聊天工具箱
+      {char && <img class="rbt-title-who" src={c.getThumbnailUrl('avatar', char.avatar)} alt={char.name} title={char.name} />}
+    </>
+  );
+}
+
 export function Panel() {
   const open = panelOpen.value;
   if (!tabsNow().includes(activeTab.value)) activeTab.value = 'card';
@@ -97,7 +112,7 @@ export function Panel() {
     <aside class="rbt-panel rbt-dock">
       <div class="rbt-resize-handle" title="拖动调整宽度" onPointerDown={onResizeStart} />
       {/* 第一行：这是哪里（标题）和怎么离开（✕）；第二行：标签 */}
-      <TitleBar class="rbt-dock-titlebar" icon={shellActive.value ? 'fa-toolbox' : 'fa-feather-pointed'} title={shellActive.value ? '聊天工具箱' : APP_NAME} onClose={() => { panelOpen.value = false; }}>
+      <TitleBar class="rbt-dock-titlebar" icon={shellActive.value ? 'fa-toolbox' : 'fa-feather-pointed'} title={shellActive.value ? <ToolboxTitle /> : APP_NAME} onClose={() => { panelOpen.value = false; }}>
         <button type="button" class="rbt-titlebar-btn" title="导出诊断文件，用来排查问题" aria-label="导出诊断文件" onClick={() => { void exportDiagnostics(); }}><i class="fa-solid fa-file-arrow-down" /></button>
       </TitleBar>
       <div class="rbt-header-tabs">

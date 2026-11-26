@@ -3,6 +3,7 @@
  * 左栏只放最近的聊天；挑角色、新建 / 导入都在这里。
  */
 import { sharpImage, sharpNow } from './sharpImg';
+import { matchSearch } from '../core/text';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { openImport } from '../ui/ImportDialog';
 import { Menu } from '../ui/Menu';
@@ -351,7 +352,7 @@ export function HomeGallery() {
     if (filter === 'group' && it.kind !== 'group') return false;
     if (filter === 'problem' && !it.problems.length) return false;
     if (filter.startsWith('tag:') && !it.tags.some((t) => t.id === filter.slice(4))) return false;
-    if (query && !(it.name.toLowerCase().includes(query) || it.note.toLowerCase().includes(query) || it.tags.some((t) => t.name.toLowerCase().includes(query)))) return false;
+    if (!matchSearch(q, it.name, it.note, ...it.tags.map((t) => t.name))) return false;
     return true;
   }), sort);
   const nFav = all.filter((x) => x.fav).length;

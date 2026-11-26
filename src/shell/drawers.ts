@@ -65,6 +65,27 @@ export function openDrawer(key: DrawerKey): void {
   if (!isOpen(key)) clickToggle(drawerByKey[key]);
 }
 
+/**
+ * 打开「预设」面板，并滚到某一栏让它亮一下（上下文长度 / 最大回复长度）。这两栏在面板中间，
+ * 只打开面板的话，手机上要往下翻好一段才找得到。Chat Completion 和 Text Completion 用的是不同的两组输入框。
+ */
+export function openPresetField(field: 'context' | 'reply'): void {
+  openDrawer('preset');
+  const cc = (window as { SillyTavern?: { getContext?: () => { mainApi?: string } } }).SillyTavern?.getContext?.().mainApi === 'openai';
+  const id = field === 'context' ? (cc ? 'openai_max_context' : 'max_context') : (cc ? 'openai_max_tokens' : 'amount_gen');
+  // 等面板展开完再滚
+  setTimeout(() => {
+    const input = document.getElementById(id);
+    const row = (input?.closest('.range-block') as HTMLElement | null) ?? input;
+    if (!row) return;
+    row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    row.classList.remove('rbt-spot');
+    void row.offsetWidth;
+    row.classList.add('rbt-spot');
+    setTimeout(() => row.classList.remove('rbt-spot'), 2000);
+  }, 350);
+}
+
 export function closeDrawer(key: DrawerKey): void {
   if (isOpen(key)) clickToggle(drawerByKey[key]);
 }

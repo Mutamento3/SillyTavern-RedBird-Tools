@@ -3,11 +3,12 @@
  * 规则见 dev/角色档案重做-spec.md；读写本卡专用走 tools/env/setup.ts。
  */
 import type { ComponentChildren } from 'preact';
+import { matchSearch } from '../../core/text';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { isPhone } from '../Menu';
 import { APP_NAME, ctx, loaded, settings, toast, type Any } from '../../st/st';
-import { apiLabel, archiveVersion, currentPresetName, presetApi, presetNames, thumbnailUrl, worldNames, type CardInfo } from '../../tools/cards/cards';
+import { apiLabel, archiveVersion, bindCardWorld, currentPresetName, presetApi, presetNames, thumbnailUrl, worldNames, type CardInfo } from '../../tools/cards/cards';
 import { currentModel, modelLabel, modelsApply, sameModel, SOURCE_LABEL, stModelList, type ModelChoice } from '../../tools/model';
 import { attachBook, attachedBooks, bookOwners, cardUses, detachBook, globalRegex, globalValue, makeGlobal, profileOf, setCardItem, setCardUse, worldFacts } from '../../tools/env/setup';
 import { unnamedRegex } from '../../core/setup';
@@ -15,7 +16,7 @@ import { buildEnvReport } from '../../tools/env/env';
 import { openDrawer } from '../../shell/drawers';
 import { working } from '../../st/busy';
 import { bindPersona, boundPersonas, personaTick, unbindPersona, watchPersonas } from './parts';
-import { createPersona, lockChatPersona, personaDesc, personaIds, personaName, personaThumb } from '../../st/personas';
+import { createPersona, lockChatPersona, personaDesc, personaIds, personaLabel, personaName, personaThumb, personaTitle } from '../../st/personas';
 import { shortSaveName } from '../../shell/recent';
 import { editRegex } from './GlobalPage';
 import { GLOBAL_TAB_LABELS, openDetail, openGlobal, type Detail } from '../views';
@@ -95,7 +96,7 @@ export function Popup({ title, placeholder, open, onClose, above, top, head, opt
   }, [open]);
   // 手机上从底部弹出：放到页面最外层（工具箱面板里的 fixed 会被面板裁掉）
   const sheet = (node: ComponentChildren) => (isPhone() ? createPortal(<div class="rbt-scope rbt-menu-portal">{node}</div>, document.body) : node);
-  const list = (options ?? []).filter((o) => !q.trim() || o.title.toLowerCase().includes(q.trim().toLowerCase()));
+  const list = (options ?? []).filter((o) => matchSearch(q, o.title, o.sub));
   return (
     <div class={`rbt-pick ${open ? 'open' : ''} ${wide ? 'wide' : ''} ${cls ?? ''}`} ref={ref}>
       {children}
@@ -383,8 +384,8 @@ export function PersonaSetupSection({ info }: { info: CardInfo }) {
     });
   };
   return (
-    <FoldSection title="user 人设" summary={cur ? personaName(cur) : '没有人设'} defaultOpen action={<PanelBtn label="人设设置" onClick={() => openDrawer('persona')} />}>
-      <PickRow k="人设" value={cur ? personaName(cur) : '没有人设'} lead={cur ? personaThumb(cur) : undefined}
+    <FoldSection title="user 人设" summary={cur ? personaLabel(cur) : '没有人设'} defaultOpen action={<PanelBtn label="人设设置" onClick={() => openDrawer('persona')} />}>
+      <PickRow k="人设" value={cur ? personaName(cur) : '没有人设'} sub={cur ? personaTitle(cur) || undefined : undefined} lead={cur ? personaThumb(cur) : undefined}
         pill={<Pill kind={kind} img={thumbnailUrl(info.avatar)} />} open={open === 'p'} onToggle={openMenu} onClose={close}
         above={live && <div class="rbt-menu-scope">
           <div class="rbt-tabs" role="tablist">
@@ -394,15 +395,15 @@ export function PersonaSetupSection({ info }: { info: CardInfo }) {
           <small>{chatScope ? `只改现在这段聊天「${chatName}」。这张卡的其他聊天和新聊天，还用本卡的人设。` : locked ? '这张卡的其他聊天都用它，以后新开的也是。' : '这张卡的所有聊天都用它，以后新开的也是。'}</small>
         </div>}
         top={chatScope
-          ? <MenuOpt title="跟着本卡" sub={cardLevel ? `现在是：${personaName(cardLevel)}` : undefined} selected={!locked} onPick={() => { void lock(null); }} />
+          ? <MenuOpt title="跟着本卡" sub={cardLevel ? `现在是：${personaLabel(cardLevel)}` : undefined} selected={!locked} onPick={() => { void lock(null); }} />
           : <>
-            <MenuOpt title="全局" lead={def ? personaThumb(def) : undefined} sub={def ? `和其他卡一样：${personaName(def)}` : '酒馆里还没设默认人设，会沿用上次用的'} selected={!bound.length} onPick={() => { void use(null); }} />
+            <MenuOpt title="全局" lead={def ? personaThumb(def) : undefined} sub={def ? `和其他卡一样：${personaLabel(def)}` : '酒馆里还没设默认人设，会沿用上次用的'} selected={!bound.length} onPick={() => { void use(null); }} />
             {bound.length === 1 && <MenuAll name={personaName(bound[0])} onPick={() => makeDefault(bound[0])} />}
           </>}
         head={chatScope ? '本存档专用' : `${info.name}专用`}
         options={all.map((id) => chatScope
-          ? { key: id, title: personaName(id), lead: personaThumb(id), selected: locked === id, onPick: () => { void lock(id); } }
-          : { key: id, title: personaName(id), lead: personaThumb(id), selected: bound.includes(id), onPick: () => { void use(id); } })}
+          ? { key: id, title: personaName(id), sub: personaTitle(id) || undefined, lead: personaThumb(id), selected: locked === id, onPick: () => { void lock(id); } }
+          : { key: id, title: personaName(id), sub: personaTitle(id) || undefined, lead: personaThumb(id), selected: bound.includes(id), onPick: () => { void use(id); } })}
         bottom={<>
           <MenuLine />
           {chatScope
@@ -421,6 +422,7 @@ export function PersonaSetupSection({ info }: { info: CardInfo }) {
 export function WorldSetupSection({ info, openWorld, cardBook }: { info: CardInfo; openWorld: (name: string) => void; cardBook: ComponentChildren }) {
   void archiveVersion.value;
   const [open, setOpen] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const avatar = info.avatar;
   const live = info.isCurrent;
   const set = profileOf(avatar)?.worlds ?? {};
@@ -437,20 +439,39 @@ export function WorldSetupSection({ info, openWorld, cardBook }: { info: CardInf
   const persona = report ? report.items.filter((i) => i.scope === 'persona' && i.kind === 'worldbook').map((i) => i.name) : [];
   const detach = (w: string) => {
     detachBook(avatar, w);
-    toast('success', `已从「${info.name}」移除附加世界书「${w}」。点这里撤销。`, APP_NAME, { onclick: () => attachBook(avatar, w), timeOut: 8000 });
+    toast('success', `已从「${info.name}」移除世界书「${w}」。点这里撤销。`, APP_NAME, { onclick: () => attachBook(avatar, w), timeOut: 8000 });
   };
   // 所有书都列出来，不能附加的灰掉、写原因（不然看着像列表不全）
-  const whyNot = (w: string) => (attached.includes(w) ? '已附加' : facts.mine.has(w) ? '这张卡自带' : facts.global.has(w) ? '已是全局' : '');
+  // 这张卡还没有自己的世界书：绑的这本就设成它自己的（导出时一起打包）；已经有了，再绑的算附加
+  const own = info.world.state === 'none';
+  const bind = (w: string) => { if (own) void bindCardWorld(avatar, w); else attachBook(avatar, w); };
+  const whyNot = (w: string) => (attached.includes(w) ? '已绑定' : facts.mine.has(w) ? '这张卡自带' : !own && facts.global.has(w) ? '已是全局' : '');
   const addOpts: Opt[] = [...known].sort((a, b) => a.localeCompare(b, 'zh')).map((w) => {
     const why = whyNot(w);
-    return { key: w, title: w, sub: why || undefined, disabled: !!why, onPick: () => { setOpen(false); attachBook(avatar, w); } };
+    return { key: w, title: w, sub: why || undefined, disabled: !!why, onPick: () => { setOpen(false); bind(w); } };
   });
+  // 从文件导入并绑定：用酒馆自己的导入（同名时酒馆会问要不要覆盖；文件不对时酒馆自己报错），导进来的那本绑给这张卡
+  const importAndBind = async (file: File) => {
+    const before = new Set(worldNames());
+    if ((await loaded.worldInfo?.importWorldInfo?.(file)) === false) return;
+    const base = file.name.replace(/\.[^.]*$/, '');
+    const name = worldNames().find((w) => !before.has(w)) ?? (worldNames().includes(base) ? base : undefined);
+    if (name) bind(name);
+  };
+  // 导入卡时没绑上：世界书和卡同名、又没绑给别的卡，多半就是这张卡的
+  const guess = own ? known.find((w) => (w === info.name || w === info.world.importName) && !attached.includes(w) && !owners.get(w)) : undefined;
   const onCount = (info.world.state === 'ok' ? 1 : 0) + attached.filter(exists).length + globals.filter((w) => cardUses(avatar, `w:${w}`)).length + chat.length + persona.length;
   return (
     <FoldSection title="世界书" summary={onCount ? `${onCount} 本启用` : '没有'} defaultOpen action={<PanelBtn label="世界书面板" onClick={() => openDrawer('worldinfo')} />}>
       {info.world.state !== 'none' && <div class="rbt-use-group"><GroupHead title="角色卡自带" />{cardBook}</div>}
+      {guess && (
+        <div class="rbt-use-guess">
+          <span>世界书「{guess}」看起来是这张卡的，绑定给它？</span>
+          <button type="button" class="rbt-btn rbt-btn-small" onClick={() => bind(guess)}>绑定</button>
+        </div>
+      )}
       {attached.length > 0 && <div class="rbt-use-group">
-        <GroupHead title="附加给这张卡" count={attached.length} unit="本" />
+        <GroupHead title="另外绑定的" count={attached.length} unit="本" />
         {attached.map((w) => <UseRow key={`x${w}`} name={w} on={exists(w)} sub={exists(w) ? undefined : '这本已经不在了'} action={{ label: '移除', onClick: () => detach(w) }} onEdit={exists(w) ? () => openWorld(w) : undefined} />)}
       </div>}
       {globals.length > 0 && <div class="rbt-use-group">
@@ -466,11 +487,20 @@ export function WorldSetupSection({ info, openWorld, cardBook }: { info: CardInf
       </div>}
       {chat.length > 0 && <div class="rbt-use-group"><GroupHead title="这个存档的" />{chat.map((w) => <UseRow key={`c${w}`} name={w} on onEdit={() => openWorld(w)} />)}</div>}
       {persona.length > 0 && <div class="rbt-use-group"><GroupHead title={`人设「${personaName(String(loaded.personas?.user_avatar ?? ''))}」的`} />{persona.map((w) => <UseRow key={`p${w}`} name={w} on onEdit={() => openWorld(w)} />)}</div>}
-      <Popup title="附加世界书" open={open} onClose={() => setOpen(false)} wide
+      <Popup title="绑定世界书" open={open} onClose={() => setOpen(false)} wide
         options={addOpts}
-        bottom={addOpts.length ? undefined : <div class="rbt-menu-empty">还没有世界书。</div>}>
-        <div class="rbt-use-add"><button type="button" class="rbt-btn rbt-btn-small" aria-expanded={open} onClick={() => setOpen(!open)}><i class="fa-solid fa-plus" aria-hidden="true" /> 附加世界书</button></div>
+        bottom={<>
+          {addOpts.length ? <MenuLine /> : <div class="rbt-menu-empty">还没有世界书。</div>}
+          <MenuAct icon="fa-plus" title="从文件导入并绑定" onPick={() => { setOpen(false); fileRef.current?.click(); }} />
+        </>}>
+        <div class="rbt-use-add"><button type="button" class="rbt-btn rbt-btn-small" aria-expanded={open} onClick={() => setOpen(!open)}><i class="fa-solid fa-plus" aria-hidden="true" /> 绑定世界书</button></div>
       </Popup>
+      <input ref={fileRef} type="file" accept=".json,.png,application/json,image/png" style={{ display: 'none' }} onChange={(e) => {
+        const input = e.currentTarget as HTMLInputElement;
+        const file = input.files?.[0];
+        input.value = '';
+        if (file) void importAndBind(file);
+      }} />
     </FoldSection>
   );
 }
@@ -488,7 +518,7 @@ export function RegexSetupSection({ info, openScoped }: { info: CardInfo; openSc
   const presetItem = report?.items.find((i) => i.id === 'rx:p');
   const card: Any[] = (live ? [] : (ctx().characters ?? []).find((c: Any) => c.avatar === avatar)?.data?.extensions?.regex_scripts) ?? [];
   const preset = currentPresetName();
-  const match = (n: string) => !q || n.toLowerCase().includes(q.toLowerCase());
+  const match = (n: string) => matchSearch(q, n);
   const allowed = live ? !!cardItem?.enabled : info.regex.allowed;
   const presetAllowed = !!presetItem?.enabled;
   const cardRows = live ? (cardItem?.subItems ?? []).map((s) => ({ key: s.id, name: s.name, on: s.enabled, toggle: s.toggle }))

@@ -4,6 +4,7 @@
  * 点一行展开：变量说明、哪些世界书 / 预设条目用到它。可以切换楼层看当时的值。
  */
 import { useEffect, useMemo, useState } from 'preact/hooks';
+import { matchSearch } from '../core/text';
 import { flattenVars, formatValue, type Leaf, type VarChange } from '../core/vars';
 import {
   chatLocalVars,
@@ -91,10 +92,9 @@ function GroupBlock({ g, sources, onlyChanged }: { g: Group; sources: TextSource
 }
 
 function filterGroups(groups: Group[], q: string): Group[] {
-  const query = q.trim().toLowerCase();
-  if (!query) return groups;
+  if (!q.trim()) return groups;
   return groups
-    .map((g) => ({ ...g, rows: g.rows.filter((r) => r.path.toLowerCase().includes(query) || formatValue(r.value, 400).toLowerCase().includes(query) || (r.desc ?? '').toLowerCase().includes(query)) }))
+    .map((g) => ({ ...g, rows: g.rows.filter((r) => matchSearch(q, r.path, formatValue(r.value, 400), r.desc)) }))
     .filter((g) => g.rows.length);
 }
 

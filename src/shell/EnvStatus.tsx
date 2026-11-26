@@ -151,7 +151,7 @@ export function ToolboxButton() {
     <button
       type="button"
       class={`rbt-gbtn compact rbt-toolbox-btn ${panelOpen.value ? 'active' : ''}`}
-      title={issues ? `聊天工具箱：角色档案里有 ${issues} 项需要注意` : '聊天工具箱：角色档案、信息流、变量'}
+      title={issues ? `聊天工具箱：角色档案里有 ${issues} 项需要注意` : '聊天工具箱：角色档案、花费明细、变量'}
       onClick={() => { panelOpen.value = !panelOpen.value; }}
     >
       <i class="fa-solid fa-toolbox fa-fw" />
