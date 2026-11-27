@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.38",
+  "version": "0.6.39",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "「信息流」改名「花费明细」：看每一轮花了多少钱、AI 看得到第几楼、用了多久，还能看整个存档的花费图表。最新一楼底下多了小红鸟，生成时显示进度和大概的花费。"
+  "rbt_whats_new": "全局工具箱里点「选择」后，页面上只留这个列表，挑要删的东西时不会误点到别的设置。给系列改名也在「选择」里。"
 }

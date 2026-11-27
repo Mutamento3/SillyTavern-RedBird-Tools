@@ -32,7 +32,7 @@ function Segs({ items, value, onPick, cls }: { items: { id: Seg; label: string }
   );
 }
 
-export function ScopePage({ id, nowLabel, presetCount, cardCount, now, presets, cards }: {
+export function ScopePage({ id, nowLabel, presetCount, cardCount, now, presets, cards, focus }: {
   /** 记住选了哪段用的名字（正则 / 脚本各一个） */
   id: string;
   nowLabel: string;
@@ -41,6 +41,8 @@ export function ScopePage({ id, nowLabel, presetCount, cardCount, now, presets, 
   now: ComponentChildren;
   presets: ComponentChildren;
   cards: ComponentChildren;
+  /** 只看「now」这一块（列表在「选择」时），别的先藏起来 */
+  focus?: boolean;
 }) {
   const [st, pick] = useScope(id);
   const all: { id: Seg; label: string }[] = [
@@ -49,15 +51,17 @@ export function ScopePage({ id, nowLabel, presetCount, cardCount, now, presets, 
     { id: 'cards', label: `角色卡 ${cardCount}` },
   ];
   return (
-    <div class="rbt-page rbt-segpage" data-seg={st.seg} data-side={st.side}>
-      <Segs cls="rbt-scope-narrow" items={all} value={st.seg} onPick={pick} />
-      <div class="rbt-page-cols">
+    <div class="rbt-page rbt-segpage" data-seg={focus ? 'now' : st.seg} data-side={st.side}>
+      {!focus && <Segs cls="rbt-scope-narrow" items={all} value={st.seg} onPick={pick} />}
+      <div class={`rbt-page-cols ${focus ? 'one' : ''}`}>
         <div class="rbt-page-group rbt-scope-now">{now}</div>
-        <div class="rbt-page-group rbt-scope-side">
-          <Segs cls="rbt-scope-wide" items={all.slice(1)} value={st.side} onPick={pick} />
-          <div class="rbt-scope-presets">{presets}</div>
-          <div class="rbt-scope-cards">{cards}</div>
-        </div>
+        {!focus && (
+          <div class="rbt-page-group rbt-scope-side">
+            <Segs cls="rbt-scope-wide" items={all.slice(1)} value={st.side} onPick={pick} />
+            <div class="rbt-scope-presets">{presets}</div>
+            <div class="rbt-scope-cards">{cards}</div>
+          </div>
+        )}
       </div>
     </div>
   );

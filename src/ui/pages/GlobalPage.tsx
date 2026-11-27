@@ -13,7 +13,7 @@ import { envReport, refreshEnv, type EnvItem, type EnvSubItem } from '../../tool
 import { Chip, CheckMark, Toggle } from '../common';
 import { SourceEditor } from '../SourceEditor';
 import { sourceFor } from '../../tools/sources';
-import { OK, Section } from './parts';
+import { OK, Section, useOrganize } from './parts';
 import { checkPluginUpdates, pluginStates, updatePlugins } from '../../tools/update';
 import { Popup, type Opt } from './setupParts';
 import type { ComponentChildren } from 'preact';
@@ -132,12 +132,13 @@ export function GlobalRegexList({ items }: { items: EnvItem[] }) {
   const byId = new Map(items.map((i) => [i.id, i]));
   const [moving, setMoving] = useState(false);
   const move = async (list: Parameters<typeof moveRegex>[0]) => { setMoving(true); try { await moveRegex(list); } finally { setMoving(false); } };
-  const [selecting, setSelecting] = useState(false);
+  const org = useOrganize('regex');
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  if (!scripts.length) return <div class="rbt-muted">没有全局正则。</div>;
+  // 选择时全删光了也留着「完成」，不然页面停在只剩这一块的样子
+  if (!scripts.length && !org.on) return <div class="rbt-muted">没有全局正则。</div>;
   const allOn = scripts.every((r) => picked.includes(r.id));
-  const done = () => { setSelecting(false); setPicked([]); };
+  const done = () => { org.stop(); setPicked([]); };
   const del = async () => {
     const list = scripts.filter((r) => picked.includes(r.id));
     if (!list.length) return;
@@ -146,11 +147,11 @@ export function GlobalRegexList({ items }: { items: EnvItem[] }) {
     setBusy(true);
     try { if (await trash('regex', list.map((r) => r.id))) setPicked([]); } finally { setBusy(false); }
   };
-  // 「选择」模式：每行一个勾选框，底部一条操作栏（和预设、世界书、美化的列表一样）
-  if (selecting) {
+  // 「选择」模式：每行一个勾选框，底部一条操作栏（和预设、世界书、美化的列表一样）；页面上只留这一块（RegexPage）
+  if (org.on) {
     return (
       <>
-        <div class="rbt-org-bar">
+        <div ref={org.ref} class="rbt-org-bar on">
           <span class="rbt-org-count">已选 {picked.length} 条</span>
           <button type="button" class="rbt-linkbtn" onClick={() => setPicked(allOn ? [] : scripts.map((r) => r.id))}>{allOn ? '全不选' : '全选'}</button>
           <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={done}>完成</button>
@@ -169,7 +170,7 @@ export function GlobalRegexList({ items }: { items: EnvItem[] }) {
   }
   return (
     <>
-      <div class="rbt-org-bar"><button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={() => setSelecting(true)}>选择</button></div>
+      <div ref={org.ref} class="rbt-org-bar"><button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={org.start}>选择</button></div>
       {scripts.map((r) => {
         const live = byId.get(`rx:g:${r.id ?? r.scriptName}`);
         // 显示、修改真正的全局：正在聊的卡单独停用 / 启用的，按进卡前的算，改了等离开这张卡再换上

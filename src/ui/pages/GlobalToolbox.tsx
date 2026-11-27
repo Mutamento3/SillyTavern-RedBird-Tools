@@ -48,7 +48,7 @@ import { CardPage } from './CardPage';
 import { AddGlobalWorld, GlobalRegexList, GlobalWorldList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
 import { trash, TRASH_LABEL, type TrashKind } from '../../tools/trash';
 import { charsTick } from '../../shell/characters';
-import { bindPersona, personaTick, Section, watchPersonas } from './parts';
+import { bindPersona, organizing, personaTick, Section, useOrganize, watchPersonas } from './parts';
 import { QUOTE_COLORS, type LookKind } from '../../core/quote';
 import { personaStatus } from '../../shell/StatusBar';
 import { BindingsDetail, CardsTablePage } from './CardsTable';
@@ -161,10 +161,10 @@ function readCollapsed(): Record<string, string[]> {
 }
 
 /**
- * 一个系列：标题行点一下收起 / 展开；有名字的系列右边有「编辑」，可以改名或解散
- * （往系列里加、从系列里拿出来，用列表上方的「选择」）。
+ * 一个系列：标题行点一下收起 / 展开。整理都在「选择」里：选择时有名字的系列右边多一个「改名」，
+ * 可以改名或解散；平时标题行只用来收起 / 展开。
  */
-function SeriesGroup({ kind, series, title, count, bare, children }: { kind: SourceKind; series: string; title: string; count: number; /** 只有这一组、又不是系列：栏的小标题已经写了「全部…」，不再要组标题 */ bare?: boolean; children: preact.ComponentChildren }) {
+function SeriesGroup({ kind, series, title, count, bare, selecting, children }: { kind: SourceKind; series: string; title: string; count: number; /** 只有这一组、又不是系列：栏的小标题已经写了「全部…」，不再要组标题 */ bare?: boolean; selecting: boolean; children: preact.ComponentChildren }) {
   const key = series || '_';
   const [collapsed, setCollapsed] = useState(() => (readCollapsed()[kind] ?? []).includes(key));
   const [editing, setEditing] = useState(false);
@@ -180,7 +180,7 @@ function SeriesGroup({ kind, series, title, count, bare, children }: { kind: Sou
   const save = () => { if (name.trim() && name.trim() !== series) renameSeries(kind, series, name.trim()); setEditing(false); };
   return (
     <section class={`rbt-card-section rbt-series ${collapsed && !bare ? "collapsed" : ""}`}>
-      {bare ? null : editing ? (
+      {bare ? null : selecting && editing ? (
         <div class="rbt-series-edit">
           <input class="text_pole rbt-input" value={name} autoFocus aria-label="系列名" onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }} />
           <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={!name.trim()} onClick={save}>保存</button>
@@ -194,7 +194,7 @@ function SeriesGroup({ kind, series, title, count, bare, children }: { kind: Sou
             <span class="rbt-series-title">{title}</span>
             <span class="rbt-series-count">{count}</span>
           </button>
-          {series && <button type="button" class="rbt-btn rbt-btn-small" onClick={() => { setName(series); setEditing(true); }}>编辑</button>}
+          {selecting && series && <button type="button" class="rbt-btn rbt-btn-small" onClick={() => { setName(series); setEditing(true); }}>改名</button>}
         </div>
       )}
       {(bare || !collapsed) && children}
@@ -223,7 +223,8 @@ function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filter
   deleteNote?: (names: string[]) => string;
 }) {
   void sourcesTick.value;
-  const [selecting, setSelecting] = useState(false);
+  const org = useOrganize(kind);
+  const selecting = org.on;
   const [picked, setPicked] = useState<string[]>([]);
   const [naming, setNaming] = useState(false);
   const [series, setSeriesName] = useState('');
@@ -235,7 +236,7 @@ function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filter
   const listId = `rbt-org-${kind}`;
   const toggle = (n: string) => setPicked((cur) => (cur.includes(n) ? cur.filter((x) => x !== n) : [...cur, n]));
   const allOn = pickable.length > 0 && pickable.every((n) => picked.includes(n));
-  const done = () => { setSelecting(false); setPicked([]); setNaming(false); setSeriesName(''); };
+  const done = () => { org.stop(); setPicked([]); setNaming(false); setSeriesName(''); };
   const apply = (name: string) => { setSeries(kind, picked, name); setPicked([]); setNaming(false); setSeriesName(''); };
   const del = async () => {
     const list = picked.filter((n) => !locked?.(n));
@@ -256,7 +257,7 @@ function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filter
           {filters.map((f, i) => <button key={f.label} type="button" class={fi === i ? 'active' : ''} onClick={() => setFi(i)}>{f.label} {allNames.filter(f.test).length}</button>)}
         </div>
       )}
-      <div class="rbt-org-bar">
+      <div ref={org.ref} class={`rbt-org-bar ${selecting ? 'on' : ''}`}>
         {selecting ? (
           <>
             <span class="rbt-org-count">已选 {picked.length} 个</span>
@@ -264,11 +265,11 @@ function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filter
             <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={done}>完成</button>
           </>
         ) : (
-          <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={() => setSelecting(true)}>选择</button>
+          <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={org.start}>选择</button>
         )}
       </div>
       {groups.map((g) => (
-        <SeriesGroup key={g.series || '_'} kind={kind} series={g.series} bare={groups.length === 1 && !g.series} title={g.series ? `${g.series} 系列` : (groups.length > 1 ? `其他${restTitle}` : `全部${restTitle}`)} count={g.names.length}>
+        <SeriesGroup key={g.series || '_'} kind={kind} series={g.series} selecting={selecting} bare={groups.length === 1 && !g.series} title={g.series ? `${g.series} 系列` : (groups.length > 1 ? `其他${restTitle}` : `全部${restTitle}`)} count={g.names.length}>
           {g.names.map((n) => {
             // 记了链接的，名字后面有个链接图标：一眼看出点进去有发布帖、教程
             if (!selecting) return <NavRow key={n} title={sourceFor(kind, n).links.length ? <>{n}<i class="fa-solid fa-link rbt-navrow-link" role="img" aria-label="有链接" /></> : n} sub={sub(n) || undefined} trailing={trail?.(n)} onClick={() => openItem(kind, n, back)} />;
@@ -387,17 +388,21 @@ function PresetsPage() {
   const presetRx = (report?.items ?? []).filter((i) => i.scope === 'preset' && i.kind !== 'preset');
   const global = String(globalValue('preset') ?? cur);
   const back = GLOBAL_TAB_LABELS.presets;
+  // 「选择」时只留下面的列表（useOrganize）
+  const org = organizing.value === 'preset';
   return (
     <div class="rbt-page">
-      <div class="rbt-page-cols">
-        <div class="rbt-page-group">
-          <Section title="全局预设" hint="没设专用预设的卡都用它">
-            <PresetPicker />
-            {/* 自带的正则、脚本说的是正在用的预设；正在聊的卡用自己的预设时，那不是全局预设，不列 */}
-            {cur === global && presetRx.map((i) => <ItemRow key={i.id} item={i} />)}
-            {cur === global && !presetRx.length && <small class="rbt-muted">这个预设没有自带正则或脚本。</small>}
-          </Section>
-        </div>
+      <div class={`rbt-page-cols ${org ? 'one' : ''}`}>
+        {!org && (
+          <div class="rbt-page-group">
+            <Section title="全局预设" hint="没设专用预设的卡都用它">
+              <PresetPicker />
+              {/* 自带的正则、脚本说的是正在用的预设；正在聊的卡用自己的预设时，那不是全局预设，不列 */}
+              {cur === global && presetRx.map((i) => <ItemRow key={i.id} item={i} />)}
+              {cur === global && !presetRx.length && <small class="rbt-muted">这个预设没有自带正则或脚本。</small>}
+            </Section>
+          </div>
+        )}
         <div class="rbt-page-group">
           <h2 class="rbt-page-group-title">全部预设</h2>
           <SeriesList
@@ -686,26 +691,30 @@ function WorldsPage() {
   const back = GLOBAL_TAB_LABELS.worlds;
   const scopes = currentBookScopes();
   const viaChat = [...scopes.character, ...scopes.chat].filter((n) => !scopes.global.has(n));
+  // 「选择」时只留下面的列表（useOrganize）
+  const org = organizing.value === 'world';
   return (
     <div class="rbt-page">
-      {missing.length > 0 && (
+      {!org && missing.length > 0 && (
         <div class="rbt-warn rbt-row-between">
           <span>{missing.length} 张卡自带的世界书还没导入：{missing.map((m) => m.name).join('、')}</span>
           <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={async () => { setBusy(true); try { await importAllMissingWorlds(); } finally { setBusy(false); } }}>全部导入</button>
         </div>
       )}
-      <div class="rbt-page-cols">
-        <div class="rbt-page-group">
-          <Section title="全局世界书" hint="对所有卡生效。只给某张卡用的，最好绑到那张卡上">
-            <GlobalWorldList />
-            {personaOn.map((i) => <ItemRow key={i.id} item={i} />)}
-            <AddGlobalWorld />
-            {viaChat.length > 0 && <small class="rbt-muted">现在的聊天还通过角色卡加载了：{viaChat.join('、')}。</small>}
-          </Section>
-          <Section title="设置">
-            <CheckRow label="自动导入卡里的世界书" detail="打开一张卡时，如果它自带的世界书还没导入，就自动导入并绑定。不会覆盖已有的同名世界书。" checked={auto} onChange={(x) => { settings().autoImportWorld = x; saveSettings(); setAuto(x); }} />
-          </Section>
-        </div>
+      <div class={`rbt-page-cols ${org ? 'one' : ''}`}>
+        {!org && (
+          <div class="rbt-page-group">
+            <Section title="全局世界书" hint="对所有卡生效。只给某张卡用的，最好绑到那张卡上">
+              <GlobalWorldList />
+              {personaOn.map((i) => <ItemRow key={i.id} item={i} />)}
+              <AddGlobalWorld />
+              {viaChat.length > 0 && <small class="rbt-muted">现在的聊天还通过角色卡加载了：{viaChat.join('、')}。</small>}
+            </Section>
+            <Section title="设置">
+              <CheckRow label="自动导入卡里的世界书" detail="打开一张卡时，如果它自带的世界书还没导入，就自动导入并绑定。不会覆盖已有的同名世界书。" checked={auto} onChange={(x) => { settings().autoImportWorld = x; saveSettings(); setAuto(x); }} />
+            </Section>
+          </div>
+        )}
         <div class="rbt-page-group">
           <h2 class="rbt-page-group-title">全部世界书</h2>
           <SeriesList
@@ -784,12 +793,14 @@ function RegexPage() {
   const presetRx = presetNames().map((p) => ({ p, n: presetRegexCount(p) })).filter((x) => x.n > 0);
   const cur = currentPresetName();
   const back = GLOBAL_TAB_LABELS.regex;
+  // 「选择」时只留全局正则的列表（useOrganize）
+  const org = organizing.value === 'regex';
   return (
-    <ScopePage id="regex" nowLabel={`全局 ${regex.length}`} presetCount={presetRx.length} cardCount={cardRx.length}
+    <ScopePage id="regex" nowLabel={`全局 ${regex.length}`} presetCount={presetRx.length} cardCount={cardRx.length} focus={org}
       now={
         <Section title="全局正则" hint="对所有卡生效">
           <GlobalRegexList items={regex} />
-          <div class="rbt-row"><button type="button" class="rbt-btn" onClick={() => openRegexManager()}>新建、编辑或导入正则 <i class="fa-solid fa-arrow-up-right-from-square" /></button></div>
+          {!org && <div class="rbt-row"><button type="button" class="rbt-btn" onClick={() => openRegexManager()}>新建、编辑或导入正则 <i class="fa-solid fa-arrow-up-right-from-square" /></button></div>}
         </Section>
       }
       presets={
@@ -958,6 +969,8 @@ function LooksPage() {
   const back = GLOBAL_TAB_LABELS.looks;
   const [open, setOpen] = useState(false);
   const curLook = LOOKS.find((l) => l.id === lookId.value) ?? LOOKS[0];
+  // 「选择」时只留「别人做的美化」的列表（useOrganize）
+  const org = organizing.value === 'theme';
   // 所有美化都在这一个选择框里换：红鸟适配美化的三套在前（推荐），别人做的美化在后
   const options: Opt[] = [
     ...LOOKS.map((l) => ({ key: `rbt:${l.id}`, title: l.label, sub: l.desc, group: `${LOOK_NAME}（推荐）`, selected: builtIn && lookId.value === l.id, onPick: () => { setOpen(false); void useBuiltInLook(l.id); } })),
@@ -965,52 +978,61 @@ function LooksPage() {
   ];
   return (
     <div class="rbt-page">
-      <div class="rbt-page-cols">
-        <div class="rbt-page-group">
-          {/* 左边是全局：现在用哪套（选择框）和这一套能调的。右边是美化库：红鸟适配美化一块、别人做的美化一块 */}
-          <Section title="全局美化" hint="没设美化的卡都用它">
-            <PickRow k="美化" value={builtIn ? curLook.label : (cur || '酒馆默认')} sub={builtIn ? LOOK_NAME : '别人做的美化'}
-              pill={!builtIn && curTheme ? <Swatches t={curTheme} /> : undefined}
-              open={open} onToggle={() => setOpen(!open)} onClose={() => setOpen(false)} options={options} />
-            {builtIn ? (
-              <>
-                <div class="rbt-look-accents">
-                  <small>强调色</small>
-                  {ACCENTS.map((a) => (
-                    <button key={a.id} type="button" class={`rbt-accent-dot ${accentId.value === a.id ? 'on' : ''}`} title={a.label} aria-label={a.label} style={{ '--c': a.color }} onClick={() => setAccent(a.id)} />
-                  ))}
-                </div>
-                <QuoteColorRow />
-                {/* 手机屏幕本来就窄，正文总是铺满，这一项只在电脑上有用 */}
-                {!compact.value && (
-                  <div class="rbt-frow">
-                    <span class="rbt-frow-k">阅读宽度</span>
-                    <select class="text_pole rbt-select" value={readWidth.value} onChange={(e) => setReadWidth((e.currentTarget as HTMLSelectElement).value as 'normal' | 'wide' | 'full')}>
-                      {READ_WIDTHS.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}
-                    </select>
-                    <span />
+      <div class={`rbt-page-cols ${org ? 'one' : ''}`}>
+        {!org && (
+          <div class="rbt-page-group">
+            {/* 左边是全局：现在用哪套（选择框）和这一套能调的。右边是美化库：红鸟适配美化一块、别人做的美化一块 */}
+            <Section title="全局美化" hint="没设美化的卡都用它">
+              <PickRow k="美化" value={builtIn ? curLook.label : (cur || '酒馆默认')} sub={builtIn ? LOOK_NAME : '别人做的美化'}
+                pill={!builtIn && curTheme ? <Swatches t={curTheme} /> : undefined}
+                open={open} onToggle={() => setOpen(!open)} onClose={() => setOpen(false)} options={options} />
+              {builtIn ? (
+                <>
+                  <div class="rbt-look-accents">
+                    <small>强调色</small>
+                    {ACCENTS.map((a) => (
+                      <button key={a.id} type="button" class={`rbt-accent-dot ${accentId.value === a.id ? 'on' : ''}`} title={a.label} aria-label={a.label} style={{ '--c': a.color }} onClick={() => setAccent(a.id)} />
+                    ))}
                   </div>
-                )}
-              </>
-            ) : (
-              <>
-                {shellOn.value && !compact.value && <ChatWidthRow />}
-                <small class="rbt-muted">{LOOK_COPY.othersRisk}{LOOK_COPY.noAdapt}</small>
-              </>
+                  <QuoteColorRow />
+                  {/* 手机屏幕本来就窄，正文总是铺满，这一项只在电脑上有用 */}
+                  {!compact.value && (
+                    <div class="rbt-frow">
+                      <span class="rbt-frow-k">阅读宽度</span>
+                      <select class="text_pole rbt-select" value={readWidth.value} onChange={(e) => setReadWidth((e.currentTarget as HTMLSelectElement).value as 'normal' | 'wide' | 'full')}>
+                        {READ_WIDTHS.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}
+                      </select>
+                      <span />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {shellOn.value && !compact.value && <ChatWidthRow />}
+                  <small class="rbt-muted">{LOOK_COPY.othersRisk}{LOOK_COPY.noAdapt}</small>
+                </>
+              )}
+            </Section>
+            {shellOn.value && (
+              <Section title="手机">
+                <CheckRow label={LOOK_COPY.mesLayoutLabel} detail={LOOK_COPY.mesLayoutDesc} checked={mesLayoutOn.value} onChange={setMesLayout} />
+              </Section>
             )}
-          </Section>
-          {shellOn.value && (
-            <Section title="手机">
-              <CheckRow label={LOOK_COPY.mesLayoutLabel} detail={LOOK_COPY.mesLayoutDesc} checked={mesLayoutOn.value} onChange={setMesLayout} />
+          </div>
+        )}
+        {/* 「别人做的美化」标题上面故意多留一点空（ui-audit 不查这一栏的间距） */}
+        <div class="rbt-page-group" data-lint-spacing="ok">
+          {!org && <h2 class="rbt-page-group-title">美化库</h2>}
+          {!org && (
+            <Section title={LOOK_NAME} tag={<span class="rbt-tag rbt-tag-rec">推荐</span>} hint={LOOK_COPY.libPitch}>
+              <div class="rbt-lookcards">{LOOKS.map((l) => <LookCard key={l.id} l={l} />)}</div>
             </Section>
           )}
-        </div>
-        <div class="rbt-page-group">
-          <h2 class="rbt-page-group-title">美化库</h2>
-          <Section title={LOOK_NAME} tag={<span class="rbt-tag rbt-tag-rec">推荐</span>} hint={LOOK_COPY.libPitch}>
-            <div class="rbt-lookcards">{LOOKS.map((l) => <LookCard key={l.id} l={l} />)}</div>
-          </Section>
-          <Section title="别人做的美化" hint={LOOK_COPY.libOthers}>
+          {/* 别人做的美化：标题直接放在页面上，下面的系列一组一张卡（和世界书、预设的列表一样）；不再套在一张卡里，免得卡里套卡 */}
+          <div class="rbt-card-section-head rbt-lib-head">
+            <h3 class="rbt-card-section-title">别人做的美化</h3>
+            {!org && <p class="rbt-card-section-hint">{LOOK_COPY.libOthers}</p>}
+          </div>
           {themesLoading.value && !list.length ? <small class="rbt-muted">读取中…</small> : (
             <SeriesList
               kind="theme"
@@ -1030,7 +1052,6 @@ function LooksPage() {
               locked={(n) => (n === cur ? '正在用这套美化' : null)}
             />
           )}
-          </Section>
         </div>
       </div>
     </div>

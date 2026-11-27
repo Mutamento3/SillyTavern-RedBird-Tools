@@ -451,6 +451,8 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-page-group-title { font-size: 11px; font-weight: 600; color: var(--rbt-muted); }
 @container (min-width: 820px) {
   .rbt-page-cols { grid-template-columns: 1fr 1fr; }
+  /* 列表在「选择」时页面上只剩它：铺成一栏，不留半边空 */
+  .rbt-page-cols.one { grid-template-columns: minmax(0, 760px); }
 }
 
 /* 需要注意的问题：放在页面最上面，每行带修复按钮 */
@@ -1312,6 +1314,17 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
    常见的「选择」模式：顶上「已选 N 个 · 全选 · 完成」，底部固定一条操作栏（删除是红色，在最右边）。
    正在用的那一行变灰、不能勾。 */
 .rbt-org-bar { display: flex; align-items: center; gap: 10px; min-height: 32px; }
+/* 选择时「已选 N 个 · 全选 · 完成」钉在顶上，往下翻也随时能点「完成」 */
+.rbt-org-bar.on { position: sticky; top: 0; z-index: 5; padding: var(--rbd-s-2) 0; background: var(--rbd-bg1, #1e1e21); }
+/* 在分区卡片里（全局正则）：卡片的底色是半透明的，叠在页面底色上才是看到的颜色 */
+.rbt-card-section .rbt-org-bar.on { background: linear-gradient(var(--g2), var(--g2)), var(--rbd-bg1, #1e1e21); }
+/* 钉住的条和滚动区边缘之间隔着滚动区的内边距，往外补一截同色的底，翻过去的内容不从缝里露出来
+   （平时补的这一截落在上下的空白里，看不见） */
+.rbt-org-bar.on::before, .rbt-selbar::after { content: ''; position: absolute; left: 0; right: 0; background: inherit; pointer-events: none; }
+.rbt-org-bar.on::before { bottom: 100%; height: var(--rbd-s-4); }
+.rbt-selbar::after { top: 100%; height: var(--rbd-s-6); }
+.rbt-card-section .rbt-selbar::after { display: none; }
+.rbt-card-section .rbt-org-bar.on::before { height: var(--rbd-s-3); }
 .rbt-selbar {
   position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
   margin: 4px calc(-1 * var(--rbd-s-2)) 0; padding: 10px var(--rbd-s-2);
@@ -1323,7 +1336,7 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-pickrow.locked { opacity: 0.55; cursor: default; }
 .rbt-delete-one { align-self: flex-start; margin-top: var(--rbd-s-3); }
 /* 操作栏在卡片里时（全局正则），底色和卡片一样，不出现一条深色带 */
-.rbt-card-section .rbt-selbar { background: var(--g2); margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+.rbt-card-section .rbt-selbar { background: linear-gradient(var(--g2), var(--g2)), var(--rbd-bg1, #1e1e21); margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
 
 /* ================================================== 扩展设置里的「RedBird 红鸟工具箱」 ===
    像系统设置一样的分组列表：每组一块圆角底，组名小字在上；行与行之间一条细线。
@@ -1984,3 +1997,6 @@ body.rbt-usage #chat .mes .tokenCounterDisplay { display: none !important; }
 /* 「整段聊天」小卡片：第一行上面不要分隔线；卡片和下面「在聊天里显示」之间留和两组之间一样的空 */
 .rbt-flow-g .rbt-sec > .rbt-usage-row:first-child { border-top: 0; padding-top: 0; }
 .rbt-flow-g + .rbt-show { margin-top: var(--rbd-s-4); }
+
+/* 美化库 › 别人做的美化：标题在页面上（不在卡里），下面一组一张卡 */
+.rbt-lib-head { margin: var(--rbd-s-2) 2px 0; }

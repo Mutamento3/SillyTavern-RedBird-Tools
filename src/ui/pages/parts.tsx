@@ -3,7 +3,7 @@
  */
 import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
-import { useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { normalizeUrl, splitLinks } from '../../core/cards';
 import { APP_NAME, canSwitchChat, ctx, currentCharacter, toast } from '../../st/st';
 import { ensureDescriptor } from '../../st/personas';
@@ -49,6 +49,28 @@ export function LongText({ text, limit = 400 }: { text: string; limit?: number }
       {long && <div><button class="rbt-btn rbt-btn-small" onClick={() => setOpen(!open)}>{open ? '收起' : '展开全部'}</button></div>}
     </div>
   );
+}
+
+/**
+ * 列表的「选择」模式（预设、世界书、美化、全局正则）：进去以后页面上只留这个列表，
+ * 别的先藏起来，免得挑东西的时候误点到全局设置。点「完成」回到原来的页面和滚动位置。
+ * 同时只有一个列表在选择；离开这一页就结束。页面用 `organizing.value === id` 决定藏哪些。
+ */
+export const organizing = signal<string | null>(null);
+export function useOrganize(id: string) {
+  const ref = useRef<HTMLDivElement>(null);
+  const y = useRef(0);
+  useEffect(() => () => { if (organizing.value === id) organizing.value = null; }, [id]);
+  const scroller = () => {
+    for (let p = ref.current?.parentElement; p; p = p.parentElement) {
+      const o = getComputedStyle(p).overflowY;
+      if (o === 'auto' || o === 'scroll') return p;
+    }
+    return null;
+  };
+  const start = () => { y.current = scroller()?.scrollTop ?? 0; organizing.value = id; requestAnimationFrame(() => { const s = scroller(); if (s) s.scrollTop = 0; }); };
+  const stop = () => { const s = scroller(); organizing.value = null; requestAnimationFrame(() => { if (s) s.scrollTop = y.current; }); };
+  return { on: organizing.value === id, start, stop, ref };
 }
 
 /**
