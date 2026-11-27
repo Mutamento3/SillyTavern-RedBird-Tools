@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.39",
+  "version": "0.6.40",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "全局工具箱里点「选择」后，页面上只留这个列表，挑要删的东西时不会误点到别的设置。给系列改名也在「选择」里。"
+  "rbt_whats_new": "修好了流式生成时看不到思考过程的问题。用别人做的美化时，每楼的用时和小红鸟不会再把美化挤乱。"
 }

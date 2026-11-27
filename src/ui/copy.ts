@@ -59,6 +59,8 @@ export const USAGE_COPY = {
   /** 两组开关的小标题：手机上那一行在名字下面，电脑上在头像下面 */
   showUnderAvatar: (phone: boolean) => (phone ? '每一楼名字下面' : '每一楼头像下面'),
   showBottom: '最新一楼底下',
+  /** 用别人做的美化时，每一楼那一组下面的说明 */
+  showOthersLook: '用别人做的美化时，每一楼不显示花费。',
   /** 收起时右边：开着的那几项；都没开 */
   showNone: '都关了',
   chatTotalSub: (n: number) => `${n} 次回复，重新生成和插件花的都算上了`,

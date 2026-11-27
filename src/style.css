@@ -1825,8 +1825,8 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 
 /* ---- 信息流 › 用量：生成中的小红鸟、聊天里那一行（tools/flow/usage.ts） ---- */
 /* 酒馆自己的计时和 token 数换成我们这一行（它只在收到一段字时才更新，看起来会卡住） */
-body.rbt-usage #chat .mes .mes_timer,
-body.rbt-usage #chat .mes .tokenCounterDisplay { display: none !important; }
+html.rbt-look body.rbt-usage #chat .mes .mes_timer,
+html.rbt-look body.rbt-usage #chat .mes .tokenCounterDisplay { display: none !important; }
 .rbt-mes-usage { font-size: calc(var(--mainFontSize, 15px) * 0.8); color: var(--rbd-text3, color-mix(in srgb, var(--SmartThemeBodyColor) 50%, transparent)); font-variant-numeric: tabular-nums; }
 .rbt-mes-usage span + span::before { content: ' · '; }
 /* 电脑上在头像下面的窄栏里：一项一行，用短写法 */
@@ -1834,8 +1834,6 @@ body.rbt-usage #chat .mes .tokenCounterDisplay { display: none !important; }
 .mesAvatarWrapper > .rbt-mes-usage span { display: block; font-size: 0; }
 .mesAvatarWrapper > .rbt-mes-usage span::after { content: attr(data-short); font-size: calc(var(--mainFontSize, 15px) * 0.8); }
 .mesAvatarWrapper > .rbt-mes-usage span + span::before { content: none; }
-/* 生成中：还没出字时小鸟替掉酒馆的「…」 */
-#chat .mes.rbt-gen-waiting > .mes_block > .mes_text { display: none; }
 /* 点它打开「花费明细」 */
 #chat .rbt-mes-usage, #chat .rbt-gen { cursor: pointer; }
 .rbt-gen { display: flex; align-items: center; gap: 8px; margin: 2px 0; font-size: 13px; line-height: 1.5; color: var(--rbd-text2, color-mix(in srgb, var(--SmartThemeBodyColor) 66%, transparent)); font-variant-numeric: tabular-nums; }
@@ -1891,6 +1889,7 @@ body.rbt-usage #chat .mes .tokenCounterDisplay { display: none !important; }
 .rbt-show-row { display: flex; align-items: center; justify-content: space-between; gap: var(--rbd-s-3); min-width: 0; }
 .rbt-show-row > span { flex: none; }
 .rbt-show-row > small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--t3); font-variant-numeric: tabular-nums; }
+.rbt-show-note { margin: var(--rbd-s-1) 0 0; font-size: 12px; color: var(--t3); }
 .rbt-show-crow { margin-right: 4px; color: #e5484d; }
 .rbt-sub-h { font-size: 13px; font-weight: 600; color: var(--t1); margin-top: 2px; }
 .rbt-big { display: flex; flex-direction: column; gap: 2px; }

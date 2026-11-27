@@ -6,7 +6,8 @@
  * - 写进消息是在 MESSAGE_RECEIVED 里（酒馆等它跑完才存档），所以不用为它多存一次聊天。
  * - 收到每一段字时只比一下长度；页面每秒改一次字，只在生成时。小红鸟不动，只有那一行字上扫一道光（CSS）。
  */
-import { signal } from '@preact/signals';
+import { effect, signal } from '@preact/signals';
+import { lookShown } from '../../look/look';
 import { floorStats, fmtDuration, fmtMoney, parseUsage, phaseOf, readSide, readTiming, readUsage, sideCost, splitClock, usageFrom, type FloorStat, type GenClock, type ReplyUsage } from '../../core/usage';
 import { cacheBreak, type Price } from '../../core/costSplit';
 import { captures, flowFocus, mainPromptAt } from './capture';
@@ -326,11 +327,6 @@ function liveCost(g: Gen): number | null {
 
 const LIVE = 'rbt-gen';
 
-function liveTarget(g: Gen): Element | null {
-  const i = genIndex(g);
-  return i < 0 ? null : document.querySelector(`#chat > .mes[mesid="${i}"]`);
-}
-
 /** 酒馆的停止按钮还在 = 还在生成。 */
 function generating(): boolean {
   const stop = document.getElementById('mes_stop');
@@ -359,26 +355,23 @@ function doneText(m: Any): string {
 }
 
 /**
- * 小红鸟那一行，只有一行，跟着最新一楼：
+ * 小红鸟那一行，只有一行，放在聊天最下面（最新一楼的消息外面）：
  * - 生成时：正在干什么 · 过了多久 · 写了多少字 · 约花了多少（每秒更新）
- * - 写完后：留在最新一楼的正文下面，写这一楼的结果；插件后来花的钱也会加上
+ * - 写完后：写这一楼的结果；插件后来花的钱也会加上
+ * 不放进消息里面：消息里怎么排由美化决定，插进去会被排乱；正文和思考过程也不会被它挡住。
  */
 function paintRow(): void {
   const t0 = performance.now();
   const g = cur;
   const now = Date.now();
-  let mes: Element | null;
   let text: string;
   let state: string;
-  let writing: boolean;
   if (g && !g.endAt) {
     // 有的失败（比如没连上接口）不发「生成结束」：停止按钮不在了就当结束了
     if (now - g.clock.start > 1500 && !generating()) { onEnd(); return; }
   }
-  // 关掉了：什么都不显示，酒馆自己的「…」也照常显示
   if (!birdOn()) {
     document.querySelectorAll(`#chat .${LIVE}`).forEach((x) => x.remove());
-    document.querySelectorAll('#chat .rbt-gen-waiting').forEach((x) => x.classList.remove('rbt-gen-waiting'));
     return;
   }
   if (g && !g.endAt) {
@@ -389,22 +382,15 @@ function paintRow(): void {
     const cost = stalled ? null : liveCost(g);
     text = [label, fmtDuration(now - g.clock.start), stalled ? T.liveStalled(fmtDuration(now - g.clock.lastAt)) : chars ? T.liveChars(chars) : '', cost != null ? T.liveAbout(fmtMoney(cost)) : ''].filter(Boolean).join(' · ');
     state = stalled ? 'stall' : phase;
-    mes = liveTarget(g);
-    // 「继续」时这一楼已经有字了：一直放在正文下面，不藏正文
-    writing = phase === 'write' || g.type === 'continue';
   } else {
     // 刚写完，等酒馆把这一楼存好（MESSAGE_RECEIVED，一般一秒内）：先不动
     if (g && !g.expired) return;
     const chat: Any[] = ctx().chat ?? [];
     const i = chat.length - 1;
     const m = chat[i];
-    text = m && !m.is_user && !m.is_system ? doneText(m) : '';
-    mes = text ? document.querySelector(`#chat > .mes[mesid="${i}"]`) : null;
-    if (!mes) text = '';
+    text = m && !m.is_user && !m.is_system && document.querySelector(`#chat > .mes[mesid="${i}"]`) ? doneText(m) : '';
     state = readUsage(m?.extra)?.stopped ? 'stopped' : 'done';
-    writing = true;
   }
-  document.querySelectorAll('#chat .rbt-gen-waiting').forEach((x) => { if (x !== mes || writing) x.classList.remove('rbt-gen-waiting'); });
   let row = document.querySelector<HTMLElement>(`#chat .${LIVE}`);
   if (!text) { row?.remove(); slow('小红鸟那一行', t0); return; }
   if (!row) {
@@ -413,31 +399,21 @@ function paintRow(): void {
     row.setAttribute('role', 'status');
     row.innerHTML = '<i class="rbt-gen-bird fa-solid fa-crow" aria-hidden="true"></i><span></span>';
   }
-  // 放哪：流式输出时酒馆一开始就加好了这条消息（正文是「…」）。还没出字时小鸟替掉「…」，出字后挪到正文下面。
-  // 不流式时消息要写完才出现，先放在聊天最下面。
-  const textEl = mes?.querySelector(':scope > .mes_block > .mes_text');
-  if (mes && textEl) {
-    if (!writing) mes.classList.add('rbt-gen-waiting');
-    const anchor = writing ? textEl.nextElementSibling : textEl;
-    if (row.nextElementSibling !== anchor || row.parentElement !== textEl.parentElement) textEl.parentElement!.insertBefore(row, anchor);
-    if (row.style.paddingLeft) row.style.paddingLeft = '';
-  } else {
-    // 还没有这一轮的消息：放在聊天最下面。酒馆随后才把玩家刚发的消息加进来，所以每次都确认小鸟还在最后
-    const chat = document.getElementById('chat');
-    if (chat && chat.lastElementChild !== row) {
-      // 本来就看着最底下的话，挪完也滚到底，不然它在输入框下面看不到
-      const atBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 160;
-      chat.append(row);
-      if (atBottom) chat.scrollTop = chat.scrollHeight;
-    }
-    // 和上一条消息的正文左边对齐（电脑上正文在头像右边，手机上在最左边）。
-    // 每次都量：刚加进来的消息要等工具箱排完版（手机上头像挪到名字旁边），正文才到最终的位置
-    const msgs = chat?.querySelectorAll(':scope > .mes');
-    const last = msgs?.[msgs.length - 1]?.querySelector(':scope > .mes_block > .mes_text');
-    if (last) {
-      const pad = `${Math.max(0, Math.round(last.getBoundingClientRect().left - row.getBoundingClientRect().left))}px`;
-      if (row.style.paddingLeft !== pad) row.style.paddingLeft = pad;
-    }
+  // 酒馆随后才把玩家刚发的消息、AI 这一楼加进来，所以每次都确认小鸟还在最后
+  const chat = document.getElementById('chat');
+  if (chat && chat.lastElementChild !== row) {
+    // 本来就看着最底下的话，挪完也滚到底，不然它在输入框下面看不到
+    const atBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 160;
+    chat.append(row);
+    if (atBottom) chat.scrollTop = chat.scrollHeight;
+  }
+  // 和上一条消息的正文左边对齐（电脑上正文在头像右边，手机上在最左边）。
+  // 每次都量：刚加进来的消息要等工具箱排完版（手机上头像挪到名字旁边），正文才到最终的位置
+  const msgs = chat?.querySelectorAll(':scope > .mes');
+  const last = msgs?.[msgs.length - 1]?.querySelector(':scope > .mes_block > .mes_text');
+  if (last) {
+    const pad = `${Math.max(0, Math.round(last.getBoundingClientRect().left - row.getBoundingClientRect().left))}px`;
+    if (row.style.paddingLeft !== pad) row.style.paddingLeft = pad;
   }
   if (row.dataset.s !== state) row.dataset.s = state;
   const span = row.lastElementChild!;
@@ -480,8 +456,9 @@ function renderOne(id: number): void {
   if (!timer) return;
   let line = el.querySelector<HTMLElement>(`.${LINE}`);
   // 正在写这一楼：数字还是上一版的，等写完再显示（进度看小红鸟那一行）
+  // 别人做的美化：不往消息里加东西（美化不认识它，会排乱），用酒馆自带的用时和 tokens
   const busy = !!cur && !cur.endAt && genIndex(cur) === id;
-  const parts = busy ? [] : lineParts(m);
+  const parts = busy || !lookShown() ? [] : lineParts(m);
   if (!parts.length) { line?.remove(); return; }
   if (!line) {
     line = document.createElement('div');
@@ -553,6 +530,9 @@ export function installUsage(): void {
   // 在酒馆「用户设置」里改了这两个勾，这边也跟着重画
   window.jQuery?.(document).on('input', '#messageTimerEnabled, #messageTokensEnabled', () => setTimeout(() => { renderAll(); usageTick.value++; }, 0));
   setTimeout(renderAll, 500);
+  // 换了美化（红鸟适配美化 ↔ 别人做的）：每楼那一行和小红鸟换位置
+  let shownBefore = lookShown();
+  effect(() => { if (lookShown() !== shownBefore) { shownBefore = lookShown(); renderAll(); } });
   // 点每一楼的用量那一行、或者小红鸟那一行：打开聊天工具箱的「花费明细」，看这一楼那一轮
   document.getElementById('chat')?.addEventListener('click', (e) => {
     const hit = (e.target as Element | null)?.closest?.(`.${LINE}, .${LIVE}`);

@@ -6,6 +6,7 @@ import { captures, flowFocus, previewBusy, previewNextPrompt, type ActivatedWI }
 import { ctx, toast } from '../st/st';
 import { birdOn, costOn, setBirdOn, setCostOn, setTimerOn, setTokensOn, timerOn, tokensOn, usageTick } from '../tools/flow/usage';
 import { isPhone } from './Menu';
+import { lookShown } from '../look/look';
 import { Banner, WholeChatGroup, WholeChatPage, ContextSection, RoundCostSection, TimeSection, bannerFor, cacheBreak, previousCapture, roundTitle } from './FlowRound';
 import { USAGE_COPY as U } from './copy';
 
@@ -203,6 +204,8 @@ function ShowRow({ label, sample, checked, onChange }: { label: string; sample: 
 function ShowInChat() {
   void usageTick.value;
   const phone = isPhone();
+  // 别人做的美化：每一楼用的是酒馆自带的用时和 tokens（写法也是酒馆的），不显示花费
+  const ours = lookShown();
   const timer = timerOn(), tokens = tokensOn(), cost = costOn(), bird = birdOn();
   const on = [timer && U.showTimer, tokens && U.showTokens, cost && U.showCost, bird && U.showBird].filter(Boolean) as string[];
   return (
@@ -216,10 +219,11 @@ function ShowInChat() {
       <div class="rbt-show-block">
       <div class="rbt-show-group"><PlaceIcon at="avatar" phone={phone} />{U.showUnderAvatar(phone)}</div>
       <div class="rbt-show-list">
-        <ShowRow label={U.showTimer} sample={phone ? '54 秒' : '54秒'} checked={timer} onChange={setTimerOn} />
-        <ShowRow label={U.showTokens} sample={phone ? '949 tokens' : '949t'} checked={tokens} onChange={setTokensOn} />
+        <ShowRow label={U.showTimer} sample={!ours ? '54.2s' : phone ? '54 秒' : '54秒'} checked={timer} onChange={setTimerOn} />
+        <ShowRow label={U.showTokens} sample={phone && ours ? '949 tokens' : '949t'} checked={tokens} onChange={setTokensOn} />
         <ShowRow label={U.showCost} sample="$0.21" checked={cost} onChange={setCostOn} />
       </div>
+      {!ours && <p class="rbt-show-note">{U.showOthersLook}</p>}
       </div>
       <div class="rbt-show-block">
       <div class="rbt-show-group"><PlaceIcon at="bottom" phone={phone} />{U.showBottom}</div>
