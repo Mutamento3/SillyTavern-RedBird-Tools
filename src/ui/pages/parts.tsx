@@ -20,8 +20,9 @@ import {
 } from '../../tools/cards/cards';
 import { Chip } from '../common';
 import { SourceLine } from '../SourceEditor';
+import { sourceFor, sourcesTick, updateSource, type SourceKind } from '../../tools/sources';
 import { openDrawer } from '../../shell/drawers';
-import { closeSheet } from '../views';
+import { closeSheet, useFocusSection } from '../views';
 import { openBookInEditor } from '../../shell/worldNote';
 
 export const OK = '#2fbf8f';
@@ -77,9 +78,11 @@ export function useOrganize(id: string) {
  * 分区：标题在左上，打开酒馆对应编辑面板的按钮（「编辑」「预设设置」…）统一放在右上，
  * 和卡面的「编辑角色」同一个位置（DESIGN.md「按钮」）。
  */
-export function Section({ title, tag, hint, actions, children, lintSpacing }: { title: string; /** 标题右边紧跟的小标签，比如「推荐」 */ tag?: ComponentChildren; hint?: string; actions?: ComponentChildren; children: ComponentChildren; /** 里面有小标题、故意留不一样的间距（ui-audit 不查） */ lintSpacing?: 'ok' }) {
+export function Section({ title, tag, hint, actions, children, lintSpacing, sub }: { title: string; /** 标题右边紧跟的小标签，比如「推荐」 */ tag?: ComponentChildren; hint?: string; actions?: ComponentChildren; children: ComponentChildren; /** 里面有小标题、故意留不一样的间距（ui-audit 不查） */ lintSpacing?: 'ok'; /** 放在另一张卡片里的一组：没有自己的底色，标题小一号 */ sub?: boolean }) {
+  const ref = useRef<HTMLElement>(null);
+  useFocusSection(title, ref);
   return (
-    <section class="rbt-card-section" data-lint-spacing={lintSpacing}>
+    <section ref={ref} class={`rbt-card-section ${sub ? 'rbt-subsec' : ''}`} data-lint-spacing={lintSpacing}>
       <div class="rbt-card-section-head">
         <div class="rbt-card-section-top">
           <h3 class="rbt-card-section-title">{title}{tag}</h3>
@@ -89,6 +92,51 @@ export function Section({ title, tag, hint, actions, children, lintSpacing }: { 
       </div>
       {children}
     </section>
+  );
+}
+
+/**
+ * 「我的备注」：作者 + 随便写的一段（链接、这一版改了什么、怎么用）。平时显示成文字，链接能点；点「编辑」就地改。
+ * 以前分开记的链接（名称 + 网址）显示时并进备注，下次保存写成文字。
+ */
+export function NotesSection({ kind, id, sub, startEditing, onDone }: { kind: SourceKind; id: string; /** 放在列表里（插件那一行下面）：没有自己的底色 */ sub?: boolean; /** 一打开就是编辑 */ startEditing?: boolean; /** 编辑完（完成或取消）时 */ onDone?: () => void }) {
+  void sourcesTick.value;
+  const v = sourceFor(kind, id);
+  const text = [...v.links.map((l) => `${l.label} ${l.url}`), v.notes.trim()].filter(Boolean).join('\n');
+  const ownAuthor = v.author && v.author !== v.autoAuthor ? v.author : '';
+  const ownAuthor0 = v.author && v.author !== v.autoAuthor ? v.author : '';
+  const [editing, setEditingRaw] = useState(!!startEditing);
+  const [author, setAuthor] = useState(startEditing ? ownAuthor0 : '');
+  const [notes, setNotes] = useState(startEditing ? text : '');
+  const setEditing = (v: boolean) => { setEditingRaw(v); if (!v) onDone?.(); };
+  const start = () => { setAuthor(ownAuthor); setNotes(text); setEditing(true); };
+  const save = () => { updateSource(kind, id, { author: author.trim(), notes: notes.trim(), links: [] }); setEditing(false); };
+  return (
+    <Section sub={sub} title="我的备注" actions={editing ? undefined : <button type="button" class="rbt-btn rbt-btn-small" onClick={start}>编辑</button>}>
+      {editing ? (
+        <div class="rbt-notes-edit">
+          <label class="rbt-field">
+            <span class="rbt-field-label">作者</span>
+            <input class="text_pole" placeholder={v.autoAuthor ? `${v.autoAuthor}（插件自带，可改）` : '作者名字'} value={author} onInput={(e) => setAuthor((e.currentTarget as HTMLInputElement).value)} />
+          </label>
+          <label class="rbt-field">
+            <span class="rbt-field-label">备注</span>
+            <textarea class="text_pole" rows={5} placeholder="链接、这一版改了什么、怎么用……想记什么都行" value={notes} onInput={(e) => setNotes((e.currentTarget as HTMLTextAreaElement).value)} />
+          </label>
+          <div class="rbt-row rbt-notes-btns">
+            <button type="button" class="rbt-btn rbt-btn-small" onClick={() => setEditing(false)}>取消</button>
+            <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" onClick={save}>完成</button>
+          </div>
+        </div>
+      ) : (
+        <div class="rbt-notes">
+          {v.author && <div>作者 <b>{v.author}</b></div>}
+          {v.autoLinks.map((l) => <div key={l.url}>{l.label} <LinkText text={l.url} /></div>)}
+          {text && <div class="rbt-notes-text"><LinkText text={text} /></div>}
+          {!text && !v.author && !v.autoLinks.length && <small class="rbt-muted">暂无备注。可记录作者、来源链接或版本修改内容。</small>}
+        </div>
+      )}
+    </Section>
   );
 }
 

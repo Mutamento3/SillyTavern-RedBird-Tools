@@ -9,7 +9,7 @@
  *
  * 「—」= 不换（保持换卡前的）。例外直接写出来：模型用预设推荐的、人设用酒馆的默认人设、美化用全局美化。
  */
-import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { matchSearch } from '../../core/text';
 import { allCharacters, apiLabel, archiveVersion, presetApi, presetNames, setCardTheme, thumbnailUrl } from '../../tools/cards/cards';
 import { profileOf, regexName, revertCard, setCardItem } from '../../tools/env/setup';
@@ -21,12 +21,12 @@ import { APP_NAME, ctx, currentCharacter, settings, toast, type Any, type EnvPro
 import { undoable } from '../undo';
 import { personaLabel } from '../../st/personas';
 import { Empty, NavRow, Tag } from '../common';
-import { isPhone, Menu } from '../Menu';
+import { isPhone, MoreMenu } from '../Menu';
 import { GLOBAL_TAB_LABELS, openDetail } from '../views';
 import { bindPersona, boundPersonas, personaTick, unbindPersona, watchPersonas } from './parts';
 
-const EMPTY_NOTE = '「—」表示不换';
-const COL = { preset: '预设', model: '模型', persona: 'user 人设', theme: '美化', worlds: '全局世界书', regex: '全局正则' } as const;
+const EMPTY_NOTE = '「—」表示无专用设置';
+const COL = { preset: '预设', model: '模型', persona: '用户人设', theme: '美化', worlds: '全局世界书', regex: '全局正则' } as const;
 const SHOW = 3;
 
 interface Row {
@@ -98,7 +98,7 @@ function unbindTheme(r: Row): void {
 
 /** 美化的灰字：删掉了就不会换。 */
 function themeNote(r: Row): string | undefined {
-  return r.themeMissing ? '找不到这个美化，不会换' : undefined;
+  return r.themeMissing ? '美化不可用，保留当前美化。' : undefined;
 }
 
 function unbindPersonaUndo(r: Row, id: string, name: string): void {
@@ -125,7 +125,7 @@ async function unbindAll(r: Row): Promise<void> {
   const personas = r.personas.map((p) => p.id);
   const undo = await revertCard(r.avatar);
   for (const id of personas) unbindPersona(id, r.avatar);
-  toast('success', `已把「${r.name}」改回全局。点这里撤销。`, APP_NAME, {
+  toast('success', `已清除「${r.name}」的专用设置（含人设关联）。点这里撤销。`, APP_NAME, {
     timeOut: 8000,
     onclick: async () => { await undo(); for (const id of personas) bindPersona(id, r.avatar); },
   });
@@ -138,7 +138,7 @@ function Pill({ text, onRemove, tone, sub, full }: { text: string; onRemove?: ()
     <span class="rbt-ct-cellitem">
       <span class={`rbt-ct-pill ${tone ? `tone-${tone}` : ''}`}>
         <span class="rbt-ct-pill-text" title={full ?? text}>{text}</span>
-        {onRemove && <button type="button" class="rbt-ct-x" title={`解绑「${text}」`} aria-label={`解绑「${text}」`} onClick={onRemove}><i class="fa-solid fa-xmark" /></button>}
+        {onRemove && <button type="button" class="rbt-ct-x" title={`取消专用「${text}」`} aria-label={`取消专用「${text}」`} onClick={onRemove}><i class="fa-solid fa-xmark" /></button>}
       </span>
       {sub && <small class={`rbt-ct-sub ${tone ? `tone-${tone}` : ''}`}>{sub}</small>}
     </span>
@@ -164,8 +164,8 @@ function ListCell({ r, k }: { r: Row; k: ListKey }) {
 function PresetCell({ r }: { r: Row }) {
   const p = r.profile?.preset;
   if (!p) return <Dash />;
-  if (r.presetMissing) return <Pill text={p.name} tone="warn" sub="找不到这个预设，不会换" onRemove={() => unbindPreset(r)} />;
-  if (r.presetOtherApi) return <Pill text={p.name} sub={`是「${apiLabel(p.api)}」的预设，现在不会换`} onRemove={() => unbindPreset(r)} />;
+  if (r.presetMissing) return <Pill text={p.name} tone="warn" sub="预设不可用，保留当前预设。" onRemove={() => unbindPreset(r)} />;
+  if (r.presetOtherApi) return <Pill text={p.name} sub={`预设适用于「${apiLabel(p.api)}」，当前接口不匹配。`} onRemove={() => unbindPreset(r)} />;
   return <Pill text={p.name} onRemove={() => unbindPreset(r)} />;
 }
 
@@ -178,7 +178,7 @@ function ModelCell({ r }: { r: Row }) {
 
 function PersonaCell({ r }: { r: Row }) {
   if (r.personas.length) return <span class="rbt-ct-pills">{r.personas.map((p) => <Pill key={p.id} text={p.name} onRemove={() => unbindPersonaUndo(r, p.id, p.name)} />)}</span>;
-  if (r.defaultPersona) return <Soft text={r.defaultPersona} sub="酒馆的默认人设" />;
+  if (r.defaultPersona) return <Soft text={r.defaultPersona} sub="全局人设" />;
   return <Dash />;
 }
 
@@ -190,53 +190,11 @@ function ThemeCell({ r }: { r: Row }) {
 }
 
 function RowMenu({ r }: { r: Row }) {
-  const [open, setOpen] = useState(false);
-  // 表格在横向滚动的容器里，菜单贴在格子里会被裁掉：按按钮的位置用 fixed 弹出，下面放不下就往上弹
-  const [pos, setPos] = useState<Record<string, string | number> | undefined>();
-  const ref = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const toggle = () => {
-    const b = ref.current?.getBoundingClientRect();
-    if (b) {
-      const up = window.innerHeight - b.bottom < 160;
-      setPos({ position: 'fixed', right: `${window.innerWidth - b.right}px`, ...(up ? { top: 'auto', bottom: `${window.innerHeight - b.top + 4}px` } : { top: `${b.bottom + 4}px` }) });
-    }
-    setOpen(!open);
-  };
-  // 全局工具箱的窗口带 transform，fixed 是相对窗口算的：量一下实际位置，差多少挪多少
-  useLayoutEffect(() => {
-    const m = menuRef.current; const b = ref.current?.getBoundingClientRect();
-    if (!open || !m || !b || isPhone()) return;
-    const r = m.getBoundingClientRect();
-    const up = m.style.bottom && m.style.bottom !== 'auto';
-    const dy = up ? (b.top - 4) - r.bottom : (b.bottom + 4) - r.top;
-    const dx = b.right - r.right;
-    if (Math.abs(dy) > 1) { if (up) m.style.bottom = `${parseFloat(m.style.bottom) - dy}px`; else m.style.top = `${parseFloat(m.style.top) + dy}px`; }
-    if (Math.abs(dx) > 1) m.style.right = `${parseFloat(m.style.right) - dx}px`;
-  }, [open]);
-  useEffect(() => {
-    if (!open) return;
-    const scroll = (e: Event) => { if (!menuRef.current?.contains(e.target as Node)) setOpen(false); };
-    window.addEventListener('scroll', scroll, true);
-    const away = (e: PointerEvent) => { const t = e.target as Node; if (!ref.current?.contains(t) && !menuRef.current?.contains(t)) setOpen(false); };
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('pointerdown', away, true);
-    document.addEventListener('keydown', esc);
-    return () => { document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc); window.removeEventListener('scroll', scroll, true); };
-  }, [open]);
-  const run = (fn: () => void) => () => { setOpen(false); fn(); };
   return (
-    <div class="rbt-ct-menuwrap" ref={ref}>
-      <button type="button" class="rbt-iconbtn rbt-ct-dots" aria-haspopup="menu" aria-expanded={open} title={`「${r.name}」的更多操作`} aria-label={`「${r.name}」的更多操作`} onClick={toggle}>
-        <i class="fa-solid fa-ellipsis" />
-      </button>
-      {open && (
-        <Menu title={r.name} cls="rbt-ct-menu" menuRef={menuRef} style={pos} onClose={() => setOpen(false)}>
-          <button type="button" role="menuitem" onClick={run(() => openDetail({ kind: 'card', avatar: r.avatar }, GLOBAL_TAB_LABELS.cards))}><i class="fa-solid fa-id-card fa-fw" /> 打开角色档案</button>
-          {r.has && <button type="button" role="menuitem" class="danger" onClick={run(() => { void unbindAll(r); })}><i class="fa-solid fa-rotate-left fa-fw" /> 改回全局</button>}
-        </Menu>
-      )}
-    </div>
+    <MoreMenu title={r.name} items={[
+      { icon: 'fa-id-card', text: '打开角色档案', onClick: () => openDetail({ kind: 'card', avatar: r.avatar }, GLOBAL_TAB_LABELS.cards) },
+      ...(r.has ? [{ icon: 'fa-rotate-left', text: '清除专用设置', danger: true, onClick: () => { void unbindAll(r); } }] : []),
+    ]} />
   );
 }
 
@@ -260,7 +218,7 @@ function Toolbar({ q, setQ, all, setAll, count }: { q: string; setQ: (v: string)
     <div class="rbt-ct-bar">
       <input class="text_pole rbt-ct-search" type="search" placeholder="搜索角色" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
       <div class="rbt-vseg rbt-list-filter" role="tablist">
-        <button type="button" role="tab" aria-selected={!all} class={!all ? 'active' : ''} onClick={() => setAll(false)}>有配套的</button>
+        <button type="button" role="tab" aria-selected={!all} class={!all ? 'active' : ''} onClick={() => setAll(false)}>有专用设置</button>
         <button type="button" role="tab" aria-selected={all} class={all ? 'active' : ''} onClick={() => setAll(true)}>全部角色</button>
       </div>
       <small class="rbt-muted rbt-ct-count">{count} 张卡</small>
@@ -280,7 +238,7 @@ export function CardsTablePage() {
       {!shown.length && (rows.some((r) => r.has) || q || all
         ? <Empty>没有符合的角色。</Empty>
         : <Empty>
-            <p>还没有卡设配套。</p>
+            <p>暂无设有专用设置的角色卡。</p>
             <div class="rbt-empty-actions"><button type="button" class="rbt-btn" onClick={() => setAll(true)}>查看全部角色</button></div>
           </Empty>)}
       {shown.length > 0 && (phone ? <PhoneList rows={shown} /> : <DeskTable rows={shown} />)}
@@ -303,7 +261,7 @@ function DeskTable({ rows }: { rows: Row[] }) {
     <div class="rbt-ct-scroll">
       <table class="rbt-ct-table">
         <thead>
-          <tr class="rbt-ct-group"><th /><th colSpan={6}>换到这张卡时换成<small>{EMPTY_NOTE}</small></th><th /></tr>
+          <tr class="rbt-ct-group"><th /><th colSpan={6}>专用设置<small>{EMPTY_NOTE}</small></th><th /></tr>
           <tr><th>角色</th><th>{COL.preset}</th><th>{COL.model}</th><th>{COL.persona}</th><th>{COL.theme}</th><th>{COL.worlds}</th><th>{COL.regex}</th><th /></tr>
         </thead>
         <tbody>
@@ -329,7 +287,7 @@ function phoneLines(r: Row): [string, string] {
   const p = r.profile;
   const a = [p?.preset ? (r.presetMissing ? `找不到预设「${p.preset.name}」` : p.preset.name) : '', p?.model ? p.model.model : ''].filter(Boolean).join(' · ');
   const b = [
-    r.personas.length ? `user 人设 ${r.personas.map((x) => x.name).join('、')}` : '',
+    r.personas.length ? `用户人设 ${r.personas.map((x) => x.name).join('、')}` : '',
     p?.theme ? `美化 ${lookLabel(p.theme)}` : '',
     listOf(r, 'worlds').length ? `世界书 ${listOf(r, 'worlds').length}` : '',
     listOf(r, 'regex').length ? `正则 ${listOf(r, 'regex').length}` : '',
@@ -345,7 +303,7 @@ function PhoneList({ rows }: { rows: Row[] }) {
         return (
           <NavRow key={r.avatar} img={thumbnailUrl(r.avatar)}
             title={<>{r.name}{r.isCurrent && <Tag tone="accent">正在聊</Tag>}</>}
-            sub={(a || b) ? <>{a && <span class={r.presetMissing ? 'rbt-ct-warn' : ''}>{a}</span>}{a && b && <br />}{b}</> : '没有配套'}
+            sub={(a || b) ? <>{a && <span class={r.presetMissing ? 'rbt-ct-warn' : ''}>{a}</span>}{a && b && <br />}{b}</> : '无专用设置'}
             onClick={() => openDetail({ kind: 'bindings', avatar: r.avatar }, GLOBAL_TAB_LABELS.cards)} />
         );
       })}
@@ -363,7 +321,7 @@ function Item({ k, text, sub, tone, onRemove }: { k?: string; text: string; sub?
         <span class={tone ? `rbt-ct-warn` : ''}>{text}</span>
         {sub && <small class={tone ? 'rbt-ct-warn' : 'rbt-muted'}>{sub}</small>}
       </span>
-      {onRemove && <button type="button" class="rbt-btn rbt-btn-small" onClick={onRemove}>解绑</button>}
+      {onRemove && <button type="button" class="rbt-btn rbt-btn-small" onClick={onRemove}>取消专用</button>}
     </div>
   );
 }
@@ -380,16 +338,16 @@ export function BindingsDetail({ avatar }: { avatar: string }) {
   return (
     <div class="rbt-page rbt-ct-detail">
       <h2 class="rbt-ct-detail-title">{r.name}</h2>
-      <div class="rbt-ct-sec">换到这张卡时换成</div>
+      <div class="rbt-ct-sec">专用设置</div>
       {p?.preset
-        ? <Item k={COL.preset} text={p.preset.name} tone={r.presetMissing ? 'warn' : undefined} sub={r.presetMissing ? '找不到这个预设，不会换' : r.presetOtherApi ? `是「${apiLabel(p.preset.api)}」的预设，现在不会换` : undefined} onRemove={() => unbindPreset(r)} />
+        ? <Item k={COL.preset} text={p.preset.name} tone={r.presetMissing ? 'warn' : undefined} sub={r.presetMissing ? '预设不可用，保留当前预设。' : r.presetOtherApi ? `预设适用于「${apiLabel(p.preset.api)}」，当前接口不匹配。` : undefined} onRemove={() => unbindPreset(r)} />
         : <Item k={COL.preset} text="—" />}
       {p?.model
         ? <Item k={COL.model} text={modelLabel(p.model)} onRemove={() => unbindModel(r)} />
         : r.modelFromPreset ? <Item k={COL.model} text={modelLabel(r.modelFromPreset)} sub="用预设推荐的" /> : <Item k={COL.model} text="—" />}
       {r.personas.length
         ? r.personas.map((x) => <Item key={x.id} k={COL.persona} text={x.name} onRemove={() => unbindPersonaUndo(r, x.id, x.name)} />)
-        : r.defaultPersona ? <Item k={COL.persona} text={r.defaultPersona} sub="酒馆的默认人设" /> : <Item k={COL.persona} text="—" />}
+        : r.defaultPersona ? <Item k={COL.persona} text={r.defaultPersona} sub="全局人设" /> : <Item k={COL.persona} text="—" />}
       {p?.theme
         ? <Item k={COL.theme} text={lookLabel(p.theme)} tone={r.themeMissing ? 'warn' : undefined} sub={themeNote(r)} onRemove={() => unbindTheme(r)} />
         : <Item k={COL.theme} text="全局美化" />}
@@ -400,7 +358,7 @@ export function BindingsDetail({ avatar }: { avatar: string }) {
       {list('regex')}
       <div class="rbt-ct-actions">
         <button type="button" class="rbt-btn" onClick={() => openDetail({ kind: 'card', avatar: r.avatar }, r.name)}>打开角色档案</button>
-        {r.has && <button type="button" class="rbt-btn rbt-btn-danger" onClick={() => { void unbindAll(r); }}>改回全局</button>}
+        {r.has && <button type="button" class="rbt-btn rbt-btn-danger" onClick={() => { void unbindAll(r); }}>清除专用设置</button>}
       </div>
     </div>
   );

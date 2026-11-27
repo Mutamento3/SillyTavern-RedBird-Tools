@@ -1,5 +1,5 @@
 /**
- * RedBird 红鸟工具箱 — SillyTavern extension entry.
+ * 红鸟工具箱 — SillyTavern extension entry.
  *
  * Views (see ui/views.ts): 信息流 / 变量 live in the right-side dock; 这张卡 / 全局 / 维护 open as
  * large overlays when the three-column shell is active, and as dock tabs otherwise.

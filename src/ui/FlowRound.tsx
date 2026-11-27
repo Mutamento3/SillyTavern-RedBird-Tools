@@ -363,23 +363,23 @@ export function WholeChatGroup({ onOpen }: { onOpen: () => void }) {
       <div class="rbt-flow-group">存档总览</div>
       <section class="rbt-sec">
         {cost.replies > 0
-          ? <div class="rbt-usage-row"><span>一共花了<small>{cost.replies} 次回复，平均每次 {fmtMoney(cost.total / cost.replies)}</small></span><b>{fmtMoney(cost.total)}</b></div>
+          ? <div class="rbt-usage-row"><span>存档总花费<small>共 {cost.replies} 次回复（含重新生成），平均 {fmtMoney(cost.total / cost.replies)} / 次</small></span><b>{fmtMoney(cost.total)}</b></div>
           : cost.used
-            ? <div class="rbt-usage-row"><span>一共用了<small>{U.chatTokensSub(cost.used)}</small></span><b>{fmtTokens(cost.tokens)} tokens</b></div>
+            ? <div class="rbt-usage-row"><span>存档总 Token 用量<small>{U.chatTokensSub(cost.used)}</small></span><b>{fmtTokens(cost.tokens)} tokens</b></div>
             : <p class="rbt-sec-note">这个存档还没有花费记录。</p>}
-        {avgTime && <div class="rbt-usage-row"><span>平均用时<small>每次回复从发出到写完</small></span><b>{avgTime}</b></div>}
+        {avgTime && <div class="rbt-usage-row"><span>平均回复用时<small>从发送消息到 AI 完成回复</small></span><b>{avgTime}</b></div>}
         {isOR && bal && (
-          <div class="rbt-usage-row"><span>OpenRouter 账户余额<small>整个账户一共充值 {fmtMoney(bal.total)} · 一共花了 {fmtMoney(bal.used)}</small></span><b>{fmtMoney(bal.remaining)}</b></div>
+          <div class="rbt-usage-row"><span>OpenRouter 账户余额<small>累计充值 {fmtMoney(bal.total)} · 已消费 {fmtMoney(bal.used)}</small></span><b>{fmtMoney(bal.remaining)}</b></div>
         )}
         {isOR && bal === null && <p class="rbt-sec-note">{U.balanceFail}</p>}
         {isOR && <button type="button" class="rbt-linkbtn rbt-usage-bill" onClick={() => window.open('https://openrouter.ai/activity', '_blank', 'noopener')}>{U.bill}</button>}
-        {floors.length >= 2 && <NavRow title="看整个存档的图表" sub="花费、上下文、用时，一楼一根柱子" onClick={onOpen} />}
+        {floors.length >= 2 && <NavRow title="查看详细统计" sub="按楼层查看花费、上下文用量及回复用时" onClick={onOpen} />}
       </section>
     </div>
   );
 }
 
-/** 第二层：整个存档的图表，一楼一根柱子（从「存档总览」那张卡片进来）。 */
+/** 第二层：详细统计，按楼层画花费、上下文、用时（从「存档总览」那张卡片的「查看详细统计」进来）。 */
 export function WholeChatPage() {
   void usageTick.value;
   const floors = useFloors();
@@ -403,9 +403,8 @@ export function WholeChatPage() {
 
 // -------------------------------------------------------------- 上下文 ---
 
-/** explained：上面的提醒里已经解释过缓存（同一屏只解释一次） */
 /** onOpenSent：点「发给 AI 的全部内容」，进第二层看每一条 */
-export function ContextSection({ cap, brk, explained, onOpenSent }: { cap: Capture; brk: CacheBreak | null; explained: boolean; onOpenSent: () => void }) {
+export function ContextSection({ cap, brk, onOpenSent }: { cap: Capture; brk: CacheBreak | null; onOpenSent: () => void }) {
   const u = cap.usage;
   const b = cap.budget;
   const preview = cap.genType === 'preview';
@@ -474,7 +473,7 @@ export function ContextSection({ cap, brk, explained, onOpenSent }: { cap: Captu
         {limit > 0 && <span><i class="rbt-swatch free" />剩余 <b>{fmtTokens(free)}</b></span>}
       </div>
       {cached != null && (
-        <p class="rbt-sec-note">这条按发给 AI 的顺序排。{explained ? '' : CACHE_IS}</p>
+        <p class="rbt-sec-note">色块从左到右按内容发送给 AI 的顺序排列。色带上方括起来的部分为预计可缓存的内容。如果这部分与上一轮相同，支持缓存的接口通常会以更低的价格计费。</p>
       )}
       {first != null && (
         <>

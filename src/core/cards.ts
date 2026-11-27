@@ -32,6 +32,8 @@ export interface SourceRecord {
   notes?: string;
   /** Presets: the model to use with it. */
   model?: ModelChoice;
+  /** Looks: a screenshot the player uploaded (path under user/files). */
+  preview?: string;
   updatedAt: string;
 }
 

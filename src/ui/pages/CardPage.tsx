@@ -14,8 +14,8 @@ import { modelLabel, sameModel, type ModelChoice } from '../../tools/model';
 import type { BookDiff } from '../../core/cards';
 import { cardIssues, LEVEL_ICON, statusTick } from '../../shell/EnvStatus';
 import { Empty } from '../common';
-import { countScripts, currentGroups, thInstalled, thTick, cardGroup, setGroupAllowed } from '../../tools/scripts/th';
-import { NodeRows } from './ScriptsPage';
+import { countScripts, currentGroups, thInstalled, thTick, cardGroup } from '../../tools/scripts/th';
+import { AllowRow, NodeRows } from './ScriptsPage';
 import { EditButton, openRegexManager, openScriptManager } from './GlobalPage';
 import { bindPersona, boundPersonas, CardHeader, DiffList, ExtSection, openWorldInST, personaTick, SourceSection, unbindPersona, withCardOpen } from './parts';
 import { FoldSection, UseRow, MenuFoot, MenuOpt, PanelBtn, PickRow, Pill, PersonaSetupSection, PresetModelSection, RegexSetupSection, WorldSetupSection, type Opt } from './setupParts';
@@ -152,11 +152,8 @@ function ScriptsSetupSection({ info }: { info: CardInfo }) {
       action={info.isCurrent ? <PanelBtn label="脚本面板" onClick={openScriptManager} /> : undefined}>
       {total > 0 && <>
         {g && own > 0 && <>
-          <label class="rbt-allow">
-            <input type="checkbox" class="rbt-cb" checked={g.allowed} onChange={(e) => { void setGroupAllowed(g, (e.currentTarget as HTMLInputElement).checked); }} />
-            <span>允许角色卡里的脚本运行<small>{g.allowed ? '' : '没允许时，下面的脚本都不运行。'}</small></span>
-          </label>
-          {!g.editable && <small class="rbt-muted">要开关单个脚本，先打开这张卡。</small>}
+          <AllowRow g={g} />
+          {!g.editable && <small class="rbt-muted">打开这张角色卡后，可开关单个脚本。</small>}
           <NodeRows g={g} />
         </>}
         {others.map((x) => (
@@ -215,7 +212,7 @@ function LookSetupSection({ info }: { info: CardInfo }) {
         top={<MenuOpt title="全局" sub={`和其他卡一样：${global}`} selected={!own} onPick={() => pick(null)} />}
         head={`${info.name}专用`} options={options}
         bottom={<>
-          {shownTheme && <MenuFoot inside label={`「${shownTheme}」的作者和链接`} onClick={() => { setOpen(false); openGlobal('looks'); openDetail({ kind: 'theme', name: shownTheme }, GLOBAL_TAB_LABELS.looks); }} />}
+          {shownTheme && <MenuFoot inside label={`「${shownTheme}」的详情`} onClick={() => { setOpen(false); openGlobal('looks'); openDetail({ kind: 'theme', name: shownTheme }, GLOBAL_TAB_LABELS.looks); }} />}
           <MenuFoot label="查看全部美化" onClick={() => { setOpen(false); goAll(); }} />
         </>} />
       {info.isCurrent && ctx().getCurrentChatId?.() && <ChatBgRow />}
@@ -293,7 +290,7 @@ function RevertRow({ info }: { info: CardInfo }) {
       const def = String(ctx().powerUserSettings?.default_persona ?? '');
       if (info.isCurrent && persona.length && def && def !== loaded.personas?.user_avatar) await loaded.personas?.setUserAvatar?.(def);
       if (theme) setCardTheme(info.avatar, info.name, null);
-      toast('success', `已改回全局：${lines.map(([, n]) => n).join('、')}。点这里撤销。`, APP_NAME, {
+      toast('success', `已清除专用设置：${lines.map(([, n]) => n).join('、')}。点这里撤销。`, APP_NAME, {
         timeOut: 9000,
         onclick: async () => {
           await undo();
@@ -311,7 +308,7 @@ function RevertRow({ info }: { info: CardInfo }) {
       <ul class="rbt-revert-list">
         {lines.map(([k, n, a, b]) => <li key={k}><span class="rbt-revert-k">{n}：</span>{a}<small>{b}</small></li>)}
       </ul>
-      <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={go}><i class="fa-solid fa-rotate-left" aria-hidden="true" /> 改回全局</button>
+      <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={go}><i class="fa-solid fa-rotate-left" aria-hidden="true" /> 清除专用设置</button>
     </div>
   );
 }
@@ -332,7 +329,7 @@ function TagHelp({ info }: { info: CardInfo }) {
           <li><Pill kind="card" img={thumbnailUrl(info.avatar)} /><span>只这张卡用。在这一页里改的，会自动记成本卡专用，以后进这张卡都用它。</span></li>
           <li><Pill kind="chat" /><span>只有现在这段聊天用，比如锁在这段聊天上的背景、人设。</span></li>
           <li><Pill kind="preset" /><span>用这个预设时才用，比如预设推荐的模型。</span></li>
-          <li><span>想让这张卡全部回到全局，点「改回全局」。想让所有卡都用这张卡的某一项，在那一项的选择框里点「让所有卡都用」。</span></li>
+          <li><span>想让这张卡全部回到全局，点「清除专用设置」。想让所有卡都用这张卡的某一项，在那一项的选择框里点「让所有卡都用」。</span></li>
         </ul>
       )}
     </section>

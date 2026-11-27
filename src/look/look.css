@@ -463,20 +463,20 @@ html.rbt-look #toast-container .toast-close-button:hover { background: var(--rbd
    世界书条目和扩展设置有自己的排法，不在这里改。 */
 html.rbt-look .drawer-content .standoutHeader:not(.inline-drawer-header) { margin-bottom: var(--rbd-s-2); }
 
-html.rbt-look .drawer-content :not(#WorldInfo *, #extensions_settings *, #extensions_settings2 *) > .inline-drawer > .inline-drawer-toggle.inline-drawer-header:not(.standoutHeader) {
+html.rbt-look .drawer-content :not(#WorldInfo *, #extensions_settings, #extensions_settings *, #extensions_settings2, #extensions_settings2 *) > .inline-drawer > .inline-drawer-toggle.inline-drawer-header:not(.standoutHeader) {
   margin: 2px calc(-1 * var(--rbd-s-2));
   padding: var(--rbd-s-2);
   border-radius: var(--rbd-r-s);
   cursor: pointer;
   transition: background-color 0.12s;
 }
-html.rbt-look .drawer-content :not(#WorldInfo *, #extensions_settings *, #extensions_settings2 *) > .inline-drawer > .inline-drawer-toggle.inline-drawer-header:not(.standoutHeader):hover {
+html.rbt-look .drawer-content :not(#WorldInfo *, #extensions_settings, #extensions_settings *, #extensions_settings2, #extensions_settings2 *) > .inline-drawer > .inline-drawer-toggle.inline-drawer-header:not(.standoutHeader):hover {
   background-color: var(--rbd-bg2);
 }
 html.rbt-look .drawer-content .inline-drawer-header:hover .inline-drawer-icon { color: var(--rbd-text1); }
 html.rbt-look .drawer-content .inline-drawer-icon { transition: color 0.12s; }
 /* 能展开的几行连在一起；后面跟着别的东西时（比如「实用提示词」下面的「种子」）拉开一点 */
-html.rbt-look .drawer-content :not(#WorldInfo *) > .inline-drawer + :not(.inline-drawer) { margin-top: var(--rbd-s-3); }
+html.rbt-look .drawer-content :not(#WorldInfo *, #extensions_settings, #extensions_settings2) > .inline-drawer + :not(.inline-drawer) { margin-top: var(--rbd-s-3); }
 /* 展开后，内容和标题之间留一点空 */
 html.rbt-look .drawer-content :not(#WorldInfo *) > .inline-drawer > .inline-drawer-content { padding-top: var(--rbd-s-1); }
 

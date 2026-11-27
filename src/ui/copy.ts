@@ -21,7 +21,7 @@ export const LOOK_COPY = {
   /** 全局工具箱 › 美化 › 美化库：红鸟适配美化那一块的说明 */
   libPitch: '专为三栏界面和手机做，不会错位，打字和滚动更流畅。点一套就换上。',
   /** 美化库：别人做的美化那一块的说明 */
-  libOthers: '装在酒馆里的美化。点开可以换上、记作者和链接。',
+  libOthers: '装在酒馆里的其他美化。点开可以设为全局、写备注。',
   /** 别人做的美化可能有什么问题（美化页的说明、换美化的确认框都用） */
   othersRisk: '别人的美化是按酒馆原版界面做的，在三栏界面里有的地方可能错位，手机上更明显。',
   recommend: `推荐用${LOOK_NAME}，它专为三栏界面和手机做，打字和滚动也更流畅。`,
@@ -50,23 +50,23 @@ export const USAGE_COPY = {
   /** 生成时写了多少字（字数是准的；tokens 要写完接口才给，生成时不估） */
   liveChars: (n: number) => `${n.toLocaleString('zh-CN')} 字`,
   /** 聊天里那一行：总花费后面括号里，其他插件在后台找 AI 花的那部分 */
-  sideCost: (m: string) => `（含插件 ${m}）`,
-  showTitle: '在聊天里显示',
-  showTimer: '用时',
-  showTokens: 'tokens',
-  showCost: '花费',
-  showBird: '小红鸟',
+  sideCost: (m: string) => `（含插件费用 ${m}）`,
+  showTitle: '聊天显示设置',
+  showTimer: '回复用时',
+  showTokens: '输出 Token',
+  showCost: '回复费用',
+  showBird: '小红鸟状态栏',
   /** 两组开关的小标题：手机上那一行在名字下面，电脑上在头像下面 */
-  showUnderAvatar: (phone: boolean) => (phone ? '每一楼名字下面' : '每一楼头像下面'),
-  showBottom: '最新一楼底下',
+  showUnderAvatar: (phone: boolean) => (phone ? '每楼名字下方' : '每楼头像下方'),
+  showBottom: '最新一楼底部',
   /** 用别人做的美化时，每一楼那一组下面的说明 */
-  showOthersLook: '用别人做的美化时，每一楼不显示花费。',
+  showOthersLook: '用其他美化时，每楼不显示「回复费用」。',
   /** 收起时右边：开着的那几项；都没开 */
   showNone: '都关了',
-  chatTotalSub: (n: number) => `${n} 次回复，重新生成和插件花的都算上了`,
-  chatTokensSub: (n: number) => `${n} 次回复 · 接口没给金额，只能看 tokens`,
-  noMoney: '接口没给金额，只能看 tokens。',
-  balanceFail: '查不到 OpenRouter 余额。',
-  bill: '打开 OpenRouter 账单 ↗',
-  since: (d: string) => `从 ${d}开始记花费。`,
+  chatTotalSub: (n: number) => `共 ${n} 次回复（含重新生成）· 含插件费用`,
+  chatTokensSub: (n: number) => `发送 + 输出 · 共 ${n} 次回复（含重新生成）· 接口未返回花费`,
+  noMoney: '接口未返回花费。',
+  balanceFail: '没能获取 OpenRouter 余额。',
+  bill: '查看 OpenRouter 账单 ↗',
+  since: (d: string) => `花费记录自 ${d} 起。`,
 } as const;

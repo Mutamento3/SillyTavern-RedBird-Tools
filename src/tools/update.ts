@@ -6,7 +6,7 @@
  */
 import { signal } from '@preact/signals';
 import { compareVersion } from '../core/version';
-import { APP_NAME, confirmText, ctx, loaded, toast } from '../st/st';
+import { APP_NAME, confirmText, ctx, loaded, stModule, toast } from '../st/st';
 
 const REMOTE = 'https://raw.githubusercontent.com/RebBirdTD/SillyTavern-RedBird-Tools/main/manifest.json';
 const DAY_KEY = 'rbt-update-checked';
@@ -70,7 +70,7 @@ export async function updateExtension(id: string): Promise<{ ok: true; upToDate:
       headers: ctx().getRequestHeaders(),
       body: JSON.stringify({ extensionName: id, global: isGlobal(id) }),
     });
-    if (!res.ok) return { ok: false, why: res.status === 403 ? '这个插件是给所有用户装的，只有管理员能更新。' : (await res.text()).slice(0, 160) || `错误 ${res.status}` };
+    if (!res.ok) return { ok: false, why: res.status === 403 ? '仅管理员可更新为所有用户安装的插件。' : (await res.text()).slice(0, 160) || `错误 ${res.status}` };
     const data = await res.json().catch(() => ({}));
     return { ok: true, upToDate: !!data?.isUpToDate };
   } catch (e) {
@@ -80,7 +80,7 @@ export async function updateExtension(id: string): Promise<{ ok: true; upToDate:
 
 /** 刷新页面后新版本才生效：问一句要不要现在刷新。 */
 export async function askReload(): Promise<void> {
-  if (await confirmText('已经更新好了', '刷新页面后新版本才会生效。现在刷新吗？', '刷新页面', '稍后')) location.reload();
+  if (await confirmText('更新已安装', '刷新页面后启用新版本。现在刷新吗？', '刷新页面', '稍后')) location.reload();
   else toast('info', '下次刷新页面时会换成新版本。', APP_NAME);
 }
 
@@ -141,9 +141,24 @@ export async function updatePlugins(list: { id: string; name: string }[]): Promi
   if (done) await askReload();
 }
 
+/**
+ * 删除一个插件：先问一句，再用酒馆自己的删除（和「管理扩展程序」里点删除一样，会先跑插件自己的 delete 钩子），
+ * 删完酒馆自己刷新页面。给所有用户装的插件只有管理员能删，酒馆的删除不报错，所以先拦下。
+ */
+export async function deletePlugin(id: string, name: string): Promise<void> {
+  const ext = loaded.extensions;
+  if (!ext?.deleteExtension) { openManager(); return; }
+  if (isGlobal(id) && (await stModule('/scripts/user.js'))?.isAdmin?.() === false) {
+    toast('error', `没能删除「${name}」。仅管理员可删除为所有用户安装的插件。`, APP_NAME, { timeOut: 10000 });
+    return;
+  }
+  if (!(await confirmText(`删除插件「${name}」？`, '将删除插件文件，无法撤销。删除后页面会刷新。', '删除'))) return;
+  await ext.deleteExtension(`/${id}`);
+}
+
 /** 问一句要不要更新到这个版本，点「更新」就更新。 */
 export async function askUpdate(latest: Latest): Promise<void> {
-  if (await confirmText(`有新版本 ${latest.version}`, `你装的是 ${installedVersion()}。${latest.whatsNew ? `${latest.whatsNew}　` : ''}现在更新吗？`, '更新', '以后再说')) await updateNow();
+  if (await confirmText(`可更新至 ${latest.version}`, `当前版本 ${installedVersion()}。${latest.whatsNew ? `${latest.whatsNew}　` : ''}现在更新吗？`, '更新', '稍后')) await updateNow();
 }
 
 /** `force`: the 「检查更新」 button — always says something. Otherwise the startup check: the toast shows at most once a day. */
@@ -152,7 +167,7 @@ export async function checkForUpdate(force = false): Promise<UpdateInfo | null> 
   if (!current) return null;
   const latest = await fetchLatest();
   if (!latest) {
-    if (force) toast('warning', '连不上 GitHub，没法检查更新。', APP_NAME);
+    if (force) toast('warning', '无法连接 GitHub，没能检查更新。', APP_NAME);
     return null;
   }
   const newer = compareVersion(latest.version, current) > 0;

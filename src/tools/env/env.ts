@@ -255,7 +255,7 @@ export function buildEnvReport(): EnvReport {
     }
   }
   for (const name of scopes.chat) items.push({ id: `wb:chat:${name}`, scope: 'chat', kind: 'worldbook', name, enabled: true, leaks: false, detail: '绑在当前聊天上' });
-  for (const name of scopes.persona) items.push({ id: `wb:p:${name}`, scope: 'persona', kind: 'worldbook', name, enabled: true, leaks: true, detail: '绑在 user 人设上，换卡后仍然生效' });
+  for (const name of scopes.persona) items.push({ id: `wb:p:${name}`, scope: 'persona', kind: 'worldbook', name, enabled: true, leaks: true, detail: '绑在用户人设上，换卡后仍然生效' });
 
   return { cardName: char?.name ?? '', avatar, presetApi: preset.api, presetName: preset.name, items };
 }

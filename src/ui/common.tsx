@@ -61,10 +61,10 @@ export function Empty({ children }: { children: ComponentChildren }) {
   return <div class="rbt-empty">{children}</div>;
 }
 
-export function Toggle({ checked, onChange, title }: { checked: boolean; onChange: (v: boolean) => void; title?: string }) {
+export function Toggle({ checked, onChange, title, disabled }: { checked: boolean; onChange: (v: boolean) => void; title?: string; disabled?: boolean }) {
   return (
-    <label class="rbt-switch" title={title}>
-      <input type="checkbox" role="switch" checked={checked} onChange={(e) => onChange((e.currentTarget as HTMLInputElement).checked)} />
+    <label class={`rbt-switch ${disabled ? 'disabled' : ''}`} title={title}>
+      <input type="checkbox" role="switch" checked={checked} disabled={disabled} onChange={(e) => onChange((e.currentTarget as HTMLInputElement).checked)} />
       <span />
     </label>
   );

@@ -131,7 +131,7 @@ function ChatGroup({ msgs }: { msgs: AttributedMessage[] }) {
 }
 
 const SCOPE_OF: Partial<Record<Category, string>> = {
-  wi_character: '角色', wi_chat: '聊天', wi_persona: 'user 人设', wi_global: '全局', wi_other: '其他',
+  wi_character: '角色', wi_chat: '聊天', wi_persona: '用户人设', wi_global: '全局', wi_other: '其他',
 };
 
 function WIList({ wi }: { wi: ActivatedWI[] }) {
@@ -192,9 +192,9 @@ function PlaceIcon({ at, phone }: { at: 'avatar' | 'bottom'; phone: boolean }) {
   );
 }
 
-/** 一行开关：左边勾选框和名字，右边是它在聊天里长什么样（就是示例，不另写说明）。 */
+/** 一行开关：左边勾选框和名字，右边是它在聊天里长什么样。前面写「例：」，不然会被当成这段聊天的真实数字。 */
 function ShowRow({ label, sample, checked, onChange }: { label: string; sample: ComponentChildren; checked: boolean; onChange: (v: boolean) => void }) {
-  return <CheckRow label={<span class="rbt-show-row"><span>{label}</span><small>{sample}</small></span>} checked={checked} onChange={onChange} />;
+  return <CheckRow label={<span class="rbt-show-row"><span>{label}</span><small>例：{sample}</small></span>} checked={checked} onChange={onChange} />;
 }
 
 /**
@@ -337,7 +337,7 @@ export function FlowView() {
         <div class="rbt-warn">全局世界书「{globalBooks.join('、')}」也发给了 AI，约 {globalWI} tokens。不是这张卡用的话，请把它关掉。</div>
       )}
       <RoundCostSection cap={cap} />
-      <ContextSection cap={cap} brk={brk} explained={!!banner?.cache} onOpenSent={() => go('sent')} />
+      <ContextSection cap={cap} brk={brk} onOpenSent={() => go('sent')} />
       <TimeSection cap={cap} />
       </div>
       <WholeChatGroup onOpen={() => go('chat')} />

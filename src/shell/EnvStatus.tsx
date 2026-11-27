@@ -78,7 +78,7 @@ function buildSectionsNow(char: Any): { sections: Section[]; issues: number } {
   } else wb.push({ level: 'info', text: '这张卡没有绑定世界书' });
   for (const b of w.extra) wb.push({ level: 'ok', text: `「${b}」已加载`, detail: '附加世界书，也绑在这张卡上' });
   for (const b of scopes.chat) wb.push({ level: 'ok', text: `「${b}」已加载`, detail: '绑在当前这个聊天上' });
-  for (const b of scopes.persona) wb.push({ level: 'info', text: `「${b}」`, detail: '绑在你的 user 人设上，所有卡都会用' });
+  for (const b of scopes.persona) wb.push({ level: 'info', text: `「${b}」`, detail: '绑在你的用户人设上，所有卡都会用' });
   // 全局世界书开不开是设置，不是问题（本卡专用的进卡时已经换好），只列出来
   for (const b of scopes.global) wb.push({ level: 'info', text: `全局世界书「${b}」开着` });
   sections.push({ title: '世界书', lines: wb });

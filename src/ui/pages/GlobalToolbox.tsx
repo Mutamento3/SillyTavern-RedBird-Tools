@@ -9,7 +9,7 @@
  */
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { confirmText, ctx, currentCharacter, loaded, saveSettings, settings, toast } from '../../st/st';
+import { askText, confirmText, ctx, currentCharacter, loaded, saveSettings, settings, toast } from '../../st/st';
 import { createPersona, currentPersona, deletePersona, lockChatPersona, personaCards, personaDesc, personaIds, personaImage, personaLabel, personaName, personaThumb, personaTitle, pickAvatar, renamePersona, setPersonaAvatar, setPersonaDesc, setPersonaTitle, type PickedAvatar } from '../../st/personas';
 import {
   allCharacters,
@@ -25,30 +25,28 @@ import {
   presetNames,
   presetRegexCount,
   relink,
-  switchPreset,
+  setCardTheme,
   thumbnailUrl,
   worldNames,
   type CardInfo,
 } from '../../tools/cards/cards';
 import { envReport, refreshEnv, type EnvItem } from '../../tools/env/env';
 import { currentBookScopes } from '../../tools/flow/capture';
-import { allSeries, compareVersions, renameSeries, setSeries, sourceFor, sourcesTick, suggestSeries, updateSource, type SourceKind } from '../../tools/sources';
+import { compareVersions, renameSeries, setSeries, sourceFor, sourcesTick, suggestSeries, updateSource, type SourceKind } from '../../tools/sources';
 import { openDrawer } from '../../shell/drawers';
 import { shortSaveName } from '../../shell/recent';
 import { openBookInEditor } from '../../shell/worldNote';
 import { Empty, NavRow, CheckRow, Tag, Toggle } from '../common';
-import { globalValue, heldByCard, setGlobal, trueGlobalWorlds } from '../../tools/env/setup';
-import { SourceEditor } from '../SourceEditor';
-import { ModelPicker } from '../ModelPicker';
-import { currentModel, modelLabel, presetBindsConnection, presetConnection, SOURCE_LABEL } from '../../tools/model';
+import { attachBook, detachBook, globalValue, setCardItem, setGlobal, trueGlobalWorlds } from '../../tools/env/setup';
+import { currentModel, modelLabel, modelsApply, presetBindsConnection, presetConnection, SOURCE_LABEL, stModelList, type ModelChoice } from '../../tools/model';
 import { currentDetail, detailStack, GLOBAL_TAB_ICONS, GLOBAL_TAB_LABELS, GLOBAL_TABS, globalTab, goBack, openDetail, setGlobalTab, type GlobalTab } from '../views';
 import { installPlugin } from '../../tools/importer';
 import { importOpen, openImport } from '../ImportDialog';
 import { CardPage } from './CardPage';
-import { AddGlobalWorld, GlobalRegexList, GlobalWorldList, ItemRow, openRegexManager, PluginList, PresetPicker } from './GlobalPage';
+import { AddGlobalWorld, GlobalRegexList, GlobalWorldList, ItemRow, openRegexManager, PluginList, PresetPicker, SubItemList } from './GlobalPage';
 import { trash, TRASH_LABEL, type TrashKind } from '../../tools/trash';
 import { charsTick } from '../../shell/characters';
-import { bindPersona, organizing, personaTick, Section, useOrganize, watchPersonas } from './parts';
+import { bindPersona, NotesSection, organizing, personaTick, Section, unbindPersona, useOrganize, watchPersonas } from './parts';
 import { QUOTE_COLORS, type LookKind } from '../../core/quote';
 import { personaStatus } from '../../shell/StatusBar';
 import { BindingsDetail, CardsTablePage } from './CardsTable';
@@ -57,7 +55,8 @@ import { LOOK_COPY, LOOK_NAME } from '../copy';
 import { mesLayoutOn, setMesLayout } from '../../shell/mesActions';
 import { compact, shellOn } from '../../shell/Shell';
 import { PresetScriptsSection, ScriptsPage } from './ScriptsPage';
-import { PickRow, type Opt } from './setupParts';
+import { MenuHead, MenuOpt, ModelForm, PickRow, Popup, type Opt } from './setupParts';
+import { MoreMenu } from '../Menu';
 import {
   ACCENTS, accentId, currentStTheme, loadThemes, LOOKS, lookId, lookOn, quoteId, READ_WIDTHS, readWidth, setAccent, setQuoteColor, setReadWidth, setStChatWidth, stChatWidth, stThemes, themeHasCss, themesLoading,
   useBuiltInLook, useStTheme, type StTheme,
@@ -114,8 +113,8 @@ function groupBySeries(kind: SourceKind, names: string[]): { series: string; nam
 }
 
 /**
- * 「可能是同一系列」的提示：平时只占一行小字，点「看看」才展开。
- * 点「不是」记下来（存在设置里），以后打开也不再提这一组。
+ * 「名字相近」的提示：平时只占一行小字，点「看看」才展开。
+ * 点「不用」记下来（存在设置里），以后打开也不再提这一组。
  */
 function SeriesSuggestions({ kind, names }: { kind: SourceKind; names: string[] }) {
   void sourcesTick.value;
@@ -134,7 +133,7 @@ function SeriesSuggestions({ kind, names }: { kind: SourceKind; names: string[] 
   if (!open) {
     return (
       <button type="button" class="rbt-series-tip" onClick={() => setOpen(true)}>
-        <i class="fa-solid fa-lightbulb" /> 有 {list.length} 组名字相近，可能是同一系列 <span class="rbt-series-tip-go">看看 <i class="fa-solid fa-chevron-down" /></span>
+        <i class="fa-solid fa-lightbulb" /> 有 {list.length} 组名字相近，可以各放进一个文件夹 <span class="rbt-series-tip-go">查看 <i class="fa-solid fa-chevron-down" /></span>
       </button>
     );
   }
@@ -142,10 +141,10 @@ function SeriesSuggestions({ kind, names }: { kind: SourceKind; names: string[] 
     <div class="rbt-series-suggest">
       {list.map((g) => (
         <div key={g.series} class="rbt-hint rbt-row-between">
-          <span>{g.names.length} 个名字里都有「{g.series}」，可能是同一系列的不同版本。</span>
+          <span>{g.names.length} 个名字里都有「{g.series}」。</span>
           <span class="rbt-row">
-            <button type="button" class="rbt-btn rbt-btn-small" onClick={() => dismiss(g.series)}>不是</button>
-            <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" onClick={() => setSeries(kind, g.names, g.series)}>归为「{g.series}」系列</button>
+            <button type="button" class="rbt-btn rbt-btn-small" onClick={() => dismiss(g.series)}>忽略</button>
+            <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" onClick={() => setSeries(kind, g.names, g.series)}>移入「{g.series}」文件夹</button>
           </span>
         </div>
       ))}
@@ -154,61 +153,62 @@ function SeriesSuggestions({ kind, names }: { kind: SourceKind; names: string[] 
   );
 }
 
-/** 哪些系列收起来了：按种类记在浏览器里（只是看的方式，不用同步）。 */
+/** 哪些文件夹收起来了：按种类记在浏览器里（只是看的方式，不用同步）。 */
 const COLLAPSE_KEY = 'rbt-series-collapsed';
 function readCollapsed(): Record<string, string[]> {
   try { return JSON.parse(localStorage.getItem(COLLAPSE_KEY) ?? '{}'); } catch { return {}; }
 }
 
-/**
- * 一个系列：标题行点一下收起 / 展开。整理都在「选择」里：选择时有名字的系列右边多一个「改名」，
- * 可以改名或解散；平时标题行只用来收起 / 展开。
- */
-function SeriesGroup({ kind, series, title, count, bare, selecting, children }: { kind: SourceKind; series: string; title: string; count: number; /** 只有这一组、又不是系列：栏的小标题已经写了「全部…」，不再要组标题 */ bare?: boolean; selecting: boolean; children: preact.ComponentChildren }) {
-  const key = series || '_';
-  const [collapsed, setCollapsed] = useState(() => (readCollapsed()[kind] ?? []).includes(key));
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(series);
+/** 一个文件夹：标题行点一下收起 / 展开，右边 ⋯ 里重命名、删除文件夹（里面的东西留着）。 */
+function Folder({ kind, name, count, managing, children }: { kind: SourceKind & TrashKind; name: string; count: number; managing: boolean; children: preact.ComponentChildren }) {
+  const [collapsed, setCollapsed] = useState(() => (readCollapsed()[kind] ?? []).includes(name));
   const toggle = () => {
     const all = readCollapsed();
     const set = new Set(all[kind] ?? []);
-    if (collapsed) set.delete(key); else set.add(key);
+    if (collapsed) set.delete(name); else set.add(name);
     all[kind] = [...set];
     try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(all)); } catch { /* ignore */ }
     setCollapsed(!collapsed);
   };
-  const save = () => { if (name.trim() && name.trim() !== series) renameSeries(kind, series, name.trim()); setEditing(false); };
+  const rename = async () => {
+    const to = await askText('重命名文件夹', name, '保存');
+    if (to && to !== name) renameSeries(kind, name, to);
+  };
+  const remove = async () => {
+    if (await confirmText(`删除文件夹「${name}」？`, `里面的 ${count} 个${TRASH_LABEL[kind]}会保留在库中，不会被删除。`, '删除文件夹')) renameSeries(kind, name, '');
+  };
   return (
-    <section class={`rbt-card-section rbt-series ${collapsed && !bare ? "collapsed" : ""}`}>
-      {bare ? null : selecting && editing ? (
-        <div class="rbt-series-edit">
-          <input class="text_pole rbt-input" value={name} autoFocus aria-label="系列名" onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }} />
-          <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={!name.trim()} onClick={save}>保存</button>
-          <button type="button" class="rbt-btn rbt-btn-small" onClick={() => setEditing(false)}>取消</button>
-          <button type="button" class="rbt-btn rbt-btn-small rbt-btn-danger rbt-push" title="里面的都回到「其他」，不会删除任何东西" onClick={() => { renameSeries(kind, series, ''); setEditing(false); }}>解散系列</button>
-        </div>
-      ) : (
-        <div class="rbt-series-head">
-          <button type="button" class="rbt-series-toggle" aria-expanded={!collapsed} onClick={toggle}>
-            <i class={`fa-solid ${collapsed ? 'fa-chevron-right' : 'fa-chevron-down'} fa-fw`} />
-            <span class="rbt-series-title">{title}</span>
-            <span class="rbt-series-count">{count}</span>
-          </button>
-          {selecting && series && <button type="button" class="rbt-btn rbt-btn-small" onClick={() => { setName(series); setEditing(true); }}>改名</button>}
-        </div>
-      )}
-      {(bare || !collapsed) && children}
-    </section>
+    <div class={`rbt-folder ${collapsed ? 'collapsed' : ''}`}>
+      <div class="rbt-folder-head">
+        <button type="button" class="rbt-folder-toggle" aria-expanded={!collapsed} onClick={toggle}>
+          <i class={`fa-solid ${collapsed ? 'fa-chevron-right' : 'fa-chevron-down'} fa-fw rbt-folder-caret`} />
+          <i class={`fa-solid ${collapsed ? 'fa-folder' : 'fa-folder-open'} fa-fw rbt-folder-icon`} />
+          <span class="rbt-folder-name">{name}</span>
+          <span class="rbt-folder-count">{count}</span>
+        </button>
+        {!managing && <MoreMenu title={name} items={[
+          { icon: 'fa-pen', text: '重命名', onClick: () => { void rename(); } },
+          { icon: 'fa-trash-can', text: '删除文件夹', danger: true, onClick: () => { void remove(); } },
+        ]} />}
+      </div>
+      {!collapsed && <div class="rbt-folder-items">{children}</div>}
+    </div>
   );
 }
 
 /**
- * 按系列分组的列表。平时每行是 ›（打开详情）；点「选择」后每行变成勾选框（常见的「选择」模式），
- * 底部一条操作栏：归入系列、移出系列、删除。正在用的不能选（`locked` 返回原因）。
+ * 「X 库」：一张卡片，上面是文件夹，下面是没放进文件夹的。标题右边「新建文件夹」「管理」。
+ * 管理：每行变成勾选框，底部一条「移到文件夹」「删除」，一次处理很多个；页面上只留这一块（useOrganize）。
+ * 新建文件夹：起好名字后直接进管理，选好放进去的（文件夹存在每一项身上，空文件夹存不下来）。
+ * 正在用的（`locked` 返回原因）可以选、可以移，只是不能删。
  */
-function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filters, defaultFilter = 0, locked, deleteNote }: {
+function FolderList({ kind, names: allNames, title, hint, back, sub, trail, filters, defaultFilter = 0, locked, deleteNote, embed }: {
   kind: SourceKind & TrashKind;
   names: string[];
+  title: string;
+  /** 放在另一张卡片里（美化库里的「其他美化」） */
+  embed?: boolean;
+  hint?: string;
   /** Optional quick filters shown as a segmented control (first one = all). */
   filters?: { label: string; test: (n: string) => boolean }[];
   /** Index of the filter selected when the list opens. */
@@ -216,92 +216,108 @@ function SeriesList({ kind, names: allNames, back, sub, trail, restTitle, filter
   back: string;
   sub: (n: string) => string;
   trail?: (n: string) => preact.ComponentChildren;
-  restTitle: string;
-  /** 不能删、也不能选的（比如正在用的），返回原因。 */
+  /** 不能删的（比如正在用的），返回原因。 */
   locked?: (n: string) => string | null;
   /** 删除确认框里额外要说的话（比如哪些卡在用这本世界书）。 */
   deleteNote?: (names: string[]) => string;
 }) {
   void sourcesTick.value;
   const org = useOrganize(kind);
-  const selecting = org.on;
+  const managing = org.on;
+  const label = TRASH_LABEL[kind];
   const [picked, setPicked] = useState<string[]>([]);
-  const [naming, setNaming] = useState(false);
-  const [series, setSeriesName] = useState('');
+  /** 刚新建、正在选要放进去的文件夹 */
+  const [target, setTarget] = useState<string | null>(null);
+  const [moving, setMoving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [fi, setFi] = useState(defaultFilter);
   const names = filters ? allNames.filter(filters[fi]?.test ?? (() => true)) : allNames;
   const groups = groupBySeries(kind, names);
-  const pickable = names.filter((n) => !locked?.(n));
-  const listId = `rbt-org-${kind}`;
+  const loose = groups.find((g) => !g.series)?.names ?? [];
+  const deletable = picked.filter((n) => !locked?.(n));
   const toggle = (n: string) => setPicked((cur) => (cur.includes(n) ? cur.filter((x) => x !== n) : [...cur, n]));
-  const allOn = pickable.length > 0 && pickable.every((n) => picked.includes(n));
-  const done = () => { org.stop(); setPicked([]); setNaming(false); setSeriesName(''); };
-  const apply = (name: string) => { setSeries(kind, picked, name); setPicked([]); setNaming(false); setSeriesName(''); };
+  const allOn = names.length > 0 && names.every((n) => picked.includes(n));
+  const done = () => { org.stop(); setPicked([]); setTarget(null); };
+  const moveTo = (folder: string) => { setSeries(kind, picked, folder); setPicked([]); setMoving(false); };
+  const newFolder = async () => {
+    const n = await askText('新建文件夹', '', '下一步');
+    if (!n) return;
+    setPicked([]);
+    setTarget(n);
+    if (!managing) org.start();
+  };
+  const moveToNew = async () => {
+    setMoving(false);
+    const n = await askText('新建文件夹', '', '移入');
+    if (n) moveTo(n);
+  };
   const del = async () => {
-    const list = picked.filter((n) => !locked?.(n));
-    if (!list.length) return;
-    const label = TRASH_LABEL[kind];
-    const shown = list.length <= 6 ? list.map((n) => `「${n}」`).join('') : `${list.slice(0, 6).map((n) => `「${n}」`).join('')} 等 ${list.length} 个`;
-    const note = deleteNote?.(list);
-    const ok = await confirmText(`删除 ${list.length} 个${label}？`, `${shown}\n\n${note ? `${note}\n\n` : ''}删除前会先备份，删完 15 秒内可以撤销。`, '删除');
+    if (!deletable.length) return;
+    const shown = deletable.length <= 6 ? deletable.map((n) => `「${n}」`).join('') : `${deletable.slice(0, 6).map((n) => `「${n}」`).join('')} 等 ${deletable.length} 个`;
+    const kept = picked.filter((n) => locked?.(n));
+    const note = deleteNote?.(deletable);
+    const ok = await confirmText(`删除 ${deletable.length} 个${label}？`, `${shown}\n\n${kept.length ? `${kept.map((n) => `「${n}」`).join('')}${locked?.(kept[0])}，不会删除。\n\n` : ''}${note ? `${note}\n\n` : ''}删除前自动备份。删除后 15 秒内可撤销。`, '删除');
     if (!ok) return;
     setBusy(true);
-    try { if (await trash(kind, list)) { for (const n of list) updateSource(kind, n, { author: '', links: [], series: '', version: '', notes: '' }); setPicked([]); } } finally { setBusy(false); }
+    try { if (await trash(kind, deletable)) { for (const n of deletable) updateSource(kind, n, { author: '', links: [], series: '', version: '', notes: '' }); setPicked([]); } } finally { setBusy(false); }
   };
+  const row = (n: string) => {
+    // 记了链接的，名字后面有个链接图标：一眼看出点进去有发布帖、教程
+    if (!managing) return <NavRow key={n} title={sourceFor(kind, n).links.length || /https?:\/\//.test(sourceFor(kind, n).notes) ? <>{n}<i class="fa-solid fa-link rbt-navrow-link" role="img" aria-label="有链接" /></> : n} sub={sub(n) || undefined} trailing={trail?.(n)} onClick={() => openItem(kind, n, back)} />;
+    const why = locked?.(n);
+    return (
+      <label key={n} class={`rbt-pickrow ${picked.includes(n) ? 'on' : ''}`}>
+        <input type="checkbox" checked={picked.includes(n)} onChange={() => toggle(n)} />
+        <span class="rbt-navrow-main"><span class="rbt-navrow-title">{n}</span>{(why || sub(n)) && <span class="rbt-navrow-sub">{why ?? sub(n)}</span>}</span>
+      </label>
+    );
+  };
+  const folderOptions: Opt[] = [
+    { key: ' none', title: '移出文件夹', onPick: () => moveTo('') },
+    ...groupBySeries(kind, allNames).filter((g) => g.series).map((g) => ({ key: g.series, title: g.series, onPick: () => moveTo(g.series) })),
+    { key: ' new', title: '新建文件夹…', onPick: () => { void moveToNew(); } },
+  ];
   return (
-    <>
-      {!selecting && <SeriesSuggestions kind={kind} names={allNames} />}
+    <Section sub={embed} title={title} hint={managing ? undefined : hint} actions={managing ? (
+      <>
+        <button type="button" class="rbt-linkbtn" disabled={!names.length} onClick={() => setPicked(allOn ? [] : names)}>{allOn ? '取消全选' : '全选'}</button>
+        <button type="button" class={`rbt-btn rbt-btn-small ${target ? '' : 'rbt-btn-primary'}`} onClick={done}>{target ? '取消' : '完成'}</button>
+      </>
+    ) : (
+      <>
+        <button type="button" class="rbt-btn rbt-btn-small" onClick={() => { void newFolder(); }}><i class="fa-solid fa-folder-plus" /> 新建文件夹</button>
+        <button type="button" class="rbt-btn rbt-btn-small" onClick={org.start}>管理</button>
+      </>
+    )}>
+      {!managing && <SeriesSuggestions kind={kind} names={allNames} />}
       {filters && (
         <div class="rbt-vseg rbt-list-filter" role="tablist">
           {filters.map((f, i) => <button key={f.label} type="button" class={fi === i ? 'active' : ''} onClick={() => setFi(i)}>{f.label} {allNames.filter(f.test).length}</button>)}
         </div>
       )}
-      <div ref={org.ref} class={`rbt-org-bar ${selecting ? 'on' : ''}`}>
-        {selecting ? (
-          <>
-            <span class="rbt-org-count">已选 {picked.length} 个</span>
-            <button type="button" class="rbt-linkbtn" disabled={!pickable.length} onClick={() => setPicked(allOn ? [] : pickable)}>{allOn ? '全不选' : '全选'}</button>
-            <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={done}>完成</button>
-          </>
-        ) : (
-          <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={org.start}>选择</button>
-        )}
+      <div ref={org.ref} class="rbt-folder-list">
+        {groups.filter((g) => g.series).map((g) => (
+          <Folder key={g.series} kind={kind} name={g.series} count={g.names.length} managing={managing}>{g.names.map(row)}</Folder>
+        ))}
+        {loose.map(row)}
+        {!names.length && <small class="rbt-muted">暂无{label}。</small>}
       </div>
-      {groups.map((g) => (
-        <SeriesGroup key={g.series || '_'} kind={kind} series={g.series} selecting={selecting} bare={groups.length === 1 && !g.series} title={g.series ? `${g.series} 系列` : (groups.length > 1 ? `其他${restTitle}` : `全部${restTitle}`)} count={g.names.length}>
-          {g.names.map((n) => {
-            // 记了链接的，名字后面有个链接图标：一眼看出点进去有发布帖、教程
-            if (!selecting) return <NavRow key={n} title={sourceFor(kind, n).links.length ? <>{n}<i class="fa-solid fa-link rbt-navrow-link" role="img" aria-label="有链接" /></> : n} sub={sub(n) || undefined} trailing={trail?.(n)} onClick={() => openItem(kind, n, back)} />;
-            const why = locked?.(n);
-            return (
-              <label key={n} class={`rbt-pickrow ${picked.includes(n) ? 'on' : ''} ${why ? 'locked' : ''}`} title={why ?? undefined}>
-                <input type="checkbox" checked={picked.includes(n)} disabled={!!why} onChange={() => toggle(n)} />
-                <span class="rbt-navrow-main"><span class="rbt-navrow-title">{n}</span>{(why || sub(n)) && <span class="rbt-navrow-sub">{why ?? sub(n)}</span>}</span>
-              </label>
-            );
-          })}
-        </SeriesGroup>
-      ))}
-      {selecting && (
-        <div class="rbt-selbar" role="toolbar" aria-label="对选中的项目">
-          {naming ? (
-            <>
-              <input class="text_pole rbt-input" list={listId} placeholder="系列名，比如：小狗之神" value={series} autoFocus onInput={(e) => setSeriesName((e.currentTarget as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter' && picked.length && series.trim()) apply(series.trim()); }} />
-              <datalist id={listId}>{allSeries(kind).map((x) => <option key={x} value={x} />)}</datalist>
-              <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary" disabled={!picked.length || !series.trim()} onClick={() => apply(series.trim())}>归入</button>
-              <button type="button" class="rbt-btn rbt-btn-small" onClick={() => setNaming(false)}>取消</button>
-            </>
+      {managing && (
+        <div class="rbt-selbar" role="toolbar" aria-label={`对选中的${label}`}>
+          <span class="rbt-org-count">{target ? `选择要移入「${target}」的${label}` : `已选 ${picked.length} 个`}</span>
+          {target ? (
+            <button type="button" class="rbt-btn rbt-btn-small rbt-btn-primary rbt-push" disabled={!picked.length} onClick={() => { setSeries(kind, picked, target); done(); }}>移入{picked.length ? ` ${picked.length} 个` : ''}</button>
           ) : (
             <>
-              <button type="button" class="rbt-btn rbt-btn-small" disabled={!picked.length} onClick={() => setNaming(true)}>归入系列</button>
-              <button type="button" class="rbt-btn rbt-btn-small" disabled={!picked.length} onClick={() => apply('')}>移出系列</button>
-              <button type="button" class="rbt-btn rbt-btn-small rbt-btn-danger rbt-push" disabled={!picked.length || busy} onClick={del}>{busy ? '正在删除…' : `删除${picked.length ? ` ${picked.length} 个` : ''}`}</button>
+              <Popup title="移到文件夹" open={moving} onClose={() => setMoving(false)} options={folderOptions} cls="rbt-move rbt-push">
+                <button type="button" class="rbt-btn rbt-btn-small" disabled={!picked.length} aria-haspopup="listbox" aria-expanded={moving} onClick={() => setMoving(!moving)}>移到文件夹…</button>
+              </Popup>
+              <button type="button" class="rbt-btn rbt-btn-small rbt-btn-danger" disabled={!deletable.length || busy} onClick={del}>{busy ? '正在删除…' : `删除${deletable.length ? ` ${deletable.length} 个` : ''}`}</button>
             </>
           )}
         </div>
       )}
-    </>
+    </Section>
   );
 }
 
@@ -312,49 +328,94 @@ function DeleteOne({ kind, name, locked, note }: { kind: TrashKind; name: string
   if (locked) return <small class="rbt-muted rbt-delete-one">{locked}，不能删除。</small>;
   return (
     <button type="button" class="rbt-btn rbt-btn-small rbt-btn-danger rbt-delete-one" disabled={busy} onClick={async () => {
-      const ok = await confirmText(`删除${label}「${name}」？`, `${note ? `${note}\n\n` : ''}删除前会先备份，删完 15 秒内可以撤销。`, '删除');
+      const ok = await confirmText(`删除${label}「${name}」？`, `${note ? `${note}\n\n` : ''}删除前自动备份。删除后 15 秒内可撤销。`, '删除');
       if (!ok) return;
       setBusy(true);
       try { if (await trash(kind, [name])) { if (kind !== 'regex') updateSource(kind as SourceKind, name, { author: '', links: [], series: '', version: '', notes: '' }); goBack(); } } finally { setBusy(false); }
-    }}>{busy ? '正在删除…' : `删除这个${label}`}</button>
+    }}>{busy ? '正在删除…' : `删除${label}`}</button>
   );
 }
 
-/** 系列 / 版本 / 更新说明 for a preset or worldbook. */
-function VersionSection({ kind, id }: { kind: SourceKind; id: string }) {
-  const v = sourceFor(kind, id);
-  const listId = `rbt-series-${kind}`;
-  const series = allSeries(kind);
-  const siblings = v.series ? namesOf(kind).filter((n) => n !== id && sourceFor(kind, n).series === v.series) : [];
-  const back = id;
+/** 详情页的头：名字和状态小标签；下面一行按钮，位置固定（不跟在长短会变的名字后面）。 */
+function DetailHead({ title, tags, note, actions }: { title: string; tags?: preact.ComponentChildren; note?: preact.ComponentChildren; actions?: preact.ComponentChildren }) {
   return (
-    <Section title="系列和版本" hint="同一个东西的不同版本归到一个系列，方便对比和回头找">
-      <div class="rbt-form-row">
-        <small class="rbt-muted rbt-source-k">系列</small>
-        <input class="text_pole rbt-input" list={listId} placeholder="比如：小狗之神" value={v.series} onChange={(e) => updateSource(kind, id, { series: (e.currentTarget as HTMLInputElement).value.trim() })} />
-        <datalist id={listId}>{series.map((s) => <option key={s} value={s} />)}</datalist>
-      </div>
-      <div class="rbt-form-row">
-        <small class="rbt-muted rbt-source-k">版本</small>
-        <input class="text_pole rbt-input" placeholder={v.versionIsAuto ? `${v.version}（从名字里读到的）` : '比如：v8.0'} value={v.versionIsAuto ? '' : v.version} onChange={(e) => updateSource(kind, id, { version: (e.currentTarget as HTMLInputElement).value.trim() })} />
-      </div>
-      <textarea class="text_pole rbt-textarea" rows={3} placeholder="更新说明：这一版改了什么、和上一版有什么不同、怎么用" value={v.notes} onChange={(e) => updateSource(kind, id, { notes: (e.currentTarget as HTMLTextAreaElement).value })} />
-      {siblings.length > 0 && (
-        <div class="rbt-card-sub">
-          <small class="rbt-muted">同系列的其他版本：</small>
-          {siblings.sort((x, y) => compareVersions(sourceFor(kind, x).version, sourceFor(kind, y).version)).map((n) => (
-            <NavRow key={n} title={n} sub={sourceFor(kind, n).version ? `版本 ${sourceFor(kind, n).version}` : undefined} onClick={() => openItem(kind, n, back)} />
-          ))}
+    <div class="rbt-detail-top">
+      <div class="rbt-detail-head"><h2>{title}</h2>{tags}</div>
+      {note && <small class="rbt-muted">{note}</small>}
+      {actions && <div class="rbt-detail-actions">{actions}</div>}
+    </div>
+  );
+}
+
+/**
+ * 「专用它的卡」这类：列出卡，标题右边「添加角色卡」，每张卡的 ⋯ 里去掉。
+ * `fixed` 返回原因的卡不能在这里去掉（比如角色卡自己绑的世界书），灰字写原因；`note` 是能去掉的卡的灰字。
+ */
+function BoundCards({ title, hint, cards, back, empty, onAdd, onRemove, removeText = '取消专用', fixed, note }: {
+  title: string; hint?: string; cards: { avatar: string; name: string }[]; back: string; empty: string;
+  onAdd: (c: { avatar: string; name: string }) => unknown; onRemove: (c: { avatar: string; name: string }) => unknown;
+  removeText?: string; fixed?: (avatar: string) => string | null; note?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const have = new Set(cards.map((c) => c.avatar));
+  const options: Opt[] = open ? allCharacters().filter((c) => !have.has(c.avatar)).map((c) => ({
+    key: c.avatar, title: c.name, lead: thumbnailUrl(c.avatar), onPick: () => { setOpen(false); void onAdd({ avatar: c.avatar, name: c.name }); },
+  })) : [];
+  return (
+    <Section title={title} hint={hint} actions={
+      <Popup title="添加角色卡" placeholder="搜角色卡" open={open} onClose={() => setOpen(false)} options={options} cls="rbt-move">
+        <button type="button" class="rbt-btn rbt-btn-small" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(!open)}><i class="fa-solid fa-plus" /> 添加角色卡</button>
+      </Popup>
+    }>
+      {cards.length > 0 && (
+        <div class="rbt-cardrows">
+          {cards.map((c) => {
+            const why = fixed?.(c.avatar);
+            return (
+              <div key={c.avatar} class="rbt-cardrow">
+                <NavRow img={thumbnailUrl(c.avatar)} title={c.name} sub={why ?? note} onClick={() => openDetail({ kind: 'card', avatar: c.avatar }, back)} />
+                {!why && <MoreMenu title={c.name} items={[{ icon: 'fa-xmark', text: removeText, onClick: () => { void onRemove(c); } }]} />}
+              </div>
+            );
+          })}
         </div>
       )}
+      {!cards.length && <small class="rbt-muted">{empty}</small>}
     </Section>
   );
 }
 
-function SourceSection({ kind, id }: { kind: SourceKind; id: string }) {
+/**
+ * 预设自带的正则。正在用的预设：「允许运行」和每一条都能开关（和全局工具箱 › 预设里的一样）。
+ * 别的预设：只列出来（开着绿点、关着灰点），写清为什么不能开关——酒馆只能改正在用的预设里的正则。
+ */
+function PresetRegexSection({ name, isCurrent }: { name: string; isCurrent: boolean }) {
+  const report = envReport.value;
+  let list: { scriptName?: string; disabled?: boolean }[] = [];
+  try { list = ctx().getPresetManager()?.getCompletionPresetByName?.(name)?.extensions?.regex_scripts ?? []; } catch { /* 读不到就当没有 */ }
+  if (!list.length) return null;
+  const on = list.filter((r) => !r.disabled).length;
+  const live = isCurrent ? report?.items.find((i) => i.id === 'rx:p') : undefined;
+  const edit = <button type="button" class="rbt-btn rbt-btn-small" disabled={!isCurrent} onClick={() => openRegexManager('preset')}>编辑正则 <i class="fa-solid fa-arrow-up-right-from-square" /></button>;
   return (
-    <Section title="作者和链接" hint="发布帖、教程、更新帖…">
-      <SourceEditor kind={kind} id={id} />
+    <Section title="预设自带正则" hint={isCurrent ? `使用此预设时应用 · 已启用 ${on} / ${list.length} 条` : '这个预设没在用。酒馆只能开关、编辑正在用的预设里的正则。'} actions={edit}>
+      {live?.toggle && (
+        <div class="rbt-switch-row rbt-script-allow">
+          <div class="rbt-switch-text"><span>允许运行</span><small>{live.enabled ? '关闭后，下面的正则都不运行。' : '现在关着，下面的正则都不运行。'}</small></div>
+          <Toggle checked={live.enabled} onChange={(v) => { void Promise.resolve(live.toggle?.(v)).then(() => refreshEnv()); }} title="允许 / 不允许这个预设的正则运行" />
+        </div>
+      )}
+      {live?.subItems ? <SubItemList items={live.subItems} groupOff={!live.enabled} /> : (
+        <div class="rbt-rx-list">
+          {list.map((r, i) => (
+            <div key={i} class={`rbt-rx-line ${r.disabled ? 'off' : ''}`}>
+              <i class="fa-solid fa-circle rbt-rx-dot" aria-hidden="true" />
+              <span>{r.scriptName || '(未命名正则)'}</span>
+              {r.disabled && <small>已停用</small>}
+            </div>
+          ))}
+        </div>
+      )}
     </Section>
   );
 }
@@ -370,11 +431,6 @@ function AvatarStack({ cards }: { cards: { avatar: string; name: string }[] }) {
   );
 }
 
-function CardRows({ cards, back, empty }: { cards: { avatar: string; name: string }[]; back: string; empty: string }) {
-  if (!cards.length) return <small class="rbt-muted">{empty}</small>;
-  return <>{cards.map((c) => <NavRow key={c.avatar} img={thumbnailUrl(c.avatar)} title={c.name} onClick={() => openDetail({ kind: 'card', avatar: c.avatar }, back)} />)}</>;
-}
-
 // ----------------------------------------------------------- presets ---
 
 function PresetsPage() {
@@ -388,7 +444,7 @@ function PresetsPage() {
   const presetRx = (report?.items ?? []).filter((i) => i.scope === 'preset' && i.kind !== 'preset');
   const global = String(globalValue('preset') ?? cur);
   const back = GLOBAL_TAB_LABELS.presets;
-  // 「选择」时只留下面的列表（useOrganize）
+  // 「管理」时只留下面的列表（useOrganize）
   const org = organizing.value === 'preset';
   return (
     <div class="rbt-page">
@@ -404,12 +460,11 @@ function PresetsPage() {
           </div>
         )}
         <div class="rbt-page-group">
-          <h2 class="rbt-page-group-title">全部预设</h2>
-          <SeriesList
+          <FolderList
             kind="preset"
             names={names}
+            title="预设库"
             back={back}
-            restTitle="预设"
             sub={(n) => {
               const v = sourceFor('preset', n);
               const rec = ov.byPreset.get(n);
@@ -462,19 +517,15 @@ function PersonasPage() {
           </Section>
         </div>
         <div class="rbt-page-group">
-          <div class="rbt-page-group-head">
-            <h2 class="rbt-page-group-title">全部人设</h2>
-            <button type="button" class="rbt-btn rbt-btn-small" onClick={() => openDetail({ kind: 'persona-new' }, back)}><i class="fa-solid fa-plus" aria-hidden="true" /> 新建人设</button>
-          </div>
-          <div>
+          <Section title="人设库" actions={<button type="button" class="rbt-btn rbt-btn-small" onClick={() => openDetail({ kind: 'persona-new' }, back)}><i class="fa-solid fa-plus" aria-hidden="true" /> 新建人设</button>}>
             {all.map((id) => (
               <NavRow key={id} img={personaThumb(id)} onClick={() => openDetail({ kind: 'persona', id }, back)}
                 title={<span class="rbt-persona-title">{personaName(id)}{id === now.avatar && <Tag tone="accent">正在用</Tag>}{id === def && <Tag>全局</Tag>}</span>}
                 sub={personaTitle(id) || personaDesc(id) ? <>{personaTitle(id) && <span class="rbt-persona-note">{personaTitle(id)}</span>}{personaDesc(id) && <span class="rbt-clamp2">{personaDesc(id)}</span>}</> : undefined}
                 trailing={<AvatarStack cards={personaCards(id)} />} />
             ))}
-          </div>
-          {!all.length && <small class="rbt-muted">还没有人设。</small>}
+            {!all.length && <small class="rbt-muted">还没有人设。</small>}
+          </Section>
         </div>
       </div>
     </div>
@@ -493,6 +544,15 @@ async function setGlobalPersona(id: string): Promise<void> {
 }
 
 /** 一个人设自己的页面：头像、名字、描述，改完自动保存；下面是专用它的卡。 */
+/** 正在用的人设是从哪来的（和酒馆选人设的顺序一样：存档锁定 > 卡 / 群专用 > 全局人设 > 手动换上）。 */
+function personaWhy(source: string): string {
+  if (source === 'chat') return '当前人设来源：存档锁定';
+  if (source === 'character') return `当前人设来源：角色卡「${currentCharacter()?.name ?? ''}」专用`;
+  if (source === 'group') return '当前人设来源：群聊专用';
+  if (source === 'default') return '当前人设来源：全局人设';
+  return '当前人设来源：手动选择';
+}
+
 function PersonaDetail({ id }: { id: string }) {
   void personaTick.value;
   useEffect(watchPersonas, []);
@@ -518,60 +578,47 @@ function PersonaDetail({ id }: { id: string }) {
   // 酒馆的人设面板只能改正在用的人设：不是正在用的，先问要不要换过去
   const more = async () => {
     if (!isNow) {
-      if (!(await confirmText(`「${personaName(id)}」不是正在用的人设`, `酒馆的人设面板只能改正在用的人设。要换成「${personaName(id)}」再打开吗？`, '换成它'))) return;
+      if (!(await confirmText('切换人设并打开设置？', `酒馆只能编辑当前人设。继续会切换到「${personaName(id)}」。`, '切换并打开'))) return;
       await loaded.personas?.setUserAvatar?.(id);
       personaTick.value++;
     }
     openDrawer('persona');
   };
   return (
-    <div class="rbt-page">
-      <div class="rbt-detail-head">
-        <h2>{personaName(id)}</h2>
-        {personaTitle(id) && <span class="rbt-muted">{personaTitle(id)}</span>}
-        {isNow && <Tag tone="accent">正在用</Tag>}
-        {isDef && <Tag>全局</Tag>}
-        {cards.length > 0 && <Tag>{cards.length === 1 ? `「${cards[0].name}」专用` : `${cards.length} 张卡专用`}</Tag>}
-        {!isDef && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={() => void run(() => setGlobalPersona(id))}>设为全局人设</button>}
-      </div>
-      <div class="rbt-page-cols">
-        <div class="rbt-page-group">
-          <section class="rbt-card-section">
-            <div class="rbt-persona-av">
-              <img src={personaImage(id)} alt="" />
-              <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={async () => { const p = await pickAvatar(); if (p) await run(() => setPersonaAvatar(id, p)); }}>换头像</button>
-            </div>
-            <label class="rbt-field">
-              <span class="rbt-field-label">名字</span>
-              <input class="text_pole" value={name} onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }}
-                onBlur={(e) => { const v = (e.currentTarget as HTMLInputElement).value.trim(); if (v) void run(() => renamePersona(id, v)); else setName(personaName(id)); }} />
-            </label>
-            <label class="rbt-field">
-              <span class="rbt-field-label">用户设定名称</span>
-              <input class="text_pole" value={title} placeholder="选填，只用来区分同名人设" onInput={(e) => setTitle((e.currentTarget as HTMLInputElement).value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }}
-                onBlur={(e) => { const v = (e.currentTarget as HTMLInputElement).value.trim(); setTitle(v); void run(() => setPersonaTitle(id, v)); }} />
-            </label>
-            <label class="rbt-field">
-              <span class="rbt-field-label">描述</span>
-              <textarea class="text_pole" rows={6} placeholder="你在故事里是谁。" value={desc} onInput={(e) => { const v = (e.currentTarget as HTMLTextAreaElement).value; setDesc(v); setPersonaDesc(id, v); }} />
-              <small class="rbt-muted">这段会发给 AI。改完自动保存。</small>
-            </label>
-          </section>
+    <div class="rbt-page rbt-card-page">
+      <DetailHead title={personaName(id)}
+        tags={<>{personaTitle(id) && <span class="rbt-muted">{personaTitle(id)}</span>}{isNow && <Tag tone="accent">正在用</Tag>}{isDef && <Tag>全局</Tag>}</>}
+        note={isNow ? personaWhy(personaStatus().source) : undefined}
+        actions={<>
+          {!isDef && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={() => void run(() => setGlobalPersona(id))}>设为全局人设</button>}
+          <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => void copy()}><i class="fa-regular fa-copy" aria-hidden="true" /> 复制一份</button>
+          <button type="button" class="rbt-btn rbt-btn-small" title="插入位置、绑定世界书在这里改" onClick={() => void more()}>编辑人设 <i class="fa-solid fa-arrow-up-right-from-square" /></button>
+        </>} />
+      <Section title="头像和资料">
+        <div class="rbt-persona-av">
+          <img src={personaImage(id)} alt="" />
+          <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={async () => { const p = await pickAvatar(); if (p) await run(() => setPersonaAvatar(id, p)); }}>换头像</button>
         </div>
-        <div class="rbt-page-group">
-          <Section title="专用它的卡" hint="进这些卡时会换上这个人设">
-            <CardRows cards={cards} back={personaName(id)} empty="还没有卡专用它。在角色档案的「user 人设」里选。" />
-          </Section>
-          <div class="rbt-form-row rbt-wrap">
-            <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => void copy()}><i class="fa-regular fa-copy" aria-hidden="true" /> 复制一份</button>
-            <button type="button" class="rbt-btn rbt-btn-small" onClick={() => void more()}>更多设置 <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" /></button>
-            <button type="button" class="rbt-btn rbt-btn-small rbt-btn-danger" disabled={busy} onClick={async () => { if (await deletePersona(id, () => { personaTick.value++; })) { personaTick.value++; goBack(); } }}>删除</button>
-          </div>
-          <small class="rbt-muted">插入位置、绑定世界书在「更多设置」里改。</small>
-        </div>
-      </div>
+        <label class="rbt-field">
+          <span class="rbt-field-head"><span class="rbt-field-label">名字</span><small class="rbt-field-hint">发送给 AI，作为故事中的称呼。</small></span>
+          <input class="text_pole" value={name} onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }}
+            onBlur={(e) => { const v = (e.currentTarget as HTMLInputElement).value.trim(); if (v) void run(() => renamePersona(id, v)); else setName(personaName(id)); }} />
+        </label>
+        <label class="rbt-field">
+          <span class="rbt-field-head"><span class="rbt-field-label">备注名</span><small class="rbt-field-hint">不发送给 AI，用于区分同名人设。</small></span>
+          <input class="text_pole" value={title} placeholder="选填" onInput={(e) => setTitle((e.currentTarget as HTMLInputElement).value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }}
+            onBlur={(e) => { const v = (e.currentTarget as HTMLInputElement).value.trim(); setTitle(v); void run(() => setPersonaTitle(id, v)); }} />
+        </label>
+        <label class="rbt-field">
+          <span class="rbt-field-head"><span class="rbt-field-label">描述</span><small class="rbt-field-hint">发给 AI。</small></span>
+          <textarea class="text_pole" rows={6} placeholder="简述人设的身份或背景。" value={desc} onInput={(e) => { const v = (e.currentTarget as HTMLTextAreaElement).value; setDesc(v); setPersonaDesc(id, v); }} />
+        </label>
+      </Section>
+      <BoundCards title="专用角色卡" hint="与以下角色聊天时，自动切换至此人设。" cards={cards} back={personaName(id)} empty="暂无专用角色卡。"
+        onAdd={(c) => { bindPersona(id, c.avatar); personaTick.value++; }} onRemove={(c) => { unbindPersona(id, c.avatar); personaTick.value++; }} />
+      <button type="button" class="rbt-btn rbt-btn-small rbt-btn-danger rbt-delete-one" disabled={busy} onClick={async () => { if (await deletePersona(id, () => { personaTick.value++; })) { personaTick.value++; goBack(); } }}>删除人设</button>
     </div>
   );
 }
@@ -624,7 +671,7 @@ function PersonaNew({ forCard, forChat }: { forCard?: string; forChat?: string }
             </label>
             <label class="rbt-field">
               <span class="rbt-field-label">描述</span>
-              <textarea class="text_pole" rows={6} placeholder="你在故事里是谁。" value={desc} onInput={(e) => setDesc((e.currentTarget as HTMLTextAreaElement).value)} />
+              <textarea class="text_pole" rows={6} placeholder="简述人设的身份或背景。" value={desc} onInput={(e) => setDesc((e.currentTarget as HTMLTextAreaElement).value)} />
               <small class="rbt-muted">这段会发给 AI。可以先空着，以后再写。</small>
             </label>
             <div class="rbt-form-row">
@@ -640,37 +687,31 @@ function PersonaNew({ forCard, forChat }: { forCard?: string; forChat?: string }
 
 function PresetDetail({ name }: { name: string }) {
   void archiveVersion.value;
+  useEffect(() => { refreshEnv(); }, [name]);
   const cur = currentPresetName();
   const global = String(globalValue('preset') ?? cur);
   const ov = overview();
   const exists = presetNames().includes(name);
-  const rx = presetRegexCount(name);
+  const cards = ov.byPreset.get(name) ?? [];
   const [busy, setBusy] = useState(false);
+  const toGlobal = name !== global && exists;
   return (
-    <div class="rbt-page">
-      <div class="rbt-detail-head">
-        <h2>{name}</h2>
-        {name === cur && <Tag tone="accent">正在用</Tag>}
-        {name === global && name !== cur && <Tag>全局</Tag>}
-        {name !== cur && name !== global && exists && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={async () => { setBusy(true); try { await setGlobal('preset', name); } finally { setBusy(false); } }}>{heldByCard('preset') ? '设为全局预设' : '换成这个'}</button>}
-        {name === cur && <button type="button" class="rbt-btn rbt-btn-small" onClick={() => openDrawer('preset')}>编辑预设 <i class="fa-solid fa-arrow-up-right-from-square" /></button>}
-      </div>
+    <div class="rbt-page rbt-card-page">
+      <DetailHead title={name}
+        tags={<>{name === cur && <Tag tone="accent">正在用</Tag>}{name === global && <Tag>全局</Tag>}</>}
+        note={exists && name !== cur ? '这个预设没在用。酒馆只能编辑正在用的预设。' : undefined}
+        actions={exists ? <>
+          {toGlobal && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={async () => { setBusy(true); try { await setGlobal('preset', name); } finally { setBusy(false); } }}>设为全局预设</button>}
+          <button type="button" class="rbt-btn rbt-btn-small" disabled={name !== cur} onClick={() => openDrawer('preset')}>编辑预设 <i class="fa-solid fa-arrow-up-right-from-square" /></button>
+        </> : undefined} />
       {!exists && <div class="rbt-warn">找不到这个预设，可能被删除或改名了。</div>}
-      {rx > 0 && <small class="rbt-muted">自带 {rx} 条正则，用这个预设时生效。</small>}
-      <div class="rbt-page-cols">
-        <div class="rbt-page-group">
-          <SourceSection kind="preset" id={name} />
-          <VersionSection kind="preset" id={name} />
-        </div>
-        <div class="rbt-page-group">
-          <PresetModelSection name={name} isCurrent={name === cur} />
-          <PresetScriptsSection name={name} />
-          <Section title="专用它的卡" hint="进这些卡时会换上这个预设">
-            <CardRows cards={ov.byPreset.get(name) ?? []} back={name} empty="还没有卡专用它。在角色档案的「预设和模型」里选。" />
-          </Section>
-        </div>
-      </div>
-      {exists && <DeleteOne kind="preset" name={name} locked={name === cur ? '正在用这个预设' : null} note={ov.byPreset.get(name)?.length ? `有 ${ov.byPreset.get(name)!.length} 张卡专用这个预设，删除后这些卡改用全局的预设。` : undefined} />}
+      <NotesSection kind="preset" id={name} />
+      <PresetModelSection name={name} />
+      <PresetRegexSection name={name} isCurrent={name === cur} />
+      <PresetScriptsSection name={name} />
+      <BoundCards title="专用角色卡" hint="与以下角色聊天时，自动切换至此预设。" cards={cards} back={name} empty="暂无专用角色卡。"
+        onAdd={async (c) => { await setCardItem(c.avatar, c.name, 'preset', name); archiveVersion.value++; refreshEnv(); }} onRemove={async (c) => { await setCardItem(c.avatar, c.name, 'preset', null); archiveVersion.value++; refreshEnv(); }} />
+      {exists && <DeleteOne kind="preset" name={name} locked={name === cur ? '正在用这个预设' : null} note={cards.length ? `有 ${cards.length} 张卡专用这个预设，删除后这些卡改用全局的预设。` : undefined} />}
     </div>
   );
 }
@@ -691,7 +732,7 @@ function WorldsPage() {
   const back = GLOBAL_TAB_LABELS.worlds;
   const scopes = currentBookScopes();
   const viaChat = [...scopes.character, ...scopes.chat].filter((n) => !scopes.global.has(n));
-  // 「选择」时只留下面的列表（useOrganize）
+  // 「管理」时只留下面的列表（useOrganize）
   const org = organizing.value === 'world';
   return (
     <div class="rbt-page">
@@ -704,11 +745,10 @@ function WorldsPage() {
       <div class={`rbt-page-cols ${org ? 'one' : ''}`}>
         {!org && (
           <div class="rbt-page-group">
-            <Section title="全局世界书" hint="对所有卡生效。只给某张卡用的，最好绑到那张卡上">
+            <Section title="全局世界书" hint="所有角色的聊天均会加载全局世界书。只给某张卡用的，建议关联到那张卡。" actions={<AddGlobalWorld />}>
               <GlobalWorldList />
               {personaOn.map((i) => <ItemRow key={i.id} item={i} />)}
-              <AddGlobalWorld />
-              {viaChat.length > 0 && <small class="rbt-muted">现在的聊天还通过角色卡加载了：{viaChat.join('、')}。</small>}
+              {viaChat.length > 0 && <small class="rbt-muted">当前聊天通过角色卡或存档加载的世界书：{viaChat.join('、')}</small>}
             </Section>
             <Section title="设置">
               <CheckRow label="自动导入卡里的世界书" detail="打开一张卡时，如果它自带的世界书还没导入，就自动导入并绑定。不会覆盖已有的同名世界书。" checked={auto} onChange={(x) => { settings().autoImportWorld = x; saveSettings(); setAuto(x); }} />
@@ -716,23 +756,22 @@ function WorldsPage() {
           </div>
         )}
         <div class="rbt-page-group">
-          <h2 class="rbt-page-group-title">全部世界书</h2>
-          <SeriesList
+          <FolderList
             kind="world"
             names={names}
+            title="世界书库"
             back={back}
-            restTitle="世界书"
-            sub={(n) => { const v = sourceFor('world', n); const cs = cardsOf(ov.byWorld.get(n)); return [v.author && `作者 ${v.author}`, cs ? `绑定：${cs}` : '未绑定角色', v.version && `版本 ${v.version}`].filter(Boolean).join(' · '); }}
+            sub={(n) => { const v = sourceFor('world', n); const cs = cardsOf(ov.byWorld.get(n)); return [v.author && `作者 ${v.author}`, cs ? `关联角色卡：${cs}` : '未关联角色卡', v.version && `版本 ${v.version}`].filter(Boolean).join(' · '); }}
             filters={[
               { label: '全部', test: () => true },
-              { label: '已绑定角色', test: (n) => ov.byWorld.has(n) },
-              { label: '未绑定角色', test: (n) => !ov.byWorld.has(n) },
+              { label: '已关联', test: (n) => ov.byWorld.has(n) },
+              { label: '未关联', test: (n) => !ov.byWorld.has(n) },
             ]}
             defaultFilter={2}
-            deleteNote={(list) => { const used = list.filter((n) => ov.byWorld.has(n)); return used.length ? `这些世界书还绑在角色卡上：${used.map((n) => `「${n}」（${cardsOf(ov.byWorld.get(n))}）`).join('、')}。删除后那些卡会找不到它。` : ''; }}
+            deleteNote={(list) => { const used = list.filter((n) => ov.byWorld.has(n)); return used.length ? `这些世界书有关联角色卡：${used.map((n) => `「${n}」（${cardsOf(ov.byWorld.get(n))}）`).join('、')}。删除后，这些角色的聊天将无法加载它们。` : ''; }}
             trail={(n) => (
               <>
-                {scopes.global.has(n) && <Tag>全局开着</Tag>}
+                {scopes.global.has(n) && <Tag>全局</Tag>}
                 <AvatarStack cards={ov.byWorld.get(n) ?? []} />
               </>
             )}
@@ -746,6 +785,7 @@ function WorldsPage() {
 function WorldDetail({ name }: { name: string }) {
   void archiveVersion.value;
   const ov = overview();
+  const cards = ov.byWorld.get(name) ?? [];
   // 真正的全局：正在聊的卡单独停用的也算开着，改了离开这张卡后生效
   const on = trueGlobalWorlds().includes(name);
   const [busy, setBusy] = useState(false);
@@ -754,29 +794,20 @@ function WorldDetail({ name }: { name: string }) {
     try { await setGlobal(`w:${name}`, v); } finally { setBusy(false); refreshEnv(); }
   };
   return (
-    <div class="rbt-page">
-      <div class="rbt-detail-head">
-        <h2>{name}</h2>
-        <button type="button" class="rbt-btn rbt-btn-small" onClick={() => openWorldInST(name)}>在世界书里打开 <i class="fa-solid fa-arrow-up-right-from-square" /></button>
-      </div>
-      <div class="rbt-page-cols">
-        <div class="rbt-page-group">
-          <SourceSection kind="world" id={name} />
-          <VersionSection kind="world" id={name} />
-        </div>
-        <div class="rbt-page-group">
-          <Section title="用到它的卡" hint="绑在这些卡上，玩它们时自动加载">
-            <CardRows cards={ov.byWorld.get(name) ?? []} back={name} empty="没绑在任何卡上。" />
-          </Section>
-          <Section title="全局">
-            <div class="rbt-switch-row">
-              <div class="rbt-switch-text"><span>作为全局世界书打开</span><small>打开后对所有卡生效。</small></div>
-              {busy ? <small class="rbt-muted">…</small> : <Toggle checked={on} onChange={toggle} />}
-            </div>
-          </Section>
-        </div>
-      </div>
-      <DeleteOne kind="world" name={name} note={ov.byWorld.get(name)?.length ? `还绑在 ${cardsOf(ov.byWorld.get(name))} 上，删除后那些卡会找不到它。` : undefined} />
+    <div class="rbt-page rbt-card-page">
+      <DetailHead title={name} tags={on ? <Tag>全局</Tag> : undefined}
+        actions={<>
+          {on
+            ? <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => void toggle(false)}>取消全局</button>
+            : <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={() => void toggle(true)}>设为全局世界书</button>}
+          <button type="button" class="rbt-btn rbt-btn-small" onClick={() => openWorldInST(name)}>编辑世界书 <i class="fa-solid fa-arrow-up-right-from-square" /></button>
+        </>}
+        note={on ? '全局世界书：所有角色的聊天均会加载它。' : undefined} />
+      <NotesSection kind="world" id={name} />
+      <BoundCards title="关联角色卡" hint="与以下角色聊天时，自动加载此世界书。" cards={cards} back={name} empty="还没有关联的角色卡。" removeText="解除关联" note="手动关联"
+        fixed={(avatar) => (cards.find((c) => c.avatar === avatar)?.world.name === name ? '角色卡绑定 · 在角色档案中管理' : null)}
+        onAdd={(c) => attachBook(c.avatar, name)} onRemove={(c) => detachBook(c.avatar, name)} />
+      <DeleteOne kind="world" name={name} note={cards.length ? `关联角色卡：${cardsOf(cards)}。删除后，这些角色的聊天将无法加载它。` : undefined} />
     </div>
   );
 }
@@ -793,28 +824,25 @@ function RegexPage() {
   const presetRx = presetNames().map((p) => ({ p, n: presetRegexCount(p) })).filter((x) => x.n > 0);
   const cur = currentPresetName();
   const back = GLOBAL_TAB_LABELS.regex;
-  // 「选择」时只留全局正则的列表（useOrganize）
+  // 「管理」时只留全局正则的列表（useOrganize）
   const org = organizing.value === 'regex';
   return (
     <ScopePage id="regex" nowLabel={`全局 ${regex.length}`} presetCount={presetRx.length} cardCount={cardRx.length} focus={org}
       now={
-        <Section title="全局正则" hint="对所有卡生效">
-          <GlobalRegexList items={regex} />
-          {!org && <div class="rbt-row"><button type="button" class="rbt-btn" onClick={() => openRegexManager()}>新建、编辑或导入正则 <i class="fa-solid fa-arrow-up-right-from-square" /></button></div>}
-        </Section>
+        <GlobalRegexList items={regex} footer={<div class="rbt-row"><button type="button" class="rbt-btn" onClick={() => openRegexManager()}>新建、编辑或导入正则 <i class="fa-solid fa-arrow-up-right-from-square" /></button></div>} />
       }
       presets={
-        <Section title="带正则的预设" hint="只在用这个预设时生效">
-          {presetRx.map(({ p, n }) => <NavRow key={p} title={p} sub={`${n} 条正则`} trailing={p === cur ? <Tag tone="accent">正在用</Tag> : undefined} onClick={() => openDetail({ kind: 'preset', name: p }, back)} />)}
-          {!presetRx.length && <small class="rbt-muted">没有。</small>}
+        <Section title="含正则的预设" hint="使用此预设时应用">
+          {presetRx.map(({ p, n }) => <NavRow key={p} title={p} sub={`${n} 条正则`} trailing={p === cur ? <Tag tone="accent">正在用</Tag> : undefined} onClick={() => openDetail({ kind: 'preset', name: p }, back, '预设自带正则')} />)}
+          {!presetRx.length && <small class="rbt-muted">暂无含正则的预设。</small>}
         </Section>
       }
       cards={
-        <Section title="带正则的卡" hint="只对那张卡生效">
+        <Section title="含正则的角色卡" hint="与对应角色聊天时应用">
           {cardRx.map((c) => (
-            <NavRow key={c.avatar} img={thumbnailUrl(c.avatar)} title={c.name} sub={`${c.regex.total} 条正则`} trailing={!c.regex.allowed ? <Tag tone="bad">未允许运行</Tag> : undefined} onClick={() => openDetail({ kind: 'card', avatar: c.avatar }, back)} />
+            <NavRow key={c.avatar} img={thumbnailUrl(c.avatar)} title={c.name} sub={`${c.regex.total} 条正则`} trailing={!c.regex.allowed ? <Tag tone="bad">未允许运行</Tag> : undefined} onClick={() => openDetail({ kind: 'card', avatar: c.avatar }, back, '正则')} />
           ))}
-          {!cardRx.length && <small class="rbt-muted">没有。</small>}
+          {!cardRx.length && <small class="rbt-muted">暂无含正则的角色卡。</small>}
         </Section>
       }
     />
@@ -826,10 +854,10 @@ function RegexPage() {
 function PluginsPage() {
   return (
     <div class="rbt-page">
-      <Section title="安装插件" hint="粘贴插件的 Git 链接，用酒馆自己的安装流程">
+      <Section title="安装插件" hint="粘贴插件仓库链接，由酒馆安装。">
         <InstallPlugin />
       </Section>
-      <Section title="已安装" hint="对所有卡生效；点名字看作者和链接">
+      <Section title="已安装">
         <PluginList />
       </Section>
     </div>
@@ -858,21 +886,21 @@ function BackupPage() {
       <div class="rbt-page-cols">
         <div class="rbt-page-group">
           <Section title="导出和导入">
-            <small class="rbt-muted">你在工具箱里填的东西——卡的来源和说明、每张卡本卡专用的设置、正则归属，以及预设、世界书和插件的来源——都和酒馆设置存在一起。换电脑或想留个底时，可以导出成一个文件。</small>
+            <small class="rbt-muted">导出工具箱设置，用于备份或换电脑。文件包含角色卡来源、说明、专用设置，以及预设、世界书和插件的备注。</small>
             <div class="rbt-row">
               <button type="button" class="rbt-btn rbt-btn-primary" onClick={() => exportArchive()}>导出</button>
               <button type="button" class="rbt-btn" onClick={() => pickFile('merge')}>导入并合并</button>
               <button type="button" class="rbt-btn" onClick={() => pickFile('overwrite')}>导入并覆盖</button>
               <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={onFile} />
             </div>
-            <small class="rbt-muted">合并：同一样东西留下较新的那份。覆盖：全部换成文件里的。</small>
+            <small class="rbt-muted">合并：同一条记录保留较新的版本。覆盖：全部换成文件里的内容。</small>
           </Section>
           {ov.orphans.length > 0 && (
-            <Section title="找不到卡的档案" hint="卡可能被删了，或重新导入后换了文件名">
+            <Section title="未匹配角色卡的档案" hint="角色卡可能已删除，或重新导入后文件名变了。">
               {ov.orphans.map((o) => (
                 <div key={o.avatar} class="rbt-link-row">
                   <span>「{o.cardName}」</span>
-                  {o.candidates.map((c) => <button key={c} type="button" class="rbt-btn rbt-btn-small" onClick={() => relink(o.avatar, c)}>转给「{c}」</button>)}
+                  {o.candidates.map((c) => <button key={c} type="button" class="rbt-btn rbt-btn-small" onClick={() => relink(o.avatar, c)}>关联至「{c}」</button>)}
                   <button type="button" class="rbt-btn rbt-btn-small rbt-push" onClick={async () => { if (await confirmText(`删除「${o.cardName}」的档案？`, '这张卡的来源、说明和本卡专用的设置都会删除。', '删除')) dropRecord(o.avatar); }}>删除</button>
                 </div>
               ))}
@@ -930,7 +958,8 @@ function ChatWidthRow() {
     <>
       <div class="rbt-frow">
         <span class="rbt-frow-k">阅读宽度</span>
-        <input type="range" min={25} max={100} step={1} value={v} aria-label="阅读宽度（屏幕宽度的百分比）"
+        {/* 有的美化给滑条画填充色，长度看滑条身上写的 background-size（酒馆自己的滑条会写）：这里也写上，填充和圆点才对得上 */}
+        <input type="range" min={25} max={100} step={1} value={v} aria-label="阅读宽度（屏幕宽度的百分比）" style={{ backgroundSize: `${((v - 25) / 75) * 100}% 100%` }}
           onInput={(e) => setV(Number((e.currentTarget as HTMLInputElement).value))}
           onChange={(e) => setStChatWidth(Number((e.currentTarget as HTMLInputElement).value))} />
         <span class="rbt-frow-k">{v}%</span>
@@ -945,10 +974,9 @@ function ChatWidthRow() {
 function QuoteColorRow() {
   const look = (lookId.value === 'light' || lookId.value === 'warm' ? lookId.value : 'dark') as LookKind;
   const cur = quoteId.value;
-  const label = QUOTE_COLORS.find((q) => q.id === cur)?.label ?? '不上色';
   return (
     <div class="rbt-look-accents rbt-quote-row">
-      <small>对白颜色 · {label}</small>
+      <small>对白颜色</small>
       <button type="button" class={`rbt-accent-dot rbt-quote-none ${cur ? '' : 'on'}`} title="不上色" aria-label="不上色" aria-pressed={!cur} onClick={() => setQuoteColor(null)} />
       {QUOTE_COLORS.map((q) => (
         <button key={q.id} type="button" class={`rbt-accent-dot ${cur === q.id ? 'on' : ''}`} title={q.label} aria-label={q.label} aria-pressed={cur === q.id} style={{ '--c': q[look] }} onClick={() => setQuoteColor(q.id)} />
@@ -969,12 +997,12 @@ function LooksPage() {
   const back = GLOBAL_TAB_LABELS.looks;
   const [open, setOpen] = useState(false);
   const curLook = LOOKS.find((l) => l.id === lookId.value) ?? LOOKS[0];
-  // 「选择」时只留「别人做的美化」的列表（useOrganize）
+  // 「管理」时只留「别人做的美化」的列表（useOrganize）
   const org = organizing.value === 'theme';
   // 所有美化都在这一个选择框里换：红鸟适配美化的三套在前（推荐），别人做的美化在后
   const options: Opt[] = [
     ...LOOKS.map((l) => ({ key: `rbt:${l.id}`, title: l.label, sub: l.desc, group: `${LOOK_NAME}（推荐）`, selected: builtIn && lookId.value === l.id, onPick: () => { setOpen(false); void useBuiltInLook(l.id); } })),
-    ...list.map((t) => ({ key: t.name, title: t.name, sub: themeHasCss(t) ? '带自定义样式' : '只换颜色', group: '别人做的美化', trail: <Swatches t={t} />, selected: !builtIn && cur === t.name, onPick: () => { setOpen(false); void useStTheme(t.name); } })),
+    ...list.map((t) => ({ key: t.name, title: t.name, sub: themeHasCss(t) ? '含自定义样式' : '仅配色', group: '其他美化', trail: <Swatches t={t} />, selected: !builtIn && cur === t.name, onPick: () => { setOpen(false); void useStTheme(t.name); } })),
   ];
   return (
     <div class="rbt-page">
@@ -983,7 +1011,7 @@ function LooksPage() {
           <div class="rbt-page-group">
             {/* 左边是全局：现在用哪套（选择框）和这一套能调的。右边是美化库：红鸟适配美化一块、别人做的美化一块 */}
             <Section title="全局美化" hint="没设美化的卡都用它">
-              <PickRow k="美化" value={builtIn ? curLook.label : (cur || '酒馆默认')} sub={builtIn ? LOOK_NAME : '别人做的美化'}
+              <PickRow k="美化" value={builtIn ? curLook.label : (cur || '酒馆默认')} sub={builtIn ? LOOK_NAME : '其他美化'}
                 pill={!builtIn && curTheme ? <Swatches t={curTheme} /> : undefined}
                 open={open} onToggle={() => setOpen(!open)} onClose={() => setOpen(false)} options={options} />
               {builtIn ? (
@@ -1012,38 +1040,32 @@ function LooksPage() {
                   <small class="rbt-muted">{LOOK_COPY.othersRisk}{LOOK_COPY.noAdapt}</small>
                 </>
               )}
+              {/* 手机沉浸阅读对所有美化都生效，算全局美化的一项 */}
+              {shellOn.value && <CheckRow label={LOOK_COPY.mesLayoutLabel} detail={LOOK_COPY.mesLayoutDesc} checked={mesLayoutOn.value} onChange={setMesLayout} />}
             </Section>
-            {shellOn.value && (
-              <Section title="手机">
-                <CheckRow label={LOOK_COPY.mesLayoutLabel} detail={LOOK_COPY.mesLayoutDesc} checked={mesLayoutOn.value} onChange={setMesLayout} />
-              </Section>
-            )}
           </div>
         )}
-        {/* 「别人做的美化」标题上面故意多留一点空（ui-audit 不查这一栏的间距） */}
-        <div class="rbt-page-group" data-lint-spacing="ok">
-          {!org && <h2 class="rbt-page-group-title">美化库</h2>}
-          {!org && (
-            <Section title={LOOK_NAME} tag={<span class="rbt-tag rbt-tag-rec">推荐</span>} hint={LOOK_COPY.libPitch}>
-              <div class="rbt-lookcards">{LOOKS.map((l) => <LookCard key={l.id} l={l} />)}</div>
-            </Section>
-          )}
-          {/* 别人做的美化：标题直接放在页面上，下面的系列一组一张卡（和世界书、预设的列表一样）；不再套在一张卡里，免得卡里套卡 */}
-          <div class="rbt-card-section-head rbt-lib-head">
-            <h3 class="rbt-card-section-title">别人做的美化</h3>
-            {!org && <p class="rbt-card-section-hint">{LOOK_COPY.libOthers}</p>}
-          </div>
-          {themesLoading.value && !list.length ? <small class="rbt-muted">读取中…</small> : (
-            <SeriesList
+        {/* 美化库：一张卡片。最上面红鸟适配美化（推荐，三张预览图），下面其他美化（文件夹、管理）。管理时只留其他美化 */}
+        <div class="rbt-page-group">
+          <Section title="美化库" lintSpacing="ok">
+            {!org && (
+              <Section sub title={LOOK_NAME} tag={<span class="rbt-tag rbt-tag-rec">推荐</span>} hint={LOOK_COPY.libPitch}>
+                <div class="rbt-lookcards">{LOOKS.map((l) => <LookCard key={l.id} l={l} />)}</div>
+              </Section>
+            )}
+            {themesLoading.value && !list.length ? <Section sub title="其他美化"><small class="rbt-muted">读取中…</small></Section> : (
+            <FolderList
+              embed
               kind="theme"
               names={list.map((t) => t.name)}
+              title="其他美化"
+              hint={LOOK_COPY.libOthers}
               back={back}
-              restTitle="美化"
               sub={(n) => {
                 const t = list.find((x) => x.name === n);
                 const v = sourceFor('theme', n);
                 const used = ov.byTheme.get(n)?.length;
-                return [v.author && `作者 ${v.author}`, themeHasCss(t) ? '带自定义样式' : '只换颜色', v.version && `版本 ${v.version}`, used && `${used} 张卡在用`].filter(Boolean).join(' · ');
+                return [v.author && `作者 ${v.author}`, themeHasCss(t) ? '含自定义样式' : '仅配色', v.version && `版本 ${v.version}`, used && `${used} 张角色卡专用`].filter(Boolean).join(' · ');
               }}
               trail={(n) => {
                 const t = list.find((x) => x.name === n);
@@ -1051,10 +1073,54 @@ function LooksPage() {
               }}
               locked={(n) => (n === cur ? '正在用这套美化' : null)}
             />
-          )}
+            )}
+          </Section>
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * 美化的预览图：玩家自己上传的一张截图，存在酒馆的 user/files 里，路径记在这个美化的备注里。
+ * 换一张时删掉旧的那张文件，移除时也删。
+ */
+function PreviewSection({ name }: { name: string }) {
+  void sourcesTick.value;
+  const cur = sourceFor('theme', name).preview;
+  const [busy, setBusy] = useState(false);
+  const drop = (path: string) => fetch('/api/files/delete', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({ path }) }).catch(() => undefined);
+  const upload = async () => {
+    const input = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/png,image/jpeg,image/webp,image/gif' });
+    const file = await new Promise<File | null>((resolve) => {
+      input.addEventListener('change', () => resolve(input.files?.[0] ?? null), { once: true });
+      input.addEventListener('cancel', () => resolve(null), { once: true });
+      input.click();
+    });
+    if (!file) return;
+    setBusy(true);
+    try {
+      const data = await new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result).split(',')[1] ?? ''); r.onerror = () => reject(r.error); r.readAsDataURL(file); });
+      const ext = (file.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+      const res = await fetch('/api/files/upload', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({ name: `rbt-look-preview-${Date.now().toString(36)}.${ext}`, data }) });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const { path } = await res.json();
+      if (cur) void drop(cur);
+      updateSource('theme', name, { preview: String(path) });
+    } catch (e) {
+      toast('error', `没能上传「${name}」的预览图。请换一张图片再试。（${(e as Error).message}）`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = () => { void drop(cur); updateSource('theme', name, { preview: '' }); };
+  return (
+    <Section title="预览图" actions={<>
+      <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={() => void upload()}>{busy ? '正在上传…' : cur ? '更换预览图' : '上传预览图'}</button>
+      {cur && <button type="button" class="rbt-btn rbt-btn-small" disabled={busy} onClick={remove}>移除</button>}
+    </>}>
+      {cur ? <img class="rbt-look-preview" src={cur} alt={`「${name}」的预览图`} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /> : <small class="rbt-muted">暂无预览图。可上传这套美化的截图，方便记住它的样子。</small>}
+    </Section>
   );
 }
 
@@ -1068,36 +1134,30 @@ function ThemeDetail({ name }: { name: string }) {
   const [busy, setBusy] = useState(false);
   const css = t?.custom_css?.trim() ?? '';
   const colors: [string, string | undefined][] = t ? [
-    ['面板底色', t.blur_tint_color], ['聊天底色', t.chat_tint_color], ['正文', t.main_text_color], ['斜体（动作、旁白）', t.italics_text_color], ['引号里的话', t.quote_text_color],
+    ['面板底色', t.blur_tint_color], ['聊天底色', t.chat_tint_color], ['正文', t.main_text_color], ['斜体（动作、旁白）', t.italics_text_color], ['对白', t.quote_text_color],
   ] : [];
   return (
-    <div class="rbt-page">
-      <div class="rbt-detail-head">
-        <h2>{name}</h2>
-        {inUse ? <Tag tone="accent">正在用</Tag> : t && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={async () => { setBusy(true); try { await useStTheme(name); } finally { setBusy(false); } }}>换成这个</button>}
-      </div>
+    <div class="rbt-page rbt-card-page">
+      <DetailHead title={name} tags={inUse ? <Tag tone="accent">正在用</Tag> : undefined}
+        note={lookOn.value && t ? LOOK_COPY.willTurnOff : undefined}
+        actions={t ? <>
+          {!inUse && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={async () => { setBusy(true); try { await useStTheme(name); } finally { setBusy(false); } }}>设为全局美化</button>}
+          <button type="button" class="rbt-btn rbt-btn-small" title="在酒馆的「用户设置」里改颜色和自定义样式" onClick={() => openDrawer('settings')}>编辑美化 <i class="fa-solid fa-arrow-up-right-from-square" /></button>
+        </> : undefined} />
       {!t && !themesLoading.value && <div class="rbt-warn">找不到这个美化，可能被删除了。</div>}
-      {lookOn.value && t && <small class="rbt-muted">{LOOK_COPY.willTurnOff}</small>}
-      <div class="rbt-page-cols">
-        <div class="rbt-page-group">
-          {t && (
-            <Section title="样子" hint={css ? `带自定义样式（约 ${Math.max(1, Math.round(css.length / 1024))} KB），会改酒馆的排版和细节` : '只换颜色，不改排版'}>
-              <div class="rbt-theme-colors">
-                {colors.filter(([, c]) => !!c).map(([label, c]) => (
-                  <div key={label} class="rbt-theme-color"><i style={{ background: c }} /><span>{label}</span></div>
-                ))}
-              </div>
-            </Section>
-          )}
-          <SourceSection kind="theme" id={name} />
-        </div>
-        <div class="rbt-page-group">
-          <Section title="用这个美化的卡" hint="和这些卡聊天时，整个界面换成这个美化">
-            <CardRows cards={users} back={name} empty="还没有卡用它。在角色档案的「美化」里设置。" />
-          </Section>
-          <VersionSection kind="theme" id={name} />
-        </div>
-      </div>
+      <NotesSection kind="theme" id={name} />
+      {t && (
+        <Section title="颜色" hint={css ? '含自定义样式，可能影响排版。' : '仅配色，不影响排版。'}>
+          <div class="rbt-theme-colors">
+            {colors.filter(([, c]) => !!c).map(([label, c]) => (
+              <div key={label} class="rbt-theme-color"><i style={{ background: c }} /><span>{label}</span></div>
+            ))}
+          </div>
+        </Section>
+      )}
+      <PreviewSection name={name} />
+      <BoundCards title="专用角色卡" hint="与以下角色聊天时，自动切换至此美化。" cards={users} back={name} empty="暂无专用角色卡。"
+        onAdd={(c) => setCardTheme(c.avatar, c.name, name)} onRemove={(c) => setCardTheme(c.avatar, c.name, null)} />
       {t && <DeleteOne kind="theme" name={name} locked={name === cur ? '正在用这套美化' : null} note={users.length ? `有 ${users.length} 张卡用这个美化，删除后和它们聊天时会用全局美化。` : undefined} />}
     </div>
   );
@@ -1107,8 +1167,9 @@ function ThemeDetail({ name }: { name: string }) {
 
 function DetailBody() {
   const e = currentDetail()!;
+  // data-rbt-detail：从别处点进来要滚到的那一块，只在这里面找（见 useFocusSection）
   return (
-    <>
+    <div class="rbt-detail-body" data-rbt-detail>
       <button type="button" class="rbt-back" onClick={goBack}><i class="fa-solid fa-chevron-left" /> {e.back}</button>
       {e.d.kind === 'card' && <CardPage avatar={e.d.avatar} embedded />}
       {e.d.kind === 'preset' && <PresetDetail name={e.d.name} />}
@@ -1117,7 +1178,7 @@ function DetailBody() {
       {e.d.kind === 'bindings' && <BindingsDetail avatar={e.d.avatar} />}
       {e.d.kind === 'persona' && <PersonaDetail key={e.d.id} id={e.d.id} />}
       {e.d.kind === 'persona-new' && <PersonaNew forCard={e.d.forCard} forChat={e.d.forChat} />}
-    </>
+    </div>
   );
 }
 
@@ -1280,22 +1341,25 @@ function InstallPlugin() {
   );
 }
 
-/** 预设详情：推荐模型，以及预设文件里自己带的连接（「预设绑定连接」开着时换过去会生效）。 */
-function PresetModelSection({ name, isCurrent }: { name: string; isCurrent: boolean }) {
+/** 推荐模型：和角色档案里选模型一样，列出现在连着的 API 的模型，列表里没有的手动填写。 */
+function PresetModelSection({ name }: { name: string }) {
   void sourcesTick.value;
-  const own = presetConnection(name);
+  const [open, setOpen] = useState(false);
+  if (!modelsApply()) return null;
+  const value = settings().presetInfo[name]?.model;
   const cur = currentModel();
-  const bound = presetBindsConnection();
+  const own = presetConnection(name);
+  const set = (m: ModelChoice | null) => { setOpen(false); updateSource('preset', name, { model: m ?? undefined }); };
   return (
-    <Section title="推荐模型" hint="用这个预设、又没设专用模型的卡，会用这个模型">
-      <ModelPicker value={settings().presetInfo[name]?.model} onChange={(m) => updateSource('preset', name, { model: m ?? undefined })} offerSwitch={isCurrent} />
-      {own && (
-        <div class={bound && cur && own.source !== cur.source ? 'rbt-warn' : 'rbt-hint'}>
-          这个预设文件自己带着连接：{own.model ? modelLabel(own) : SOURCE_LABEL[own.source] ?? own.source}。
-          {bound
-            ? own.source !== cur?.source ? ' 酒馆开着「将预设与 API 配置绑定」，换到这个预设时 API 也会跟着换。' : ' 酒馆开着「将预设与 API 配置绑定」，换到这个预设时会用它带的模型（设了推荐模型的话，会再换成推荐的）。'
-            : ' 酒馆没开「将预设与 API 配置绑定」，所以换预设不会改 API 和模型。'}
-        </div>
+    <Section title="推荐模型" hint="用这个预设时自动换成这个模型">
+      <PickRow k="模型" value={value ? value.model : '不指定'} sub={value ? SOURCE_LABEL[value.source] ?? value.source : undefined}
+        open={open} onToggle={() => setOpen(!open)} onClose={() => setOpen(false)}
+        top={<MenuOpt title="不指定" sub="换到这个预设时不换模型" selected={!value} onPick={() => set(null)} />}
+        head={cur ? `${SOURCE_LABEL[cur.source] ?? cur.source} 的模型` : undefined}
+        options={cur ? stModelList(cur.source).map((o) => ({ key: o.id, title: o.label, selected: !!value && value.source === cur.source && value.model === o.id, onPick: () => set({ source: cur.source, model: o.id }) })) : []}
+        bottom={<><MenuHead>列表里没有，手动填写</MenuHead><ModelForm initial={value ?? cur ?? undefined} onUse={set} /></>} />
+      {own && presetBindsConnection() && cur && own.source !== cur.source && (
+        <div class="rbt-warn">预设内置 API 配置：{own.model ? modelLabel(own) : SOURCE_LABEL[own.source] ?? own.source}。酒馆已启用「将预设与 API 配置绑定」，切换到此预设时 API 配置也会切换。</div>
       )}
     </Section>
   );

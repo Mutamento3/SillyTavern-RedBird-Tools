@@ -37,7 +37,7 @@ function loadedGroups(): { label: string; books: string[] }[] {
   return [
     { label: '这张卡', books: [...s.character] },
     { label: '这个聊天', books: [...s.chat] },
-    { label: 'user 人设', books: [...s.persona] },
+    { label: '用户人设', books: [...s.persona] },
     { label: '全局', books: [...s.global] },
   ].filter((g) => g.books.length);
 }

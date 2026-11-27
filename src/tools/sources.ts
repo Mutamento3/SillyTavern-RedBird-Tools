@@ -43,6 +43,8 @@ export interface SourceView {
   version: string;
   versionIsAuto: boolean;
   notes: string;
+  /** Looks: uploaded screenshot (user/files path), or ''. */
+  preview: string;
 }
 
 export function sourceFor(kind: SourceKind, key: string): SourceView {
@@ -54,7 +56,7 @@ export function sourceFor(kind: SourceKind, key: string): SourceView {
   const autoVer = kind === 'plugin' ? '' : versionFromName(key);
   return {
     author: rec?.author?.trim() || auto.author, autoAuthor: auto.author, autoLinks, links,
-    series: rec?.series?.trim() ?? '', version: rec?.version?.trim() || autoVer, versionIsAuto: !rec?.version?.trim() && !!autoVer, notes: rec?.notes ?? '',
+    series: rec?.series?.trim() ?? '', version: rec?.version?.trim() || autoVer, versionIsAuto: !rec?.version?.trim() && !!autoVer, notes: rec?.notes ?? '', preview: rec?.preview ?? '',
   };
 }
 
@@ -66,7 +68,7 @@ export function updateSource(kind: SourceKind, key: string, patch: Partial<Omit<
   const all = store(kind);
   const cur = all[key] ?? { author: '', links: [], updatedAt: '' };
   const next = { ...cur, ...patch, updatedAt: new Date().toISOString() };
-  if (!next.author.trim() && !next.links.length && !next.series?.trim() && !next.version?.trim() && !next.notes?.trim() && !next.model) { delete all[key]; markDeleted(SECTION[kind], key); }
+  if (!next.author.trim() && !next.links.length && !next.series?.trim() && !next.version?.trim() && !next.notes?.trim() && !next.model && !next.preview) { delete all[key]; markDeleted(SECTION[kind], key); }
   else all[key] = next;
   saveSettings();
   sourcesTick.value++;
@@ -165,7 +167,3 @@ export function renameSeries(kind: SourceKind, from: string, to: string): void {
   if (names.length) setSeries(kind, names, to.trim());
 }
 
-/** Every series name in use for this kind, for the input suggestions. */
-export function allSeries(kind: SourceKind): string[] {
-  return [...new Set(Object.values(store(kind)).map((r) => r.series?.trim()).filter((x): x is string => !!x))].sort();
-}

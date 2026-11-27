@@ -19,7 +19,7 @@ import { bindPersona, boundPersonas, personaTick, unbindPersona, watchPersonas }
 import { createPersona, lockChatPersona, personaDesc, personaIds, personaLabel, personaName, personaThumb, personaTitle } from '../../st/personas';
 import { shortSaveName } from '../../shell/recent';
 import { editRegex } from './GlobalPage';
-import { GLOBAL_TAB_LABELS, openDetail, openGlobal, type Detail } from '../views';
+import { GLOBAL_TAB_LABELS, openDetail, openGlobal, useFocusSection, type Detail } from '../views';
 import { Toggle } from '../common';
 
 // --------------------------------------------------------------- bits ---
@@ -129,7 +129,7 @@ export function MenuOpt({ title, sub, lead, trail, selected, disabled, onPick }:
     </button>
   );
 }
-const MenuHead = ({ children }: { children: ComponentChildren }) => <div class="rbt-menu-head">{children}</div>;
+export const MenuHead = ({ children }: { children: ComponentChildren }) => <div class="rbt-menu-head">{children}</div>;
 const MenuLine = () => <div class="rbt-menu-line" />;
 /** 菜单里的一个动作（不是选项）：左边灰色图标。 */
 function MenuAct({ icon, title, sub, onPick }: { icon: string; title: string; sub?: string; onPick: () => void }) {
@@ -158,10 +158,12 @@ export function PanelBtn({ label, onClick }: { label: string; onClick: () => voi
 export function FoldSection({ title, summary, tone, action, defaultOpen = false, children }: {
   title: string; summary?: string; tone?: 'ok' | 'warn' | 'dim'; action?: ComponentChildren; defaultOpen?: boolean; children?: ComponentChildren;
 }) {
+  const ref = useRef<HTMLElement>(null);
   const [open, setOpen] = useState(defaultOpen);
+  useFocusSection(title, ref, () => setOpen(true));
   const can = !!children;
   return (
-    <section class="rbt-card-section rbt-setup rbt-fold">
+    <section ref={ref} class="rbt-card-section rbt-setup rbt-fold">
       <div class={`rbt-fold-head ${can ? 'can' : ''}`} role={can ? 'button' : undefined} tabIndex={can ? 0 : undefined} aria-expanded={can ? open : undefined}
         onClick={() => can && setOpen(!open)} onKeyDown={(e) => { if (can && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setOpen(!open); } }}>
         <h3 class="rbt-card-section-title">{title}</h3>
@@ -258,7 +260,7 @@ export function PresetModelSection({ info }: { info: CardInfo }) {
         head={`${info.name}专用`}
         options={names.map((n) => ({ key: n, title: n, selected: own === n, onPick: () => run({ k: 'preset', value: n }, () => setCardItem(info.avatar, info.name, 'preset', n)) }))}
         bottom={<>
-          {preset && names.includes(preset) && <MenuFoot inside label={`「${preset}」的作者和链接`} onClick={() => { close(); openGlobal('presets'); openDetail({ kind: 'preset', name: preset }, GLOBAL_TAB_LABELS.presets); }} />}
+          {preset && names.includes(preset) && <MenuFoot inside label={`「${preset}」的详情`} onClick={() => { close(); openGlobal('presets'); openDetail({ kind: 'preset', name: preset }, GLOBAL_TAB_LABELS.presets); }} />}
           <MenuFoot label="预设设置" onClick={() => { close(); openDrawer('preset'); }} />
         </>} />
       {p?.preset && p.preset.api === api && !names.includes(p.preset.name) && <div class="rbt-pick-hint warn">这张卡专用的「{p.preset.name}」已经删掉了，现在用全局的。</div>}
@@ -287,7 +289,7 @@ export function PresetModelSection({ info }: { info: CardInfo }) {
 }
 
 /** 模型没有列表可选：选服务、填模型名。 */
-function ModelForm({ initial, onUse }: { initial?: ModelChoice; onUse: (m: ModelChoice) => void }) {
+export function ModelForm({ initial, onUse }: { initial?: ModelChoice; onUse: (m: ModelChoice) => void }) {
   const [source, setSource] = useState(initial?.source ?? 'openrouter');
   const [name, setName] = useState(initial?.model ?? '');
   const sources = Object.keys(SOURCE_LABEL);
@@ -384,7 +386,7 @@ export function PersonaSetupSection({ info }: { info: CardInfo }) {
     });
   };
   return (
-    <FoldSection title="user 人设" summary={cur ? personaLabel(cur) : '没有人设'} defaultOpen action={<PanelBtn label="人设设置" onClick={() => openDrawer('persona')} />}>
+    <FoldSection title="用户人设" summary={cur ? personaLabel(cur) : '没有人设'} defaultOpen action={<PanelBtn label="人设设置" onClick={() => openDrawer('persona')} />}>
       <PickRow k="人设" value={cur ? personaName(cur) : '没有人设'} sub={cur ? personaTitle(cur) || undefined : undefined} lead={cur ? personaThumb(cur) : undefined}
         pill={<Pill kind={kind} img={thumbnailUrl(info.avatar)} />} open={open === 'p'} onToggle={openMenu} onClose={close}
         above={live && <div class="rbt-menu-scope">

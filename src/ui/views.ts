@@ -6,6 +6,7 @@
  * - 在全局工具箱里点一张卡 / 一个预设 / 一本世界书：就地打开详情，带「‹ 返回」，不跳到别处。
  */
 import { signal } from '@preact/signals';
+import { useEffect } from 'preact/hooks';
 
 export type ViewId = 'flow' | 'vars' | 'card' | 'global';
 export type GlobalTab = 'cards' | 'presets' | 'personas' | 'worlds' | 'regex' | 'scripts' | 'plugins' | 'looks' | 'backup';
@@ -92,7 +93,14 @@ export function openView(view: ViewId): void {
   openInDock(view);
 }
 
+/**
+ * 打开详情时要滚到哪一块（那一块的标题，比如「正则」「预设自带正则」）：那一块自己滚过去、闪一下，然后清掉。
+ * 从「正则」「脚本」标签右边那块点进来时用，不然进去还得自己找。
+ */
+export const focusSection = signal<string | null>(null);
+
 export function closeSheet(): void {
+  focusSection.value = null;
   sheetOpen.value = false;
   detailStack.value = [];
 }
@@ -115,11 +123,35 @@ export function currentDetail(): DetailEntry | null {
   return st[st.length - 1] ?? null;
 }
 
+
 /** `back` names where 「‹」 returns to, e.g. the tab name or the previous detail title. */
-export function openDetail(d: Detail, back: string): void {
+export function openDetail(d: Detail, back: string, focus?: string): void {
+  focusSection.value = focus ?? null;
   detailStack.value = [...detailStack.value, { d, back }];
 }
 
+/**
+ * 一块的标题是要滚到的那一块，而且它在刚打开的详情页里（data-rbt-detail）：滚过去、闪一下；收起的那块先展开（onHit）。
+ * 聊天工具箱里同名的「正则」「脚本」不算，免得旁边那栏也跟着跳。
+ */
+export function useFocusSection(title: string, ref: { current: HTMLElement | null }, onHit?: () => void): void {
+  const want = focusSection.value;
+  useEffect(() => {
+    if (want !== title || !ref.current?.closest('[data-rbt-detail]')) return;
+    focusSection.value = null;
+    onHit?.();
+    // 等展开、排好版再滚
+    setTimeout(() => {
+      const el = ref.current;
+      if (!el) return;
+      el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      el.classList.add('rbt-flash');
+      setTimeout(() => el.classList.remove('rbt-flash'), 1800);
+    }, 120);
+  }, [want]);
+}
+
 export function goBack(): void {
+  focusSection.value = null;
   detailStack.value = detailStack.value.slice(0, -1);
 }

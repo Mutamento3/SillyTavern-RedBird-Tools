@@ -199,6 +199,12 @@ export async function confirmText(title: string, text: string, ok: string, cance
   return !!(await ctx().Popup?.show?.confirm?.(escHtml(title), escHtml(text), { okButton: ok, cancelButton: cancel }));
 }
 
+/** 让玩家填一行字（用酒馆自己的输入框弹窗）。取消返回 null，填的字去掉首尾空格。 */
+export async function askText(title: string, value: string, ok: string): Promise<string | null> {
+  const r = await ctx().Popup?.show?.input?.(escHtml(title), '', value, { okButton: ok, cancelButton: '取消' });
+  return typeof r === 'string' ? r.trim() : null;
+}
+
 /**
  * Whether Tavern Helper (酒馆助手) runs this character's own scripts. TH ≤4.3 keyed the list by
  * character name; TH 4.12 keys it by avatar file name (e.g. "回响之城.png"). Accept both.
