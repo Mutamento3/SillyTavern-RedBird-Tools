@@ -4,7 +4,7 @@
  */
 import type { ComponentChildren } from 'preact';
 import { matchSearch } from '../../core/text';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { isPhone } from '../Menu';
 import { APP_NAME, ctx, loaded, settings, toast, type Any } from '../../st/st';
@@ -68,7 +68,7 @@ export function PickRow({ k, title, placeholder, value, sub, lead, pill, thumb, 
 }
 
 /** 点一个按钮（children）弹出的选择框，PickRow、「＋ 附加世界书」、首页的排序和筛选共用。 */
-export function Popup({ title, placeholder, open, onClose, above, top, head, options, bottom, wide, cls, children }: {
+export function Popup({ title, placeholder, open, onClose, above, top, head, options, bottom, wide, cls, fixed, children }: {
   title: string; placeholder?: string; open: boolean; onClose: () => void;
   /** 标题下面、不跟着列表滚动的一块（比如人设的「本卡 | 本存档」） */
   above?: ComponentChildren;
@@ -77,6 +77,8 @@ export function Popup({ title, placeholder, open, onClose, above, top, head, opt
   wide?: boolean;
   /** 外层再加的 class（各处自己定选择框在电脑上的位置和宽度） */
   cls?: string;
+  /** 电脑上按屏幕位置贴着按钮弹出：按钮在会滚动、会裁切的框里（比如角色表）时用，不然选择框会被框裁掉。外面一滚动就关掉 */
+  fixed?: boolean;
   children: ComponentChildren;
 }) {
   const [q, setQ] = useState('');
@@ -85,14 +87,27 @@ export function Popup({ title, placeholder, open, onClose, above, top, head, opt
   useEffect(() => {
     if (!open) { setQ(''); return; }
     // 电脑上选择框往下展开，按钮在面板底部时会被面板挡住一截：把面板滚到能看全
-    if (!isPhone()) sheetRef.current?.scrollIntoView({ block: 'nearest' });
+    if (!isPhone() && !fixed) sheetRef.current?.scrollIntoView({ block: 'nearest' });
+    const scroll = (e: Event) => { if (!sheetRef.current?.contains(e.target as Node)) onClose(); };
+    if (fixed && !isPhone()) window.addEventListener('scroll', scroll, true);
     // 手机上点外面是点到遮罩上，遮罩自己会关（这里再关，那一下点击会落到下面的按钮上）
     const away = (e: PointerEvent) => { const t = e.target as Node; if (!isPhone() && !ref.current?.contains(t) && !sheetRef.current?.contains(t)) onClose(); };
     // Esc 只关这个选择框，不要连带关掉外面的全局工具箱或酒馆面板
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
     document.addEventListener('pointerdown', away, true);
     document.addEventListener('keydown', esc, true);
-    return () => { document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc, true); };
+    return () => { document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc, true); window.removeEventListener('scroll', scroll, true); };
+  }, [open]);
+  // fixed：贴着按钮左下角；下面放不下就放到按钮上面。全局工具箱的窗口带 transform，fixed 是相对窗口算的：先放上去，量一下差多少再挪
+  useLayoutEffect(() => {
+    const m = sheetRef.current, b = ref.current?.getBoundingClientRect();
+    if (!open || !fixed || !m || !b || isPhone()) return;
+    const h = m.offsetHeight;
+    const top = window.innerHeight - b.bottom < h + 12 && b.top > window.innerHeight - b.bottom ? b.top - 4 - h : b.bottom + 4;
+    Object.assign(m.style, { position: 'fixed', top: `${top}px`, left: `${b.left}px`, right: 'auto', width: '320px' });
+    const r = m.getBoundingClientRect();
+    m.style.top = `${top + (top - r.top)}px`;
+    m.style.left = `${b.left + (b.left - r.left)}px`;
   }, [open]);
   // 手机上从底部弹出：放到页面最外层（工具箱面板里的 fixed 会被面板裁掉）
   const sheet = (node: ComponentChildren) => (isPhone() ? createPortal(<div class="rbt-scope rbt-menu-portal">{node}</div>, document.body) : node);

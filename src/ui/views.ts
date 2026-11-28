@@ -18,7 +18,7 @@ export const VIEW_LABELS: Record<ViewId, string> = {
   global: '全局工具箱',
 };
 
-export const GLOBAL_TABS: GlobalTab[] = ['cards', 'presets', 'personas', 'worlds', 'regex', 'scripts', 'plugins', 'looks', 'backup'];
+export const GLOBAL_TABS: GlobalTab[] = ['cards', 'presets', 'personas', 'worlds', 'regex', 'looks', 'plugins', 'scripts', 'backup'];
 export const GLOBAL_TAB_LABELS: Record<GlobalTab, string> = {
   cards: '角色',
   presets: '预设',

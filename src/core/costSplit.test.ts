@@ -21,6 +21,12 @@ describe('sentParts', () => {
       { part: 'chat', tokens: 140, cached: 0 },
     ]);
   });
+  it('rounded parts still add up to the API count', () => {
+    const ms = [msg(0, 'aaa', [['preset', 'Main', 1]]), msg(1, 'bbb', [['wi_global', '书', 1]]), msg(2, 'ccc', [['chat_char', '聊天', 1]])];
+    const parts = sentParts(ms, 19000, 3100);
+    expect(parts.reduce((n, p) => n + p.tokens, 0)).toBe(19000);
+    expect(parts.reduce((n, p) => n + p.cached, 0)).toBe(3100);
+  });
 });
 
 const usage = (o: Partial<ReplyUsage> = {}): ReplyUsage => ({ model: 'm', input: 1000, cached: 200, output: 300, reasoning: 100, cost: null, ...o });

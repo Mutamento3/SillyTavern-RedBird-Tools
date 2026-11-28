@@ -88,7 +88,7 @@ const GEN_LABELS: Record<string, string> = {
   regenerate: '重新生成',
   continue: '继续',
   impersonate: '扮演用户',
-  quiet: '后台生成',
+  quiet: '插件后台调用',
   preview: '预览',
   ask_command: '/ask',
 };

@@ -22,8 +22,9 @@
   --rbd-bg2-hover: color-mix(in srgb, var(--SmartThemeBodyColor) 12%, transparent);
   --rbd-bg3: color-mix(in srgb, var(--SmartThemeBodyColor) 8%, transparent);
   --rbd-text1: var(--SmartThemeBodyColor);
-  --rbd-text2: color-mix(in srgb, var(--SmartThemeBodyColor) 66%, transparent);
-  --rbd-text3: color-mix(in srgb, var(--SmartThemeBodyColor) 45%, transparent);
+  /* 灰字有多深：look.ts 按这套主题的底色算，保证至少 4.5:1 */
+  --rbd-text2: color-mix(in srgb, var(--SmartThemeBodyColor) var(--rbt-t2, 66%), transparent);
+  --rbd-text3: color-mix(in srgb, var(--SmartThemeBodyColor) var(--rbt-t3, 45%), transparent);
   --rbd-hairline: color-mix(in srgb, var(--SmartThemeBodyColor) 10%, transparent);
   --rbd-line: color-mix(in srgb, var(--SmartThemeBodyColor) 15%, transparent);
   /* 唯一强调色：当前 / 焦点 / 可操作。脚本会把它写在 <html> 上 */
@@ -58,7 +59,8 @@
 }
 
 /* 工具箱自带的美化，三套：深色（默认）/ 浅色 / 护眼。
-   深色：底色越往上越亮；浅色和护眼：底色是纸，卡片比纸更白。文字三级，线很淡。 */
+   深色：底色越往上越亮；浅色和护眼：底色是纸，卡片比纸更白。文字三级，线很淡。
+   两级灰字在聊天区、面板、卡片三种底色上都至少 4.5:1（WCAG 小字的标准），所以浅色、护眼的灰比看起来该有的深。 */
 html.rbt-look {
   color-scheme: dark;
   --rbd-canvas: #161618;     /* 聊天区 */
@@ -67,8 +69,8 @@ html.rbt-look {
   --rbd-bg2-hover: #343439;
   --rbd-bg3: rgba(118, 118, 128, 0.16);  /* 输入框：半透明填充，放在哪层上都比那层亮一点 */
   --rbd-text1: #ececf1;
-  --rbd-text2: rgba(235, 235, 245, 0.64);
-  --rbd-text3: rgba(235, 235, 245, 0.4);
+  --rbd-text2: rgba(235, 235, 245, 0.7);
+  --rbd-text3: rgba(235, 235, 245, 0.54);
   --rbd-hairline: rgba(255, 255, 255, 0.07);
   --rbd-line: rgba(255, 255, 255, 0.1);
   --rbd-user-tint: rgba(255, 255, 255, 0.022);
@@ -86,8 +88,8 @@ html.rbt-look.rbt-look-light {
   --rbd-bg2-hover: #f6f5f2;
   --rbd-bg3: rgba(118, 118, 128, 0.12);
   --rbd-text1: #1d1d1f;
-  --rbd-text2: rgba(60, 60, 67, 0.72);
-  --rbd-text3: rgba(60, 60, 67, 0.46);
+  --rbd-text2: rgba(60, 60, 67, 0.86);
+  --rbd-text3: rgba(60, 60, 67, 0.74);
   --rbd-hairline: rgba(0, 0, 0, 0.08);
   --rbd-line: rgba(0, 0, 0, 0.12);
   --rbd-user-tint: rgba(0, 0, 0, 0.02);
@@ -110,8 +112,8 @@ html.rbt-look.rbt-look-warm {
   --rbd-bg2-hover: #f3ebd6;
   --rbd-bg3: rgba(91, 70, 40, 0.1);
   --rbd-text1: #3b2f22;
-  --rbd-text2: rgba(59, 47, 34, 0.72);
-  --rbd-text3: rgba(59, 47, 34, 0.48);
+  --rbd-text2: rgba(59, 47, 34, 0.86);
+  --rbd-text3: rgba(59, 47, 34, 0.72);
   --rbd-hairline: rgba(59, 47, 34, 0.1);
   --rbd-line: rgba(59, 47, 34, 0.16);
   --rbd-user-tint: rgba(91, 70, 40, 0.04);
@@ -169,8 +171,8 @@ html.rbt-look.rbt-has-bg #bg1::after { content: ''; position: absolute; inset: 0
 html.rbt-look.rbt-has-bg #chat {
   color-scheme: dark;
   --rbd-text1: #ececf1;
-  --rbd-text2: rgba(235, 235, 245, 0.64);
-  --rbd-text3: rgba(235, 235, 245, 0.4);
+  --rbd-text2: rgba(235, 235, 245, 0.7);
+  --rbd-text3: rgba(235, 235, 245, 0.54);
   --rbd-hairline: rgba(255, 255, 255, 0.07);
   --rbd-line: rgba(255, 255, 255, 0.1);
   --rbd-user-tint: rgba(255, 255, 255, 0.022);
@@ -580,8 +582,8 @@ body.rbt-nav-ink-light .rbt-nav { --rbt-ink: 236, 236, 241; }
 :is(body.rbt-nav-ink-dark, body.rbt-nav-ink-light) .rbt-nav {
   --SmartThemeBodyColor: rgb(var(--rbt-ink));
   --rbd-text1: rgb(var(--rbt-ink));
-  --rbd-text2: rgba(var(--rbt-ink), 0.66);
-  --rbd-text3: rgba(var(--rbt-ink), 0.45);
+  --rbd-text2: color-mix(in srgb, rgb(var(--rbt-ink)) var(--rbt-t2, 66%), transparent);
+  --rbd-text3: color-mix(in srgb, rgb(var(--rbt-ink)) var(--rbt-t3, 45%), transparent);
   --rbd-hairline: rgba(var(--rbt-ink), 0.08);
   --rbd-bg2: rgba(var(--rbt-ink), 0.05);
   --rbd-bg2-hover: rgba(var(--rbt-ink), 0.09);

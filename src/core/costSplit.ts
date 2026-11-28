@@ -44,7 +44,14 @@ export function sentParts(messages: AttributedMessage[], input: number | null, c
     a.cached += c;
     acc.set(part, a);
   }
-  return [...acc.values()].map((a) => ({ part: a.part, tokens: Math.round(a.tokens), cached: Math.round(a.cached) }));
+  const out = [...acc.values()].map((a) => ({ part: a.part, tokens: Math.round(a.tokens), cached: Math.round(a.cached) }));
+  // 各项分别取整后加起来会差一两个：差的补到最大的那项上，表里的合计才和接口给的数一样
+  if (out.length) {
+    const big = out.reduce((a, b) => (b.tokens > a.tokens ? b : a));
+    big.tokens += Math.round(est * scale) - out.reduce((n, p) => n + p.tokens, 0);
+    big.cached += Math.round((cached ?? 0) - left) - out.reduce((n, p) => n + p.cached, 0);
+  }
+  return out;
 }
 
 /** 每个 token 多少美元。cacheRead：走缓存的价格（没有 = 和发送一样）。 */

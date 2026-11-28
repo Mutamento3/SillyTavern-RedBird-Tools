@@ -60,7 +60,7 @@ function VarRow({ r, sources }: { r: Row; sources: TextSource[] | null }) {
         <span class="rbt-vrow-value">{removed ? '已删除' : formatValue(r.value, open ? 2000 : 80)}</span>
       </button>
       {ch && !removed && (
-        <div class="rbt-vrow-was">{ch.kind === 'added' ? '这一轮新加的' : <>原来 {formatValue(ch.before, 80)}</>}</div>
+        <div class="rbt-vrow-was">{ch.kind === 'added' ? '本轮新加的' : <>原来 {formatValue(ch.before, 80)}</>}</div>
       )}
       {removed && <div class="rbt-vrow-was">原来 {formatValue(ch!.before, 80)}</div>}
       {open && (
@@ -160,7 +160,7 @@ export function VarsView() {
           <span class="rbt-vhead-count">跟踪 <b>{leaves.length}</b> 个变量</span>
           <span class="rbt-vhead-sub">
             {current.prev
-              ? nChanged ? <>这一轮变了 <b class="rbt-accent">{nChanged}</b> 个</> : '这一轮没有变化'
+              ? nChanged ? <>本轮变了 <b class="rbt-accent">{nChanged}</b> 个</> : '本轮没有变化'
               : '这是初始值'}
           </span>
           <select class="text_pole rbt-select rbt-vfloor" value={current.floor.index} title="看某一楼当时的变量" onChange={(e) => setSelected(Number((e.currentTarget as HTMLSelectElement).value))}>

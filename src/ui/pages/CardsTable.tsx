@@ -4,26 +4,29 @@
  * 数据都是现成的：推荐预设 / 模型 / 美化 / 全局世界书 / 全局正则在 settings().profiles 里（工具箱自己记的），
  * 人设是酒馆自己的「连接」（power_user.persona_descriptions[id].connections）。
  *
- * - 电脑：一张表，每项一个小块，点 ✕ 解绑，8 秒内可以撤销。行末 ⋯：打开角色档案 / 改回全局。
- * - 手机：列表，每张卡两行灰字；点进去是整页（BindingsDetail），每项一个「解绑」。
+ * - 电脑：一张表，每项一个小块，点 ✕ 解绑，8 秒内可以撤销。预设、模型、人设、美化空着时点「＋ 选…」直接设。行末 ⋯：打开角色档案 / 改回全局。
+ *   表格自己滚动、高度不超过窗口，横向滚动条一直在窗口底部；「角色」列和 ⋯ 列固定不动。
+ * - 手机：列表，每张卡两行灰字；点进去是整页（BindingsDetail），每项一个「取消专用」，空着的预设、模型、人设、美化可以选。
  *
  * 「—」= 不换（保持换卡前的）。例外直接写出来：模型用预设推荐的、人设用酒馆的默认人设、美化用全局美化。
  */
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { matchSearch } from '../../core/text';
 import { allCharacters, apiLabel, archiveVersion, presetApi, presetNames, setCardTheme, thumbnailUrl } from '../../tools/cards/cards';
 import { profileOf, regexName, revertCard, setCardItem } from '../../tools/env/setup';
-import { loadThemes, stThemes, themesLoading } from '../../look/look';
+import { loadThemes, LOOKS, stThemes, themesLoading } from '../../look/look';
 import { cardLookTick, lookLabel, RBT_LOOK } from '../../look/cardLook';
 import { envReport } from '../../tools/env/env';
-import { modelLabel, type ModelChoice } from '../../tools/model';
-import { APP_NAME, ctx, currentCharacter, settings, toast, type Any, type EnvProfile } from '../../st/st';
+import { currentModel, modelLabel, modelsApply, stModelList, type ModelChoice } from '../../tools/model';
+import { APP_NAME, ctx, currentCharacter, loaded, settings, toast, type Any, type EnvProfile } from '../../st/st';
 import { undoable } from '../undo';
-import { personaLabel } from '../../st/personas';
+import { personaIds, personaLabel, personaName, personaThumb, personaTitle } from '../../st/personas';
+import { LOOK_NAME } from '../copy';
 import { Empty, NavRow, Tag } from '../common';
 import { isPhone, MoreMenu } from '../Menu';
 import { GLOBAL_TAB_LABELS, openDetail } from '../views';
 import { bindPersona, boundPersonas, personaTick, unbindPersona, watchPersonas } from './parts';
+import { MenuHead, ModelForm, Popup, type Opt } from './setupParts';
 
 const EMPTY_NOTE = '「—」表示无专用设置';
 const COL = { preset: '预设', model: '模型', persona: '用户人设', theme: '美化', worlds: '全局世界书', regex: '全局正则' } as const;
@@ -131,6 +134,51 @@ async function unbindAll(r: Row): Promise<void> {
   });
 }
 
+// ------------------------------------------------------------ 直接设专用预设 / 模型 ---
+
+type PickKey = 'preset' | 'model' | 'persona' | 'theme';
+const PICK_LABEL: Record<PickKey, string> = { preset: '选预设', model: '选模型', persona: '选人设', theme: '选美化' };
+
+/** 设好了说一声：不在聊的卡只是记下来，下次进这张卡才换。 */
+async function bindItem(r: Row, k: PickKey, value: string | ModelChoice, label: string): Promise<void> {
+  let now = r.isCurrent;
+  if (k === 'persona') {
+    bindPersona(String(value), r.avatar);
+    // 正在聊的卡马上换上；这段聊天锁定了别的人设就不换（和角色档案一样）
+    if (now && !ctx().chatMetadata?.persona) await loaded.personas?.setUserAvatar?.(String(value));
+    else now = false;
+  } else if (k === 'theme') setCardTheme(r.avatar, r.name, String(value));
+  else await setCardItem(r.avatar, r.name, k, value);
+  const what = k === 'persona' ? COL.persona : `专用${COL[k]}`;
+  toast('success', `已把「${r.name}」的${what}设为「${label}」。${now ? '现在已经换上。' : '下次进这张卡时换上。'}`, APP_NAME);
+}
+
+function pickOptions(k: PickKey, source: string, pick: (v: string | ModelChoice, label: string) => void): Opt[] {
+  if (k === 'preset') return presetNames().map((n) => ({ key: n, title: n, onPick: () => pick(n, n) }));
+  if (k === 'model') return stModelList(source).map((o) => ({ key: o.id, title: o.label, onPick: () => pick({ source, model: o.id }, o.id) }));
+  if (k === 'persona') return personaIds().map((id) => ({ key: id, title: personaName(id), sub: personaTitle(id) || undefined, lead: personaThumb(id), onPick: () => pick(id, personaName(id)) }));
+  return [
+    ...LOOKS.map((l) => ({ key: `${RBT_LOOK}${l.id}`, title: `${LOOK_NAME} · ${l.label}`, sub: l.desc, onPick: () => pick(`${RBT_LOOK}${l.id}`, `${LOOK_NAME} · ${l.label}`) })),
+    ...stThemes.value.map((t) => ({ key: t.name, title: t.name, onPick: () => pick(t.name, t.name) })),
+  ];
+}
+
+/** 空着的格子里的「＋ 选预设」「＋ 选模型」「＋ 选人设」「＋ 选美化」：点了弹出选择框（电脑贴着按钮，手机从底部弹出）。 */
+function AddPick({ r, k, big }: { r: Row; k: PickKey; big?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const close = () => setOpen(false);
+  const pick = (value: string | ModelChoice, label: string) => { close(); void bindItem(r, k, value, label); };
+  const source = currentModel()?.source ?? String(ctx().chatCompletionSettings?.chat_completion_source ?? '');
+  return (
+    <Popup title={`「${r.name}」的${k === 'persona' ? COL.persona : `专用${COL[k]}`}`} open={open} onClose={close} options={open ? pickOptions(k, source, pick) : []} fixed cls="rbt-ct-addpick"
+      bottom={k === 'model' ? <><MenuHead>列表里没有，手动填写</MenuHead><ModelForm initial={{ source, model: '' }} onUse={(m) => pick(m, m.model)} /></> : undefined}>
+      <button type="button" class={big ? 'rbt-btn rbt-btn-small' : 'rbt-ct-add'} aria-expanded={open} aria-haspopup="listbox" onClick={() => setOpen(!open)}>
+        <i class="fa-solid fa-plus" aria-hidden="true" /> {PICK_LABEL[k]}
+      </button>
+    </Popup>
+  );
+}
+
 // ------------------------------------------------------------ 小块 ---
 
 function Pill({ text, onRemove, tone, sub, full }: { text: string; onRemove?: () => void; tone?: 'warn'; sub?: string; full?: string }) {
@@ -163,7 +211,7 @@ function ListCell({ r, k }: { r: Row; k: ListKey }) {
 
 function PresetCell({ r }: { r: Row }) {
   const p = r.profile?.preset;
-  if (!p) return <Dash />;
+  if (!p) return <AddPick r={r} k="preset" />;
   if (r.presetMissing) return <Pill text={p.name} tone="warn" sub="预设不可用，保留当前预设。" onRemove={() => unbindPreset(r)} />;
   if (r.presetOtherApi) return <Pill text={p.name} sub={`预设适用于「${apiLabel(p.api)}」，当前接口不匹配。`} onRemove={() => unbindPreset(r)} />;
   return <Pill text={p.name} onRemove={() => unbindPreset(r)} />;
@@ -172,20 +220,22 @@ function PresetCell({ r }: { r: Row }) {
 function ModelCell({ r }: { r: Row }) {
   // 表里只写模型名（API 名太长），鼠标移上去看全称
   if (r.profile?.model) return <Pill text={r.profile.model.model} full={modelLabel(r.profile.model)} onRemove={() => unbindModel(r)} />;
-  if (r.modelFromPreset) return <Soft text={r.modelFromPreset.model} sub="用预设推荐的" />;
-  return <Dash />;
+  const add = modelsApply() ? <AddPick r={r} k="model" /> : null;
+  if (r.modelFromPreset) return <span class="rbt-ct-pills"><Soft text={r.modelFromPreset.model} sub="用预设推荐的" />{add}</span>;
+  return add ?? <Dash />;
 }
 
 function PersonaCell({ r }: { r: Row }) {
   if (r.personas.length) return <span class="rbt-ct-pills">{r.personas.map((p) => <Pill key={p.id} text={p.name} onRemove={() => unbindPersonaUndo(r, p.id, p.name)} />)}</span>;
-  if (r.defaultPersona) return <Soft text={r.defaultPersona} sub="全局人设" />;
-  return <Dash />;
+  const add = <AddPick r={r} k="persona" />;
+  if (r.defaultPersona) return <span class="rbt-ct-pills"><Soft text={r.defaultPersona} sub="全局人设" />{add}</span>;
+  return add;
 }
 
 function ThemeCell({ r }: { r: Row }) {
   const t = r.profile?.theme;
   // 没设美化不是「保持换卡前的」，而是用全局美化，直接写出来
-  if (!t) return <span class="rbt-ct-soft">全局美化</span>;
+  if (!t) return <span class="rbt-ct-pills"><span class="rbt-ct-soft">全局美化</span><AddPick r={r} k="theme" /></span>;
   return <Pill text={lookLabel(t)} tone={r.themeMissing ? 'warn' : undefined} sub={themeNote(r)} onRemove={() => unbindTheme(r)} />;
 }
 
@@ -256,9 +306,32 @@ function Who({ r }: { r: Row }) {
   );
 }
 
+/** 表格左右还有没露出来的列：那一边固定的列加一道阴影，提示能横着滚。 */
+function useEdges(): [preact.RefObject<HTMLDivElement>, string, () => void] {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState('');
+  const measure = () => {
+    const el = ref.current;
+    if (!el) return;
+    const left = el.scrollLeft > 2, right = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+    setEdge(`${left ? ' more-left' : ''}${right ? ' more-right' : ''}`);
+  };
+  // 窗口变宽变窄、表格变长变短（筛选、搜索）都要重新量
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, edge, measure];
+}
+
 function DeskTable({ rows }: { rows: Row[] }) {
+  const [ref, edge, measure] = useEdges();
   return (
-    <div class="rbt-ct-scroll">
+    <div ref={ref} class={`rbt-ct-scroll${edge}`} onScroll={measure}>
       <table class="rbt-ct-table">
         <thead>
           <tr class="rbt-ct-group"><th /><th colSpan={6}>专用设置<small>{EMPTY_NOTE}</small></th><th /></tr>
@@ -313,7 +386,7 @@ function PhoneList({ rows }: { rows: Row[] }) {
 
 // ------------------------------------------------------------ 手机：一张卡的整页 ---
 
-function Item({ k, text, sub, tone, onRemove }: { k?: string; text: string; sub?: string; tone?: 'warn'; onRemove?: () => void }) {
+function Item({ k, text, sub, tone, onRemove, add }: { k?: string; text: string; sub?: string; tone?: 'warn'; onRemove?: () => void; add?: preact.ComponentChildren }) {
   return (
     <div class="rbt-ct-item">
       {k && <span class="rbt-ct-item-k">{k}</span>}
@@ -322,6 +395,7 @@ function Item({ k, text, sub, tone, onRemove }: { k?: string; text: string; sub?
         {sub && <small class={tone ? 'rbt-ct-warn' : 'rbt-muted'}>{sub}</small>}
       </span>
       {onRemove && <button type="button" class="rbt-btn rbt-btn-small" onClick={onRemove}>取消专用</button>}
+      {add}
     </div>
   );
 }
@@ -336,21 +410,22 @@ export function BindingsDetail({ avatar }: { avatar: string }) {
     return <>{l.map(([key, text]) => <Item key={key} text={text} onRemove={() => unbindItem(r, k, key, text)} />)}</>;
   };
   return (
-    <div class="rbt-page rbt-ct-detail">
+    // 小标题（专用设置 / 全局世界书 / 全局正则）上面故意多留空，好分组：ui-audit 不查这页的间距
+    <div class="rbt-page rbt-ct-detail" data-lint-spacing="ok">
       <h2 class="rbt-ct-detail-title">{r.name}</h2>
       <div class="rbt-ct-sec">专用设置</div>
       {p?.preset
         ? <Item k={COL.preset} text={p.preset.name} tone={r.presetMissing ? 'warn' : undefined} sub={r.presetMissing ? '预设不可用，保留当前预设。' : r.presetOtherApi ? `预设适用于「${apiLabel(p.preset.api)}」，当前接口不匹配。` : undefined} onRemove={() => unbindPreset(r)} />
-        : <Item k={COL.preset} text="—" />}
+        : <Item k={COL.preset} text="—" add={<AddPick r={r} k="preset" big />} />}
       {p?.model
         ? <Item k={COL.model} text={modelLabel(p.model)} onRemove={() => unbindModel(r)} />
-        : r.modelFromPreset ? <Item k={COL.model} text={modelLabel(r.modelFromPreset)} sub="用预设推荐的" /> : <Item k={COL.model} text="—" />}
+        : <Item k={COL.model} text={r.modelFromPreset ? modelLabel(r.modelFromPreset) : '—'} sub={r.modelFromPreset ? '用预设推荐的' : undefined} add={modelsApply() ? <AddPick r={r} k="model" big /> : undefined} />}
       {r.personas.length
         ? r.personas.map((x) => <Item key={x.id} k={COL.persona} text={x.name} onRemove={() => unbindPersonaUndo(r, x.id, x.name)} />)
-        : r.defaultPersona ? <Item k={COL.persona} text={r.defaultPersona} sub="全局人设" /> : <Item k={COL.persona} text="—" />}
+        : <Item k={COL.persona} text={r.defaultPersona ?? '—'} sub={r.defaultPersona ? '全局人设' : undefined} add={<AddPick r={r} k="persona" big />} />}
       {p?.theme
         ? <Item k={COL.theme} text={lookLabel(p.theme)} tone={r.themeMissing ? 'warn' : undefined} sub={themeNote(r)} onRemove={() => unbindTheme(r)} />
-        : <Item k={COL.theme} text="全局美化" />}
+        : <Item k={COL.theme} text="全局美化" add={<AddPick r={r} k="theme" big />} />}
       <small class="rbt-muted rbt-ct-note">{EMPTY_NOTE}</small>
       <div class="rbt-ct-sec">{COL.worlds}</div>
       {list('worlds')}

@@ -209,7 +209,7 @@ export function ContextChart() {
 
 // ---------------------------------------------------------------- 用时 ---
 
-const PHASE = ['等待回复', '思考', '正文回复'] as const;
+const PHASE = ['等待', '思考', '正文回复'] as const;
 
 /** 整段聊天的用时：每一轮三段（现在显示的这一版）；记录明显不对的不画、不算平均。 */
 export function TimeChart() {
@@ -232,9 +232,9 @@ export function TimeChart() {
       <Bars bars={bars} lines={timeLines} agg="avg" selected={sel} onSelect={setSel}
         detail={(n) => { const t = byFloor.get(n)!.timing!; return (<>
           <b>第 {n} 楼 · {fmtDuration(t.total)}</b>
-          <small>{[`等待回复 ${fmtDuration(t.wait)}`, t.think ? `思考 ${fmtDuration(t.think)}` : '', `正文回复 ${fmtDuration(t.write)}`].filter(Boolean).join(' · ')}</small>
+          <small>{[`等待 ${fmtDuration(t.wait)}`, t.think ? `思考 ${fmtDuration(t.think)}` : '', `正文回复 ${fmtDuration(t.write)}`].filter(Boolean).join(' · ')}</small>
         </>); }} />
-      <Legend items={[[C_WAIT, '等待回复'], [C_THINK, '思考'], [C_REPLY, '正文回复'], [C_HOT, '比平均慢一半以上']]} />
+      <Legend items={[[C_WAIT, '等待'], [C_THINK, '思考'], [C_REPLY, '正文回复'], [C_HOT, '比平均慢一半以上']]} />
       {bad > 0 && <p class="rbt-sec-note">有 {bad} 次的用时记录有误（比如不到 1 秒写了几千 tokens），没算进平均。</p>}
       <Top title="用时最长的 5 次" onSelect={setSel}
         rows={[...floors].sort((a, b) => b.timing!.total - a.timing!.total).slice(0, 5).map((f) => ({ floor: f.floor, value: fmtDuration(f.timing!.total), sub: `最久的是${longest(f)}` }))} />

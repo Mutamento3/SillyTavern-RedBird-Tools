@@ -140,7 +140,7 @@ function WIList({ wi }: { wi: ActivatedWI[] }) {
     for (const e of wi) m.set(e.book, [...(m.get(e.book) ?? []), e]);
     return [...m.entries()];
   }, [wi]);
-  if (!wi.length) return <Empty>这一轮没有触发世界书条目。</Empty>;
+  if (!wi.length) return <Empty>本轮没有触发世界书条目。</Empty>;
   return (
     <div class="rbt-wi">
       {byBook.map(([book, entries]) => (
@@ -271,14 +271,14 @@ export function FlowView() {
       <div class="rbt-flow">
         {/* 刷新以后还没抓到过：「这一轮」那几块等发了消息才有，存档总览照常看 */}
         <div class="rbt-flow-g">
-        <div class="rbt-flow-group">这一轮</div>
+        <div class="rbt-flow-group">本轮</div>
         <section class="rbt-sec">
           {ctx().mainApi === 'openai' ? (
             <>
-              <p class="rbt-sec-note">发一条消息后，这里会显示这一轮的花费、上下文、用时和发给 AI 的内容。也可以先预览下一轮会发什么，不花钱。</p>
+              <p class="rbt-sec-note">发一条消息后，这里会显示本轮的花费、输入和输出。也可以先预览下一轮会发什么，不花钱。</p>
               <div><PreviewButton onDone={() => setSelectedId(null)} /></div>
             </>
-          ) : <p class="rbt-sec-note">这一轮的明细只支持 Chat Completion 接口。</p>}
+          ) : <p class="rbt-sec-note">本轮的明细只支持 Chat Completion 接口。</p>}
         </section>
         </div>
         <WholeChatGroup onOpen={() => go('chat')} />
@@ -322,7 +322,7 @@ export function FlowView() {
       {/* 按多常看排：这一轮（每次都看）→ 存档总览（偶尔看一眼，图在第二层）→ 在聊天里显示（设好就不动）。
           「这一轮」那一组：先选第几楼，下面的提醒、花费、上下文、用时、发给 AI 的内容都只讲选中的这一轮 */}
       <div class="rbt-flow-g">
-      <div class="rbt-flow-group">这一轮</div>
+      <div class="rbt-flow-group">本轮</div>
       <div class="rbt-toolbar">
         <select class="text_pole rbt-select" value={cap.id} onChange={(e) => setSelectedId(Number((e.currentTarget as HTMLSelectElement).value))}>
           {list.map((c) => <option key={c.id} value={c.id}>{roundTitle(c)}</option>)}

@@ -29,7 +29,12 @@ const PART_COLOR: Record<Part, string> = {
 const C_THINK = 'color-mix(in srgb, var(--rbd-accent, #0a84ff) 55%, var(--t1))';
 const C_WRITE = 'var(--rbd-accent, #0a84ff)';
 const C_WAIT = 'color-mix(in srgb, var(--rbd-accent, #0a84ff) 25%, var(--t1))';
-const C_PLUGIN = 'color-mix(in srgb, var(--t1) 45%, transparent)';
+const C_INPUT = 'color-mix(in srgb, var(--t1) 60%, transparent)';
+
+/** 上限条上面一行：左边是设置名和上限，右边是已用多少。 */
+function BarCap({ left, right }: { left: string; right?: string }) {
+  return <div class="rbt-bar-cap"><span>{left}</span>{right && <b>{right}</b>}</div>;
+}
 
 function Sec({ title, right, children }: { title: string; right?: preact.ComponentChildren; children: preact.ComponentChildren }) {
   return (
@@ -40,16 +45,16 @@ function Sec({ title, right, children }: { title: string; right?: preact.Compone
   );
 }
 
-/** text：大字是一句话（比如「AI 看得到第 31–212 楼」），字号小一档 */
-function Big({ value, unit, sub, text }: { value: string; unit?: string; sub?: string; text?: boolean }) {
+/** text：大字是一句话（比如「AI 可见第 31–212 楼」），字号小一档；label：大字上面一行，说这个数算的是什么 */
+function Big({ value, unit, sub, text, label }: { value: string; unit?: string; sub?: string; text?: boolean; label?: string }) {
   return (
     <div class={`rbt-big ${text ? 'text' : ''}`}>
+      {label && <small class="rbt-big-k">{label}</small>}
       <b>{value}{unit && <small>{unit}</small>}</b>
       {sub && <span>{sub}</span>}
     </div>
   );
 }
-
 
 /** 这一轮之前、同一个聊天里最近的一轮（比缓存用）。 */
 export function previousCapture(list: Capture[], cap: Capture): Capture | null {
@@ -123,14 +128,14 @@ function changedText(at: { label: string; category: Category }): { reason: strin
   const tail = '从它开始后面都没用上缓存。';
   const c = at.category;
   if (c.startsWith('wi_')) {
-    return { reason: `世界书「${at.label.replace(/^世界书\s*·\s*/, '')}」这一轮触发的条目和上一轮不同，${tail}`, action: '把这些条目的「位置」改成「按深度 @D」能省钱，但剧情可能会变。', button: ['打开世界书 ↗', () => openDrawer('worldinfo')] };
+    return { reason: `世界书「${at.label.replace(/^世界书\s*·\s*/, '')}」本轮触发的条目和上一轮不同，${tail}`, action: '把这些条目的「位置」改成「按深度 @D」能省钱，但剧情可能会变。', button: ['打开世界书 ↗', () => openDrawer('worldinfo')] };
   }
-  if (c === 'preset') return { reason: `预设条目「${at.label}」这一轮的内容和上一轮不同，${tail}`, action: '把它拖到聊天记录后面能省钱。', button: ['打开预设 ↗', () => openDrawer('preset')] };
-  if (c === 'character' || c === 'persona') return { reason: `${c === 'character' ? '角色卡' : '人设'}的内容这一轮和上一轮不同，${tail}`, action: '可能是用了随机、时间这类宏。' };
-  if (c === 'extension') return { reason: `插件「${at.label}」这一轮插进来的内容和上一轮不同，${tail}`, action: '' };
+  if (c === 'preset') return { reason: `预设条目「${at.label}」本轮的内容和上一轮不同，${tail}`, action: '把它拖到聊天记录后面能省钱。', button: ['打开预设 ↗', () => openDrawer('preset')] };
+  if (c === 'character' || c === 'persona') return { reason: `${c === 'character' ? '角色卡' : '人设'}的内容本轮和上一轮不同，${tail}`, action: '可能是用了随机、时间这类宏。' };
+  if (c === 'extension') return { reason: `插件「${at.label}」本轮插进来的内容和上一轮不同，${tail}`, action: '' };
   const floor = /^#(\d+)/.exec(at.label)?.[1];
   if (floor) return { reason: `第 ${floor} 楼和上一轮不同，可能是改过或删过，${tail}`, action: '' };
-  return { reason: `「${at.label}」这一轮和上一轮不同，${tail}`, action: '' };
+  return { reason: `「${at.label}」本轮和上一轮不同，${tail}`, action: '' };
 }
 
 /**
@@ -178,14 +183,14 @@ export function bannerFor(cap: Capture, brk: CacheBreak | null, prev: Capture | 
   if (on('cut') && u && b?.reply && u.output >= b.reply * 0.98) {
     kind = 'cut';
     title = '回复写到上限，可能被截断了';
-    body = [`回复上限是 ${fmtTokens(b.reply)} tokens。去预设里调高「最大回复长度」，再重新生成。`];
+    body = [`最大回复长度是 ${fmtTokens(b.reply)} Token。在预设里调高「最大回复长度」，再重新生成。`];
     button = ['打开预设 ↗', () => openPresetField('reply')];
   } else if (on('longchat') && sameModel && couldCache && missed && unsent.other.length && f0 != null && f1 != null && f0 > f1) {
     kind = 'longchat';
     note = {
       lead: '最早的楼被挤掉',
       extra: full(Math.max(0, Math.min(p!.input, u!.input) - (u!.cached ?? 0))),
-      reason: '聊天超过了上下文上限，每发一条，最早的一楼就发不进去了，发给 AI 的开头跟着变。',
+      reason: '聊天超过了上下文长度，每发一条，最早的一楼就发不进去了，发给 AI 的开头跟着变。',
       action: '先总结一批旧楼，再一起隐藏，后面几轮就能用上缓存。',
     };
   } else if (on('nocache') && sameModel && stable && u!.cached === 0 && p!.cached === 0 && (gap == null || gap <= 5 * 60_000)) {
@@ -216,8 +221,8 @@ export function bannerFor(cap: Capture, brk: CacheBreak | null, prev: Capture | 
     const pct = Math.round(((u!.input - (u!.cached ?? 0)) / u!.input) * 100);
     const money = note.extra != null && note.extra > 0.001 ? fmtMoney(note.extra) : null;
     title = money
-      ? (note.lead ? `${note.lead}，这一轮多花约 ${money}` : `这一轮多花了约 ${money}`)
-      : (note.lead ? `${note.lead}，约 ${pct}% 没用上缓存` : `这一轮约 ${pct}% 没用上缓存`);
+      ? (note.lead ? `${note.lead}，本轮多花约 ${money}` : `本轮多花了约 ${money}`)
+      : (note.lead ? `${note.lead}，约 ${pct}% 没用上缓存` : `本轮约 ${pct}% 没用上缓存`);
     body = [money ? `约 ${pct}% 的发送内容没用上缓存。` : '没用上缓存的部分按全价算，用上的话便宜很多。', note.reason, note.action].filter(Boolean);
     button = note.button ?? null;
   }
@@ -254,73 +259,121 @@ const CACHE_IS = '每轮发给 AI 的内容，开头大部分和上一轮一样�
 
 // ---------------------------------------------------------------- 花费 ---
 
-function rowName(r: CostRow): string {
-  if (r.kind === 'think') return '思考';
-  if (r.kind === 'write') return '正文回复';
-  if (r.kind === 'plugin') return pluginName(r.key) || '后台请求';
-  return r.key ? PART_NAME[r.key as Part] : '发送';
+/** 插件那一行的灰字：插件后台调用、调用几次、用时、模型。每段整段换行，不从中间断开。 */
+function pluginSub(r: CostRow): preact.ComponentChildren {
+  const s = r.plugin!;
+  const parts = ['插件后台调用', r.key ? '' : '认不出是哪个插件', `${s.count} 次`, s.ms ? `用时 ${sec(s.ms)}` : '', s.model].filter(Boolean);
+  return parts.map((p, i) => <><span key={i} class="rbt-nb">{p}{i < parts.length - 1 ? ' ·' : ''}</span>{' '}</>);
 }
 
-function rowSub(r: CostRow): string {
-  if (r.kind === 'think' || r.kind === 'write') return '写';
-  if (r.kind === 'plugin') {
-    const s = r.plugin!;
-    return [r.key ? '插件' : '认不出是谁发的', `${s.count} 次`, s.ms ? fmtDuration(s.ms) : '', s.model].filter(Boolean).join(' · ');
-  }
-  const c = r.cached;
-  const cache = c <= 0 ? '' : c >= r.tokens * 0.98 ? '都走了缓存' : c >= r.tokens * 0.5 ? '大部分走了缓存' : '一部分走了缓存';
-  return ['发送', cache].filter(Boolean).join(' · ');
-}
+const isOutput = (r: CostRow) => r.kind === 'think' || r.kind === 'write';
+const isInput = (r: CostRow) => !isOutput(r) && r.kind !== 'plugin';
+const sumTokens = (list: CostRow[]) => list.reduce((n, r) => n + r.tokens, 0);
+/** 几行加起来的估算金额（按单价拆的，前面加「约」）；一行都没算出钱就空着。 */
+const sumMoney = (list: CostRow[]) => (list.some((r) => r.money != null) ? `约 ${money(list.reduce((n, r) => n + (r.money ?? 0), 0))}` : '');
+/** 第 i 个插件的颜色：灰色一个比一个浅，和「本条回复」的主题色分开。 */
+const pluginColor = (i: number) => `color-mix(in srgb, var(--t1) ${Math.max(15, 45 - i * 12)}%, transparent)`;
 
-const rowColor = (r: CostRow): string => (r.kind === 'think' ? C_THINK : r.kind === 'write' ? C_WRITE : r.kind === 'plugin' ? C_PLUGIN : r.key ? PART_COLOR[r.key as Part] : PART_COLOR.other);
+/** 花费卡片里的金额：比 fmtMoney 多一位（$1 以下三位），几项加起来能和总数对上。 */
+const decOf = (x: number) => (x >= 1 ? 2 : x >= 0.01 ? 3 : 4);
+const money = (x: number, d = decOf(x)) => `$${x.toFixed(d)}`;
+/** 表里的 Token 写完整数字，输入 + 输出正好等于本条回复。 */
+const fmtInt = (n: number) => Math.round(n).toLocaleString('en-US');
 
-const perM = (x: number) => `$${+(x * 1e6).toPrecision(3)} / 百万 tokens`;
+/** 已用上限的多少：「不到 1%」「21%」。 */
+const usedPct = (n: number, limit: number) => (n / limit < 0.01 ? '不到 1%' : `${Math.round((n / limit) * 100)}%`);
+
+const perM = (x: number) => `$${+(x * 1e6).toPrecision(3)} / 百万 Token`;
 
 function RoundCost({ cap }: { cap: Capture }) {
   void usageTick.value;
   const avg = useChatAverages();
   const u = cap.usage;
   if (cap.genType === 'preview') return <p class="rbt-sec-note">预览不花钱，也不计时。</p>;
-  if (!u || (!u.input && !Object.keys(u.side ?? {}).length)) return <p class="rbt-sec-note">{u ? '接口没给用量，这一轮看不到花费和 tokens。' : '写完后显示。'}</p>;
+  if (!u || (!u.input && !Object.keys(u.side ?? {}).length)) return <p class="rbt-sec-note">{u ? '接口未返回用量，本轮看不到花费和 Token。' : '写完后显示。'}</p>;
   const price = priceFor(u.model);
   const rows = costRows(u, sentParts(cap.result.messages, u.input, u.cached), price);
   const total = u.cost != null ? u.cost + (sideCost(u.side) ?? 0) : null;
   const hasMoney = rows.some((r) => r.money != null);
   const tokens = rows.reduce((n, r) => n + r.tokens, 0);
-  const weight = (r: CostRow) => (hasMoney ? r.money ?? 0 : r.tokens);
-  const sum = rows.reduce((n, r) => n + weight(r), 0) || 1;
   const estimated = rows.some((r) => r.estimated && r.money != null);
   const plugins = rows.some((r) => r.kind === 'plugin');
+  const replyRows = rows.filter((r) => r.kind !== 'plugin');
+
+  // 本条回复的金额：接口返回的准数；接口没给时按单价估的（加「约」）；都没有就空着
+  const replyMoney = u.cost != null ? money(u.cost) : sumMoney(replyRows) || '—';
+  const inRows = rows.filter(isInput), outRows = rows.filter(isOutput);
+  const inTokens = Math.round(sumTokens(inRows)), outTokens = Math.round(sumTokens(outRows));
+  const replyTokens = inTokens + outTokens;
+  const pluginRows = rows.filter((r) => r.kind === 'plugin');
+  const allTokens = replyTokens + pluginRows.reduce((n, r) => n + Math.round(r.tokens), 0);
+  // 总数的位数跟着最细的那一项，$0.034 + $0.069 写成 $0.103，不写 $0.10
+  const totalDec = Math.max(...[total ?? 0, u.cost ?? 0, ...pluginRows.map((r) => r.money ?? 0)].filter((x) => x > 0).map(decOf), 2);
+  // 钱花在哪：比例条画本条回复和每个插件（都是接口返回的准数），下面一行图例写占比和金额。
+  // 只有本条回复时是一整条，不画
+  const split = plugins && u.cost != null && total ? [
+    { name: '本条回复', money: u.cost, color: C_WRITE },
+    ...pluginRows.map((r, i) => ({ name: pluginName(r.key) || '后台请求', money: r.money ?? 0, color: pluginColor(i) })),
+  ] : null;
+  const pctOf = (m: number | null | undefined): string => (total && m != null ? `${Math.round((m / total) * 100)}%` : '');
+  const replyName = cap.targetFloor != null ? `本条回复（第 ${cap.targetFloor} 楼）` : '本条回复';
   return (
     <>
       {total != null
-        ? <Big value={fmtMoney(total)} sub={vsAvg(total, avg.cost, fmtMoney, '比平均贵', '比平均便宜', 0.005)} />
-        : <Big value={fmtTokens(tokens)} unit="tokens" />}
-      <div class="rbt-tbar" role="img" aria-label="钱花在哪">
-        {rows.map((r, i) => <i key={i} style={{ width: `${(weight(r) / sum) * 100}%`, background: rowColor(r) }} />)}
-      </div>
+        ? <Big value={money(total, totalDec)} sub={vsAvg(total, avg.cost, fmtMoney, '比平均贵', '比平均便宜', 0.005)} />
+        : <Big label={`本轮 Token 总用量${plugins ? '（含插件后台调用）' : ''}`} value={fmtInt(tokens)} unit="Token" />}
+      {!hasMoney && u.cost == null && <p class="rbt-sec-note">{U.noMoney}</p>}
+      {split && (
+        <>
+          <div class="rbt-tbar" role="img" aria-label={split.map((p) => `${p.name} ${pctOf(p.money)}`).join('，')}>
+            {split.map((p, i) => <i key={i} style={{ width: pctOf(p.money), background: p.color }} />)}
+          </div>
+          <div class="rbt-legend2">
+            {split.map((p, i) => <span key={i}><i class="rbt-swatch" style={{ background: p.color }} />{p.name} <b>{pctOf(p.money)}（{money(p.money)}）</b></span>)}
+          </div>
+        </>
+      )}
       <div class={`rbt-ctable ${hasMoney ? '' : 'no-money'}`}>
-        <div class="rbt-ctr th"><span>项</span><span>tokens</span>{hasMoney && <span>金额</span>}</div>
-        {rows.map((r, i) => (
-          <div key={i} class="rbt-ctr">
-            <span><i class="rbt-swatch" style={{ background: rowColor(r) }} /><span><b>{rowName(r)}</b><small>{rowSub(r)}</small></span></span>
-            <span>{fmtTokens(r.tokens)}</span>
-            {hasMoney && <span>{r.money == null ? '—' : `${r.estimated ? '约 ' : ''}${fmtMoney(r.money)}`}</span>}
+        <div class="rbt-ctr th"><span>项目</span><span>Token</span>{hasMoney && <span>花费</span>}</div>
+        {/* 本条回复写接口返回的金额，下面是输入、输出的合计；各自的明细在下面「输入」「输出」两张卡片里 */}
+        <div class="rbt-ctr">
+          <span><b>{replyName}</b></span>
+          <span>{fmtInt(replyTokens)}</span>
+          {hasMoney && <span>{replyMoney}</span>}
+        </div>
+        {inRows.length > 0 && (
+          <div class="rbt-ctr sub">
+            <span><span><b>输入</b><small>发给 AI 的内容</small></span></span>
+            <span>{fmtInt(inTokens)}</span>
+            {hasMoney && <span>{sumMoney(inRows)}</span>}
+          </div>
+        )}
+        {outRows.length > 0 && (
+          <div class="rbt-ctr sub">
+            <span><span><b>输出</b><small>AI 生成的思考和正文</small></span></span>
+            <span>{fmtInt(outTokens)}</span>
+            {hasMoney && <span>{sumMoney(outRows)}</span>}
+          </div>
+        )}
+        {pluginRows.map((r, i) => (
+          <div key={`p${i}`} class="rbt-ctr">
+            <span><span><b>{pluginName(r.key) || '后台请求'}</b><small>{pluginSub(r)}</small></span></span>
+            <span>{fmtInt(r.tokens)}</span>
+            {hasMoney && <span>{r.money == null ? '—' : money(r.money)}</span>}
           </div>
         ))}
-        <div class="rbt-ctr sum"><span><b>合计</b></span><span>{fmtTokens(tokens)}</span>{hasMoney && <span><b>{total != null ? fmtMoney(total) : '—'}</b></span>}</div>
+        <div class="rbt-ctr sum"><span><b>合计</b></span><span>{fmtInt(allTokens)}</span>{hasMoney && <span><b>{total != null ? money(total, totalDec) : '—'}</b></span>}</div>
       </div>
       {estimated && price && (
         <div class="rbt-basis">
-          <b>钱是怎么估算的</b>
-          <p>这条回复用的是 {u.model}，按它在 OpenRouter 的价格：</p>
-          <p>发送 {perM(price.prompt)}{price.cacheRead != null ? `，走缓存的 ${perM(price.cacheRead)}` : ''}；写 {perM(price.completion)}。</p>
-          <p>{u.cost != null ? `表里每一项的钱是估算的：接口只给了总数 ${fmtMoney(u.cost)}，这里按上面的单价拆成了几项。` : '表里的钱是估算的：接口没给这条回复花了多少钱，这里按上面的单价算了一下。'}{plugins ? '插件那几行是接口给的准数。' : ''}</p>
+          <b>输入、输出花费估算</b>
+          <p>本条回复用的是 {u.model}，按它在 OpenRouter 的价格：</p>
+          <p>输入 {perM(price.prompt)}{price.cacheRead != null ? `，已缓存的输入 ${perM(price.cacheRead)}` : ''}；输出 {perM(price.completion)}。</p>
+          <p>{u.cost != null ? `表里每一项的钱是估算的：接口只给了总数 ${fmtMoney(u.cost)}，这里按上面的单价拆成了几项。` : '表里的钱是估算的：接口没给本条回复花了多少钱，这里按上面的单价算了一下。'}{plugins ? '插件那几行是接口返回的准数。' : ''}</p>
         </div>
       )}
-      {!hasMoney && u.cost == null && <p class="rbt-sec-note">{U.noMoney}</p>}
       {!price && u.cost != null && (
-        <p class="rbt-sec-note">接口只给了总数。查不到 {u.model || '这个模型'} 的价格（只有 OpenRouter 查得到），所以分不到每一项。</p>
+        <p class="rbt-sec-note">接口返回了本条回复的总花费。查不到这个模型的单价，无法算出输入、输出各花了多少。</p>
       )}
     </>
   );
@@ -357,7 +410,7 @@ export function WholeChatGroup({ onOpen }: { onOpen: () => void }) {
   if (!floors.length && !isOR) return null;
   const cost = chatCost();
   const times = floors.filter((f) => f.timing?.ok).map((f) => f.timing!.total);
-  const avgTime = times.length ? fmtDuration(times.reduce((a, b) => a + b, 0) / times.length) : '';
+  const avgTime = times.length ? sec(times.reduce((a, b) => a + b, 0) / times.length) : '';
   return (
     <div class="rbt-flow-g">
       <div class="rbt-flow-group">存档总览</div>
@@ -411,11 +464,15 @@ export function ContextSection({ cap, brk, onOpenSent }: { cap: Capture; brk: Ca
   const exact = !!u?.input;
   const used = exact ? u!.input : cap.result.totalTokens;
   const limit = b?.context || 0;
-  const reply = b ? Math.min(b.reply, b.context) : 0;
-  // 上限比这一轮大很多时（比如 2M），按上限画会挤成一条细线：只画发出去的和留给回复的，剩余写在图例里
-  const roomy = !limit || used < limit * 0.4;
-  const scale = roomy ? used + reply || 1 : limit;
-  const pct = (n: number) => `${Math.max(0, Math.min(100, (n / scale) * 100))}%`;
+  const reply = b?.reply || 0;
+  const { sent, unsent } = floorsOf(cap);
+  // 两条：上面一条按上下文长度画（看用了多少、还剩多少）；下面一条只画本轮输入（看由什么组成）。
+  // 只用了 1% 时，上面那条几乎是空的，下面那条照样看得清组成
+  const pct = (n: number) => `${Math.max(0, Math.min(100, (n / (used || 1)) * 100))}%`;
+  // 接口算的 Token 和酒馆算的可能差一点，超过上限时按实际总数画，写「已满」
+  const lpct = (n: number) => `${Math.max(0, Math.min(100, (n / (Math.max(limit, used + reply) || 1)) * 100))}%`;
+  const full = unsent.other.length > 0 || used + reply >= limit * 0.98;
+  const free = Math.max(0, limit - used - reply);
   // 条：按发送顺序，相邻同一类的合成一段
   const pieces = useMemo(() => {
     const out: { part: Part; tokens: number }[] = [];
@@ -437,100 +494,165 @@ export function ContextSection({ cap, brk, onOpenSent }: { cap: Capture; brk: Ca
   const legend = [...totals.entries()].sort((a, c) => c[1] - a[1]);
   // 缓存：接口给了这一项才画（预览时用和上一轮比出来的，写「预计」）
   const cached = u?.cached != null ? u.cached : preview && brk ? brk.same : null;
-  const free = Math.max(0, limit - used - reply);
-  const { sent, unsent } = floorsOf(cap);
-  const first = sent.length ? Math.min(...sent) : null;
-  const last = sent.length ? Math.max(...sent) : null;
-  const chatLen = b?.chatLength ?? (last ?? 0) + 1;
+  const sentFloors = [...new Set(sent)].sort((a, c) => a - c);
   // 酒馆自带的「总结」「向量记忆」插进来的内容有固定标记，认得准；第三方插件靠名字猜不准，不算
   const memory = [...new Set(cap.result.messages.flatMap((m) => m.segments.map((s) => s.label)))]
     .map((l) => ({ '总结（Summarize）': '总结', '向量记忆': '向量记忆' } as Record<string, string>)[l]).find(Boolean);
+  // 表按发送顺序列（和色带一样从左到右），每类一行；聊天记录写上发了哪几楼
+  const order = [...new Set(pieces.map((p) => p.part))];
+  const shown = new Map(order.map((p) => [p, Math.round(totals.get(p) ?? 0)]));
+  if (order.length) {
+    const big = order.reduce((a, c) => ((shown.get(c) ?? 0) > (shown.get(a) ?? 0) ? c : a));
+    shown.set(big, (shown.get(big) ?? 0) + Math.round(used) - [...shown.values()].reduce((n, t) => n + t, 0));
+  }
+  const partName = (p: Part) => (p === 'chat' && sentFloors.length ? `聊天记录（${floorsText(sentFloors)}）` : PART_NAME[p]);
   return (
-    <Sec title="上下文" right={<button type="button" class="rbt-linkbtn" onClick={() => openPresetField('context')}>改上限 ↗</button>}>
-      {/* 大字只写事实：AI 这一轮看得到哪几楼。放不下时不吓人，也不劝人把上限调大 */}
-      {first != null && last != null
-        ? <Big text
-          value={first === 0 && last === chatLen - 1 && !unsent.hidden.length ? `AI 看得到全部 ${chatLen} 楼` : `AI 看得到第 ${first}–${last} 楼`}
-          sub={unsent.other.length ? `${floorsText(unsent.other)}超过上限，这一轮没发给 AI。`
-            : limit ? `上限 ${fmtTokens(limit)}，这一轮${preview ? '预计用 ' : exact ? '用了 ' : '用了约 '}${fmtTokens(used)}` : undefined} />
-        : <Big value={`${exact ? '' : '约 '}${fmtTokens(used)}`} unit="tokens" sub={limit ? `上限 ${fmtTokens(limit)}` : undefined} />}
-      {unsent.other.length > 0 && (
-        <p class="rbt-sec-note">{memory
-          ? `这一轮还发了「${memory}」插进来的内容。`
-          : '想让 AI 记得前面的剧情，可以用总结或记忆插件，或者把上限调大（每一轮会更贵）。'}</p>
+    <Sec title="输入" right={<button type="button" class="rbt-linkbtn" onClick={() => openPresetField('context')}>改上下文长度 ↗</button>}>
+      <Big label={preview ? '预计本轮输入' : '本轮输入'} value={`${exact ? '' : '约 '}${fmtInt(used)}`} unit="Token" />
+      {limit > 0 && (
+        <>
+          <BarCap left={`上下文长度 ${fmtTokens(limit)} Token`} right={full ? '已满' : `已用 ${usedPct(used + reply, limit)}`} />
+          <div class="rbt-tbar rbt-meter" role="img" aria-label={`上下文长度 ${limit} Token，本轮输入 ${used}，留给回复 ${reply}`}>
+            <i style={{ width: lpct(used), background: C_INPUT }} />
+            {reply > 0 && <i class="reserve" style={{ width: lpct(reply) }} />}
+          </div>
+          <div class="rbt-legend2">
+            <span><i class="rbt-swatch" style={{ background: C_INPUT }} />本轮输入 <b>{fmtInt(used)}</b></span>
+            {reply > 0 && <span><i class="rbt-swatch hatch" />留给回复 <b>{fmtInt(reply)}</b></span>}
+            <span><i class="rbt-swatch free" />剩余可用 <b>{free > 0 ? `约 ${fmtTokens(free)}` : '0'}</b></span>
+          </div>
+        </>
       )}
-      <div class={`rbt-cbar ${cached != null ? 'has-cache' : ''}`} role="img" aria-label={`发送约 ${used} tokens`}>
+      {/* 上下文满了：最早的楼不再发送。写清楚是哪几楼、以后会怎样，再画一条楼层条 */}
+      {unsent.other.length > 0 && (
+        <>
+          <p class="rbt-warn-line"><b>上下文已满</b>：{floorsText(unsent.other)}没有发送。每发一条新消息，最早的一楼也不再发送。</p>
+          <FloorStrip total={cap.targetFloor ?? b?.chatLength ?? 0} sent={sentFloors} hidden={unsent.hidden} />
+          <p class="rbt-sec-note">{memory
+            ? `本轮还发了「${memory}」插进来的内容。`
+            : '想让 AI 记得前面的剧情，可以用总结或记忆插件，或者把上下文长度调大（每一轮会更贵）。'}</p>
+        </>
+      )}
+      {unsent.hidden.length > 0 && <p class="rbt-sec-note">{floorsText(unsent.hidden)}已用 /hide 隐藏，本轮未发送。</p>}
+      <BarCap left="本轮输入的组成" right={`${fmtInt(used)} Token`} />
+      <div class={`rbt-cbar ${cached ? 'has-cache' : ''}`} role="img" aria-label={`本轮输入约 ${used} Token`}>
         {pieces.map((p, i) => <i key={i} style={{ width: pct(p.tokens), background: PART_COLOR[p.part] }} />)}
-        {reply > 0 && <i class="reply" style={{ width: pct(reply) }} />}
-        {free > 0 && !roomy && <i class="free" style={{ width: pct(free) }} />}
         {cached != null && cached > 0 && (
-          <span class="rbt-bracket" style={{ width: pct(Math.min(cached, used)) }}><span>{preview ? '预计缓存' : '缓存'} {fmtTokens(cached)}</span></span>
+          <span class="rbt-bracket" style={{ width: pct(Math.min(cached, used)) }}><span>{preview ? `预计可缓存约 ${fmtInt(cached)}` : `已缓存 ${fmtInt(cached)}`}</span></span>
         )}
       </div>
       <div class="rbt-legend2">
-        {legend.map(([part, t]) => <span key={part}><i class="rbt-swatch" style={{ background: PART_COLOR[part] }} />{PART_NAME[part]} <b>{fmtTokens(Math.round(t))}</b></span>)}
-        {reply > 0 && <span><i class="rbt-swatch hatch" />留给回复 <b>{fmtTokens(reply)}</b></span>}
-        {limit > 0 && <span><i class="rbt-swatch free" />剩余 <b>{fmtTokens(free)}</b></span>}
+        {order.map((p) => <span key={p}><i class="rbt-swatch" style={{ background: PART_COLOR[p] }} />{partName(p)} <b>{fmtInt(shown.get(p) ?? 0)}</b></span>)}
       </div>
-      {cached != null && (
-        <p class="rbt-sec-note">色块从左到右按内容发送给 AI 的顺序排列。色带上方括起来的部分为预计可缓存的内容。如果这部分与上一轮相同，支持缓存的接口通常会以更低的价格计费。</p>
-      )}
-      {first != null && (
-        <>
-          <div class="rbt-sub-h">聊天记录</div>
-          <div class="rbt-floors">
-            {first > 0 && <i class="out" style={{ width: `${(first / chatLen) * 100}%` }} />}
-            <i style={{ width: `${((chatLen - first) / chatLen) * 100}%` }} />
-          </div>
-          <div class="rbt-floors-ends"><span>第 0 楼</span><span>第 {chatLen - 1} 楼</span></div>
-          {unsent.hidden.length > 0 && <p class="rbt-sec-note">{floorsText(unsent.hidden)}已隐藏。</p>}
-        </>
-      )}
-      <NavRow title="发给 AI 的全部内容" sub={`${cap.result.messages.length} 条消息${cap.wi.length ? ` · 触发了 ${cap.wi.length} 条世界书` : ''}`} onClick={onOpenSent} />
+      {cached != null && cached > 0 && <p class="rbt-sec-note">{preview ? '如果这部分输入命中缓存，通常按较低单价计费。' : '命中缓存的输入通常按较低单价计费。'}</p>}
+      <NavRow title="发给 AI 的全部内容" sub={`${cap.result.messages.length} 条消息${cap.wi.length ? ` · 触发了 ${cap.wi.length} 个世界书条目` : ''}`} onClick={onOpenSent} />
     </Sec>
   );
 }
 
-// ---------------------------------------------------------------- 用时 ---
+/** 楼层条：第 0 楼到最新一楼，哪些发送了、哪些超出上下文长度没发、哪些隐藏了。只在有楼没发送时画。 */
+function FloorStrip({ total, sent, hidden }: { total: number; sent: number[]; hidden: number[] }) {
+  if (total <= 0) return null;
+  const s = new Set(sent), h = new Set(hidden);
+  const kind = (i: number) => (s.has(i) ? 'sent' : h.has(i) ? 'hidden' : 'cut');
+  // 第 0 楼是开场白，有的预设本来就不发：没隐藏也没发时不画（和「没有发送」那句一致）
+  const start = !s.has(0) && !h.has(0) ? 1 : 0;
+  const runs: { kind: string; from: number; to: number }[] = [];
+  for (let i = start; i < total; i++) {
+    const k = kind(i), last = runs[runs.length - 1];
+    if (last?.kind === k) last.to = i; else runs.push({ kind: k, from: i, to: i });
+  }
+  const NAME: Record<string, string> = { cut: '超出上下文长度，未发送', hidden: '已隐藏', sent: '已发送' };
+  return (
+    <>
+      <div class="rbt-fstrip" role="img" aria-label={runs.map((r) => `第 ${r.from}–${r.to} 楼${NAME[r.kind]}`).join('，')}>
+        {runs.map((r, i) => <i key={i} class={r.kind} style={{ flexGrow: r.to - r.from + 1, background: r.kind === 'sent' ? PART_COLOR.chat : undefined }} />)}
+      </div>
+      <div class="rbt-fstrip-k"><span>第 {start} 楼</span><span>第 {total - 1} 楼</span></div>
+      <div class="rbt-legend2">
+        {(['cut', 'hidden', 'sent'] as const).filter((k) => runs.some((r) => r.kind === k)).map((k) => (
+          <span key={k}><i class={`rbt-swatch fs-${k}`} style={k === 'sent' ? { background: PART_COLOR.chat } : undefined} />{NAME[k]}</span>
+        ))}
+      </div>
+    </>
+  );
+}
 
+// ---------------------------------------------------------------- 输出 ---
+
+/** 用时不到 10 秒写一位小数（1.7 秒），不然 360 Token ÷ 2 秒 和速度对不上。 */
+// 10 秒以内都留一位小数（「1.0 秒」），同一行里几个数写法一样
+const sec = (ms: number) => (ms < 10_000 ? `${(ms / 1000).toFixed(1)} 秒` : fmtDuration(ms));
+
+/** AI 写了什么：写了多少 Token、占最大回复长度多少，思考、正文各写多少、各用多久。预览还没写，不显示。 */
 export function TimeSection({ cap }: { cap: Capture }) {
   const avg = useChatAverages();
   const u: ReplyUsage | undefined = cap.usage;
   if (cap.genType === 'preview') return null;
-  if (!u || u.wait == null) {
-    return <Sec title="用时"><p class="rbt-sec-note">写完后显示。</p></Sec>;
-  }
-  const wait = u.wait, think = u.think ?? 0, write = u.write ?? 0;
-  const total = wait + think + write;
-  const pct = (n: number) => `${total ? (n / total) * 100 : 0}%`;
-  const text = Math.max(0, u.output - (u.reasoning ?? 0));
-  const speed = text && write > 1000 ? `正文回复的速度是每秒 ${Math.round(text / (write / 1000))} tokens。` : '';
-  return (
-    <Sec title="用时">
-      <Big value={fmtDuration(total)} sub={vsAvg(total, avg.time, fmtDuration, '比平均慢', '比平均快', 1000)} />
-      <div class="rbt-tbar">
-        <i style={{ width: pct(wait), background: C_WAIT }} />
-        {think > 0 && <i style={{ width: pct(think), background: C_THINK }} />}
-        <i style={{ width: pct(write), background: C_WRITE }} />
-      </div>
+  const head = (body: preact.ComponentChildren) => (
+    <Sec title="输出" right={<button type="button" class="rbt-linkbtn" onClick={() => openPresetField('reply')}>改最大回复长度 ↗</button>}>{body}</Sec>
+  );
+  if (!u || (!u.output && u.wait == null)) return head(<p class="rbt-sec-note">写完后显示。</p>);
+  const out = u.output ?? 0;
+  const thinkTokens = u.reasoning ?? 0;
+  const text = Math.max(0, out - thinkTokens);
+  const limit = cap.budget?.reply || 0;
+  const timed = u.wait != null;
+  const r100 = (ms: number) => Math.round(ms / 100) * 100;
+  // 合计按原始数取整（和「平均回复用时」一样）；三段各自取整后差的那一点补到最长的一段上，加起来正好是合计
+  const parts = [r100(u.wait ?? 0), r100(u.think ?? 0), r100(u.write ?? 0)];
+  const total = r100((u.wait ?? 0) + (u.think ?? 0) + (u.write ?? 0));
+  parts[parts.indexOf(Math.max(...parts))] += total - parts[0] - parts[1] - parts[2];
+  const [wait, think, write] = parts;
+  // 条：按最大回复长度画，看得出写满了多少
+  const pct = (n: number) => `${Math.min(100, (n / (limit || out || 1)) * 100)}%`;
+  const speed = text && write > 1000 ? `正文回复速度：${Math.round(text / (write / 1000))} Token/秒` : '';
+  const tpct = (n: number) => `${total ? (n / total) * 100 : 0}%`;
+  const slower = timed ? vsAvg(total, avg.time, sec, '比平均慢', '比平均快', 1000) : undefined;
+  return head(
+    <>
+      <Big label="本轮输出" value={fmtInt(out)} unit="Token" />
+      {limit > 0 && <BarCap left={`最大回复长度 ${fmtInt(limit)} Token`} right={`已用 ${usedPct(out, limit)}`} />}
+      {out > 0 && (
+        <div class="rbt-tbar rbt-meter">
+          {thinkTokens > 0 && <i style={{ width: pct(thinkTokens), background: C_THINK }} />}
+          <i style={{ width: pct(text), background: C_WRITE }} />
+        </div>
+      )}
       <div class="rbt-legend2">
-        <span><i class="rbt-swatch" style={{ background: C_WAIT }} />等待回复 <b>{fmtDuration(wait)}</b></span>
-        {think > 0 && <span><i class="rbt-swatch" style={{ background: C_THINK }} />思考 <b>{fmtDuration(think)}{u.reasoning ? ` · ${fmtTokens(u.reasoning)} tokens` : ''}</b></span>}
-        <span><i class="rbt-swatch" style={{ background: C_WRITE }} />正文回复 <b>{fmtDuration(write)}</b></span>
+        {thinkTokens > 0 && <span><i class="rbt-swatch" style={{ background: C_THINK }} />思考 <b>{fmtInt(thinkTokens)}</b></span>}
+        <span><i class="rbt-swatch" style={{ background: C_WRITE }} />正文回复 <b>{fmtInt(text)}</b></span>
+        {limit > 0 && <span><i class="rbt-swatch free" />剩余可用 <b>{fmtInt(Math.max(0, limit - out))}</b></span>}
       </div>
+      {/* 用时：第二个大字 + 时间条 + 图例（从发送消息到 AI 写完） */}
+      {timed && (
+        <>
+          <Big label="回复用时" value={sec(total)} sub={slower} />
+          <div class="rbt-tbar">
+            <i style={{ width: tpct(wait), background: C_WAIT }} />
+            {think > 0 && <i style={{ width: tpct(think), background: C_THINK }} />}
+            <i style={{ width: tpct(write), background: C_WRITE }} />
+          </div>
+          <div class="rbt-legend2">
+            <span><i class="rbt-swatch" style={{ background: C_WAIT }} />等待 <b>{sec(wait)}</b></span>
+            {think > 0 && <span><i class="rbt-swatch" style={{ background: C_THINK }} />思考 <b>{sec(think)}</b></span>}
+            <span><i class="rbt-swatch" style={{ background: C_WRITE }} />正文回复 <b>{sec(write)}</b></span>
+          </div>
+        </>
+      )}
       {speed && <p class="rbt-sec-note">{speed}</p>}
-    </Sec>
+    </>,
   );
 }
 
-/** 下拉里每一轮的名字：「第 212 楼 · 14:50」「第 212 楼 · 重新生成 · 14:50」「预览 · 14:50」。 */
+/** 下拉里每一轮的名字：「第 212 楼回复 · 14:50」「第 212 楼回复 · 重新生成 · 14:50」「预览 · 14:50」「插件后台调用 · 14:50」。 */
 export function roundTitle(c: Capture): string {
   const p2 = (n: number) => String(n).padStart(2, '0');
   const t = `${p2(c.time.getHours())}:${p2(c.time.getMinutes())}`;
   if (c.genType === 'preview') return `预览 · ${t}`;
   if (c.targetFloor === null) return `${c.genTypeLabel} · ${t}`;
   const kind = ['swipe', 'regenerate'].includes(c.genType) ? '重新生成' : c.genType === 'continue' ? '继续' : '';
-  return [`第 ${c.targetFloor} 楼`, kind, t].filter(Boolean).join(' · ');
+  return [`第 ${c.targetFloor} 楼回复`, kind, t].filter(Boolean).join(' · ');
 }
 
 export { cacheBreak };

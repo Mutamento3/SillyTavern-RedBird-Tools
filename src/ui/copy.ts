@@ -65,7 +65,7 @@ export const USAGE_COPY = {
   showNone: '都关了',
   chatTotalSub: (n: number) => `共 ${n} 次回复（含重新生成）· 含插件费用`,
   chatTokensSub: (n: number) => `发送 + 输出 · 共 ${n} 次回复（含重新生成）· 接口未返回花费`,
-  noMoney: '接口未返回花费。',
+  noMoney: '接口未返回本条回复的花费。',
   balanceFail: '没能获取 OpenRouter 余额。',
   bill: '查看 OpenRouter 账单 ↗',
   since: (d: string) => `花费记录自 ${d} 起。`,

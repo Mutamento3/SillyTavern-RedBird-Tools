@@ -443,7 +443,7 @@ body.rbt-resizing #sheld { transition: none !important; }
   line-height: 1.45;
 }
 .rbt-page { display: flex; flex-direction: column; gap: var(--rbd-s-4); }
-.rbt-page-lead { color: var(--rbt-muted); font-size: 12px; }
+.rbt-page-lead { color: var(--t2); font-size: 13px; }
 .rbt-page-cols { display: grid; grid-template-columns: 1fr; gap: var(--rbd-s-4) var(--rbd-s-5); align-items: start; }
 .rbt-page-group { display: flex; flex-direction: column; gap: var(--rbd-s-4); min-width: 0; }
 /* 这几层用 gap 排间距，子元素自己就不要再留下边距（不然会叠成两倍）。
@@ -1260,6 +1260,8 @@ input.rbt-cb.rbt-cb[type='checkbox']:focus-visible { outline: 2px solid var(--rb
 .rbt-panel .rbt-btn-primary, .rbt-scope .rbt-btn-primary { background: var(--accent); color: #fff; box-shadow: none; }
 .rbt-panel .rbt-btn-primary:hover, .rbt-scope .rbt-btn-primary:hover { background: color-mix(in srgb, var(--accent) 88%, #fff); }
 .rbt-panel .rbt-btn:disabled, .rbt-scope .rbt-btn:disabled { opacity: 0.45; cursor: default; }
+/* 看着是灰的、但点得动：点了弹窗说明为什么现在不能用 */
+.rbt-panel .rbt-btn[aria-disabled='true'], .rbt-scope .rbt-btn[aria-disabled='true'] { opacity: 0.45; }
 .rbt-btn > i { font-size: 11px; opacity: 0.85; }
 .rbt-panel select.text_pole, .rbt-scope select.text_pole, .rbt-panel select.rbt-select, .rbt-scope select.rbt-select {
   -webkit-appearance: none; appearance: none; padding-right: 30px !important; cursor: pointer;
@@ -1573,13 +1575,28 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-ct-bar > * { margin-top: 0; margin-bottom: 0; }
 .rbt-ct-count { margin-left: auto; }
 @media (max-width: 1000px) { .rbt-ct-search.text_pole { flex: 1 1 100%; } }
-.rbt-ct-scroll { overflow-x: auto; }
+/* 表格自己滚动：在全局工具箱窗口里占满剩下的高度，横向滚动条一直在窗口底部（不用滚到最后一行才看到）。
+   表头钉在上面，「角色」列钉在左边、⋯ 列钉在右边；左右还有没露出来的列时，钉住的列加一道阴影 */
+.rbt-sheet-body > .rbt-ct:has(> .rbt-ct-scroll) { height: 100%; }
+.rbt-ct-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+/* 酒馆的滚动条样式只设了宽度：横向滚动条在 Chrome 里高度是 0，看不见。这里补上高度 */
+.rbt-ct-scroll::-webkit-scrollbar { height: 0.7rem; }
+.rbt-ct-table thead { position: sticky; top: 0; z-index: 2; }
+.rbt-ct-table th { background: var(--rbd-bg1, #17191e); }
+.rbt-ct-table :is(td, th):is(:first-child, :last-child) { position: sticky; z-index: 1; background: var(--rbd-bg1, #17191e); }
+.rbt-ct-table :is(td, th):first-child { left: 0; }
+.rbt-ct-table :is(td, th):last-child { right: 0; }
+.rbt-ct-scroll.more-left :is(td, th):first-child { box-shadow: 10px 0 10px -8px rgba(0, 0, 0, .7); }
+.rbt-ct-scroll.more-right :is(td, th):last-child { box-shadow: -10px 0 10px -8px rgba(0, 0, 0, .7); }
+.rbt-ct-add { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.1)); border-radius: var(--rbd-r-xs, 6px); background: none; color: var(--rbd-text2); font: inherit; font-size: 12px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+.rbt-ct-add:hover, .rbt-ct-add[aria-expanded='true'] { color: var(--rbd-text1); background: color-mix(in srgb, var(--rbd-text1) 6%, transparent); }
+.rbt-ct-add i { font-size: 10px; }
 .rbt-ct-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .rbt-ct-table th { text-align: left; font-weight: 500; font-size: 12px; color: var(--rbd-text3); padding: 6px 8px; border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.07)); white-space: nowrap; }
 .rbt-ct-table .rbt-ct-group th { border-bottom: 0; padding-bottom: 0; color: var(--rbd-text2); }
 .rbt-ct-table .rbt-ct-group small { margin-left: 10px; font-weight: 400; color: var(--rbd-text3); white-space: normal; }
 .rbt-ct-table td { padding: 10px 8px; vertical-align: top; border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.07)); }
-.rbt-ct-table tr.current td { background: color-mix(in srgb, var(--rbd-text1) 3%, transparent); }
+.rbt-ct-table tr.current td { background: color-mix(in srgb, var(--rbd-text1) 3%, var(--rbd-bg1, #17191e)); }
 .rbt-ct-table td:last-child { width: 1%; text-align: right; }
 .rbt-ct-who { display: flex; align-items: center; gap: 8px; min-width: 150px; }
 .rbt-ct-avatar { flex: none; width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
@@ -1611,7 +1628,7 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-ct-detail-title { margin: 0 0 var(--rbd-s-2); font-size: 18px; }
 .rbt-ct-sec { margin: var(--rbd-s-4) 0 var(--rbd-s-1); font-size: 13px; color: var(--rbd-text3); }
 .rbt-ct-item { display: flex; align-items: center; gap: var(--rbd-s-3); min-height: 48px; padding: 4px 0; border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.07)); }
-.rbt-ct-item-k { flex: none; width: 3em; color: var(--rbd-text2); }
+.rbt-ct-item-k { flex: none; width: 4em; color: var(--rbd-text2); }
 .rbt-ct-item-v { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
 .rbt-ct-item-v small { font-size: 12px; }
 .rbt-ct-note { display: block; margin-top: 6px; }
@@ -1620,22 +1637,8 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-ct-actions .rbt-btn-danger { color: #ff6961; }
 
 /* ============================================================ 正则 / 脚本：分段（见 ui/pages/scope.tsx） === */
-.rbt-scope-seg { margin-bottom: var(--rbd-s-3); }
+.rbt-scope-seg { display: flex; width: 100%; }
 .rbt-scope-seg button { flex: 1 0 auto; }
-.rbt-scope-narrow { display: flex; width: 100%; }
-.rbt-scope-wide { display: none; }
-@container (max-width: 819.98px) {
-  .rbt-segpage[data-seg='now'] .rbt-scope-side,
-  .rbt-segpage:not([data-seg='now']) .rbt-scope-now,
-  .rbt-segpage[data-seg='presets'] .rbt-scope-cards,
-  .rbt-segpage[data-seg='cards'] .rbt-scope-presets { display: none; }
-}
-@container (min-width: 820px) {
-  .rbt-scope-narrow { display: none; }
-  .rbt-scope-wide { display: inline-flex; }
-  .rbt-segpage[data-side='presets'] .rbt-scope-cards,
-  .rbt-segpage[data-side='cards'] .rbt-scope-presets { display: none; }
-}
 @media (max-width: 1000px) { .rbt-scope-seg button { min-height: 36px; font-size: 13px; } }
 
 /* 全局工具箱 › 美化：「全局美化」里的小标题（红鸟适配美化 / 别的美化）和「别的美化」那一行 */
@@ -1934,10 +1937,9 @@ html.rbt-look body.rbt-usage #chat .mes .tokenCounterDisplay { display: none !im
 .rbt-big b { font-size: 28px; line-height: 1.15; font-weight: 600; letter-spacing: -0.4px; color: var(--t1); font-variant-numeric: tabular-nums; }
 .rbt-big b small { margin-left: 4px; font-size: 15px; font-weight: 500; letter-spacing: 0; color: var(--t2); }
 .rbt-big span { font-size: 13px; color: var(--t2); }
+.rbt-big .rbt-big-k { font-size: 12px; color: var(--t2); }
 .rbt-big.text b { font-size: 20px; letter-spacing: 0; }
 .rbt-swatch { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; }
-.rbt-swatch.hatch { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--t1) 45%, transparent) 0 2px, transparent 2px 4px); }
-.rbt-swatch.free { background: color-mix(in srgb, var(--t1) 14%, transparent); }
 .rbt-legend2 { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--t2); }
 .rbt-legend2 span { display: inline-flex; align-items: center; gap: 6px; }
 .rbt-legend2 b { font-weight: 600; color: var(--t1); font-variant-numeric: tabular-nums; }
@@ -1945,7 +1947,7 @@ html.rbt-look body.rbt-usage #chat .mes .tokenCounterDisplay { display: none !im
 .rbt-tbar i { display: block; height: 100%; min-width: 2px; border-radius: 3px; }
 /* 花费明细：项 / tokens / 金额 */
 .rbt-ctable { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
-.rbt-ctr { display: grid; grid-template-columns: 1fr 64px 84px; align-items: center; gap: 8px; min-height: 44px; border-top: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.07)); font-size: 13px; color: var(--t1); }
+.rbt-ctr { display: grid; grid-template-columns: 1fr 64px 84px; align-items: center; gap: 8px; min-height: 44px; padding: 8px 0; box-sizing: border-box; border-top: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.07)); font-size: 13px; color: var(--t1); }
 .rbt-ctable.no-money .rbt-ctr { grid-template-columns: 1fr 72px; }
 .rbt-ctr > span:nth-child(n + 2) { text-align: right; }
 .rbt-ctr > span:nth-child(3) { font-weight: 600; }
@@ -1953,24 +1955,44 @@ html.rbt-look body.rbt-usage #chat .mes .tokenCounterDisplay { display: none !im
 .rbt-ctr > span:first-child > span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .rbt-ctr > span:first-child b { font-weight: 600; }
 .rbt-ctr small { font-size: 12px; color: var(--t2); overflow-wrap: anywhere; }
-.rbt-ctr.th { min-height: 28px; border-top: 0; font-size: 12px; color: var(--t2); }
+.rbt-ctr.th { min-height: 28px; padding: 0; border-top: 0; font-size: 12px; color: var(--t2); }
 .rbt-ctr.th > span { font-weight: 500; }
 .rbt-ctr.sum { border-top-color: color-mix(in srgb, var(--t1) 25%, transparent); }
+/* 花费表的组名：「输入（发给 AI 的内容）」等，占整行 */
+.rbt-ctr.grp { grid-template-columns: 1fr; min-height: 32px; padding-top: 6px; font-size: 12px; font-weight: 600; color: var(--t2); }
+.rbt-ctr.grp > span { text-align: left; }
+/* 「这条回复」那一行是小计，下面的输入、输出往里缩一格，看得出是它的明细 */
+.rbt-ctr.reply > span:first-child b { font-weight: 600; }
+.rbt-ctr.sub > span:first-child { padding-left: 18px; }
+.rbt-ctr small .rbt-nb { white-space: nowrap; }
+/* 输出的条按最大回复长度画，没写满的部分是底色 */
+.rbt-meter { border-radius: 3px; background: color-mix(in srgb, var(--t1) 10%, transparent); }
+.rbt-meter i { min-width: 3px; }
+.rbt-meter i.reserve { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--t1) 35%, transparent) 0 2px, transparent 2px 5px); }
+/* 条上面一行：设置名和上限在左，已用多少在右 */
+.rbt-bar-cap { display: flex; justify-content: space-between; gap: 8px; margin-bottom: -6px; font-size: 12px; color: var(--t2); }
+.rbt-bar-cap b { font-weight: 600; color: var(--t1); font-variant-numeric: tabular-nums; }
+.rbt-swatch.hatch { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--t1) 45%, transparent) 0 2px, transparent 2px 4px); }
+.rbt-swatch.free { box-sizing: border-box; border: 1px solid color-mix(in srgb, var(--t1) 30%, transparent); background: color-mix(in srgb, var(--t1) 10%, transparent); }
+/* 上下文满了那一句：橙色标题 + 普通字 */
+.rbt-warn-line { margin: 0; font-size: 13px; line-height: 1.55; color: var(--t1); }
+.rbt-warn-line b { color: var(--warnc, #e0a040); }
+/* 楼层条：没发送的楼是斜线，隐藏的是浅灰，发送的是实色 */
+.rbt-fstrip { display: flex; gap: 2px; height: 10px; }
+.rbt-fstrip i { display: block; flex-basis: 0; min-width: 3px; border-radius: 3px; }
+.rbt-fstrip i.cut, .rbt-swatch.fs-cut { background: repeating-linear-gradient(135deg, var(--warnc, #e0a040) 0 2px, transparent 2px 5px); }
+.rbt-fstrip i.hidden, .rbt-swatch.fs-hidden { background: color-mix(in srgb, var(--t1) 15%, transparent); }
+.rbt-fstrip-k { display: flex; justify-content: space-between; margin-top: -8px; font-size: 11.5px; color: var(--t2); font-variant-numeric: tabular-nums; }
+.rbt-ctr.sub > span:nth-child(3) { font-weight: 400; color: var(--t2); }
 .rbt-basis { display: flex; flex-direction: column; gap: var(--rbd-s-1); padding: var(--rbd-s-3); border-radius: var(--rbd-r-s); background: color-mix(in srgb, var(--t1) 5%, transparent); }
 .rbt-basis b { font-size: 12.5px; font-weight: 600; color: var(--t1); }
 .rbt-basis p { margin: 0; font-size: 12px; line-height: 1.55; color: var(--t2); overflow-wrap: anywhere; }
 /* 上下文：按发送顺序的条，括线是缓存，橙线是开始不一样的地方 */
 .rbt-cbar { position: relative; display: flex; height: 14px; gap: 2px; }
-.rbt-cbar.has-cache { margin-top: 26px; }
+.rbt-cbar.has-cache { margin-top: 24px; }
 .rbt-cbar > i { display: block; height: 100%; min-width: 2px; border-radius: 3px; }
-.rbt-cbar > i.reply { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--t1) 30%, transparent) 0 2px, transparent 2px 5px); }
-.rbt-cbar > i.free { background: color-mix(in srgb, var(--t1) 10%, transparent); }
-.rbt-bracket { position: absolute; left: 0; top: -14px; height: 8px; border: 1.5px solid var(--rbd-accent, #0a84ff); border-bottom: 0; border-radius: 3px 3px 0 0; box-sizing: border-box; }
-.rbt-bracket span { position: absolute; left: 0; top: -17px; font-size: 11.5px; font-weight: 600; white-space: nowrap; color: var(--rbd-accent, #0a84ff); }
-.rbt-floors { display: flex; height: 6px; gap: 2px; }
-.rbt-floors i { display: block; height: 100%; border-radius: 3px; background: var(--t2); opacity: 0.7; }
-.rbt-floors i.out { background: color-mix(in srgb, var(--t1) 12%, transparent); opacity: 1; }
-.rbt-floors-ends { display: flex; justify-content: space-between; font-size: 12px; color: var(--t2); }
+.rbt-bracket { position: absolute; left: 0; top: -10px; height: 6px; min-width: 40px; border: 1.5px solid var(--rbd-accent, #0a84ff); border-bottom: 0; border-radius: 3px 3px 0 0; box-sizing: border-box; }
+.rbt-bracket span { position: absolute; left: 0; bottom: calc(100% + 2px); line-height: 1.2; font-size: 11.5px; font-weight: 600; white-space: nowrap; color: var(--rbd-accent, #0a84ff); }
 /* 结论横幅：只在不正常时出现 */
 .rbt-banner { display: flex; gap: var(--rbd-s-2); margin: 0 0 var(--rbd-s-3); padding: var(--rbd-s-3) var(--rbd-s-4); border-radius: var(--rbd-r-m); background: var(--g2); }
 .rbt-banner > i { margin-top: 3px; color: var(--warnc, #e0a040); }

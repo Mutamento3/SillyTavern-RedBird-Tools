@@ -11,6 +11,9 @@ describe('unsentFloors', () => {
   it('the greeting alone is not counted when it is not hidden', () => {
     expect(unsentFloors([1, 2], [], 3)).toEqual({ hidden: [], other: [] });
   });
+  it('hidden floors in the middle count too (greeting sent, 1–2 hidden)', () => {
+    expect(unsentFloors([0, 3, 4, 5], [1, 2], 6)).toEqual({ hidden: [1, 2], other: [] });
+  });
   it('nothing sent: looks at every floor before the given one', () => {
     expect(unsentFloors([], [2], 4)).toEqual({ hidden: [2], other: [1, 3] });
   });

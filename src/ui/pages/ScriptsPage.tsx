@@ -1,9 +1,8 @@
 /**
  * 全局工具箱 › 脚本：酒馆助手的脚本在这里开关。
  *
- * 左边「正在用的」：全局、当前预设、当前卡三组，每组最上面一个「允许运行」，下面是文件夹和脚本，各自一个开关
- * （和正则、世界书每一行的开关同一个）。
- * 右边：所有带脚本的预设、带脚本的卡，点进去是那个预设 / 那张卡的详情（详情里也有同一块）。
+ * 三个分段「全局 / 预设自带 / 角色卡自带」。全局：全局脚本。预设自带、角色卡自带：正在用的预设、正在聊的卡的脚本直接展开，
+ * 最上面一个「允许运行」，下面是文件夹和脚本，各自一个开关；再下面列出其他带脚本的预设 / 卡，点进去是详情（详情里也有同一块）。
  * 编辑脚本内容、新建、导入还是去酒馆助手（「编辑脚本 ↗」）。
  */
 import { signal } from '@preact/signals';
@@ -16,7 +15,7 @@ import { Section } from './parts';
 import { ScopePage } from './scope';
 import { GLOBAL_TAB_LABELS, openDetail } from '../views';
 
-const KIND_TITLE = (g: ThGroup) => (g.kind === 'global' ? '全局脚本' : g.kind === 'preset' ? `预设「${g.label}」的脚本` : `「${g.label}」的脚本`);
+const KIND_TITLE = (g: ThGroup) => (g.kind === 'global' ? '全局脚本' : g.kind === 'preset' ? `正在用的预设：${g.label}` : `正在聊的角色卡：${g.label}`);
 const KIND_HINT = (g: ThGroup) => (g.kind === 'global' ? '酒馆助手（JS-Slash-Runner）的脚本，装了酒馆助手才会运行 · 所有聊天都运行' : g.kind === 'preset' ? '使用此预设时运行' : '与这个角色聊天时运行');
 
 /**
@@ -85,12 +84,19 @@ export function NodeRows({ g }: { g: ThGroup }) {
   return <div class="rbt-script-list">{rows}</div>;
 }
 
+/** 「允许运行」是酒馆助手自己的安全开关：预设、角色卡里的脚本要玩家允许一次才跑。 */
+const ALLOW: Record<ThGroup['kind'], [string, string]> = {
+  global: ['允许全局脚本运行', '关掉后，全局脚本都不运行。'],
+  preset: ['允许这个预设的脚本运行', '预设里的脚本是作者写的代码，酒馆助手要你允许后才会运行。'],
+  character: ['允许这张卡的脚本运行', '角色卡里的脚本是作者写的代码，酒馆助手要你允许后才会运行。'],
+};
+
 /** 一组脚本最上面的「允许运行」：一行字 + 开关，和下面每个脚本的开关同一个样子。 */
 export function AllowRow({ g }: { g: ThGroup }) {
   return (
     <div class="rbt-switch-row rbt-script-allow">
-      <div class="rbt-switch-text"><span>允许运行</span><small>{g.allowed ? '关闭后，本组脚本均不运行。' : '本组脚本均不运行。'}</small></div>
-      <Toggle checked={g.allowed} onChange={(v) => { void setGroupAllowed(g, v); }} title="允许 / 不允许这一组脚本运行" />
+      <div class="rbt-switch-text"><span>{ALLOW[g.kind][0]}</span><small>{ALLOW[g.kind][1]}</small></div>
+      <Toggle checked={g.allowed} onChange={(v) => { void setGroupAllowed(g, v); }} title={ALLOW[g.kind][0]} />
     </div>
   );
 }
@@ -128,30 +134,36 @@ export function ScriptsPage() {
   const presets = presetsWithScripts();
   const cards = cardsWithScripts();
   const back = GLOBAL_TAB_LABELS.scripts;
+  const cur = (kind: ThGroup['kind']) => groups.find((g) => g.kind === kind && countScripts(g.nodes) > 0);
+  const glob = groups.find((g) => g.kind === 'global')!;
+  const curPreset = cur('preset'), curCard = cur('character');
+  const runHint = (g: ThGroup, pre = '') => { const n = countScripts(g.nodes); return n ? `${pre}${n} 个脚本里 ${countRunning(g.nodes, g.allowed)} 个正在运行` : pre.replace(/ · $/, ''); };
+  // 正在用的预设、正在聊的卡排第一；它们的脚本直接展开在上面，别的点进去看
+  const otherPresets = presets.filter((p) => p.name !== curPreset?.key);
+  const otherCards = cards.filter((c) => c.avatar !== curCard?.key);
   return (
-    <ScopePage id="scripts" nowLabel="正在用" presetCount={presets.length} cardCount={cards.length}
-      now={<>
-        {/* 全局一直显示；当前预设、当前卡没有脚本就不占一块 */}
-        {groups.filter((g) => g.kind === 'global' || countScripts(g.nodes) > 0).map((g) => <ScriptGroupSection key={g.kind} g={g} />)}
-      </>}
-      presets={
-        <Section title="含脚本的预设" hint="无需切换预设即可管理脚本">
-          {presets.map((p) => (
-            <NavRow key={p.name} title={p.name} sub={`${p.count} 个脚本`} trailing={!p.allowed ? <Tag tone="bad">未允许运行</Tag> : groups.some((g) => g.kind === 'preset' && g.key === p.name) ? <Tag tone="accent">正在用</Tag> : undefined}
+    <ScopePage id="scripts" lead="这里管的是酒馆助手脚本。" nowCount={countScripts(glob.nodes)} presetCount={presets.length} cardCount={cards.length}
+      now={<ScriptGroupSection g={glob} hint={runHint(glob, '所有聊天都会运行 · ')} />}
+      presets={<>
+        {curPreset && <ScriptGroupSection g={curPreset} hint={runHint(curPreset)} />}
+        <Section title={curPreset ? '其他含脚本的预设' : '含脚本的预设'} hint="不用换预设，点进去就能开关">
+          {otherPresets.map((p) => (
+            <NavRow key={p.name} title={p.name} sub={`${p.count} 个脚本`} trailing={!p.allowed ? <Tag tone="bad">未允许运行</Tag> : undefined}
               onClick={() => openDetail({ kind: 'preset', name: p.name }, back, '预设脚本')} />
           ))}
-          {!presets.length && <small class="rbt-muted">暂无含脚本的预设。</small>}
+          {!otherPresets.length && <small class="rbt-muted">{curPreset ? '没有其他含脚本的预设。' : '暂无含脚本的预设。'}</small>}
         </Section>
-      }
-      cards={
-        <Section title="含脚本的角色卡" hint="与对应角色聊天时运行">
-          {cards.map((c) => (
+      </>}
+      cards={<>
+        {curCard && <ScriptGroupSection g={curCard} hint={runHint(curCard)} />}
+        <Section title={curCard ? '其他含脚本的角色卡' : '含脚本的角色卡'} hint="和对应的角色聊天时运行">
+          {otherCards.map((c) => (
             <NavRow key={c.avatar} title={c.name} sub={`${c.count} 个脚本`} trailing={!c.allowed ? <Tag tone="bad">未允许运行</Tag> : undefined}
               onClick={() => openDetail({ kind: 'card', avatar: c.avatar }, back, '脚本')} />
           ))}
-          {!cards.length && <small class="rbt-muted">暂无含脚本的角色卡。</small>}
+          {!otherCards.length && <small class="rbt-muted">{curCard ? '没有其他含脚本的角色卡。' : '暂无含脚本的角色卡。'}</small>}
         </Section>
-      }
+      </>}
     />
   );
 }

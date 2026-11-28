@@ -154,11 +154,11 @@ function surfaceVars(): Required<SurfaceVars> {
 }
 function solidSurface(): void {
   const root = document.documentElement;
-  const set = (bg1: string, nav: string) => {
-    const key = `${bg1}|${nav}`;
+  const set = (bg1: string, nav: string, t2 = '', t3 = '') => {
+    const key = `${bg1}|${nav}|${t3}`;
     if (key === lastSolid) return;
     lastSolid = key;
-    for (const [k, v] of [['--rbd-bg1', bg1], ['--rbd-canvas-solid', nav]]) {
+    for (const [k, v] of [['--rbd-bg1', bg1], ['--rbd-canvas-solid', nav], ['--rbt-t2', t2], ['--rbt-t3', t3]]) {
       if (v) root.style.setProperty(k, v);
       else root.style.removeProperty(k);
     }
@@ -178,7 +178,6 @@ function solidSurface(): void {
   // 左栏、面板用「模糊色调」；顶栏用「聊天色调」（和聊天区同色），都垫成实色。聊天区本身不动，背景图照样看得见
   const panel = solid(v.tint);
   const nav = solid(v.chat);
-  set(panel, nav);
   // 保底：有的美化只给酒馆自己的面板改了字色（比如全局白字、面板白底，再点名酒馆面板改成深色字）。
   // 工具箱的面板不在它的名单里，就成了白字白底。字和底色对比太低时，面板里的字换成黑或白；看得清的美化不动
   const fix = (bgCss: string): '' | 'dark' | 'light' => {
@@ -187,7 +186,32 @@ function solidSurface(): void {
     if (contrast(text, bg) >= 3) return '';
     return luminance(bg) > 0.4 ? 'dark' : 'light';
   };
-  ink(fix(panel || v.tint), fix(nav || v.chat));
+  const panelInk = fix(panel || v.tint), navInk = fix(nav || v.chat);
+  ink(panelInk, navInk);
+  // 灰字是字色调淡出来的，正文看得清、调淡后可能就看不清：在面板、面板上的卡片、顶栏上量，不够 4.5:1 就调深
+  const t3 = grayNeed([[panel || v.tint, panelInk ? INK[panelInk] : text], [nav || v.chat, navInk ? INK[navInk] : text]]);
+  set(panel, nav, t3 > T3 ? `${Math.round(Math.max(T2, Math.min(1, t3 + 0.14)) * 100)}%` : '', t3 > T3 ? `${Math.round(t3 * 100)}%` : '');
+}
+
+/** 面板换成深色 / 浅色字时的字色（和 look.css 的 rbt-ink-* 一样）。 */
+const INK = { dark: [29, 29, 31], light: [236, 236, 241] } as const;
+/** 灰字平时有多深（字色的百分之多少，见 look.css）。 */
+const T2 = 0.66, T3 = 0.45;
+
+/** 最浅一级灰字至少要多深，才能在这几种底色（和底色上的卡片）上都达到 4.5:1。底色不是实色的不量。 */
+function grayNeed(surfaces: [string, readonly number[] | null][]): number {
+  let need = T3;
+  for (const [css, fg] of surfaces) {
+    const bg = rgba(css);
+    if (!bg || !fg || bg[3] < 0.95) continue;
+    const card = bg.map((x, i) => (i < 3 ? fg[i] * 0.07 + x * 0.93 : x));
+    for (const b of [bg, card]) {
+      let a = need;
+      while (a < 1 && contrast(fg.map((x, i) => x * a + b[i] * (1 - a)), b) < 4.5) a = Math.round((a + 0.01) * 100) / 100;
+      need = a;
+    }
+  }
+  return need;
 }
 
 /** 相对亮度（WCAG）。 */

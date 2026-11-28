@@ -9,13 +9,11 @@
  * 第 0 楼是开场白，有的预设本来就不发：没隐藏的第 0 楼不算。
  */
 export function unsentFloors(sent: number[], hidden: number[], before: number): { hidden: number[]; other: number[] } {
+  // 放不下的是最早的那几楼；隐藏的哪一楼都可能是
   const end = sent.length ? Math.min(...sent) : before;
-  const h = new Set(hidden);
-  const out = { hidden: [] as number[], other: [] as number[] };
-  for (let i = 0; i < end; i++) {
-    if (h.has(i)) out.hidden.push(i);
-    else if (i > 0) out.other.push(i);
-  }
+  const s = new Set(sent), h = new Set(hidden);
+  const out = { hidden: hidden.filter((i) => i < before && !s.has(i)), other: [] as number[] };
+  for (let i = 1; i < end; i++) if (!h.has(i)) out.other.push(i);
   return out;
 }
 

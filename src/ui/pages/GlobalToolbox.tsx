@@ -26,6 +26,7 @@ import {
   presetRegexCount,
   relink,
   setCardTheme,
+  switchPreset,
   thumbnailUrl,
   worldNames,
   type CardInfo,
@@ -386,6 +387,19 @@ function BoundCards({ title, hint, cards, back, empty, onAdd, onRemove, removeTe
 }
 
 /**
+ * 点了没在用的预设的「编辑预设」「编辑正则」：酒馆只能编辑正在用的预设，问一句要不要先换到它；换好就直接打开编辑面板。
+ */
+async function editOtherPreset(name: string, what: 'preset' | 'regex'): Promise<void> {
+  const [title, text, ok] = what === 'preset' ? POP_PRESET : POP_REGEX;
+  if (!(await confirmText(title, text, ok))) return;
+  if (!(await switchPreset(name))) return;
+  if (what === 'preset') openDrawer('preset');
+  else openRegexManager('preset');
+}
+const POP_PRESET = ['换到这个预设再编辑？', '酒馆只能编辑正在用的预设。', '换好就编辑'];
+const POP_REGEX = ['换到这个预设再编辑正则？', '酒馆只能编辑正在用的预设里的正则。', '换好就编辑'];
+
+/**
  * 预设自带的正则。正在用的预设：「允许运行」和每一条都能开关（和全局工具箱 › 预设里的一样）。
  * 别的预设：只列出来（开着绿点、关着灰点），写清为什么不能开关——酒馆只能改正在用的预设里的正则。
  */
@@ -396,7 +410,9 @@ function PresetRegexSection({ name, isCurrent }: { name: string; isCurrent: bool
   if (!list.length) return null;
   const on = list.filter((r) => !r.disabled).length;
   const live = isCurrent ? report?.items.find((i) => i.id === 'rx:p') : undefined;
-  const edit = <button type="button" class="rbt-btn rbt-btn-small" disabled={!isCurrent} onClick={() => openRegexManager('preset')}>编辑正则 <i class="fa-solid fa-arrow-up-right-from-square" /></button>;
+  // 不是正在用的预设：按钮是灰的，但点得动，点了说明为什么不能编辑
+  const edit = <button type="button" class="rbt-btn rbt-btn-small" aria-disabled={!isCurrent} onClick={() => isCurrent ? openRegexManager('preset')
+    : void editOtherPreset(name, 'regex')}>编辑正则 <i class="fa-solid fa-arrow-up-right-from-square" /></button>;
   return (
     <Section title="预设自带正则" hint={isCurrent ? `使用此预设时应用 · 已启用 ${on} / ${list.length} 条` : '这个预设没在用。酒馆只能开关、编辑正在用的预设里的正则。'} actions={edit}>
       {live?.toggle && (
@@ -702,7 +718,8 @@ function PresetDetail({ name }: { name: string }) {
         note={exists && name !== cur ? '这个预设没在用。酒馆只能编辑正在用的预设。' : undefined}
         actions={exists ? <>
           {toGlobal && <button type="button" class="rbt-btn rbt-btn-primary rbt-btn-small" disabled={busy} onClick={async () => { setBusy(true); try { await setGlobal('preset', name); } finally { setBusy(false); } }}>设为全局预设</button>}
-          <button type="button" class="rbt-btn rbt-btn-small" disabled={name !== cur} onClick={() => openDrawer('preset')}>编辑预设 <i class="fa-solid fa-arrow-up-right-from-square" /></button>
+          <button type="button" class="rbt-btn rbt-btn-small" aria-disabled={name !== cur} onClick={() => name === cur ? openDrawer('preset')
+            : void editOtherPreset(name, 'preset')}>编辑预设 <i class="fa-solid fa-arrow-up-right-from-square" /></button>
         </> : undefined} />
       {!exists && <div class="rbt-warn">找不到这个预设，可能被删除或改名了。</div>}
       <NotesSection kind="preset" id={name} />
@@ -820,27 +837,33 @@ function RegexPage() {
   useEffect(() => { refreshEnv(); }, []);
   const items = report?.items ?? [];
   const regex = items.filter((i: EnvItem) => i.scope === 'global' && i.kind === 'regex');
-  const cardRx = useMemo(() => allCharacters().map(cardInfo).filter((c) => c.regex.total > 0).sort((a, b) => b.regex.total - a.regex.total), [archiveVersion.value]);
-  const presetRx = presetNames().map((p) => ({ p, n: presetRegexCount(p) })).filter((x) => x.n > 0);
+  const curAvatar = currentCharacter()?.avatar as string | undefined;
+  // 正在聊的卡、正在用的预设排第一，标「正在聊」「正在用」
+  const cardRx = useMemo(() => allCharacters().map(cardInfo).filter((c) => c.regex.total > 0)
+    .sort((a, b) => Number(b.avatar === curAvatar) - Number(a.avatar === curAvatar) || b.regex.total - a.regex.total), [archiveVersion.value, curAvatar]);
   const cur = currentPresetName();
+  const presetRx = presetNames().map((p) => ({ p, n: presetRegexCount(p) })).filter((x) => x.n > 0)
+    .sort((a, b) => Number(b.p === cur) - Number(a.p === cur));
   const back = GLOBAL_TAB_LABELS.regex;
   // 「管理」时只留全局正则的列表（useOrganize）
   const org = organizing.value === 'regex';
   return (
-    <ScopePage id="regex" nowLabel={`全局 ${regex.length}`} presetCount={presetRx.length} cardCount={cardRx.length} focus={org}
+    <ScopePage id="regex" nowCount={regex.length} presetCount={presetRx.length} cardCount={cardRx.length} focus={org}
       now={
         <GlobalRegexList items={regex} footer={<div class="rbt-row"><button type="button" class="rbt-btn" onClick={() => openRegexManager()}>新建、编辑或导入正则 <i class="fa-solid fa-arrow-up-right-from-square" /></button></div>} />
       }
       presets={
-        <Section title="含正则的预设" hint="使用此预设时应用">
+        <Section title="含正则的预设" hint="使用这个预设时生效">
           {presetRx.map(({ p, n }) => <NavRow key={p} title={p} sub={`${n} 条正则`} trailing={p === cur ? <Tag tone="accent">正在用</Tag> : undefined} onClick={() => openDetail({ kind: 'preset', name: p }, back, '预设自带正则')} />)}
           {!presetRx.length && <small class="rbt-muted">暂无含正则的预设。</small>}
         </Section>
       }
       cards={
-        <Section title="含正则的角色卡" hint="与对应角色聊天时应用">
+        <Section title="含正则的角色卡" hint="和对应的角色聊天时生效">
           {cardRx.map((c) => (
-            <NavRow key={c.avatar} img={thumbnailUrl(c.avatar)} title={c.name} sub={`${c.regex.total} 条正则`} trailing={!c.regex.allowed ? <Tag tone="bad">未允许运行</Tag> : undefined} onClick={() => openDetail({ kind: 'card', avatar: c.avatar }, back, '正则')} />
+            <NavRow key={c.avatar} img={thumbnailUrl(c.avatar)} title={c.name} sub={`${c.regex.total} 条正则`}
+              trailing={!c.regex.allowed ? <Tag tone="bad">未允许运行</Tag> : c.avatar === curAvatar ? <Tag tone="accent">正在聊</Tag> : undefined}
+              onClick={() => openDetail({ kind: 'card', avatar: c.avatar }, back, '正则')} />
           ))}
           {!cardRx.length && <small class="rbt-muted">暂无含正则的角色卡。</small>}
         </Section>

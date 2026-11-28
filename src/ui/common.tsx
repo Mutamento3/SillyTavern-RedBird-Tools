@@ -21,7 +21,7 @@ export function RoleBadge({ role }: { role: string }) {
 
 export function fmtTokens(n: number): string {
   const trim = (x: number, d: number) => x.toFixed(d).replace(/\.0+$/, '');
-  if (n >= 1_000_000) return `${trim(n / 1_000_000, 1)}M`;
+  if (n >= 1_000_000) return `${Number((n / 1_000_000).toFixed(2))}M`;
   if (n >= 100_000) return `${Math.round(n / 1000)}k`;
   if (n >= 10_000) return `${trim(n / 1000, 1)}k`;
   return String(n);

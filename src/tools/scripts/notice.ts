@@ -9,6 +9,7 @@
 import { ctx, toast } from '../../st/st';
 import { applyingPreset } from '../env/autoapply';
 import { openGlobal } from '../../ui/views';
+import { showSeg } from '../../ui/pages/scope';
 import { countRunning, oaiPresets, presetGroup, thInstalled } from './th';
 
 const told = new Set<string>();
@@ -39,7 +40,7 @@ export function installScriptNotice(): void {
       try { name = String(oaiPresets()?.getSelectedPresetName?.() ?? ''); } catch { /* ignore */ }
       if (!name) return;
       const line = presetScriptLine(name);
-      if (line) toast('info', `预设「${name}」${line.replace(/^预设/, '')}。点这里查看或关掉。`, '脚本', { onclick: () => openGlobal('scripts'), timeOut: 8000 });
+      if (line) toast('info', `预设「${name}」${line.replace(/^预设/, '')}。点这里查看或关掉。`, '酒馆助手脚本', { onclick: () => { showSeg('scripts', 'presets'); openGlobal('scripts'); }, timeOut: 8000 });
     }, 800);
   });
 }

@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.41",
+  "version": "0.6.42",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "全局工具箱整理：预设、世界书、美化可以放进文件夹，详情页改成一栏，能直接添加专用角色卡，插件可以在工具箱里删除。名字改成「红鸟工具箱」。"
+  "rbt_whats_new": "角色表里能直接给卡选预设、模型、人设和美化；正则和脚本页分成全局、预设自带、角色卡自带三段；灰字更清楚了。"
 }
