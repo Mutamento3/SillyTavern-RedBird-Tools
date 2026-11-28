@@ -43,7 +43,8 @@ export function ItemRow({ item, action, more }: { item: EnvItem; action?: Compon
     try { await item.toggle(on); } finally { setBusy(false); refreshEnv(); }
   };
   const body = (
-    <div class={`rbt-env-item ${item.enabled ? '' : 'off'}`}>
+    // 带「⋯」的一行（全局正则）：开关放在名字左边，和插件那一行一样，一眼看出开关的是哪一条
+    <div class={`rbt-env-item ${item.enabled ? '' : 'off'} ${more ? 'rbt-toggle-first' : ''}`}>
       {!more && <Chip>{KIND_LABEL[item.kind]}</Chip>}
       {more ? (
         <span class="rbt-env-main"><span class="rbt-env-name">{item.name}</span>{item.detail && <small class="rbt-muted">{item.detail}</small>}</span>

@@ -312,7 +312,7 @@ const SORT_TEXT: Record<CharSort, string> = { recent: '最近聊过', chats: '�
  * 筛选、排序：一个按钮，点开是工具箱自己的选择菜单（电脑上在按钮下面，手机上从底部弹出）。
  * 不用浏览器自带的下拉框：有的手机浏览器（比如火狐）把选项贴在按钮下面、和按钮一样窄，标签名被截断。
  */
-function IconPicker({ icon, label, title, name, value, options, onChange, active, dot, placeholder }: { icon: string; label: string; title: string; name: string; value: string; options: { value: string; text: string; group?: string }[]; onChange: (v: string) => void; active?: boolean; dot?: boolean; placeholder?: string }) {
+export function IconPicker({ icon, label, title, name, value, options, onChange, active, dot, placeholder }: { icon: string; label: string; title: string; name: string; value: string; options: { value: string; text: string; group?: string }[]; onChange: (v: string) => void; active?: boolean; dot?: boolean; placeholder?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <Popup title={name} placeholder={placeholder} open={open} onClose={() => setOpen(false)} cls="rbt-home-pop"

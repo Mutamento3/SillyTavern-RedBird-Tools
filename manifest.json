@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.42",
+  "version": "0.6.43",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "角色表里能直接给卡选预设、模型、人设和美化；正则和脚本页分成全局、预设自带、角色卡自带三段；灰字更清楚了。"
+  "rbt_whats_new": "花费明细新增「输入明细」，按发送顺序逐条看发给 AI 的内容，刷新后也还在；角色表可以排序。"
 }

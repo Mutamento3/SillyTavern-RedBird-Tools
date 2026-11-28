@@ -41,6 +41,7 @@ import { migrateAll } from './tools/env/setup';
 import { refreshStatus } from './shell/EnvStatus';
 import { captures, installFlowCapture } from './tools/flow/capture';
 import { installUsage } from './tools/flow/usage';
+import { installKeep } from './tools/flow/keep';
 import { installVarsWatch } from './tools/vars/vars';
 import { Panel, openPanel, panelOpen } from './ui/Panel';
 import { closeSheet, configureViews, GLOBAL_TAB_LABELS, GLOBAL_TABS, openGlobal, openView, resolveView, sheetOpen, shellActive, VIEW_LABELS, type GlobalTab, type ViewId } from './ui/views';
@@ -270,6 +271,7 @@ async function init(): Promise<void> {
 
   installFlowCapture();
   installUsage();
+  installKeep();
   installVarsWatch();
   installEnvWatch();
   installCardsWatch();

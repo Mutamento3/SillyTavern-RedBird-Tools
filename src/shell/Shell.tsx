@@ -1,7 +1,8 @@
 /**
  * 三栏外壳：左栏（全局设定 + 最近的聊天）+ 中间顶部导航条 + 右侧聊天工具箱。
  * 手机（≤ 1000px，body.rbt-compact）：同一套东西换个排法——左栏变成 ☰ 打开的抽屉，
- * 导航条只留 ☰、角色名（点了切换存档）、新聊天和聊天工具箱；状态栏不显示。
+ * 导航条只留 ☰、角色名（点了切换存档）、存档、人设头像（点了打开人设面板）和聊天工具箱；状态栏不显示。
+ * 新聊天在存档列表和输入框左边的 ☰ 菜单里。
  */
 import { signal } from '@preact/signals';
 import { matchSearch } from '../core/text';
@@ -15,7 +16,8 @@ import { DRAWERS, drawerButtonHandlers, extButtonHandlers, extDrawers, openDrawe
 import { ToolboxButton } from './EnvStatus';
 import { applyingCard, applyingPreset } from '../tools/env/autoapply';
 import { lookApplying } from '../look/cardLook';
-import { StatusBar, worldStatus } from './StatusBar';
+import { personaStatus, StatusBar, worldStatus } from './StatusBar';
+import { personaThumb } from '../st/personas';
 import { DropHint, ImportButton, installWindowDrop, windowDrag } from '../ui/pages/GlobalToolbox';
 import { HomeGallery } from './Home';
 import { charsTick, isCurrent as isCurrentChar, listCharacters, openCharacter, sortCharacters, type CharItem } from './characters';
@@ -127,6 +129,17 @@ function goHome(): void {
 }
 
 /** Only offered inside a chat: a new save for the current character / group (ST asks to confirm). */
+/** 手机顶栏：现在用的人设的头像，点了打开人设面板（和电脑状态栏里的人设一样）。 */
+function PersonaButton() {
+  const p = personaStatus();
+  if (!p.avatar) return null;
+  return (
+    <button type="button" class="rbt-icon-btn rbt-nav-persona" title={`人设：${p.name}`} aria-label={`人设：${p.name}`} {...drawerButtonHandlers('persona')}>
+      <img src={personaThumb(p.avatar)} alt="" />
+    </button>
+  );
+}
+
 function newChat(): void {
   if (inSavedChat()) trigger('#option_start_new_chat');
 }
@@ -512,18 +525,15 @@ function NavBar() {
             </button>
           )}
         </div>
-        {/* 和电脑上同样的入口、同样的顺序和图标：存档、新聊天、聊天工具箱（编辑角色 = 点头像和名字） */}
+        {/* 存档、人设、聊天工具箱（编辑角色 = 点头像和名字）。人设只放头像：手机上顶栏放不下名字，
+            和电脑状态栏里的人设是同一个入口（打开人设面板） */}
         <div class="rbt-nav-actions">
           {chatId && (
             <button type="button" class="rbt-icon-btn" title={`「${name}」的所有存档：换一个、改名、删除`} aria-label="存档" onClick={() => trigger('#option_select_chat')}>
               <i class="fa-solid fa-clock-rotate-left" />
             </button>
           )}
-          {!home && (
-            <button type="button" class="rbt-icon-btn" title={`给「${name}」开一个新存档`} aria-label="新聊天" onClick={newChat}>
-              <i class="fa-solid fa-pen-to-square" />
-            </button>
-          )}
+          {!home && <PersonaButton />}
           {!home && <ToolboxButton />}
         </div>
         <SwitchProgress />

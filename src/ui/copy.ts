@@ -52,8 +52,10 @@ export const USAGE_COPY = {
   /** 聊天里那一行：总花费后面括号里，其他插件在后台找 AI 花的那部分 */
   sideCost: (m: string) => `（含插件费用 ${m}）`,
   showTitle: '聊天显示设置',
+  showFloor: '楼层号',
   showTimer: '回复用时',
-  showTokens: '输出 Token',
+  // 酒馆每一楼（用户和 AI 都有）的 Token 数：不叫「回复」，用户那一楼也有
+  showTokens: 'Token 数',
   showCost: '回复费用',
   showBird: '小红鸟状态栏',
   /** 两组开关的小标题：手机上那一行在名字下面，电脑上在头像下面 */
@@ -64,8 +66,8 @@ export const USAGE_COPY = {
   /** 收起时右边：开着的那几项；都没开 */
   showNone: '都关了',
   chatTotalSub: (n: number) => `共 ${n} 次回复（含重新生成）· 含插件费用`,
-  chatTokensSub: (n: number) => `发送 + 输出 · 共 ${n} 次回复（含重新生成）· 接口未返回花费`,
-  noMoney: '接口未返回本条回复的花费。',
+  chatTokensSub: (n: number) => `输入 + 回复 · 共 ${n} 次回复（含重新生成）· 接口未返回花费`,
+  noMoney: '接口未返回本轮的花费。',
   balanceFail: '没能获取 OpenRouter 余额。',
   bill: '查看 OpenRouter 账单 ↗',
   since: (d: string) => `花费记录自 ${d} 起。`,

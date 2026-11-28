@@ -6,7 +6,7 @@
 import type { ComponentChildren } from 'preact';
 import { useMemo, useState } from 'preact/hooks';
 import { floorStats, fmtDuration, fmtMoney, type FloorStat } from '../core/usage';
-import { captures, flowFocus } from '../tools/flow/capture';
+import { captures, currentChat, flowFocus } from '../tools/flow/capture';
 import { usageTick } from '../tools/flow/usage';
 import { ctx } from '../st/st';
 import { fmtTokens } from './common';
@@ -30,7 +30,7 @@ export function useFloors(): FloorStat[] {
 }
 
 /** 这一楼有抓到的那一轮（这次打开酒馆以后发的）：可以跳到「这一轮」看明细。 */
-const roundOf = (floor: number) => captures.value.find((c) => c.targetFloor === floor && c.genType !== 'quiet' && c.genType !== 'preview');
+const roundOf = (floor: number) => captures.value.find((c) => c.chatId === currentChat.value && c.targetFloor === floor && c.genType !== 'quiet' && c.genType !== 'preview');
 
 /** 图例：色块 + 名字。图里的横线（平均 / 上限）由 Bars 自己写在图下面。 */
 function Legend({ items }: { items: [string, string][] }) {

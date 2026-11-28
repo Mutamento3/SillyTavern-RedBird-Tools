@@ -82,7 +82,7 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-title > i { font-size: 13px; color: var(--rbt-muted); }
 .rbt-header-tabs { padding: var(--rbd-s-2) var(--rbd-s-4); border-bottom: 1px solid var(--hair, var(--rbt-border)); }
 .rbt-tabs { display: flex; gap: 2px; flex: 1; overflow-x: auto; }
-.rbt-tabs button, .rbt-subtabs button {
+.rbt-tabs button {
   background: transparent;
   color: var(--rbt-muted);
   border: 1px solid transparent;
@@ -91,7 +91,7 @@ body.rbt-resizing #sheld { transition: none !important; }
   cursor: pointer;
   white-space: nowrap;
 }
-.rbt-tabs button.active, .rbt-subtabs button.active {
+.rbt-tabs button.active {
   color: var(--rbt-fg);
   background: var(--rbt-soft);
   border-color: var(--rbt-border);
@@ -187,49 +187,11 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-role-user { color: #7ab8ff; }
 .rbt-role-assistant { color: #f0a43a; }
 
-.rbt-subtabs { display: flex; gap: 4px; margin: 4px 0 8px; }
-
 /* ---- prompt stack ---- */
 .rbt-stack { display: flex; flex-direction: column; gap: 4px; }
-.rbt-msg {
-  --cat: #888;
-  border: 1px solid var(--rbt-border);
-  border-left: 4px solid var(--cat);
-  border-radius: var(--rbd-r-s);
-  background: color-mix(in srgb, var(--cat) 6%, transparent);
-}
-.rbt-msg-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  cursor: pointer;
-}
-.rbt-msg-idx { font-size: 11px; color: var(--rbt-muted); min-width: 1.6em; text-align: right; }
-.rbt-msg-label { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rbt-msg-tokens { margin-left: auto; font-size: 11px; color: var(--rbt-muted); white-space: nowrap; }
-.rbt-msg-preview {
-  padding: 0 8px 5px 34px;
-  font-size: 12px;
-  color: var(--rbt-muted);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.rbt-kind-injection { border-style: dashed; border-left-style: solid; }
 .rbt-chip-depth { --chip: #e86ab0; }
 
-.rbt-chatgroup {
-  border: 1px solid var(--rbt-border);
-  border-radius: var(--rbd-r-s);
-  background: var(--rbt-soft);
-}
-.rbt-chatgroup-head { display: flex; align-items: center; gap: 6px; padding: 5px 8px; cursor: pointer; color: var(--rbt-muted); }
-.rbt-chatgroup > .rbt-msg { margin: 0 4px 4px; }
-.rbt-caret { width: 1em; }
-
 .rbt-content-wrap { padding: 0 8px 8px; }
-.rbt-seglist { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 6px; }
 .rbt-content {
   margin: 0;
   padding: 8px;
@@ -242,30 +204,9 @@ body.rbt-resizing #sheld { transition: none !important; }
   background: rgba(0, 0, 0, 0.25);
   border-radius: var(--rbd-r-s);
 }
-.rbt-seg {
-  --seg: #888;
-  background: color-mix(in srgb, var(--seg) 16%, transparent);
-  box-shadow: inset 2px 0 0 var(--seg);
-}
 
 /* ---- lorebook list ---- */
-.rbt-wi-book { margin-bottom: 10px; }
-.rbt-wi-book-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-.rbt-wi-entry {
-  border: 1px solid var(--rbt-border);
-  border-radius: var(--rbd-r-s);
-  margin-bottom: 3px;
-}
-.rbt-wi-entry summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 6px;
-  padding: 4px 8px;
-  cursor: pointer;
-}
-.rbt-wi-title { font-weight: 600; }
-.rbt-wi-entry .rbt-content { margin: 0 6px 6px; }
+
 
 /* ---- variables ---- */
 .rbt-var-changes { display: flex; flex-direction: column; gap: var(--rbd-s-2); }
@@ -516,8 +457,7 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-danger { color: var(--bad); }
 
 /* ---- 标签页：统一成分段控件 ---- */
-.rbt-tabs,
-.rbt-subtabs {
+.rbt-tabs {
   display: inline-flex;
   flex: 0 1 auto;
   gap: 2px;
@@ -525,9 +465,7 @@ body.rbt-resizing #sheld { transition: none !important; }
   border-radius: var(--rbd-r-s);
   background: var(--g3);
 }
-.rbt-subtabs { margin: 0 0 var(--rbd-s-4); }
-.rbt-tabs button,
-.rbt-subtabs button {
+.rbt-tabs button {
   padding: var(--rbd-s-1) var(--rbd-s-3);
   border: 0;
   border-radius: calc(var(--rbd-r-s) - 2px);
@@ -535,10 +473,8 @@ body.rbt-resizing #sheld { transition: none !important; }
   color: var(--t2);
   font-size: 12px;
 }
-.rbt-tabs button:hover,
-.rbt-subtabs button:hover { color: var(--t1); }
-.rbt-tabs button.active,
-.rbt-subtabs button.active {
+.rbt-tabs button:hover { color: var(--t1); }
+.rbt-tabs button.active {
   border: 0;
   background: var(--g2h);
   color: var(--t1);
@@ -547,14 +483,7 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-header { gap: 10px; border-bottom: 1px solid var(--hair); }
 
 /* ---- 分区：一块浅一层的圆角底色，没有边框 ---- */
-.rbt-summary,
-.rbt-card-section,
-.rbt-section,
-.rbt-profile,
-.rbt-card-head,
-.rbt-stack,
-.rbt-var-changes,
-.rbt-wi-book {
+.rbt-summary, .rbt-card-section, .rbt-section, .rbt-profile, .rbt-card-head, .rbt-stack, .rbt-var-changes {
   border: 0;
   border-radius: var(--rbd-r-m);
   background: var(--g2);
@@ -567,28 +496,14 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-section > summary { font-weight: 600; }
 
 /* ---- 行：只用极细分隔线 ---- */
-.rbt-env-item,
-.rbt-sub-item,
-.rbt-var-change,
-.rbt-wi-entry,
-.rbt-link-row,
-.rbt-owner-row,
-.rbt-card-row,
-.rbt-vartree-row {
+.rbt-env-item, .rbt-sub-item, .rbt-var-change, .rbt-link-row, .rbt-owner-row, .rbt-card-row, .rbt-vartree-row {
   border: 0;
   border-radius: 0;
   background: transparent;
   border-bottom: 1px solid var(--hair);
 }
 .rbt-env-item { padding: var(--rbd-row-y) 0; margin-bottom: 0; }
-.rbt-env-item:last-child,
-.rbt-sub-item:last-child,
-.rbt-var-change:last-child,
-.rbt-wi-entry:last-child,
-.rbt-link-row:last-child,
-.rbt-owner-row:last-child,
-.rbt-card-row:last-child,
-.rbt-env-details:last-child > summary .rbt-env-item { border-bottom: 0; }
+.rbt-env-item:last-child, .rbt-sub-item:last-child, .rbt-var-change:last-child, .rbt-link-row:last-child, .rbt-owner-row:last-child, .rbt-card-row:last-child, .rbt-env-details:last-child > summary .rbt-env-item { border-bottom: 0; }
 .rbt-owner-row .rbt-env-item { border-bottom: 0; }
 .rbt-env-details > summary .rbt-env-item { border-bottom: 1px solid var(--hair); }
 .rbt-var-change { padding: var(--rbd-row-y) 0; }
@@ -674,39 +589,9 @@ body.rbt-resizing #sheld { transition: none !important; }
 
 /* ---- 信息流：来源用小色点，不用左侧色条 ---- */
 .rbt-stack { padding: var(--rbd-s-1) var(--rbd-card); gap: 0; }
-.rbt-msg {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  border-bottom: 1px solid var(--hair);
-}
-.rbt-msg:last-child { border-bottom: 0; }
-.rbt-kind-injection { border-style: solid; background: transparent; }
-.rbt-msg-head { padding: 7px 0 2px; gap: 8px; }
-.rbt-msg-head::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--cat);
-  order: 1;
-}
-.rbt-msg-idx { order: 0; min-width: 1.4em; color: var(--t3); }
-.rbt-msg-head > :not(.rbt-msg-idx) { order: 2; }
-.rbt-msg-label { font-weight: 600; }
-.rbt-msg-preview { padding: 0 0 7px 38px; color: var(--t3); }
-.rbt-msg.open { background: transparent; }
-.rbt-chatgroup { border: 0; border-radius: 0; background: transparent; border-bottom: 1px solid var(--hair); }
-.rbt-chatgroup:last-child { border-bottom: 0; }
-.rbt-chatgroup-head { padding: 7px 0; color: var(--t2); }
-.rbt-chatgroup > .rbt-msg { margin: 0 0 0 var(--rbd-s-4); }
 .rbt-content { border-radius: var(--rbd-r-s); background: var(--g3); }
-.rbt-seg { box-shadow: none; background: color-mix(in srgb, var(--seg) 16%, transparent); }
 .rbt-stackbar { height: 8px; border-radius: var(--rbd-r-xs); }
 .rbt-legend { color: var(--t2); }
-.rbt-wi-book-head { margin-bottom: 6px; }
-.rbt-wi-entry summary { padding: var(--rbd-row-y) 0; }
 .rbt-vartree-row { padding: var(--rbd-s-1) 0; }
 .rbt-vartree-row.changed { background: rgba(224, 160, 64, 0.1); }
 
@@ -748,6 +633,8 @@ body.rbt-resizing #sheld { transition: none !important; }
 .rbt-plugin-more { padding: 0 0 var(--rbd-s-3) calc(36px + var(--rbd-s-3)); }
 /* 插件一行：开关在名字左边（离名字近，一眼看出关的是哪个），右边更新、设置、⋯ */
 .rbt-plugin-row .rbt-plugin-toggle { margin-left: 0; order: -1; }
+.rbt-toggle-first > .rbt-env-toggle { margin-left: 0; order: -1; }
+.rbt-toggle-first > .rbt-env-main { flex: 1; min-width: 0; }
 .rbt-plugin-row > .rbt-env-main { flex: 1; }
 /* 名字整块能点：点了在下面展开「我的备注」 */
 .rbt-plugin-name { min-height: 36px; justify-content: center; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
@@ -1157,18 +1044,6 @@ input.rbt-cb.rbt-cb[type='checkbox']:focus-visible { outline: 2px solid var(--rb
 .rbt-legend-item small { color: var(--t3); font-variant-numeric: tabular-nums; }
 .rbt-legend-name { color: var(--t2); }
 
-.rbt-msg-head { padding: var(--rbd-s-2) 0 0; gap: 8px; align-items: center; cursor: pointer; }
-.rbt-msg-head::before { order: 0; }
-.rbt-msg-head > .rbt-msg-label { order: 1; flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: var(--t1); }
-.rbt-msg-head > .rbt-msg-tokens { order: 2; font-size: 11.5px; color: var(--t3); font-variant-numeric: tabular-nums; }
-.rbt-msg-meta { padding: 0 0 2px 16px; font-size: 11.5px; color: var(--t3); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rbt-msg-preview { padding: 0 0 var(--rbd-s-2) var(--rbd-s-4); font-size: 12px; color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rbt-chatgroup-head { gap: var(--rbd-s-2); padding: var(--rbd-s-2) 0; color: var(--t2); }
-.rbt-chatgroup-head .rbt-caret { width: 8px; font-size: 9px; color: var(--t3); }
-.rbt-chatgroup-title { font-size: 13px; font-weight: 600; color: var(--t1); }
-.rbt-chatgroup-sub { flex: 1; min-width: 0; font-size: 11.5px; color: var(--t3); }
-.rbt-chatgroup-head .rbt-msg-tokens { font-size: 11.5px; color: var(--t3); font-variant-numeric: tabular-nums; }
-
 /* =================================================================== 标题栏 ===
    每个整页、面板、窗口的第一行都是它（组件：src/ui/TitleBar.tsx，规范：DESIGN.md）。
    标题 17px 粗体，是这一页最大的字；✕ 永远在最右边，圆形，电脑 36px、手机 40px。 */
@@ -1299,11 +1174,10 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
   .rbt-panel .rbt-btn, .rbt-scope .rbt-btn { min-height: 36px; }
   .rbt-panel .rbt-btn-small, .rbt-scope .rbt-btn-small { min-height: 32px; }
   .rbt-panel .rbt-linkbtn, .rbt-scope .rbt-linkbtn, .rbt-imp .rbt-linkbtn { min-height: 32px; display: inline-flex; align-items: center; }
-  .rbt-header-tabs .rbt-tabs button, .rbt-subtabs button, .rbt-vseg button { min-height: 32px; }
+  .rbt-header-tabs .rbt-tabs button, .rbt-vseg button { min-height: 32px; }
   .rbt-panel input:not([type=checkbox]):not([type=radio]), .rbt-scope input:not([type=checkbox]):not([type=radio]) { min-height: 36px; }
 }
-@media (max-width: 1000px) {
-}
+
 
 /* ============================================= 推荐的 vs 现在用的（角色档案） ===
    一块里分「预设」「模型」两小节：小标题 + 打开酒馆对应面板的入口；字段上面有说明；
@@ -1586,15 +1460,21 @@ html.rbt-look:is(.rbt-look-light, .rbt-look-warm) .rbt-header-tabs .rbt-tabs but
 .rbt-ct-table :is(td, th):is(:first-child, :last-child) { position: sticky; z-index: 1; background: var(--rbd-bg1, #17191e); }
 .rbt-ct-table :is(td, th):first-child { left: 0; }
 .rbt-ct-table :is(td, th):last-child { right: 0; }
-.rbt-ct-scroll.more-left :is(td, th):first-child { box-shadow: 10px 0 10px -8px rgba(0, 0, 0, .7); }
-.rbt-ct-scroll.more-right :is(td, th):last-child { box-shadow: -10px 0 10px -8px rgba(0, 0, 0, .7); }
-.rbt-ct-add { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.1)); border-radius: var(--rbd-r-xs, 6px); background: none; color: var(--rbd-text2); font: inherit; font-size: 12px; font-weight: 500; white-space: nowrap; cursor: pointer; }
-.rbt-ct-add:hover, .rbt-ct-add[aria-expanded='true'] { color: var(--rbd-text1); background: color-mix(in srgb, var(--rbd-text1) 6%, transparent); }
+/* 渐变：固定列旁边的内容慢慢淡进底色，一看就知道那边还有列 */
+.rbt-ct-scroll.more-left :is(td, th):first-child::after,
+.rbt-ct-scroll.more-right :is(td, th):last-child::before {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 40px; pointer-events: none;
+}
+.rbt-ct-scroll.more-left :is(td, th):first-child::after { left: 100%; background: linear-gradient(to right, var(--rbd-bg1, #17191e), transparent); }
+.rbt-ct-scroll.more-right :is(td, th):last-child::before { right: 100%; background: linear-gradient(to left, var(--rbd-bg1, #17191e), transparent); }
+/* 表头下面一行小字：全局用的是什么 */
+.rbt-ct-th-g { display: block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; font-weight: 400; color: var(--rbd-text3); }
+.rbt-ct-add { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border: 1px dashed var(--rbd-hairline, rgba(255, 255, 255, 0.12)); border-radius: var(--rbd-r-xs, 6px); background: none; color: var(--rbd-text3); font: inherit; font-size: 12px; font-weight: 400; white-space: nowrap; cursor: pointer; }
+/* 空格子的按钮要比选好的值（实底小块）安静：虚线框、浅灰字，鼠标移上去才亮一点 */
+.rbt-ct-add:hover, .rbt-ct-add[aria-expanded='true'] { color: var(--rbd-text2); border-color: color-mix(in srgb, var(--rbd-text1) 30%, transparent); }
 .rbt-ct-add i { font-size: 10px; }
 .rbt-ct-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .rbt-ct-table th { text-align: left; font-weight: 500; font-size: 12px; color: var(--rbd-text3); padding: 6px 8px; border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.07)); white-space: nowrap; }
-.rbt-ct-table .rbt-ct-group th { border-bottom: 0; padding-bottom: 0; color: var(--rbd-text2); }
-.rbt-ct-table .rbt-ct-group small { margin-left: 10px; font-weight: 400; color: var(--rbd-text3); white-space: normal; }
 .rbt-ct-table td { padding: 10px 8px; vertical-align: top; border-bottom: 1px solid var(--rbd-hairline, rgba(255, 255, 255, 0.07)); }
 .rbt-ct-table tr.current td { background: color-mix(in srgb, var(--rbd-text1) 3%, var(--rbd-bg1, #17191e)); }
 .rbt-ct-table td:last-child { width: 1%; text-align: right; }
@@ -1940,9 +1820,10 @@ html.rbt-look body.rbt-usage #chat .mes .tokenCounterDisplay { display: none !im
 .rbt-big .rbt-big-k { font-size: 12px; color: var(--t2); }
 .rbt-big.text b { font-size: 20px; letter-spacing: 0; }
 .rbt-swatch { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; }
-.rbt-legend2 { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--t2); }
+.rbt-legend2 { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--t1); }
 .rbt-legend2 span { display: inline-flex; align-items: center; gap: 6px; }
-.rbt-legend2 b { font-weight: 600; color: var(--t1); font-variant-numeric: tabular-nums; }
+.rbt-legend2 b { font-weight: 400; color: var(--t3); font-variant-numeric: tabular-nums; }
+.rbt-legend2 b small { font-size: 0.85em; margin-left: 1px; }
 .rbt-tbar { display: flex; height: 12px; gap: 2px; }
 .rbt-tbar i { display: block; height: 100%; min-width: 2px; border-radius: 3px; }
 /* 花费明细：项 / tokens / 金额 */
@@ -1966,11 +1847,12 @@ html.rbt-look body.rbt-usage #chat .mes .tokenCounterDisplay { display: none !im
 .rbt-ctr.sub > span:first-child { padding-left: 18px; }
 .rbt-ctr small .rbt-nb { white-space: nowrap; }
 /* 输出的条按最大回复长度画，没写满的部分是底色 */
-.rbt-meter { border-radius: 3px; background: color-mix(in srgb, var(--t1) 10%, transparent); }
-.rbt-meter i { min-width: 3px; }
+.rbt-meter { border-radius: 3px; overflow: hidden; background: color-mix(in srgb, var(--t1) 10%, transparent); }
+/* 上限条：里面的几段不带圆角，看得出都是这一条里的一部分；只有整条两头是圆的 */
+.rbt-meter i { min-width: 3px; border-radius: 0; }
 .rbt-meter i.reserve { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--t1) 35%, transparent) 0 2px, transparent 2px 5px); }
 /* 条上面一行：设置名和上限在左，已用多少在右 */
-.rbt-bar-cap { display: flex; justify-content: space-between; gap: 8px; margin-bottom: -6px; font-size: 12px; color: var(--t2); }
+.rbt-bar-cap { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: -6px; font-size: 12px; color: var(--t2); }
 .rbt-bar-cap b { font-weight: 600; color: var(--t1); font-variant-numeric: tabular-nums; }
 .rbt-swatch.hatch { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--t1) 45%, transparent) 0 2px, transparent 2px 4px); }
 .rbt-swatch.free { box-sizing: border-box; border: 1px solid color-mix(in srgb, var(--t1) 30%, transparent); background: color-mix(in srgb, var(--t1) 10%, transparent); }
@@ -1984,15 +1866,22 @@ html.rbt-look body.rbt-usage #chat .mes .tokenCounterDisplay { display: none !im
 .rbt-fstrip i.hidden, .rbt-swatch.fs-hidden { background: color-mix(in srgb, var(--t1) 15%, transparent); }
 .rbt-fstrip-k { display: flex; justify-content: space-between; margin-top: -8px; font-size: 11.5px; color: var(--t2); font-variant-numeric: tabular-nums; }
 .rbt-ctr.sub > span:nth-child(3) { font-weight: 400; color: var(--t2); }
-.rbt-basis { display: flex; flex-direction: column; gap: var(--rbd-s-1); padding: var(--rbd-s-3); border-radius: var(--rbd-r-s); background: color-mix(in srgb, var(--t1) 5%, transparent); }
-.rbt-basis b { font-size: 12.5px; font-weight: 600; color: var(--t1); }
+/* 花费怎么估算：收成一行，点开看单价 */
+.rbt-basis { font-size: 12px; color: var(--t2); }
+.rbt-basis summary { cursor: pointer; min-height: 28px; display: flex; align-items: center; color: var(--accent); }
+.rbt-basis[open] { display: flex; flex-direction: column; gap: var(--rbd-s-1); padding: 0 0 var(--rbd-s-2); }
 .rbt-basis p { margin: 0; font-size: 12px; line-height: 1.55; color: var(--t2); overflow-wrap: anywhere; }
 /* 上下文：按发送顺序的条，括线是缓存，橙线是开始不一样的地方 */
-.rbt-cbar { position: relative; display: flex; height: 14px; gap: 2px; }
-.rbt-cbar.has-cache { margin-top: 24px; }
-.rbt-cbar > i { display: block; height: 100%; min-width: 2px; border-radius: 3px; }
-.rbt-bracket { position: absolute; left: 0; top: -10px; height: 6px; min-width: 40px; border: 1.5px solid var(--rbd-accent, #0a84ff); border-bottom: 0; border-radius: 3px 3px 0 0; box-sizing: border-box; }
-.rbt-bracket span { position: absolute; left: 0; bottom: calc(100% + 2px); line-height: 1.2; font-size: 11.5px; font-weight: 600; white-space: nowrap; color: var(--rbd-accent, #0a84ff); }
+.rbt-cbar { position: relative; display: flex; height: 14px; }
+.rbt-cbar.has-cache { margin-bottom: 22px; }
+/* 各段按真实比例排，不用 gap（gap 会把小段画宽、括号对不准）；每段右边 2px 透明边框当缝，算在这一段自己的宽度里 */
+/* 行内的 background 会把 background-clip 重置成 border-box，所以这里要 !important。每段至少 4px（2px 颜色 + 2px 缝）：比缝还窄的段会只剩缝，看起来间距不一样；撑宽后整条略超时允许收缩，不溢出 */
+.rbt-cbar > i { display: block; height: 100%; flex: 0 1 auto; min-width: 4px; box-sizing: border-box; border-right: 2px solid transparent; background-clip: padding-box !important; }
+.rbt-cbar > i:last-of-type { border-right: 0; }
+.rbt-cbar > i:first-child { border-top-left-radius: 3px; border-bottom-left-radius: 3px; }
+.rbt-cbar > i:last-of-type { border-top-right-radius: 3px; border-bottom-right-radius: 3px; }
+.rbt-bracket { position: absolute; left: 0; bottom: -10px; height: 6px; border: 1.5px solid var(--rbd-accent, #0a84ff); border-top: 0; border-radius: 0 0 3px 3px; box-sizing: border-box; }
+.rbt-bracket span { position: absolute; left: 0; top: calc(100% + 2px); line-height: 1.2; font-size: 11.5px; font-weight: 600; white-space: nowrap; color: var(--rbd-accent, #0a84ff); }
 /* 结论横幅：只在不正常时出现 */
 .rbt-banner { display: flex; gap: var(--rbd-s-2); margin: 0 0 var(--rbd-s-3); padding: var(--rbd-s-3) var(--rbd-s-4); border-radius: var(--rbd-r-m); background: var(--g2); }
 .rbt-banner > i { margin-top: 3px; color: var(--warnc, #e0a040); }
@@ -2039,6 +1928,11 @@ html.rbt-look body.rbt-usage #chat .mes .tokenCounterDisplay { display: none !im
 .rbt-seg2 button { height: 28px; padding: 0 var(--rbd-s-3); border: 0; border-radius: calc(var(--rbd-r-s) - 2px); background: transparent; color: var(--t2); font-size: 12px; cursor: pointer; }
 .rbt-seg2 button.on { background: color-mix(in srgb, var(--t1) 16%, transparent); color: var(--t1); font-weight: 600; }
 @media (max-width: 1000px) { .rbt-seg2 button { height: 36px; } }
+/* 花费明细卡片右上角的「数值 / %」：次要的显示方式切换。保留底色轨道（读起来是一个整体），整体矮一点、全圆角、小字 */
+.rbt-seg2.rbt-unit { border-radius: 999px; }
+.rbt-seg2.rbt-unit button { height: 24px; padding: 0 10px; border-radius: 999px; font-size: 11.5px; }
+/* 手机上按钮不能低于 32px，不然点不准 */
+@media (max-width: 1000px) { .rbt-seg2.rbt-unit button { height: 32px; min-width: 40px; } }
 .rbt-chart-detail { display: flex; flex-direction: column; gap: 2px; padding: var(--rbd-s-2) var(--rbd-s-3); border-radius: var(--rbd-r-s); background: color-mix(in srgb, var(--t1) 5%, transparent); }
 .rbt-chart-detail b { font-size: 13px; color: var(--t1); font-variant-numeric: tabular-nums; }
 .rbt-chart-detail small { font-size: 12px; color: var(--t2); overflow-wrap: anywhere; }
@@ -2058,3 +1952,53 @@ html.rbt-look body.rbt-usage #chat .mes .tokenCounterDisplay { display: none !im
 .rbt-flow-g + .rbt-show { margin-top: var(--rbd-s-4); }
 
 /* 美化库 › 别人做的美化：标题在页面上（不在卡里），下面一组一张卡 */
+
+/* ===================================================== 花费明细 › 发给 AI 的内容（ui/FlowSent.tsx） === */
+.rbt-sent-list { display: flex; flex-direction: column; }
+.rbt-sent-row { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 6px 0; border-top: 1px solid var(--hair); font-size: 13px; color: var(--t1); cursor: pointer; }
+.rbt-sent-list > div:first-child > .rbt-sent-row, .rbt-sent-list > div:first-child > .rbt-sent-group > .rbt-sent-row { border-top: 0; }
+.rbt-sent-row:hover { background: var(--g2); }
+.rbt-sent-row.sub { min-height: 34px; padding-left: var(--rbd-s-4); border-top: 0; font-size: 12.5px; color: var(--t2); }
+.rbt-sent-row > i { font-size: 10px; color: var(--t3); }
+.rbt-sent-line { flex: none; align-self: stretch; width: 3px; border-radius: 2px; }
+.rbt-sent-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.rbt-sent-name small { display: block; font-size: 11.5px; color: var(--t3); }
+.rbt-sent-tok { flex: none; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--t2); }
+.rbt-sent-tag { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 4px; font-size: 11px; line-height: 18px; background: var(--g2); color: var(--t2); white-space: nowrap; vertical-align: 1px; }
+.rbt-sent-tag.new { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.rbt-sent-items { padding-bottom: 4px; }
+.rbt-sent-cut { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px; color: var(--warnc, #e0a040); }
+.rbt-sent-cut::before, .rbt-sent-cut::after { content: ''; flex: 1; border-top: 1px dashed currentColor; opacity: .6; }
+.rbt-sent-title { margin: 0 0 4px; font-size: 15px; font-weight: 600; color: var(--t1); overflow-wrap: anywhere; }
+.rbt-sent-item .rbt-content { max-height: 60vh; overflow: auto; margin-top: var(--rbd-s-3); }
+.rbt-sent-actions { margin-top: var(--rbd-s-3); justify-content: flex-end; }
+@media (max-width: 1000px) { .rbt-sent-row { min-height: 44px; } .rbt-sent-row.sub { min-height: 40px; } }
+/* 「输入」卡片和「发给 AI 的内容」顶上：总数在左，和上一轮比在右，同一行 */
+.rbt-in-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.rbt-in-cmp { padding-bottom: 6px; font-size: 12px; color: var(--t2); white-space: nowrap; }
+/* 进第二层的按钮：整行宽、浅底细边，和链接、数据行都分得开 */
+.rbt-in-btn { width: 100%; justify-content: center; gap: 6px; margin-top: var(--rbd-s-3); min-height: 36px; }
+.rbt-in-btn i { font-size: 10px; }
+/* 输入明细标题下面：本轮、预设，左边名称右边值 */
+.rbt-sent-meta { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; margin: 0; font-size: 12.5px; }
+.rbt-sent-meta > span:nth-child(odd) { color: var(--t3); }
+.rbt-sent-meta > span:nth-child(even) { color: var(--t2); overflow-wrap: anywhere; }
+/* 输入明细：「按来源」「按发送顺序」两个小标题，左边名称右边单位 */
+.rbt-sent-sub { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--t2); margin-top: var(--rbd-s-2); }
+.rbt-sent-sub span:last-child { font-weight: 400; color: var(--t3); }
+/* 输入明细：上下文长度条里「本轮输入」那一段，用一块浅色梯形放大到下面的组成条（上下都贴住两条条，不留缝） */
+.rbt-zoom-stack { display: flex; flex-direction: column; gap: 0; }
+/* 设置名后面的「修改 ↗」：和设置名同一行、同一字号，隔一点 */
+.rbt-edit { margin-left: 8px; font-size: inherit; font-weight: 400; }
+.rbt-legend2 .rbt-edit { margin-left: 0; }
+/* 回复用时下面的插件表：一道分隔线和上面的回复用时分开 */
+.rbt-subtable { margin-top: var(--rbd-s-1); padding-top: var(--rbd-s-3); border-top: 1px solid color-mix(in srgb, var(--t1) 18%, transparent); }
+.rbt-zoom { height: 24px; margin: 0; }
+.rbt-zoom svg { display: block; width: 100%; height: 100%; }
+/* 比上下文长度条的底色更淡，看得出是「放大」而不是又一条条 */
+.rbt-zoom polygon { fill: var(--t1); opacity: 0.05; }
+.rbt-sent-tok small { margin-left: 2px; font-size: 11px; color: var(--t3); }
+/* 「输入内容」标题下面那句说明：紧跟标题，和列表之间不再空一大段 */
+.rbt-sent-order { margin-top: calc(-1 * var(--rbd-s-2)); }
+/* 输入明细：两条条的图例放在一起，一组一行 */
+.rbt-legend-block { display: flex; flex-direction: column; gap: 4px; }

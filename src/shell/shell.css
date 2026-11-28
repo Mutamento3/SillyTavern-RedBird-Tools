@@ -1836,7 +1836,6 @@ body:not(.rbt-shell) :is(.rbt-chat-more, .rbt-chat-meta) { display: none; }
   /* 「管理」靠右，和电脑上一样；筛选、排序在左边 */
   .rbt-home-tools .rbt-home-manage { flex: none; margin-left: auto !important; }
 }
-}
 
 /* 编辑角色：酒馆顶上那行 token 数 + 奖杯 + 眼睛藏起来，token 数挪到标题栏（drawers.ts） */
 body.rbt-shell #right-nav-panel #result_info { display: none !important; }
@@ -1889,3 +1888,5 @@ body.rbt-shell.rbt-compact #Backgrounds :is(#bg_menu_content, #bg_custom_content
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
 }
 body.rbt-shell.rbt-compact #Backgrounds :is(#bg_thumb_zoom_in, #bg_thumb_zoom_out) { display: none !important; }
+/* 手机顶栏的人设头像：和图标按钮一样大，圆形 */
+.rbt-nav-persona img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; display: block; }

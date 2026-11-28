@@ -70,6 +70,26 @@ export const captures = signal<Capture[]>([]);
 const maxCaptures = (): number => (window.innerWidth < 1000 ? 10 : 20);
 let nextId = 1;
 
+/** 当前存档（花费明细只显示它的轮次；换存档时跟着变，花费明细跟着重画） */
+export const currentChat = signal('');
+
+/**
+ * 内存里只留 maxCaptures 轮：按时间从新到旧排，超出时先删别的存档最旧的，再删当前存档最旧的。
+ * 新的一轮进来、从浏览器里读回旧轮次（keep.ts），都用这一条规则。
+ */
+function setCaptures(list: Capture[]): void {
+  const all = [...list].sort((x, y) => y.time.getTime() - x.time.getTime());
+  for (const own of [false, true]) {
+    for (let i = all.length - 1; all.length > maxCaptures() && i >= 0; i--) if ((all[i].chatId === currentChat.value) === own) all.splice(i, 1);
+  }
+  captures.value = all;
+}
+
+/** 从浏览器里读回来的轮次（keep.ts）：重新编号后放进去 */
+export function restoreCaptures(list: Omit<Capture, 'id'>[]): void {
+  setCaptures([...captures.value, ...list.map((c) => ({ ...c, id: nextId++ }))]);
+}
+
 let pendingWI: Any[] = [];
 let lastGen: { type: string; quiet: boolean } = { type: 'normal', quiet: false };
 /**
@@ -304,6 +324,9 @@ export function installFlowCapture(): void {
   const c = ctx();
   const es = c.eventSource;
   const et = c.eventTypes;
+  const readChat = () => { currentChat.value = String(ctx().getCurrentChatId?.() ?? ''); };
+  es.on(et.CHAT_CHANGED, readChat);
+  readChat();
 
   es.on(et.GENERATION_STARTED, (type: string, params: Any, dryRun: boolean) => {
     if (dryRun) return;
@@ -343,8 +366,7 @@ export function installFlowCapture(): void {
         cap.result = scaleTokens(cap.result, stTokens);
         cap.budget = budget;
         // 原始提示词只留最新一轮（导出诊断只用最新的），旧的几轮去掉这一份
-        const older = captures.value.slice(0, maxCaptures() - 1).map((x) => (x.rawChat.length ? { ...x, rawChat: [] } : x));
-        captures.value = [cap, ...older];
+        setCaptures([cap, ...captures.value.map((x) => (x.rawChat.length ? { ...x, rawChat: [] } : x))]);
       } catch (e) {
         console.error('[RedBird] failed to analyse prompt', e);
       }

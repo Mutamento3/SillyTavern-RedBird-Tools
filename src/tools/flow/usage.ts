@@ -27,17 +27,19 @@ export const usageTick = signal(0);
 
 // ---------------------------------------------------------------- 设置 ---
 
+export const floorOn = (): boolean => !!ctx().powerUserSettings?.mesIDDisplay_enabled;
 export const timerOn = (): boolean => !!ctx().powerUserSettings?.timer_enabled;
 export const tokensOn = (): boolean => !!ctx().powerUserSettings?.message_token_count_enabled;
 export const costOn = (): boolean => settings().showCost !== false;
 
-/** 「用时」「tokens」就是酒馆自己的两个设置：去点酒馆的勾，让它自己改、自己存。 */
+/** 「楼层号」「用时」「tokens」就是酒馆自己的三个设置：去点酒馆的勾，让它自己改、自己存。 */
 function setStCheckbox(id: string, v: boolean): void {
   const el = window.jQuery?.(`#${id}`);
   if (!el?.length) return;
   el.prop('checked', v).trigger('input');
 }
 // 点了酒馆的勾，下面 installUsage 里的 input 监听会重画
+export function setFloorOn(v: boolean): void { setStCheckbox('mesIDDisplayEnabled', v); }
 export function setTimerOn(v: boolean): void { setStCheckbox('messageTimerEnabled', v); }
 export function setTokensOn(v: boolean): void { setStCheckbox('messageTokensEnabled', v); }
 export function setCostOn(v: boolean): void { settings().showCost = v; saveSettings(); renderAll(); usageTick.value++; }
@@ -528,7 +530,7 @@ export function installUsage(): void {
     if (ev) es.on(ev, () => setTimeout(renderAll, 50));
   }
   // 在酒馆「用户设置」里改了这两个勾，这边也跟着重画
-  window.jQuery?.(document).on('input', '#messageTimerEnabled, #messageTokensEnabled', () => setTimeout(() => { renderAll(); usageTick.value++; }, 0));
+  window.jQuery?.(document).on('input', '#mesIDDisplayEnabled, #messageTimerEnabled, #messageTokensEnabled', () => setTimeout(() => { renderAll(); usageTick.value++; }, 0));
   setTimeout(renderAll, 500);
   // 换了美化（红鸟适配美化 ↔ 别人做的）：每楼那一行和小红鸟换位置
   let shownBefore = lookShown();

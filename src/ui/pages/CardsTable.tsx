@@ -13,9 +13,9 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { matchSearch } from '../../core/text';
 import { allCharacters, apiLabel, archiveVersion, presetApi, presetNames, setCardTheme, thumbnailUrl } from '../../tools/cards/cards';
-import { profileOf, regexName, revertCard, setCardItem } from '../../tools/env/setup';
+import { globalValue, profileOf, regexName, revertCard, setCardItem } from '../../tools/env/setup';
 import { loadThemes, LOOKS, stThemes, themesLoading } from '../../look/look';
-import { cardLookTick, lookLabel, RBT_LOOK } from '../../look/cardLook';
+import { cardLookTick, globalLookLabel, lookLabel, RBT_LOOK } from '../../look/cardLook';
 import { envReport } from '../../tools/env/env';
 import { currentModel, modelLabel, modelsApply, stModelList, type ModelChoice } from '../../tools/model';
 import { APP_NAME, ctx, currentCharacter, loaded, settings, toast, type Any, type EnvProfile } from '../../st/st';
@@ -27,6 +27,7 @@ import { isPhone, MoreMenu } from '../Menu';
 import { GLOBAL_TAB_LABELS, openDetail } from '../views';
 import { bindPersona, boundPersonas, personaTick, unbindPersona, watchPersonas } from './parts';
 import { MenuHead, ModelForm, Popup, type Opt } from './setupParts';
+import { IconPicker } from '../../shell/Home';
 
 const EMPTY_NOTE = '「—」表示无专用设置';
 const COL = { preset: '预设', model: '模型', persona: '用户人设', theme: '美化', worlds: '全局世界书', regex: '全局正则' } as const;
@@ -45,6 +46,8 @@ interface Row {
   personas: { id: string; name: string }[];
   defaultPersona?: string;
   has: boolean;
+  /** 上次聊天的时间（排序「最近聊过」用） */
+  lastChat: number;
 }
 
 function buildRows(): Row[] {
@@ -71,8 +74,9 @@ function buildRows(): Row[] {
       personas,
       defaultPersona: !personas.length && def && ctx().powerUserSettings?.personas?.[def] ? personaLabel(def) : undefined,
       has: !!p || personas.length > 0,
+      lastChat: Number(ch.date_last_chat) || 0,
     };
-  }).sort((a, b) => Number(b.isCurrent) - Number(a.isCurrent) || a.name.localeCompare(b.name, 'zh'));
+  });
 }
 
 // ------------------------------------------------------------ 解绑 + 撤销 ---
@@ -227,15 +231,14 @@ function ModelCell({ r }: { r: Row }) {
 
 function PersonaCell({ r }: { r: Row }) {
   if (r.personas.length) return <span class="rbt-ct-pills">{r.personas.map((p) => <Pill key={p.id} text={p.name} onRemove={() => unbindPersonaUndo(r, p.id, p.name)} />)}</span>;
-  const add = <AddPick r={r} k="persona" />;
-  if (r.defaultPersona) return <span class="rbt-ct-pills"><Soft text={r.defaultPersona} sub="全局人设" />{add}</span>;
-  return add;
+  // 全局人设写在表头，这里不每行重复
+  return <AddPick r={r} k="persona" />;
 }
 
 function ThemeCell({ r }: { r: Row }) {
   const t = r.profile?.theme;
-  // 没设美化不是「保持换卡前的」，而是用全局美化，直接写出来
-  if (!t) return <span class="rbt-ct-pills"><span class="rbt-ct-soft">全局美化</span><AddPick r={r} k="theme" /></span>;
+  // 全局美化写在表头，这里不每行重复
+  if (!t) return <AddPick r={r} k="theme" />;
   return <Pill text={lookLabel(t)} tone={r.themeMissing ? 'warn' : undefined} sub={themeNote(r)} onRemove={() => unbindTheme(r)} />;
 }
 
@@ -263,14 +266,23 @@ function useRows(): Row[] {
   return buildRows();
 }
 
-function Toolbar({ q, setQ, all, setAll, count }: { q: string; setQ: (v: string) => void; all: boolean; setAll: (v: boolean) => void; count: number }) {
+type Sort = 'custom' | 'recent' | 'name';
+const SORT_TEXT: Record<Sort, string> = { custom: '有专用设置的在前', recent: '最近聊过', name: '名称' };
+const SORT_KEY = 'rbt-ct-sort';
+
+/** 正在聊的卡一直排第一；其余按选的方式排。 */
+function sortRows(rows: Row[], sort: Sort): Row[] {
+  const name = (a: Row, b: Row) => a.name.localeCompare(b.name, 'zh');
+  const by = sort === 'name' ? name : sort === 'recent' ? (a: Row, b: Row) => b.lastChat - a.lastChat || name(a, b) : (a: Row, b: Row) => Number(b.has) - Number(a.has) || name(a, b);
+  return [...rows].sort((a, b) => Number(b.isCurrent) - Number(a.isCurrent) || by(a, b));
+}
+
+function Toolbar({ q, setQ, sort, setSort, count }: { q: string; setQ: (v: string) => void; sort: Sort; setSort: (v: Sort) => void; count: number }) {
   return (
     <div class="rbt-ct-bar">
       <input class="text_pole rbt-ct-search" type="search" placeholder="搜索角色" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
-      <div class="rbt-vseg rbt-list-filter" role="tablist">
-        <button type="button" role="tab" aria-selected={!all} class={!all ? 'active' : ''} onClick={() => setAll(false)}>有专用设置</button>
-        <button type="button" role="tab" aria-selected={all} class={all ? 'active' : ''} onClick={() => setAll(true)}>全部角色</button>
-      </div>
+      <IconPicker icon="fa-arrow-down-wide-short" name="排序" label={`排序：${SORT_TEXT[sort]}`} title="排序方式" value={sort} onChange={(v) => setSort(v as Sort)}
+        options={(Object.keys(SORT_TEXT) as Sort[]).map((k) => ({ value: k, text: SORT_TEXT[k] }))} />
       <small class="rbt-muted rbt-ct-count">{count} 张卡</small>
     </div>
   );
@@ -279,18 +291,16 @@ function Toolbar({ q, setQ, all, setAll, count }: { q: string; setQ: (v: string)
 export function CardsTablePage() {
   const rows = useRows();
   const [q, setQ] = useState('');
-  const [all, setAll] = useState(false);
+  const [sort, setSortState] = useState<Sort>(() => {
+    try { const v = localStorage.getItem(SORT_KEY) as Sort; return v in SORT_TEXT ? v : 'custom'; } catch { return 'custom'; }
+  });
+  const setSort = (v: Sort) => { setSortState(v); try { localStorage.setItem(SORT_KEY, v); } catch { /* ignore */ } };
   const phone = isPhone();
-  const shown = rows.filter((r) => (all || r.has) && matchSearch(q, r.name));
+  const shown = sortRows(rows.filter((r) => matchSearch(q, r.name)), sort);
   return (
     <div class="rbt-page rbt-ct">
-      <Toolbar q={q} setQ={setQ} all={all} setAll={setAll} count={shown.length} />
-      {!shown.length && (rows.some((r) => r.has) || q || all
-        ? <Empty>没有符合的角色。</Empty>
-        : <Empty>
-            <p>暂无设有专用设置的角色卡。</p>
-            <div class="rbt-empty-actions"><button type="button" class="rbt-btn" onClick={() => setAll(true)}>查看全部角色</button></div>
-          </Empty>)}
+      <Toolbar q={q} setQ={setQ} sort={sort} setSort={setSort} count={shown.length} />
+      {!shown.length && <Empty>没有符合的角色。</Empty>}
       {shown.length > 0 && (phone ? <PhoneList rows={shown} /> : <DeskTable rows={shown} />)}
     </div>
   );
@@ -328,14 +338,30 @@ function useEdges(): [preact.RefObject<HTMLDivElement>, string, () => void] {
   return [ref, edge, measure];
 }
 
+/** 表头：列名，下面一行小字写全局用的是什么（没设专用的卡就用它），不在每一行重复。 */
+function Head({ k, g }: { k: PickKey; g: string }) {
+  return <th>{COL[k]}{g && <small class="rbt-ct-th-g" title={`全局：${g}`}>全局：{g}</small>}</th>;
+}
+
+function globals(): Record<PickKey, string> {
+  const def = String(ctx().powerUserSettings?.default_persona ?? '');
+  const model = globalValue('model') as ModelChoice | null;
+  return {
+    preset: String(globalValue('preset') ?? ''),
+    model: model?.model ?? '',
+    persona: def && ctx().powerUserSettings?.personas?.[def] ? personaLabel(def) : '',
+    theme: globalLookLabel(),
+  };
+}
+
 function DeskTable({ rows }: { rows: Row[] }) {
   const [ref, edge, measure] = useEdges();
+  const g = globals();
   return (
     <div ref={ref} class={`rbt-ct-scroll${edge}`} onScroll={measure}>
       <table class="rbt-ct-table">
         <thead>
-          <tr class="rbt-ct-group"><th /><th colSpan={6}>专用设置<small>{EMPTY_NOTE}</small></th><th /></tr>
-          <tr><th>角色</th><th>{COL.preset}</th><th>{COL.model}</th><th>{COL.persona}</th><th>{COL.theme}</th><th>{COL.worlds}</th><th>{COL.regex}</th><th /></tr>
+          <tr><th>角色</th><Head k="preset" g={g.preset} /><Head k="model" g={g.model} /><Head k="persona" g={g.persona} /><Head k="theme" g={g.theme} /><th>{COL.worlds}</th><th>{COL.regex}</th><th /></tr>
         </thead>
         <tbody>
           {rows.map((r) => (

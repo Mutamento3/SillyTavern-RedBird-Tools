@@ -78,11 +78,20 @@ export function openPresetField(field: 'context' | 'reply'): void {
     const input = document.getElementById(id);
     const row = (input?.closest('.range-block') as HTMLElement | null) ?? input;
     if (!row) return;
-    row.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    row.classList.remove('rbt-spot');
-    void row.offsetWidth;
-    row.classList.add('rbt-spot');
-    setTimeout(() => row.classList.remove('rbt-spot'), 2000);
+    // 别的插件会把这两栏收进一个折叠块（比如白白工具箱的「预设设置」）：收着就先点开（酒馆展开要 400ms）
+    const closed: HTMLElement[] = [];
+    for (let d = row.closest('.inline-drawer'); d; d = d.parentElement?.closest('.inline-drawer') ?? null) {
+      const content = d.querySelector(':scope > .inline-drawer-content');
+      if (content && getComputedStyle(content).display === 'none') closed.unshift(d as HTMLElement);
+    }
+    closed.forEach((d) => d.querySelector<HTMLElement>(':scope > .inline-drawer-toggle')?.click());
+    setTimeout(() => {
+      row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      row.classList.remove('rbt-spot');
+      void row.offsetWidth;
+      row.classList.add('rbt-spot');
+      setTimeout(() => row.classList.remove('rbt-spot'), 2000);
+    }, closed.length ? 450 : 0);
   }, 350);
 }
 

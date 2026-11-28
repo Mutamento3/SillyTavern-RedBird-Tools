@@ -1,14 +1,31 @@
 import { useMemo, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
-import { CATEGORY_META, type AttributedMessage, type Category } from '../core/attribute';
-import { truncate } from '../core/text';
-import { captures, flowFocus, previewBusy, previewNextPrompt, type ActivatedWI } from '../tools/flow/capture';
+import { buildSent, type SentItem } from '../core/sentItems';
+import { captures, currentChat, flowFocus, previewBusy, previewNextPrompt, type Capture } from '../tools/flow/capture';
 import { ctx, toast } from '../st/st';
-import { birdOn, costOn, setBirdOn, setCostOn, setTimerOn, setTokensOn, timerOn, tokensOn, usageTick } from '../tools/flow/usage';
+import { birdOn, costOn, floorOn, setBirdOn, setCostOn, setFloorOn, setTimerOn, setTokensOn, timerOn, tokensOn, usageTick } from '../tools/flow/usage';
 import { isPhone } from './Menu';
 import { lookShown } from '../look/look';
-import { Banner, WholeChatGroup, WholeChatPage, ContextSection, RoundCostSection, TimeSection, bannerFor, cacheBreak, previousCapture, roundTitle } from './FlowRound';
+import { Banner, Big, WholeChatGroup, WholeChatPage, ContextSection, ContextZoom, OutputSection, RoundCostSection, TimeSection, UnitToggle, bannerFor, cacheBreak, previousCapture, roundTitle, showPct, vsLast } from './FlowRound';
 import { USAGE_COPY as U } from './copy';
+import { SentItemPage, SentList, wiInfo } from './FlowSent';
+
+/** 「第 23 楼（AI 回复）」：这一轮写的是哪一楼、谁写的 */
+function floorText(c: Capture): string {
+  if (c.genType === 'preview') return '下一轮（预览，未发送）';
+  const who: Record<string, string> = { swipe: 'AI 回复 · 重新生成', regenerate: 'AI 回复 · 重新生成', continue: 'AI 回复 · 继续', impersonate: '用户 · AI 代写' };
+  return `${c.targetFloor != null ? `第 ${c.targetFloor} 楼` : '新的一楼'}（${who[c.genType] ?? 'AI 回复'}）`;
+}
+
+/** 发给 AI 的时间：今天写「今天 02:10」，别的日子写「11-27 02:10」 */
+function sentAt(t: Date): string {
+  const p2 = (n: number) => String(n).padStart(2, '0');
+  const hm = `${p2(t.getHours())}:${p2(t.getMinutes())}`;
+  return new Date().toDateString() === t.toDateString() ? `今天 ${hm}` : `${p2(t.getMonth() + 1)}-${p2(t.getDate())} ${hm}`;
+}
+
+/** 这一轮输入的总 Token：接口给的准数，没有就用估算 */
+const inputOf = (c: Capture): number => c.usage?.input || c.result.totalTokens;
 
 function PreviewButton({ onDone }: { onDone: () => void }) {
   return (
@@ -26,148 +43,7 @@ function PreviewButton({ onDone }: { onDone: () => void }) {
     </button>
   );
 }
-import { CategoryChip, CheckRow, Chip, Empty, fmtTokens } from './common';
-
-const WI_POSITION: Record<number, string> = {
-  0: '角色定义前 ↑Char', 1: '角色定义后 ↓Char', 2: '作者注释前 ↑AN', 3: '作者注释后 ↓AN',
-  4: '按深度 @D', 5: '示例对话前 ↑EM', 6: '示例对话后 ↓EM', 7: '出口 Outlet',
-};
-
-const ROLE_CN: Record<string, string> = { system: '系统', user: '用户', assistant: 'AI' };
-
-const KIND_LABEL: Record<string, string> = {
-  prompt: '预设条目', marker: '占位符', chat: '聊天', injection: '深度注入', utility: '工具提示', extension: '扩展', unknown: '?',
-};
-
-function SegmentedContent({ msg }: { msg: AttributedMessage }) {
-  const [full, setFull] = useState(false);
-  const LIMIT = 12000;
-  let used = 0;
-  const parts: preact.JSX.Element[] = [];
-  for (const [i, s] of msg.segments.entries()) {
-    if (!full && used >= LIMIT) break;
-    let text = msg.content.slice(s.start, s.end);
-    if (!full && used + text.length > LIMIT) text = `${text.slice(0, LIMIT - used)}…`;
-    used += text.length;
-    const color = CATEGORY_META[s.category].color;
-    parts.push(
-      <span key={i} class="rbt-seg" style={{ '--seg': color }} title={`${s.label} · ~${s.tokens} tokens`}>
-        {text}
-      </span>,
-    );
-  }
-  return (
-    <div class="rbt-content-wrap">
-      {msg.segments.filter((s) => s.tokens > 0).length > 1 && (
-        <div class="rbt-seglist">
-          {msg.segments.filter((s) => s.tokens > 0).map((s, i) => (
-            <CategoryChip key={i} category={s.category}>{s.label} · {s.tokens}</CategoryChip>
-          ))}
-        </div>
-      )}
-      <pre class="rbt-content">{parts}</pre>
-      {!full && msg.content.length > LIMIT && (
-        <button class="rbt-btn rbt-btn-small" onClick={() => setFull(true)}>显示全部（{msg.content.length} 字）</button>
-      )}
-    </div>
-  );
-}
-
-function MessageRow({ msg }: { msg: AttributedMessage }) {
-  const [open, setOpen] = useState(false);
-  const color = CATEGORY_META[msg.category].color;
-  const extraSources = new Set(msg.segments.filter((s) => s.tokens > 0).map((s) => s.label)).size - 1;
-  return (
-    <div class={`rbt-msg ${open ? 'open' : ''} rbt-kind-${msg.kind}`} style={{ '--cat': color }}>
-      {/* 第一层：标题；第二层：序号、角色、类型这些说明；第三层：内容预览 */}
-      <div class="rbt-msg-head" onClick={() => setOpen(!open)}>
-        <span class="rbt-msg-label">{msg.label}</span>
-        <span class="rbt-msg-tokens">{fmtTokens(msg.tokens)}</span>
-      </div>
-      <div class="rbt-msg-meta" onClick={() => setOpen(!open)}>
-        {[
-          `#${msg.index}`,
-          ROLE_CN[msg.role] ?? msg.role,
-          msg.kind === 'injection' ? `深度 ${msg.depth}` : msg.kind !== 'chat' ? KIND_LABEL[msg.kind] : '',
-          extraSources > 0 ? `另有 ${extraSources} 个来源` : '',
-        ].filter(Boolean).join(' · ')}
-      </div>
-      {!open && <div class="rbt-msg-preview">{truncate(msg.content, 140)}</div>}
-      {open && <SegmentedContent msg={msg} />}
-    </div>
-  );
-}
-
-type Row = { type: 'msg'; msg: AttributedMessage } | { type: 'chat'; msgs: AttributedMessage[] };
-
-function groupRows(msgs: AttributedMessage[]): Row[] {
-  const rows: Row[] = [];
-  for (const m of msgs) {
-    const last = rows[rows.length - 1];
-    if (m.kind === 'chat') {
-      if (last?.type === 'chat') last.msgs.push(m);
-      else rows.push({ type: 'chat', msgs: [m] });
-    } else rows.push({ type: 'msg', msg: m });
-  }
-  return rows;
-}
-
-function ChatGroup({ msgs }: { msgs: AttributedMessage[] }) {
-  const [open, setOpen] = useState(false);
-  const floors = msgs.map((m) => m.chatIndex).filter((x): x is number => x !== undefined);
-  const tokens = msgs.reduce((n, m) => n + m.tokens, 0);
-  const range = floors.length ? `#${Math.min(...floors)}–#${Math.max(...floors)}` : '';
-  return (
-    <div class="rbt-chatgroup">
-      <div class="rbt-chatgroup-head" onClick={() => setOpen(!open)}>
-        <i class={`fa-solid fa-chevron-${open ? 'down' : 'right'} rbt-caret`} />
-        <span class="rbt-chatgroup-title">聊天记录</span>
-        <span class="rbt-chatgroup-sub">{range ? `${range} · ` : ''}{msgs.length} 条</span>
-        <span class="rbt-msg-tokens">{fmtTokens(tokens)}</span>
-      </div>
-      {open && msgs.map((m) => <MessageRow key={m.index} msg={m} />)}
-    </div>
-  );
-}
-
-const SCOPE_OF: Partial<Record<Category, string>> = {
-  wi_character: '角色', wi_chat: '聊天', wi_persona: '用户人设', wi_global: '全局', wi_other: '其他',
-};
-
-function WIList({ wi }: { wi: ActivatedWI[] }) {
-  const byBook = useMemo(() => {
-    const m = new Map<string, ActivatedWI[]>();
-    for (const e of wi) m.set(e.book, [...(m.get(e.book) ?? []), e]);
-    return [...m.entries()];
-  }, [wi]);
-  if (!wi.length) return <Empty>本轮没有触发世界书条目。</Empty>;
-  return (
-    <div class="rbt-wi">
-      {byBook.map(([book, entries]) => (
-        <div key={book} class="rbt-wi-book">
-          <div class="rbt-wi-book-head">
-            <CategoryChip category={entries[0].category}>{SCOPE_OF[entries[0].category]}</CategoryChip>
-            <b>{book}</b> <small class="rbt-muted">{entries.length} 条</small>
-          </div>
-          {entries.sort((a, b) => a.order - b.order).map((e) => (
-            <details key={e.key} class="rbt-wi-entry">
-              <summary>
-                <span class="rbt-wi-title">{e.title}</span>
-                <small class="rbt-muted">{e.position !== undefined ? WI_POSITION[e.position] ?? `位置 ${e.position}` : ''}{e.position === 4 ? ` ${e.depth}` : ''}</small>
-                {e.constant
-                  ? <Chip color="#3d8bfd">常驻</Chip>
-                  : e.matchedKeys.length
-                    ? e.matchedKeys.slice(0, 4).map((k) => <Chip key={k} color="#2fbf8f">{k}</Chip>)
-                    : <Chip color="#888" title="最近的消息里没有它的关键词。可能是被别的条目带出来的，或关键词是正则">其他方式触发</Chip>}
-              </summary>
-              <pre class="rbt-content">{e.content}</pre>
-            </details>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
+import { CheckRow, Chip } from './common';
 
 // ------------------------------------------------- 花费、在聊天里显示 ---
 
@@ -206,8 +82,8 @@ function ShowInChat() {
   const phone = isPhone();
   // 别人做的美化：每一楼用的是酒馆自带的用时和 tokens（写法也是酒馆的），不显示花费
   const ours = lookShown();
-  const timer = timerOn(), tokens = tokensOn(), cost = costOn(), bird = birdOn();
-  const on = [timer && U.showTimer, tokens && U.showTokens, cost && U.showCost, bird && U.showBird].filter(Boolean) as string[];
+  const floor = floorOn(), timer = timerOn(), tokens = tokensOn(), cost = costOn(), bird = birdOn();
+  const on = [floor && U.showFloor, timer && U.showTimer, tokens && U.showTokens, cost && U.showCost, bird && U.showBird].filter(Boolean) as string[];
   return (
     <details class="rbt-sec rbt-show">
       <summary class="rbt-sec-h">
@@ -219,6 +95,7 @@ function ShowInChat() {
       <div class="rbt-show-block">
       <div class="rbt-show-group"><PlaceIcon at="avatar" phone={phone} />{U.showUnderAvatar(phone)}</div>
       <div class="rbt-show-list">
+        <ShowRow label={U.showFloor} sample="#23" checked={floor} onChange={setFloorOn} />
         <ShowRow label={U.showTimer} sample={!ours ? '54.2s' : phone ? '54 秒' : '54秒'} checked={timer} onChange={setTimerOn} />
         <ShowRow label={U.showTokens} sample={phone && ours ? '949 tokens' : '949t'} checked={tokens} onChange={setTokensOn} />
         <ShowRow label={U.showCost} sample="$0.21" checked={cost} onChange={setCostOn} />
@@ -237,12 +114,19 @@ function ShowInChat() {
 }
 
 export function FlowView() {
-  const list = captures.value;
+  // 只看当前存档的轮次（换了存档，上一个存档的本轮不显示在这里）
+  const chatId = currentChat.value;
+  const list = captures.value.filter((c) => c.chatId === chatId);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [sub, setSub] = useState<'stack' | 'wi'>('stack');
-  // 第二层页面：sent = 发给 AI 的每一条（从「上下文」进来）；chat = 整段聊天每一楼的图（从「整段聊天」卡片进来）
-  const [page, setPage] = useState<'main' | 'sent' | 'chat'>('main');
-  const go = (p: 'main' | 'sent' | 'chat') => { setPage(p); requestAnimationFrame(() => document.querySelector('.rbt-panel .rbt-flow')?.scrollIntoView({ block: 'start' })); };
+  // 第二层：sent = 按发送顺序看全部内容（从「输入」进来），chat = 整段聊天每一楼的图；第三层：item = 某一条的全文
+  const [page, setPage] = useState<'main' | 'sent' | 'chat' | 'item'>('main');
+  // 第三层打开的是哪一条：记 key，每次从当前这一轮的列表里找（来了新的一轮，就显示新一轮里的这一条；找不到回第二层）
+  const [itemKey, setItemKey] = useState<string | null>(null);
+  // 换了存档：回到第一层，不留上一个存档选中的轮次和打开的那一条
+  const [shownChat, setShownChat] = useState(chatId);
+  if (shownChat !== chatId) { setShownChat(chatId); setPage('main'); setItemKey(null); setSelectedId(null); }
+  // 「输入内容」每一行写 Token 还是百分比：记住上次选的
+  const go = (p: 'main' | 'sent' | 'chat' | 'item') => { setPage(p); requestAnimationFrame(() => document.querySelector('.rbt-panel .rbt-flow')?.scrollIntoView({ block: 'start' })); };
   const back = <button type="button" class="rbt-back" onClick={() => go('main')}><i class="fa-solid fa-chevron-left" /> 花费明细</button>;
   // 从聊天里点了某一楼的用量（或图里的「看这一轮的明细」）：回到主页面，选这一楼最近的那一轮（这次打开酒馆以后才有；没有就照常显示最近一轮）
   const focus = flowFocus.value;
@@ -254,9 +138,13 @@ export function FlowView() {
   }
   // 默认打开最近一次自己的回复（不是插件在后台发的那几次）
   const cap = list.find((c) => c.id === selectedId) ?? list.find((c) => c.genType !== 'quiet') ?? list[0];
-  const rows = useMemo(() => (cap ? groupRows(cap.result.messages) : []), [cap]);
   const prev = cap ? previousCapture(list, cap) : null;
   const brk = useMemo(() => (cap && prev ? cacheBreak(prev.result.messages, cap.result.messages) : null), [cap, prev]);
+  const sent = useMemo(() => (cap ? buildSent(
+    { messages: cap.result.messages, wi: wiInfo(cap.wi), total: inputOf(cap) },
+    prev ? { messages: prev.result.messages, wi: wiInfo(prev.wi), total: inputOf(prev) } : null,
+  // 接口的用量是回复写完后才挂到同一个对象上的：总数变了也要重算
+  ) : null), [cap, prev, cap && inputOf(cap), prev && inputOf(prev)]);
 
   if (page === 'chat') {
     return (
@@ -275,7 +163,7 @@ export function FlowView() {
         <section class="rbt-sec">
           {ctx().mainApi === 'openai' ? (
             <>
-              <p class="rbt-sec-note">发一条消息后，这里会显示本轮的花费、输入和输出。也可以先预览下一轮会发什么，不花钱。</p>
+              <p class="rbt-sec-note">发一条消息后，这里会显示本轮的花费、输入和回复。也可以先预览下一轮会发什么，不花钱。</p>
               <div><PreviewButton onDone={() => setSelectedId(null)} /></div>
             </>
           ) : <p class="rbt-sec-note">本轮的明细只支持 Chat Completion 接口。</p>}
@@ -290,32 +178,56 @@ export function FlowView() {
   const { result } = cap;
   const globalWI = result.totals.wi_global;
   const globalBooks = [...new Set(cap.wi.filter((e) => e.category === 'wi_global').map((e) => e.book))];
-  // 第二层：发给 AI 的每一条（从「上下文」最下面那一行进来）
-  if (page === 'sent') {
+  // 第三层：某一条的全文
+  const item = page === 'item' && sent ? sent.items.find((it) => it.key === itemKey) : undefined;
+  if (item) {
+    return (
+      <div class="rbt-flow">
+        <button type="button" class="rbt-back" onClick={() => go('sent')}><i class="fa-solid fa-chevron-left" /> 输入明细</button>
+        <section class="rbt-sec"><SentItemPage it={item} presetName={cap.presetName} /></section>
+      </div>
+    );
+  }
+  // 第二层：输入明细（从「输入」卡片的「查看输入明细」或缓存提醒进来）
+  if ((page === 'sent' || page === 'item') && sent) {
     return (
       <div class="rbt-flow">
         {back}
-        <section class="rbt-sec">
+        {/* 上下文长度条、虚线、组成条故意排得紧，看得出是一组：ui-audit 不查这张卡片的间距 */}
+        <section class="rbt-sec" data-lint-spacing="ok">
+          {/* 标题只写这一页是什么；是哪一轮、哪个预设写在下面 */}
           <div class="rbt-sec-h">
-            <b>发给 AI 的内容 · {roundTitle(cap)}</b>
+            <b>输入明细</b>
             {!result.aligned && <Chip color="#c98a00" title="拿不到预设的结构，来源是按文字推测的">推测</Chip>}
+            <span class="rbt-push"><UnitToggle /></span>
           </div>
-          <p class="rbt-sec-note">{result.messages.length} 条消息{cap.presetName ? ` · 预设「${cap.presetName}」` : ''}</p>
-          <div class="rbt-subtabs">
-            <button class={sub === 'stack' ? 'active' : ''} onClick={() => setSub('stack')}>组装顺序</button>
-            <button class={sub === 'wi' ? 'active' : ''} onClick={() => setSub('wi')}>触发的世界书（{cap.wi.length}）</button>
+          {/* 一行一件事：哪一楼（谁写的）、什么时候发给 AI 的、用的哪个预设 */}
+          <div class="rbt-sent-meta">
+            <span>楼层</span><span>{floorText(cap)}</span>
+            {cap.genType !== 'preview' && <><span>发送时间</span><span>{sentAt(cap.time)}</span></>}
+            {cap.presetName && <><span>预设</span><span>{cap.presetName}</span></>}
           </div>
-          {sub === 'stack' && (
-            <div class="rbt-stack">
-              {rows.map((r, i) => (r.type === 'chat' ? <ChatGroup key={`g${i}`} msgs={r.msgs} /> : <MessageRow key={r.msg.index} msg={r.msg} />))}
-            </div>
-          )}
-          {sub === 'wi' && <WIList wi={cap.wi} />}
+          <div class="rbt-in-top">
+            <Big value={`${cap.usage?.input ? '' : '约 '}${sent.total.toLocaleString('en-US')}`} unit="Token" />
+            {sent.delta !== null && <span class="rbt-in-cmp">{vsLast(sent.delta)}</span>}
+          </div>
+          {/* 上下文长度条 → 放大「本轮输入」→ 按来源的组成条；下面是按发送顺序的每一条。
+              括号：接口给了缓存就画实际缓存了多少；否则画和上一轮开头相同、可走缓存的那一段 */}
+          <ContextZoom cap={cap} used={sent.total} bracket={cap.usage?.cached != null ? { tokens: cap.usage.cached, label: `已缓存 ${cap.usage.cached.toLocaleString('en-US')}` }
+            : prev ? { tokens: sent.same, label: `可走缓存 约 ${sent.same.toLocaleString('en-US')}` } : null} />
+        </section>
+        {/* 每一条单独一张卡片：上面看总量，这里看具体是哪一条。标题下那句说明故意紧贴标题：ui-audit 不查这张卡片的间距 */}
+        <section class="rbt-sec" data-lint-spacing="ok">
+          <div class="rbt-sec-h">
+            <b>输入内容</b>
+            <UnitToggle />
+          </div>
+          <p class="rbt-sec-note rbt-sent-order">从上到下是实际发送顺序。</p>
+          <SentList v={sent} onOpen={(it) => { setItemKey(it.key); go('item'); }} pct={showPct.value} />
         </section>
       </div>
     );
   }
-
 
   return (
     <div class="rbt-flow">
@@ -325,19 +237,21 @@ export function FlowView() {
       <div class="rbt-flow-group">本轮</div>
       <div class="rbt-toolbar">
         <select class="text_pole rbt-select" value={cap.id} onChange={(e) => setSelectedId(Number((e.currentTarget as HTMLSelectElement).value))}>
-          {list.map((c) => <option key={c.id} value={c.id}>{roundTitle(c)}</option>)}
+          {/* 只列回复和预览：插件后台调用的花费已经在「花费」表里单独列出 */}
+          {list.filter((c) => c.genType !== 'quiet' || c.id === cap.id).map((c) => <option key={c.id} value={c.id}>{roundTitle(c)}</option>)}
         </select>
         <PreviewButton onDone={() => setSelectedId(null)} />
       </div>
       {cap.genType === 'preview' && (
         <div class="rbt-hint">这是预览，没有发给 AI。预览时看不到具体触发了哪些世界书条目，发一条消息后就能看到。</div>
       )}
-      <Banner data={banner} />
+      <Banner data={banner} onOpenSent={() => go('sent')} />
       {globalWI > 0 && (
         <div class="rbt-warn">全局世界书「{globalBooks.join('、')}」也发给了 AI，约 {globalWI} tokens。不是这张卡用的话，请把它关掉。</div>
       )}
       <RoundCostSection cap={cap} />
-      <ContextSection cap={cap} brk={brk} onOpenSent={() => go('sent')} />
+      {sent && <ContextSection cap={cap} v={sent} onOpenSent={() => go('sent')} />}
+      <OutputSection cap={cap} />
       <TimeSection cap={cap} />
       </div>
       <WholeChatGroup onOpen={() => go('chat')} />
