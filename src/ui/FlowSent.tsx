@@ -52,14 +52,17 @@ function groupTitle(g: SentGroup): string {
   return `${PART_NAME[g.part]} · ${n === 1 ? one : `${n} ${g.part === 'preset' || g.part === 'wi' ? '条' : '段'}`}`;
 }
 
-/** 这一组 / 这一条后面的小标签：常驻、本轮触发、新增、修改 */
+/**
+ * 世界书条目为什么在这一轮：常驻；在最近的聊天里找到了触发词 = 关键词触发；
+ * 找不到触发词（被别的条目带出来、正则关键词、黏性、向量匹配）= 本轮触发。
+ */
+const wiTag = (w: WIInfo): string => (w.constant ? '常驻' : w.matchedKeys.length ? '关键词触发' : '本轮触发');
+
+/** 这一组 / 这一条后面的小标签：常驻、关键词触发、本轮触发（一组里都一样才标）、新增、修改 */
 function tagsOf(items: SentItem[]): string[] {
   const tags: string[] = [];
-  const wi = items.filter((it) => it.wi);
-  if (wi.length === items.length && wi.length) {
-    if (wi.every((it) => it.wi!.constant)) tags.push('常驻');
-    else if (wi.every((it) => !it.wi!.constant)) tags.push('关键词触发');
-  }
+  const wi = items.map((it) => (it.wi ? wiTag(it.wi) : ''));
+  if (wi[0] && wi.every((t) => t === wi[0])) tags.push(wi[0]);
   const added = items.filter((it) => it.status === 'new').length;
   const changed = items.filter((it) => it.status === 'changed').length;
   if (added === items.length) tags.push('新增');

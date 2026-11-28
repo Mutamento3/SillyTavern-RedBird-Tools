@@ -7,8 +7,8 @@
   "css": "dist/style.css",
   "generate_interceptor": "rbtThinkInterceptor",
   "author": "RedBird",
-  "version": "0.6.43",
+  "version": "0.6.44",
   "auto_update": true,
   "homePage": "https://github.com/RebBirdTD/SillyTavern-RedBird-Tools",
-  "rbt_whats_new": "花费明细新增「输入明细」，按发送顺序逐条看发给 AI 的内容，刷新后也还在；角色表可以排序。"
+  "rbt_whats_new": "存档改名后，花费明细不会变成空的；找不到触发词的世界书条目标「本轮触发」。"
 }

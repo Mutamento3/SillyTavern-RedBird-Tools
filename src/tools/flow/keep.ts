@@ -11,7 +11,7 @@
  */
 import { effect } from '@preact/signals';
 import { ctx } from '../../st/st';
-import { captures, restoreCaptures, type Capture } from './capture';
+import { captures, renameCaptures, restoreCaptures, type Capture } from './capture';
 import { usageTick } from './usage';
 
 const DB = 'redbird-tools';
@@ -122,7 +122,8 @@ async function load(chatId: string): Promise<void> {
     // 用量重新连到那一楼消息上的同一个对象：之后插件后台调用的花费是加在消息上的，这样花费明细也跟着变
     const own = s.targetFloor != null ? chat[s.targetFloor]?.extra?.rbt_usage : null;
     const same = own && s.usage && own.model === s.usage.model && own.input === s.usage.input && own.output === s.usage.output;
-    return { ...s, time: new Date(s.time), rawChat: [], usage: same ? own : s.usage };
+    // chatId 用现在的名字（存档改过名时，记录里存的还是旧名字）
+    return { ...s, chatId, time: new Date(s.time), rawChat: [], usage: same ? own : s.usage };
   }).filter((s) => !have.has(s.time.getTime()));
   if (add.length) restoreCaptures(add);
 }
@@ -141,6 +142,26 @@ export function installKeep(): void {
     void tx('readwrite', (rs, ms) => { rs.delete(id); ms.delete(id); });
   };
   for (const ev of [c.eventTypes.CHAT_DELETED, c.eventTypes.GROUP_CHAT_DELETED]) if (ev) c.eventSource.on(ev, drop);
+  // 存档改名：记录从旧名字挪到新名字（一个事务里），内存里的轮次也改成新名字。
+  // 酒馆先用新名字重新打开聊天、再发这个事件，所以挪完再读一次
+  const rename = async (e: unknown) => {
+    const d = (e ?? {}) as { oldFileName?: unknown; newFileName?: unknown };
+    const from = String(d.oldFileName ?? '').replace(/\.jsonl$/, '');
+    const to = String(d.newFileName ?? '').replace(/\.jsonl$/, '');
+    if (!from || !to || from === to) return;
+    renameCaptures(from, to);
+    const sig = saved.get(from);
+    saved.delete(from);
+    if (sig) saved.set(to, sig);
+    await tx('readwrite', (rs, ms) => {
+      for (const s of [rs, ms]) {
+        const r = s.get(from);
+        r.onsuccess = () => { if (r.result) { s.put({ ...r.result, chatId: to }); s.delete(from); } };
+      }
+    });
+    if (chatNow() === to) await load(to);
+  };
+  if (c.eventTypes.CHAT_RENAMED) c.eventSource.on(c.eventTypes.CHAT_RENAMED, (e: unknown) => { void rename(e); });
   // 轮次或用量一变（插件后台调用记到用量里时只有 usageTick 变）：记下是哪个存档，等页面空闲时存（连着变只存最后一次）
   const pending = new Set<string>();
   let timer: ReturnType<typeof setTimeout> | null = null;

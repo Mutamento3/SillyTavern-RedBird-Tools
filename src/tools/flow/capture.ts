@@ -85,6 +85,13 @@ function setCaptures(list: Capture[]): void {
   captures.value = all;
 }
 
+/** 存档改名（keep.ts）：内存里属于旧名字的轮次改成新名字 */
+export function renameCaptures(from: string, to: string): void {
+  if (currentChat.value === from) currentChat.value = to;
+  if (!captures.value.some((c) => c.chatId === from)) return;
+  captures.value = captures.value.map((c) => (c.chatId === from ? { ...c, chatId: to } : c));
+}
+
 /** 从浏览器里读回来的轮次（keep.ts）：重新编号后放进去 */
 export function restoreCaptures(list: Omit<Capture, 'id'>[]): void {
   setCaptures([...captures.value, ...list.map((c) => ({ ...c, id: nextId++ }))]);
